@@ -8,3 +8,7 @@ Short log of implementation choices where the spec or `CLAUDE.md` left room. One
 - 2026-09-23 — Added `pnpm format` (`biome check --write .`). Why: to apply Biome fixes; `pnpm lint` stays read-only.
 - 2026-09-23 — `step(state, commands, content)` takes content as an argument, as in CLAUDE.md; the spec's `step(state, commands)` is older shorthand. Why: CLAUDE.md wins on engineering rules.
 - 2026-09-23 — Tool versions at scaffold: TypeScript 7.0, Vitest 5.0, Biome 2.5, Vite 8.3, PixiJS 8.21, React 19.3, pnpm 11, Node ≥ 22.12. Why: latest stable versions at project start.
+- 2026-09-23 — Trees are a `mapObjects` entry with generic fields (`resource`, `amount`, `gatherTicks`, `yieldPerGather`) instead of tree-specific ones. Why: the same shape fits later rocks and clay, and it costs nothing now.
+- 2026-09-23 — Villager roles (`woodcutter`, `carrier`) are content, holding walk speed, carry capacity and idle retry. Walk speed is in milli-tiles per tick, so it stays an integer. Why: keeps every tuning number in content, as integers.
+- 2026-09-23 — Buildings have a footprint (`size`) and a `door` tile just outside it that villagers walk to. Woodcutter's hut is 2×2; hut is 1×1. Why: a simple, explicit access point; footprints can block walking without villagers needing to enter tiles.
+- 2026-09-23 — Milestone-0 numbers: tree 3 logs, 40 ticks per chop; walk 1.5 tiles/s; woodcutter's hut buffer 4 logs; hut costs 10 logs + 200 build ticks. Why: a hut completes in about 2 minutes at 1×, which is watchable at 3×.

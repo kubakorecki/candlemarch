@@ -1,0 +1,83 @@
+import { describe, expect, it } from 'vitest';
+import { content } from '../src/index';
+
+const { resources, terrain, mapObjects, villagerRoles, buildings } = content;
+
+function expectPositiveInt(value: number, label: string): void {
+  expect(Number.isInteger(value) && value > 0, `${label} = ${value}`).toBe(true);
+}
+
+describe('content validation', () => {
+  it('every record key matches its id', () => {
+    for (const table of [resources, terrain, mapObjects, villagerRoles, buildings]) {
+      for (const [key, def] of Object.entries(table)) {
+        expect(def.id).toBe(key);
+      }
+    }
+  });
+
+  it('map objects reference existing resources and use positive integers', () => {
+    for (const obj of Object.values(mapObjects)) {
+      expect(resources).toHaveProperty(obj.resource);
+      expectPositiveInt(obj.amount, `${obj.id}.amount`);
+      expectPositiveInt(obj.gatherTicks, `${obj.id}.gatherTicks`);
+      expectPositiveInt(obj.yieldPerGather, `${obj.id}.yieldPerGather`);
+    }
+  });
+
+  it('villager roles use positive integers', () => {
+    for (const role of Object.values(villagerRoles)) {
+      expectPositiveInt(role.walkSpeed, `${role.id}.walkSpeed`);
+      expectPositiveInt(role.carryCapacity, `${role.id}.carryCapacity`);
+      expectPositiveInt(role.idleRetryTicks, `${role.id}.idleRetryTicks`);
+    }
+  });
+
+  it('buildings reference existing ids', () => {
+    for (const b of Object.values(buildings)) {
+      for (const job of b.employs) {
+        expect(villagerRoles, `${b.id} employs`).toHaveProperty(job.role);
+        expectPositiveInt(job.count, `${b.id}.employs.${job.role}`);
+      }
+      if (b.gathers !== undefined) {
+        expect(mapObjects, `${b.id}.gathers`).toHaveProperty(b.gathers);
+      }
+      if (b.outputBuffer) {
+        expect(resources, `${b.id}.outputBuffer`).toHaveProperty(b.outputBuffer.resource);
+        expectPositiveInt(b.outputBuffer.capacity, `${b.id}.outputBuffer.capacity`);
+      }
+      for (const cost of b.construction?.cost ?? []) {
+        expect(resources, `${b.id} cost`).toHaveProperty(cost.resource);
+        expectPositiveInt(cost.amount, `${b.id} cost ${cost.resource}`);
+      }
+    }
+  });
+
+  it('buildings have a sane footprint and a door outside it', () => {
+    for (const b of Object.values(buildings)) {
+      expectPositiveInt(b.size.w, `${b.id}.size.w`);
+      expectPositiveInt(b.size.h, `${b.id}.size.h`);
+      const { x, y } = b.door;
+      const inside = x >= 0 && x < b.size.w && y >= 0 && y < b.size.h;
+      expect(inside, `${b.id} door inside footprint`).toBe(false);
+      // The door must touch the footprint, including diagonally.
+      const touches = x >= -1 && x <= b.size.w && y >= -1 && y <= b.size.h;
+      expect(touches, `${b.id} door not adjacent`).toBe(true);
+    }
+  });
+
+  it('placeable buildings can be constructed', () => {
+    for (const b of Object.values(buildings)) {
+      if (!b.placeable) continue;
+      expect(b.construction, `${b.id}.construction`).toBeDefined();
+      expectPositiveInt(b.construction?.buildTicks ?? 0, `${b.id}.buildTicks`);
+    }
+  });
+
+  it('a gathering building has somewhere to put what it gathers', () => {
+    for (const b of Object.values(buildings)) {
+      if (b.gathers === undefined) continue;
+      expect(b.outputBuffer?.resource).toBe(mapObjects[b.gathers].resource);
+    }
+  });
+});

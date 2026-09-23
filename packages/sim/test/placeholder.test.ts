@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { SIM_DEPENDS_ON, SIM_PACKAGE } from '../src/index';
+import { SIM_PACKAGE } from '../src/index';
 
 describe('sim', () => {
-  it('loads and resolves content', () => {
+  it('loads', () => {
     expect(SIM_PACKAGE).toBe('sim');
-    expect(SIM_DEPENDS_ON).toBe('content');
   });
 });
