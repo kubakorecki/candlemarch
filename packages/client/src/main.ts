@@ -1,4 +1,4 @@
-import { SIM_PACKAGE } from '@candlemarch/sim';
+import { TICKS_PER_SECOND } from '@candlemarch/sim';
 
 const root = document.getElementById('root');
-if (root) root.textContent = `Candlemarch (${SIM_PACKAGE} loaded)`;
+if (root) root.textContent = `Candlemarch (sim at ${TICKS_PER_SECOND} ticks/s)`;

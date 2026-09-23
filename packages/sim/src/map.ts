@@ -1,0 +1,112 @@
+// Hand-made map definitions and building a fresh game state from one.
+import type {
+  BuildingId,
+  Content,
+  MapObjectId,
+  TerrainId,
+  VillagerRoleId,
+} from '@candlemarch/content';
+import { createEntity } from './entities';
+import { doorTile, fitsAt, inBounds, tileCenter } from './grid';
+import { initJobDispatch } from './logistics/jobDispatch';
+import { seedRng } from './rng';
+import { type EntityId, type GameState, STATE_VERSION, type Tile } from './state';
+
+export interface MapDef {
+  name: string;
+  /** One string per row, all the same length. See `MAP_LEGEND`. */
+  rows: string[];
+  /** Buildings standing at map start, by origin tile. */
+  buildings: { type: BuildingId; x: number; y: number }[];
+  /** Villagers without a workplace (e.g. carriers), by tile. */
+  villagers: { role: VillagerRoleId; x: number; y: number }[];
+}
+
+/** What each character in `MapDef.rows` stands for. */
+export const MAP_LEGEND: Record<string, { terrain: TerrainId; object?: MapObjectId }> = {
+  '.': { terrain: 'grass' },
+  T: { terrain: 'grass', object: 'tree' },
+};
+
+function spawnVillager(
+  state: GameState,
+  role: VillagerRoleId,
+  tile: Tile,
+  workplace: EntityId | null,
+): EntityId {
+  const id = createEntity(state);
+  state.components.villager[id] = { role, workplace, carrying: null };
+  state.components.position[id] = tileCenter(tile);
+  if (role === 'woodcutter') state.components.woodcutter[id] = { kind: 'idle', retryAt: 0 };
+  return id;
+}
+
+/**
+ * A new game on `map`. Trees are created in row-major order, then buildings with their
+ * employees (spawned at the door), then free villagers. Throws if the map is malformed.
+ */
+export function createInitialState(seed: number, map: MapDef, content: Content): GameState {
+  const height = map.rows.length;
+  const width = map.rows[0]?.length ?? 0;
+  if (width === 0) throw new Error(`map ${map.name}: empty`);
+
+  const state: GameState = {
+    version: STATE_VERSION,
+    tick: 0,
+    rng: seedRng(seed),
+    nextId: 1,
+    map: { width, height, terrain: [] },
+    components: {
+      tile: {},
+      mapObject: {},
+      building: {},
+      site: {},
+      villager: {},
+      position: {},
+      path: {},
+      woodcutter: {},
+    },
+    logistics: initJobDispatch(),
+  };
+
+  map.rows.forEach((row, y) => {
+    if (row.length !== width) throw new Error(`map ${map.name}: row ${y} has length ${row.length}`);
+    [...row].forEach((char, x) => {
+      const cell = MAP_LEGEND[char];
+      if (!cell) throw new Error(`map ${map.name}: unknown character '${char}' at ${x},${y}`);
+      state.map.terrain.push(cell.terrain);
+      if (cell.object) {
+        const id = createEntity(state);
+        state.components.tile[id] = { x, y };
+        state.components.mapObject[id] = {
+          type: cell.object,
+          amount: content.mapObjects[cell.object].amount,
+        };
+      }
+    });
+  });
+
+  for (const b of map.buildings) {
+    if (!fitsAt(state, content, b.type, b.x, b.y)) {
+      throw new Error(`map ${map.name}: ${b.type} doesn't fit at ${b.x},${b.y}`);
+    }
+    const def = content.buildings[b.type];
+    const id = createEntity(state);
+    state.components.tile[id] = { x: b.x, y: b.y };
+    state.components.building[id] = { type: b.type, stock: {} };
+    for (const job of def.employs) {
+      for (let i = 0; i < job.count; i++) {
+        spawnVillager(state, job.role, doorTile(def, { x: b.x, y: b.y }), id);
+      }
+    }
+  }
+
+  for (const v of map.villagers) {
+    if (!inBounds(state.map, v.x, v.y)) {
+      throw new Error(`map ${map.name}: villager out of bounds at ${v.x},${v.y}`);
+    }
+    spawnVillager(state, v.role, { x: v.x, y: v.y }, null);
+  }
+
+  return state;
+}
