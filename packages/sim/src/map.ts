@@ -8,7 +8,7 @@ import type {
 } from '@candlemarch/content';
 import { createEntity } from './entities';
 import { doorTile, fitsAt, inBounds, tileCenter } from './grid';
-import { initJobDispatch } from './logistics/jobDispatch';
+import { DEFAULT_LOGISTICS_MODEL, logisticsModels } from './logistics';
 import { seedRng } from './rng';
 import { type EntityId, type GameState, STATE_VERSION, type Tile } from './state';
 
@@ -66,7 +66,7 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
       path: {},
       woodcutter: {},
     },
-    logistics: initJobDispatch(),
+    logistics: logisticsModels[DEFAULT_LOGISTICS_MODEL].init(),
   };
 
   map.rows.forEach((row, y) => {

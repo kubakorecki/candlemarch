@@ -28,3 +28,18 @@ export function runUntil(
   for (let i = 0; i < maxTicks && !done(s); i++) s = step(s, commandsAt[s.tick] ?? [], content);
   return s;
 }
+
+/** Total units of `resource` anywhere in the world: map objects, buffers, sites and hands. */
+export function totalLogs(s: GameState): number {
+  let total = 0;
+  for (const o of Object.values(s.components.mapObject)) total += o.amount;
+  for (const b of Object.values(s.components.building)) total += b.stock.logs ?? 0;
+  for (const site of Object.values(s.components.site)) total += site.delivered.logs ?? 0;
+  for (const v of Object.values(s.components.villager)) total += v.carrying?.amount ?? 0;
+  return total;
+}
+
+export function woodcuttersHutStock(s: GameState): number {
+  const hut = Object.values(s.components.building).find((b) => b.type === 'woodcutters_hut');
+  return hut?.stock.logs ?? 0;
+}
