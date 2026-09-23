@@ -1,0 +1,114 @@
+/* Colours come from render/palette.ts via CSS variables (see applyPaletteToCss). */
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--hud-text);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.app,
+.world {
+  position: absolute;
+  inset: 0;
+}
+
+.world canvas {
+  display: block;
+}
+
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.panel {
+  position: absolute;
+  pointer-events: auto;
+  background: var(--hud-bg);
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 0 4px 0 var(--ink);
+  padding: 10px 14px;
+}
+
+.readout {
+  top: 16px;
+  left: 16px;
+  min-width: 230px;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: bold;
+  color: var(--hud-accent);
+  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.muted {
+  color: var(--hud-muted);
+}
+
+.message {
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 15px;
+}
+
+.toolbar {
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+}
+
+.toolbar button {
+  font: inherit;
+  font-size: 15px;
+  color: var(--hud-text);
+  background: var(--hud-panel);
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  padding: 6px 12px;
+  min-width: 44px;
+  cursor: pointer;
+}
+
+.toolbar button:hover:not(:disabled) {
+  border-color: var(--hud-accent);
+}
+
+.toolbar button.active {
+  background: var(--hud-accent);
+  color: var(--ink);
+  font-weight: bold;
+}
+
+.toolbar button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.divider {
+  width: 2px;
+  align-self: stretch;
+  background: var(--ink);
+  margin: 0 4px;
+}
