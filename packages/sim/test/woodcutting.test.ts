@@ -68,7 +68,7 @@ describe('woodcutting', () => {
       (s) =>
         idsOf(s.components.mapObject).length === 0 &&
         Object.values(s.components.villager).every((v) => v.carrying === null) &&
-        idsOf(s.logistics.jobs).length === 0 &&
+        idsOf(s.logistics.hauls).length === 0 &&
         idsOf(s.components.path).length === 0,
       5000,
       placeHut,

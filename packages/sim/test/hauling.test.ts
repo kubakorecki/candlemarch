@@ -13,7 +13,7 @@ function carrier(s: GameState) {
   const id = idsOf(s.components.villager).find(
     (v) => s.components.villager[v]?.job === 'carrier',
   ) as number;
-  return { id, villager: s.components.villager[id], job: s.logistics.jobs[id] };
+  return { id, villager: s.components.villager[id], haul: s.logistics.hauls[id] };
 }
 
 describe('hauling (job dispatch)', () => {
@@ -28,7 +28,7 @@ describe('hauling (job dispatch)', () => {
       place,
     );
     expect(carrier(s).villager?.carrying).toEqual({ resource: 'logs', amount: 1 });
-    expect(carrier(s).job?.phase).toBe('dropoff');
+    expect(carrier(s).haul?.phase).toBe('dropoff');
 
     const delivered = runUntil(
       s,
@@ -49,12 +49,12 @@ describe('hauling (job dispatch)', () => {
     };
     const s = runUntil(
       createInitialState(1, meadowMap, content),
-      (st) => carrier(st).job !== undefined,
+      (st) => carrier(st).haul !== undefined,
       2000,
       place,
     );
     const [older] = idsOf(s.components.site);
-    expect(carrier(s).job?.to).toBe(older);
+    expect(carrier(s).haul?.to).toBe(older);
   });
 
   it('cancelling a site mid-haul brings the log back to the buffer', () => {
@@ -70,7 +70,7 @@ describe('hauling (job dispatch)', () => {
     const cancelled = step(carrying, [{ type: 'cancelConstruction', siteId }], content);
     const returned = runUntil(
       cancelled,
-      (st) => carrier(st).job === undefined && !st.components.path[carrier(st).id],
+      (st) => carrier(st).haul === undefined && !st.components.path[carrier(st).id],
       1000,
     );
 
@@ -81,6 +81,6 @@ describe('hauling (job dispatch)', () => {
     expect(totalLogs(returned)).toBe(TOTAL - lost);
     // With no site left, the carrier stays idle.
     const later = run(returned, 200);
-    expect(carrier(later).job).toBeUndefined();
+    expect(carrier(later).haul).toBeUndefined();
   });
 });

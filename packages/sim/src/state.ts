@@ -9,7 +9,7 @@ import type {
 } from '@candlemarch/content';
 import type { LogisticsState } from './logistics/model';
 
-export const STATE_VERSION = 2;
+export const STATE_VERSION = 3;
 export const TICKS_PER_SECOND = 20;
 /** Sub-tile units per tile. Positions are integers in these units. */
 export const TILE_UNITS = 1000;

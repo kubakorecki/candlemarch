@@ -50,6 +50,10 @@ _Avoid_: Edge, link, leg
 A villager whose Job is moving goods between buildings. The default Job of a villager without a Workplace.
 _Avoid_: Hauler, porter (porters are a late magical upgrade)
 
+**Haul**:
+One delivery by a Carrier: pick up goods at one building and drop them at another.
+_Avoid_: Job (a Job is what a villager does), task, delivery
+
 **Stockpile**:
 An open-air patch of land, marked as bare dirt, where goods are stored. Each tile holds a fixed amount.
 _Avoid_: Warehouse, depot, storage zone
