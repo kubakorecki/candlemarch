@@ -3,7 +3,7 @@ import type { Command } from '../src/commands';
 import { idsOf } from '../src/entities';
 import { tileAt, tileIndex } from '../src/grid';
 import { unstaffedSegments } from '../src/logistics/flagRelay';
-import { type FlagRelayState, initFlagRelay, relayOf } from '../src/logistics/relayState';
+import { type FlagRelayState, relayOf } from '../src/logistics/relayState';
 import { createInitialState, type MapDef } from '../src/map';
 import { deserialize, serialize } from '../src/save';
 import type { GameState, StockpileComponent } from '../src/state';
@@ -19,9 +19,7 @@ const lane: MapDef = {
 
 /** A new flag-relay game on `map`. */
 function relayGame(map: MapDef = lane): GameState {
-  const s = createInitialState(1, map, content);
-  s.logistics = initFlagRelay();
-  return s;
+  return createInitialState(1, map, content, 'flagRelay');
 }
 
 /** Tile index as "x,y". */
