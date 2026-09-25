@@ -9,7 +9,6 @@ export type { LogisticsModel, LogisticsModelId, LogisticsState } from './logisti
 export type { Segment } from './logistics/relayState';
 export { createInitialState, type MapDef } from './map';
 export { DEFAULT_MAP, type MapName, maps } from './maps';
-export { meadowMap } from './maps/meadow';
 export { canLayPath, lShapeTiles, roadNeighbours } from './roads';
 export { deserialize, serialize } from './save';
 export * from './state';

@@ -79,7 +79,8 @@ body,
   padding: 8px 10px;
 }
 
-.toolbar button {
+.panel button,
+.panel select {
   font: inherit;
   font-size: 15px;
   color: var(--hud-text);
@@ -91,19 +92,33 @@ body,
   cursor: pointer;
 }
 
-.toolbar button:hover:not(:disabled) {
+.panel button:hover:not(:disabled),
+.panel select:hover {
   border-color: var(--hud-accent);
 }
 
-.toolbar button.active {
+.panel button.active {
   background: var(--hud-accent);
   color: var(--ink);
   font-weight: bold;
 }
 
-.toolbar button:disabled {
+.panel button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.new-game {
+  top: 16px;
+  right: 16px;
+  min-width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.new-game .row {
+  align-items: center;
 }
 
 .divider {

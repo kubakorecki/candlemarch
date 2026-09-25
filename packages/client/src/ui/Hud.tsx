@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import { SPEEDS, type Speed } from '../game/clock';
 import { formatTime, type Game } from '../game/Game';
+import { MODEL_LABELS } from './modelLabels';
 
 const SPEED_LABELS: Record<Speed, string> = { 0: '⏸', 1: '1×', 2: '2×', 3: '3×' };
 
@@ -14,6 +15,10 @@ export function Hud({ game }: { game: Game }) {
         <div className="row">
           <span className="muted">Time</span>
           <span>{formatTime(hud.seconds)}</span>
+        </div>
+        <div className="row">
+          <span className="muted">Logistics</span>
+          <span>{hud.model ? MODEL_LABELS[hud.model] : '—'}</span>
         </div>
         <div className="row">
           <span className="muted">Woodcutter's hut</span>

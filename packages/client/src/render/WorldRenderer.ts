@@ -106,9 +106,10 @@ export class WorldRenderer {
       if (!obj || !at) continue;
       const full = this.content.mapObjects[obj.type].amount;
       const view = this.staticView(`tree:${id}`, seen);
-      if (view.key !== `${obj.amount}`) {
+      const key = `${at.x},${at.y}:${obj.amount}`;
+      if (view.key !== key) {
         drawTree(view.graphics, obj.amount, full);
-        view.key = `${obj.amount}`;
+        view.key = key;
         const c = tileCenterWorld(at.x, at.y);
         view.node.position.set(c.x, c.y);
         view.node.zIndex = depthOf(at.x + 0.5, at.y + 0.5);
@@ -122,7 +123,7 @@ export class WorldRenderer {
       const def = this.content.buildings[b.type];
       const stock = def.outputBuffer ? (b.stock[def.outputBuffer.resource] ?? 0) : 0;
       const view = this.staticView(`building:${id}`, seen);
-      const key = `${b.type}:${stock}`;
+      const key = `${b.type}@${at.x},${at.y}:${stock}`;
       if (view.key !== key) {
         drawBuilding(view.graphics, def, at.x, at.y, stock);
         view.key = key;
@@ -144,7 +145,7 @@ export class WorldRenderer {
       const progress = s.buildProgress / construction.buildTicks;
       const view = this.staticView(`site:${id}`, seen);
       // Redraw posts in 10% steps; the label updates every change.
-      const key = `${delivered}:${Math.floor(progress * 10)}`;
+      const key = `${s.type}@${at.x},${at.y}:${delivered}:${Math.floor(progress * 10)}`;
       if (view.key !== key) {
         drawSite(view.graphics, def, at.x, at.y, delivered, progress);
         view.key = key;
@@ -247,10 +248,10 @@ export class WorldRenderer {
         },
       });
       view.label.anchor.set(0.5, 1);
-      const c = gridToWorld(ox + w / 2, oy + h / 2);
-      view.label.position.set(c.x, c.y - TILE_H);
       view.node.addChild(view.label);
     }
+    const c = gridToWorld(ox + w / 2, oy + h / 2);
+    view.label.position.set(c.x, c.y - TILE_H);
     return view.label;
   }
 

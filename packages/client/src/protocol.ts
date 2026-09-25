@@ -1,8 +1,15 @@
 // Messages between the main thread and the sim worker.
-import type { Command, EntityId, GameState, Point } from '@candlemarch/sim';
+import type {
+  Command,
+  EntityId,
+  GameState,
+  LogisticsModelId,
+  MapName,
+  Point,
+} from '@candlemarch/sim';
 
 export type ToWorker =
-  | { type: 'newGame'; seed: number }
+  | { type: 'newGame'; seed: number; map: MapName; model: LogisticsModelId }
   | { type: 'load'; json: string }
   /** Run `ticks` ticks; `commands` are applied on the first of them. */
   | { type: 'advance'; ticks: number; commands: Command[] }

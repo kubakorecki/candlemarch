@@ -1,5 +1,12 @@
 // Main-thread side of the sim worker: owns the clock, queues commands, keeps the latest snapshot.
-import type { Command, EntityId, GameState, Point } from '@candlemarch/sim';
+import type {
+  Command,
+  EntityId,
+  GameState,
+  LogisticsModelId,
+  MapName,
+  Point,
+} from '@candlemarch/sim';
 import type { FromWorker, ToWorker } from '../protocol';
 import { type ClockState, type Speed, tickClock, tickFraction } from './clock';
 
@@ -36,9 +43,9 @@ export class SimBridge {
     });
   }
 
-  newGame(seed: number): void {
+  newGame(seed: number, map: MapName, model: LogisticsModelId): void {
     this.reset();
-    this.post({ type: 'newGame', seed });
+    this.post({ type: 'newGame', seed, map, model });
   }
 
   load(json: string): void {

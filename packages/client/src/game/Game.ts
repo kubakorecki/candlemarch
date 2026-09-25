@@ -1,7 +1,15 @@
 // Glue between the sim worker, the renderer, input and the React HUD. Holds UI-only state
 // (speed, build mode); everything about the world comes from sim snapshots.
 import { type BuildingId, content } from '@candlemarch/content';
-import { canPlaceBuilding, type GameState, TICKS_PER_SECOND } from '@candlemarch/sim';
+import {
+  canPlaceBuilding,
+  DEFAULT_LOGISTICS_MODEL,
+  DEFAULT_MAP,
+  type GameState,
+  type LogisticsModelId,
+  type MapName,
+  TICKS_PER_SECOND,
+} from '@candlemarch/sim';
 import { CameraInput } from '../render/camera';
 import { type CameraView, gridToWorld, screenToTile } from '../render/iso';
 import { WorldRenderer } from '../render/WorldRenderer';
@@ -20,6 +28,8 @@ export interface HudState {
   hutCapacity: number;
   /** In-game time in whole seconds. */
   seconds: number;
+  /** Logistics model of the running game. */
+  model: LogisticsModelId | null;
   message: string | null;
 }
 
@@ -37,6 +47,7 @@ export class Game {
     hutLogs: 0,
     hutCapacity: 0,
     seconds: 0,
+    model: null,
     message: null,
   };
   private readonly listeners = new Set<() => void>();
@@ -92,6 +103,14 @@ export class Game {
     this.updateGhost();
   }
 
+  /** Starts a new game on `map` with logistics model `model`, replacing the current one. */
+  newGame(map: MapName, model: LogisticsModelId): void {
+    this.cameraCentred = false;
+    this.bridge.newGame(NEW_GAME_SEED, map, model);
+    this.setHud({ buildMode: null, message: null });
+    this.updateGhost();
+  }
+
   save(): void {
     this.bridge.save();
   }
@@ -107,6 +126,8 @@ export class Game {
       this.setHud({ message: 'No save found.' });
       return;
     }
+    // The save may be on another map, so centre the camera on it.
+    this.cameraCentred = false;
     this.bridge.load(json);
     this.setHud({ buildMode: null, message: 'Loaded.' });
   }
@@ -139,7 +160,7 @@ export class Game {
     );
     window.addEventListener('keydown', (e) => this.onKey(e), { signal: this.abort.signal });
     this.renderer.app.ticker.add((ticker) => this.frame(ticker.deltaMS));
-    this.bridge.newGame(NEW_GAME_SEED);
+    this.newGame(DEFAULT_MAP, DEFAULT_LOGISTICS_MODEL);
   }
 
   private frame(deltaMs: number): void {
@@ -174,6 +195,7 @@ export class Game {
       hutLogs: hut && buffer ? (hut.stock[buffer.resource] ?? 0) : 0,
       hutCapacity: buffer?.capacity ?? 0,
       seconds: Math.floor(state.tick / TICKS_PER_SECOND),
+      model: state.logistics.model,
     });
   }
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Game } from '../game/Game';
 import { Hud } from './Hud';
+import { NewGamePanel } from './NewGamePanel';
 
 export function App() {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -29,6 +30,7 @@ export function App() {
     <div className="app">
       <div ref={hostRef} className="world" />
       {game && <Hud game={game} />}
+      {game && import.meta.env.DEV && <NewGamePanel game={game} />}
     </div>
   );
 }

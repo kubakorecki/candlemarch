@@ -4,7 +4,7 @@ import {
   createInitialState,
   deserialize,
   type GameState,
-  meadowMap,
+  maps,
   serialize,
   step,
 } from '@candlemarch/sim';
@@ -23,7 +23,7 @@ function sendSnapshot(current: GameState, previous: GameState): void {
 function handle(message: ToWorker): void {
   switch (message.type) {
     case 'newGame':
-      state = createInitialState(message.seed, meadowMap, content);
+      state = createInitialState(message.seed, maps[message.map], content, message.model);
       sendSnapshot(state, state);
       return;
     case 'load':
