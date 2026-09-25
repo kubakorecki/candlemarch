@@ -36,20 +36,16 @@ function spawnVillager(
 }
 
 /**
- * A new game on `map`. Trees are created in row-major order, then buildings with their
- * employees (spawned at the door), then free villagers. Throws if the map is malformed.
+ * A game state with an empty 0×0 map and no entities. `createInitialState` builds on it, and
+ * loading fills gaps in older saves from it.
  */
-export function createInitialState(seed: number, map: MapDef, content: Content): GameState {
-  const height = map.rows.length;
-  const width = map.rows[0]?.length ?? 0;
-  if (width === 0) throw new Error(`map ${map.name}: empty`);
-
-  const state: GameState = {
+export function createEmptyState(seed: number): GameState {
+  return {
     version: STATE_VERSION,
     tick: 0,
     rng: seedRng(seed),
     nextId: 1,
-    map: { width, height, terrain: [] },
+    map: { width: 0, height: 0, terrain: [] },
     components: {
       tile: {},
       mapObject: {},
@@ -62,6 +58,19 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
     },
     logistics: logisticsModels[DEFAULT_LOGISTICS_MODEL].init(),
   };
+}
+
+/**
+ * A new game on `map`. Trees are created in row-major order, then buildings with their
+ * employees (spawned at the door), then free villagers. Throws if the map is malformed.
+ */
+export function createInitialState(seed: number, map: MapDef, content: Content): GameState {
+  const height = map.rows.length;
+  const width = map.rows[0]?.length ?? 0;
+  if (width === 0) throw new Error(`map ${map.name}: empty`);
+
+  const state = createEmptyState(seed);
+  state.map = { width, height, terrain: [] };
 
   map.rows.forEach((row, y) => {
     if (row.length !== width) throw new Error(`map ${map.name}: row ${y} has length ${row.length}`);

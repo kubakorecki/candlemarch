@@ -11,6 +11,14 @@ describe('serialize / deserialize', () => {
     expect(deserialize(serialize(s))).toEqual(s);
   });
 
+  it('fills in state added after the save was made', () => {
+    const s = createInitialState(9, meadowMap, content);
+    const data = JSON.parse(serialize(s));
+    delete data.components.site;
+    delete data.logistics;
+    expect(deserialize(JSON.stringify(data))).toEqual(s);
+  });
+
   it('rejects saves from another version', () => {
     const s = createInitialState(9, meadowMap, content);
     expect(() => deserialize(serialize({ ...s, version: 99 as typeof STATE_VERSION }))).toThrow(
