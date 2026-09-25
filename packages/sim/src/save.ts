@@ -1,9 +1,12 @@
 // Save files are the serialized game state.
 import { createEmptyState } from './map';
-import { type Components, type GameState, STATE_VERSION } from './state';
+import { type Components, type GameState, type MapState, STATE_VERSION } from './state';
 
 /** A save of the current version, which may lack state added after it was made. */
-type LoadedState = Partial<Omit<GameState, 'components'>> & { components?: Partial<Components> };
+type LoadedState = Partial<Omit<GameState, 'components' | 'map'>> & {
+  components?: Partial<Components>;
+  map?: Partial<MapState>;
+};
 
 export function serialize(state: GameState): string {
   return JSON.stringify(state);
@@ -19,8 +22,9 @@ export function deserialize(json: string): GameState {
 }
 
 /**
- * Fills in state added after the save was made: missing top-level fields and component stores
- * come from an empty state. A field added inside an existing component gets its own line here.
+ * Fills in state added after the save was made: missing top-level fields, map layers (such as
+ * `roads`) and component stores come from an empty state. A field added inside an existing
+ * component gets its own line here.
  * Breaking changes (renames, removals, changed meanings) bump `STATE_VERSION` instead.
  */
 function normalizeLoadedState(loaded: LoadedState): GameState {
@@ -28,6 +32,7 @@ function normalizeLoadedState(loaded: LoadedState): GameState {
   const state: GameState = {
     ...empty,
     ...loaded,
+    map: { ...empty.map, ...loaded.map },
     components: { ...empty.components, ...loaded.components },
   };
   return state;

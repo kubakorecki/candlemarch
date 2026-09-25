@@ -20,14 +20,24 @@ const placeHut: Record<number, Command[]> = {
   0: [{ type: 'placeBuilding', building: 'hut', ...HUT_AT }],
 };
 
-/** A busier script: two huts, one of them cancelled mid-way, and an invalid placement. */
+/**
+ * A busier script: two huts, one of them cancelled mid-way, an invalid placement, and a dirt
+ * path from the woodcutter's hut door (9,13) to the first hut's door (4,17), part of which is
+ * removed later.
+ */
 const script: Record<number, Command[]> = {
-  0: [{ type: 'placeBuilding', building: 'hut', x: 4, y: 16 }],
+  0: [
+    { type: 'placeBuilding', building: 'hut', x: 4, y: 16 },
+    { type: 'layPath', from: { x: 9, y: 13 }, to: { x: 5, y: 17 } },
+    { type: 'layPath', from: { x: 5, y: 17 }, to: { x: 4, y: 17 } },
+    { type: 'layPath', from: { x: 3, y: 16 }, to: { x: 6, y: 16 } }, // through the hut: ignored
+  ],
   50: [
     { type: 'placeBuilding', building: 'hut', x: 18, y: 18 },
     { type: 'placeBuilding', building: 'hut', x: 13, y: 6 }, // on a tree: ignored
   ],
   700: [{ type: 'cancelConstruction', siteId: 22 }], // the second hut
+  1500: [{ type: 'removePath', from: { x: 5, y: 15 }, to: { x: 5, y: 16 } }],
 };
 
 const fresh = (seed = 1) => createInitialState(seed, meadowMap, content);
@@ -59,6 +69,8 @@ describe('milestone 0', () => {
     expect(a.components.site[22]).toBeUndefined();
     expect(a.components.building[22]).toBeUndefined();
     expect(huts(a)).toHaveLength(1);
+    // 10 path tiles laid, 2 removed.
+    expect(Object.keys(a.map.roads)).toHaveLength(8);
   });
 
   it('save/load mid-run continues exactly like an uninterrupted run', () => {

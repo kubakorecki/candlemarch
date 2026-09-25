@@ -3,6 +3,7 @@ import { buildings } from './buildings';
 import { jobs } from './jobs';
 import { mapObjects } from './mapObjects';
 import { resources } from './resources';
+import { roads } from './roads';
 import { terrain } from './terrain';
 import type { Content } from './types';
 
@@ -14,4 +15,5 @@ export const content: Content = {
   mapObjects,
   jobs,
   buildings,
+  roads,
 };

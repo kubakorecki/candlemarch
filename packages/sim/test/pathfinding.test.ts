@@ -1,13 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { findPath, type Grid } from '../src/pathfinding';
 
-/** Grid from ASCII: '#' blocked, anything else open. Also returns the index of 'S' and 'G' tiles. */
+const ROAD_PERCENT = 150;
+
+/**
+ * Grid from ASCII: '#' blocked, '=' a road walked at 150%, anything else open off-road.
+ * Also returns the indices of tiles holding a given character.
+ */
 function grid(rows: string[]): Grid & { at: (ch: string) => number[] } {
   const width = rows[0]?.length ?? 0;
   const cells = rows.join('');
   const blocked = Uint8Array.from([...cells].map((c) => (c === '#' ? 1 : 0)));
+  const speedPercent = Uint16Array.from([...cells].map((c) => (c === '=' ? ROAD_PERCENT : 100)));
   const at = (ch: string) => [...cells].flatMap((c, i) => (c === ch ? [i] : []));
-  return { width, height: rows.length, blocked, at };
+  return {
+    width,
+    height: rows.length,
+    blocked,
+    speedPercent,
+    maxSpeedPercent: ROAD_PERCENT,
+    at,
+  };
 }
 
 describe('findPath', () => {
@@ -59,5 +72,29 @@ describe('findPath', () => {
     const g = grid(['S...', '....', '....', '...G']);
     const first = findPath(g, 0, [15]);
     for (let i = 0; i < 5; i++) expect(findPath(g, 0, [15])).toEqual(first);
+  });
+
+  it('takes a road that is longer in tiles but faster', () => {
+    const g = grid([
+      'S........G', //
+      '=........=',
+      '==========',
+    ]);
+    // Straight: 9 × 1000 = 9000. Along the road, cutting its corners diagonally:
+    // 666 + 942 + 7 × 666 + 942 + 1000 (onto G, off-road) = 8212.
+    expect(findPath(g, 0, [9])).toEqual([10, 21, 22, 23, 24, 25, 26, 27, 28, 19, 9]);
+  });
+
+  it('ignores a road when the detour costs more than it saves', () => {
+    const g = grid([
+      'S........G', //
+      '=........=',
+      '=........=',
+      '=........=',
+      '=........=',
+      '==========',
+    ]);
+    // Along the road: 12 208, more than the straight 9000.
+    expect(findPath(g, 0, [9])).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 });

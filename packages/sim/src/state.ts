@@ -5,6 +5,7 @@ import type {
   MapObjectId,
   ResourceAmount,
   ResourceId,
+  RoadId,
   TerrainId,
 } from '@candlemarch/content';
 import type { LogisticsState } from './logistics/model';
@@ -38,6 +39,8 @@ export interface MapState {
   height: number;
   /** Terrain per tile, row-major: index = y × width + x. */
   terrain: TerrainId[];
+  /** Road on each tile that has one, keyed by tile index. Tiles without a road are absent. */
+  roads: Record<number, RoadId>;
 }
 
 /** A tree or other gatherable object standing on a tile. */

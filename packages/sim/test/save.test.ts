@@ -16,6 +16,7 @@ describe('serialize / deserialize', () => {
     const data = JSON.parse(serialize(s));
     delete data.components.site;
     delete data.logistics;
+    delete data.map.roads;
     expect(deserialize(JSON.stringify(data))).toEqual(s);
   });
 

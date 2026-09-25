@@ -1,10 +1,10 @@
 // Logistics model A: a dispatcher hands each idle carrier one haul (pick up at A, drop at B).
 import type { Content, ResourceId } from '@candlemarch/content';
 import { idsOf } from '../entities';
-import { blockedGrid, entityDoor, tileIndex } from '../grid';
+import { entityDoor, tileIndex } from '../grid';
 import { findPath, type Grid, tileDistance } from '../pathfinding';
 import type { EntityId, GameState, Store } from '../state';
-import { isAt, stopAtNextTile, villagerTile, walkTo } from '../systems/movement';
+import { isAt, stopAtNextTile, villagerTile, walkGrid, walkTo } from '../systems/movement';
 import type { LogisticsModel } from './model';
 import { listDemands, listSupplies } from './supplyDemand';
 
@@ -170,7 +170,7 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
     for (const source of sources) {
       const { door } = source;
       // Only take a haul whose drop-off is reachable from the pickup.
-      grid ??= { width: map.width, height: map.height, blocked: blockedGrid(state, content) };
+      grid ??= walkGrid(state, content);
       const leg = findPath(grid, tileIndex(map, door.x, door.y), [
         tileIndex(map, siteDoor.x, siteDoor.y),
       ]);

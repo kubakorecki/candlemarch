@@ -2,7 +2,8 @@
 import type { Content } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { blockedGrid, inBounds, tileAt, tileCenter, tileIndex, tileOfPoint } from '../grid';
-import { findPath } from '../pathfinding';
+import { findPath, type Grid } from '../pathfinding';
+import { maxSpeedPercent, speedPercentAt, speedPercentGrid } from '../roads';
 import {
   DIAGONAL_UNITS,
   type EntityId,
@@ -25,9 +26,21 @@ export function isAt(state: GameState, id: EntityId, tile: Tile): boolean {
   return t !== null && t.x === tile.x && t.y === tile.y;
 }
 
+/** The grid walkers path over: what blocks walking, and how fast each tile is. */
+export function walkGrid(state: GameState, content: Content): Grid {
+  const { map } = state;
+  return {
+    width: map.width,
+    height: map.height,
+    blocked: blockedGrid(state, content),
+    speedPercent: speedPercentGrid(map, content),
+    maxSpeedPercent: maxSpeedPercent(content),
+  };
+}
+
 /**
- * Starts a walk to the nearest reachable tile in `goals`. Returns false (and changes nothing)
- * if none is reachable. Returns true without a path when already on a goal.
+ * Starts a walk along the quickest route to the nearest reachable tile in `goals`. Returns false
+ * (and changes nothing) if none is reachable. Returns true without a path when already on a goal.
  */
 export function walkTo(
   state: GameState,
@@ -42,8 +55,7 @@ export function walkTo(
     .filter((g) => inBounds(map, g.x, g.y))
     .map((g) => tileIndex(map, g.x, g.y));
   const start = tileIndex(map, here.x, here.y);
-  const grid = { width: map.width, height: map.height, blocked: blockedGrid(state, content) };
-  const tiles = findPath(grid, start, goalIndices);
+  const tiles = findPath(walkGrid(state, content), start, goalIndices);
   if (tiles === null) return false;
   delete state.components.path[id];
   if (tiles.length > 0) state.components.path[id] = { start, tiles, next: 0, progress: 0 };
@@ -68,7 +80,10 @@ function segmentLength(width: number, from: number, to: number): number {
   return diagonal ? DIAGONAL_UNITS : TILE_UNITS;
 }
 
-/** Advances every walking villager by its job's walk speed. Removes the path on arrival. */
+/**
+ * Advances every walking villager by its job's walk speed, faster on roads. Removes the walk
+ * (its `PathComponent`) on arrival.
+ */
 export function movementSystem(state: GameState, content: Content): void {
   const { map } = state;
   const { path: paths, position, villager } = state.components;
@@ -77,7 +92,10 @@ export function movementSystem(state: GameState, content: Content): void {
     const job = villager[id]?.job;
     if (!path || job === undefined) continue;
 
-    let budget = content.jobs[job].walkSpeed;
+    // Speed depends on the tile being walked onto. Budget left over after reaching a tile
+    // centre is rescaled to the next segment's speed.
+    let percent = speedPercentAt(map, content, segment(path).to);
+    let budget = Math.trunc((content.jobs[job].walkSpeed * percent) / 100);
     while (budget > 0 && path.next < path.tiles.length) {
       const { from, to } = segment(path);
       const left = segmentLength(map.width, from, to) - path.progress;
@@ -85,6 +103,11 @@ export function movementSystem(state: GameState, content: Content): void {
         budget -= left;
         path.progress = 0;
         path.next += 1;
+        if (path.next < path.tiles.length) {
+          const nextPercent = speedPercentAt(map, content, segment(path).to);
+          budget = Math.trunc((budget * nextPercent) / percent);
+          percent = nextPercent;
+        }
       } else {
         path.progress += budget;
         budget = 0;

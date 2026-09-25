@@ -1,7 +1,6 @@
-// A* over the tile grid, 8 directions, without cutting corners past blocked tiles.
+// A* over the tile grid, 8 directions, without cutting corners past blocked tiles. Steps onto
+// road tiles cost less, so walkers take roads when they're faster.
 import { DIAGONAL_UNITS, TILE_UNITS } from './state';
-
-const DIAGONAL_EXTRA = DIAGONAL_UNITS - TILE_UNITS;
 
 // Neighbour offsets in a fixed order: orthogonal first, then diagonal.
 const NEIGHBOURS: readonly (readonly [number, number])[] = [
@@ -20,12 +19,25 @@ export interface Grid {
   height: number;
   /** 1 where the tile can't be walked on. */
   blocked: Uint8Array;
+  /** Walking speed on each tile as a percentage (100 off-road). */
+  speedPercent: Uint16Array;
+  /**
+   * The highest speed percent any tile can have, and at least 100. Keeps the heuristic from
+   * overestimating.
+   */
+  maxSpeedPercent: number;
 }
 
-function octile(dx: number, dy: number): number {
+/** Cost of crossing (dx, dy) tiles with as many diagonal steps as possible. */
+function octile(dx: number, dy: number, straight = TILE_UNITS, diagonal = DIAGONAL_UNITS): number {
   const ax = Math.abs(dx);
   const ay = Math.abs(dy);
-  return TILE_UNITS * Math.max(ax, ay) + DIAGONAL_EXTRA * Math.min(ax, ay);
+  return straight * (Math.max(ax, ay) - Math.min(ax, ay)) + diagonal * Math.min(ax, ay);
+}
+
+/** Cost of a step of `length` units onto a tile walked at `percent`. */
+function stepCost(length: number, percent: number): number {
+  return Math.trunc((length * 100) / percent);
 }
 
 /** Octile distance between two tile indices, in sub-tile units. */
@@ -94,16 +106,24 @@ function pop(heap: Node[]): Node | undefined {
  * (a villager can always walk off its tile). Blocked goals are ignored.
  */
 export function findPath(grid: Grid, start: number, goals: readonly number[]): number[] | null {
-  const { width, height, blocked } = grid;
+  const { width, height, blocked, speedPercent } = grid;
   const size = width * height;
   const goalSet = new Set(goals.filter((g) => g >= 0 && g < size && blocked[g] === 0));
   if (goalSet.has(start)) return [];
   if (goalSet.size === 0) return null;
   const goalList = [...goalSet].sort((a, b) => a - b);
 
+  // The cheapest a step can be: every tile at the fastest speed. Rounding per step, as the
+  // real costs do, keeps the heuristic at or below the true remaining cost.
+  const straightStep = stepCost(TILE_UNITS, grid.maxSpeedPercent);
+  const diagonalStep = stepCost(DIAGONAL_UNITS, grid.maxSpeedPercent);
   const heuristic = (index: number): number => {
     let best = Number.POSITIVE_INFINITY;
-    for (const g of goalList) best = Math.min(best, tileDistance(width, index, g));
+    for (const g of goalList) {
+      const dx = (index % width) - (g % width);
+      const dy = Math.floor(index / width) - Math.floor(g / width);
+      best = Math.min(best, octile(dx, dy, straightStep, diagonalStep));
+    }
     return best;
   };
 
@@ -138,7 +158,8 @@ export function findPath(grid: Grid, start: number, goals: readonly number[]): n
       const diagonal = dx !== 0 && dy !== 0;
       if (diagonal && (blocked[cy * width + nx] === 1 || blocked[ny * width + cx] === 1)) continue;
 
-      const g = (cost[current] as number) + (diagonal ? DIAGONAL_UNITS : TILE_UNITS);
+      const length = diagonal ? DIAGONAL_UNITS : TILE_UNITS;
+      const g = (cost[current] as number) + stepCost(length, speedPercent[next] as number);
       if (g < (cost[next] as number)) {
         cost[next] = g;
         cameFrom[next] = current;

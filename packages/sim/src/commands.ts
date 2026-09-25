@@ -2,11 +2,14 @@
 import type { BuildingId, Content } from '@candlemarch/content';
 import { createEntity, destroyEntity } from './entities';
 import { canPlaceBuilding } from './grid';
-import type { EntityId, GameState } from './state';
+import { layPath, removePath } from './roads';
+import type { EntityId, GameState, Tile } from './state';
 
 export type Command =
   | { type: 'placeBuilding'; building: BuildingId; x: number; y: number }
-  | { type: 'cancelConstruction'; siteId: EntityId };
+  | { type: 'cancelConstruction'; siteId: EntityId }
+  | { type: 'layPath'; from: Tile; to: Tile }
+  | { type: 'removePath'; from: Tile; to: Tile };
 
 /** Applies one command. Commands that aren't valid right now are ignored. */
 export function applyCommand(state: GameState, command: Command, content: Content): void {
@@ -22,6 +25,14 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     case 'cancelConstruction': {
       // Delivered materials are lost: there is no storage to return them to yet.
       if (state.components.site[command.siteId]) destroyEntity(state, command.siteId);
+      return;
+    }
+    case 'layPath': {
+      layPath(state, content, command.from, command.to);
+      return;
+    }
+    case 'removePath': {
+      removePath(state, command.from, command.to);
       return;
     }
   }

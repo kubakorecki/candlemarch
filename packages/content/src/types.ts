@@ -5,6 +5,7 @@ export type TerrainId = 'grass';
 export type MapObjectId = 'tree';
 export type BuildingId = 'woodcutters_hut' | 'hut';
 export type JobId = 'woodcutter' | 'carrier';
+export type RoadId = 'dirt_path';
 
 /** A number of units of one resource. */
 export interface ResourceAmount {
@@ -51,6 +52,13 @@ export interface JobDef {
   idleRetryTicks: number;
 }
 
+export interface RoadDef {
+  id: RoadId;
+  name: string;
+  /** Walking speed on it, as a percentage of off-road speed (100 = no bonus). */
+  speedPercent: number;
+}
+
 export interface BuildingDef {
   id: BuildingId;
   name: string;
@@ -76,4 +84,5 @@ export interface Content {
   mapObjects: Record<MapObjectId, MapObjectDef>;
   jobs: Record<JobId, JobDef>;
   buildings: Record<BuildingId, BuildingDef>;
+  roads: Record<RoadId, RoadDef>;
 }

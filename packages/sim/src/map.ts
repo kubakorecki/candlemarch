@@ -45,7 +45,7 @@ export function createEmptyState(seed: number): GameState {
     tick: 0,
     rng: seedRng(seed),
     nextId: 1,
-    map: { width: 0, height: 0, terrain: [] },
+    map: { width: 0, height: 0, terrain: [], roads: {} },
     components: {
       tile: {},
       mapObject: {},
@@ -70,7 +70,7 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
   if (width === 0) throw new Error(`map ${map.name}: empty`);
 
   const state = createEmptyState(seed);
-  state.map = { width, height, terrain: [] };
+  state.map = { width, height, terrain: [], roads: {} };
 
   map.rows.forEach((row, y) => {
     if (row.length !== width) throw new Error(`map ${map.name}: row ${y} has length ${row.length}`);
