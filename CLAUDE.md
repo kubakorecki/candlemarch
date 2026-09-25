@@ -98,3 +98,17 @@ These keep the game testable, saveable and replayable. Treat them as non-negotia
 - Don't build future features ahead of time. The exception is logistics: two models will be prototyped (job dispatch and flag relay), so keep hauling logic behind a clear interface.
 - Prefer clear, boring code over clever abstractions. The owner reviews everything.
 - Commit messages: short imperative summary, e.g. `sim: add hauling system`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live as local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), recorded on each issue's `Status:` line. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
