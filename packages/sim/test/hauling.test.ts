@@ -11,7 +11,7 @@ const TOTAL = 17 * 3;
 
 function carrier(s: GameState) {
   const id = idsOf(s.components.villager).find(
-    (v) => s.components.villager[v]?.role === 'carrier',
+    (v) => s.components.villager[v]?.job === 'carrier',
   ) as number;
   return { id, villager: s.components.villager[id], job: s.logistics.jobs[id] };
 }

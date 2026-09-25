@@ -59,7 +59,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
     const v = villager[id];
     if (!task || !v || path[id]) continue; // still walking
 
-    const role = content.villagerRoles[v.role];
+    const job = content.jobs[v.job];
     const hut = v.workplace != null ? building[v.workplace] : undefined;
     const hutOrigin = v.workplace != null ? state.components.tile[v.workplace] : undefined;
     if (!hut || !hutOrigin) continue;
@@ -68,7 +68,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
     if (!buffer) continue;
     const door = doorTile(hutDef, hutOrigin);
     const idle = () => {
-      tasks[id] = { kind: 'idle', retryAt: state.tick + role.idleRetryTicks };
+      tasks[id] = { kind: 'idle', retryAt: state.tick + job.idleRetryTicks };
     };
 
     switch (task.kind) {
@@ -102,7 +102,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
           break;
         }
         const def = content.mapObjects[tree.type];
-        const amount = Math.min(def.yieldPerGather, tree.amount, role.carryCapacity);
+        const amount = Math.min(def.yieldPerGather, tree.amount, job.carryCapacity);
         tree.amount -= amount;
         v.carrying = { resource: def.resource, amount };
         if (tree.amount === 0) destroyEntity(state, task.tree);

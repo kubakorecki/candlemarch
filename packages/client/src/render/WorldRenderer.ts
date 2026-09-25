@@ -179,7 +179,7 @@ export class WorldRenderer {
       const to = position[id];
       if (!v || !to) continue;
       seen.add(id);
-      const view = this.villagerView(id, v.role === 'woodcutter');
+      const view = this.villagerView(id, v.job === 'woodcutter');
       const from = prevPositions[id] ?? to;
       const g = unitsToGrid({
         x: from.x + (to.x - from.x) * alpha,

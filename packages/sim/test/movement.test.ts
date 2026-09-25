@@ -8,7 +8,7 @@ const strip: MapDef = {
   name: 'strip',
   rows: ['............', '............'],
   buildings: [],
-  villagers: [{ role: 'carrier', x: 0, y: 0 }],
+  villagers: [{ job: 'carrier', x: 0, y: 0 }],
 };
 
 function walk(s: GameState, id: number): number {
@@ -23,13 +23,13 @@ function walk(s: GameState, id: number): number {
 }
 
 describe('movement', () => {
-  it('walks at the role speed and ends exactly on the tile centre', () => {
+  it('walks at the job walk speed and ends exactly on the tile centre', () => {
     const s = createInitialState(1, strip, content);
     const id = 1;
     expect(walkTo(s, content, id, [{ x: 10, y: 0 }])).toBe(true);
     const ticks = walk(s, id);
     // 10 tiles × 1000 units at 75 units per tick.
-    expect(ticks).toBe(Math.ceil(10_000 / content.villagerRoles.carrier.walkSpeed));
+    expect(ticks).toBe(Math.ceil(10_000 / content.jobs.carrier.walkSpeed));
     expect(s.components.position[id]).toEqual({ x: 10_500, y: 500 });
   });
 
@@ -37,7 +37,7 @@ describe('movement', () => {
     const s = createInitialState(1, strip, content);
     const id = 1;
     walkTo(s, content, id, [{ x: 1, y: 1 }]);
-    expect(walk(s, id)).toBe(Math.ceil(1414 / content.villagerRoles.carrier.walkSpeed));
+    expect(walk(s, id)).toBe(Math.ceil(1414 / content.jobs.carrier.walkSpeed));
     expect(s.components.position[id]).toEqual({ x: 1500, y: 1500 });
   });
 

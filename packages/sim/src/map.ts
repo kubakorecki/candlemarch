@@ -1,11 +1,5 @@
 // Hand-made map definitions and building a fresh game state from one.
-import type {
-  BuildingId,
-  Content,
-  MapObjectId,
-  TerrainId,
-  VillagerRoleId,
-} from '@candlemarch/content';
+import type { BuildingId, Content, JobId, MapObjectId, TerrainId } from '@candlemarch/content';
 import { createEntity } from './entities';
 import { doorTile, fitsAt, inBounds, tileCenter } from './grid';
 import { DEFAULT_LOGISTICS_MODEL, logisticsModels } from './logistics';
@@ -19,7 +13,7 @@ export interface MapDef {
   /** Buildings standing at map start, by origin tile. */
   buildings: { type: BuildingId; x: number; y: number }[];
   /** Villagers without a workplace (e.g. carriers), by tile. */
-  villagers: { role: VillagerRoleId; x: number; y: number }[];
+  villagers: { job: JobId; x: number; y: number }[];
 }
 
 /** What each character in `MapDef.rows` stands for. */
@@ -30,14 +24,14 @@ export const MAP_LEGEND: Record<string, { terrain: TerrainId; object?: MapObject
 
 function spawnVillager(
   state: GameState,
-  role: VillagerRoleId,
+  job: JobId,
   tile: Tile,
   workplace: EntityId | null,
 ): EntityId {
   const id = createEntity(state);
-  state.components.villager[id] = { role, workplace, carrying: null };
+  state.components.villager[id] = { job, workplace, carrying: null };
   state.components.position[id] = tileCenter(tile);
-  if (role === 'woodcutter') state.components.woodcutter[id] = { kind: 'idle', retryAt: 0 };
+  if (job === 'woodcutter') state.components.woodcutter[id] = { kind: 'idle', retryAt: 0 };
   return id;
 }
 
@@ -94,9 +88,9 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
     const id = createEntity(state);
     state.components.tile[id] = { x: b.x, y: b.y };
     state.components.building[id] = { type: b.type, stock: {} };
-    for (const job of def.employs) {
-      for (let i = 0; i < job.count; i++) {
-        spawnVillager(state, job.role, doorTile(def, { x: b.x, y: b.y }), id);
+    for (const slot of def.employs) {
+      for (let i = 0; i < slot.count; i++) {
+        spawnVillager(state, slot.job, doorTile(def, { x: b.x, y: b.y }), id);
       }
     }
   }
@@ -105,7 +99,7 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
     if (!inBounds(state.map, v.x, v.y)) {
       throw new Error(`map ${map.name}: villager out of bounds at ${v.x},${v.y}`);
     }
-    spawnVillager(state, v.role, { x: v.x, y: v.y }, null);
+    spawnVillager(state, v.job, { x: v.x, y: v.y }, null);
   }
 
   return state;

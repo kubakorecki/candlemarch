@@ -4,7 +4,7 @@ export type ResourceId = 'logs';
 export type TerrainId = 'grass';
 export type MapObjectId = 'tree';
 export type BuildingId = 'woodcutters_hut' | 'hut';
-export type VillagerRoleId = 'woodcutter' | 'carrier';
+export type JobId = 'woodcutter' | 'carrier';
 
 /** A number of units of one resource. */
 export interface ResourceAmount {
@@ -40,8 +40,8 @@ export interface MapObjectDef {
   yieldPerGather: number;
 }
 
-export interface VillagerRoleDef {
-  id: VillagerRoleId;
+export interface JobDef {
+  id: JobId;
   name: string;
   /** Walking speed in milli-tiles per tick (1000 = one tile per tick). */
   walkSpeed: number;
@@ -61,7 +61,7 @@ export interface BuildingDef {
   /** The player can place it. Buildings that aren't placeable only come with the map. */
   placeable: boolean;
   /** Villagers the building employs when it exists. */
-  employs: { role: VillagerRoleId; count: number }[];
+  employs: { job: JobId; count: number }[];
   /** Map object its workers gather from, if any. */
   gathers?: MapObjectId;
   /** Where its workers drop what they produce, if anything. */
@@ -74,6 +74,6 @@ export interface Content {
   resources: Record<ResourceId, ResourceDef>;
   terrain: Record<TerrainId, TerrainDef>;
   mapObjects: Record<MapObjectId, MapObjectDef>;
-  villagerRoles: Record<VillagerRoleId, VillagerRoleDef>;
+  jobs: Record<JobId, JobDef>;
   buildings: Record<BuildingId, BuildingDef>;
 }

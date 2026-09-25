@@ -11,7 +11,7 @@ const grove: MapDef = {
   name: 'grove',
   rows: ['........', '.....T..', '......T.', '........', '........', '........'],
   buildings: [{ type: 'woodcutters_hut', x: 1, y: 2 }],
-  villagers: [{ role: 'carrier', x: 0, y: 5 }],
+  villagers: [{ job: 'carrier', x: 0, y: 5 }],
 };
 
 function woodcutter(s: GameState) {

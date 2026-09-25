@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createInitialState } from '../src/map';
 import { meadowMap } from '../src/maps/meadow';
 import { deserialize, serialize } from '../src/save';
+import type { STATE_VERSION } from '../src/state';
 import { content } from './helpers';
 
 describe('serialize / deserialize', () => {
@@ -12,7 +13,9 @@ describe('serialize / deserialize', () => {
 
   it('rejects saves from another version', () => {
     const s = createInitialState(9, meadowMap, content);
-    expect(() => deserialize(serialize({ ...s, version: 99 as 1 }))).toThrow(/version/);
+    expect(() => deserialize(serialize({ ...s, version: 99 as typeof STATE_VERSION }))).toThrow(
+      /version/,
+    );
     expect(() => deserialize('null')).toThrow(/version/);
   });
 });

@@ -32,7 +32,7 @@ export function initJobDispatch(): JobDispatchState {
 
 function carrierIds(state: GameState): EntityId[] {
   const { villager } = state.components;
-  return idsOf(villager).filter((id) => villager[id]?.role === 'carrier');
+  return idsOf(villager).filter((id) => villager[id]?.job === 'carrier');
 }
 
 /** Units of `resource` at `building` already promised to jobs that haven't picked up yet. */
@@ -146,7 +146,7 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
   const carrier = state.components.villager[id];
   const here = villagerTile(state, id);
   if (!carrier || !here) return;
-  const capacity = content.villagerRoles[carrier.role].carryCapacity;
+  const capacity = content.jobs[carrier.job].carryCapacity;
   const hereIndex = tileIndex(map, here.x, here.y);
   const supplies = listSupplies(state, content);
   let grid: Grid | null = null;

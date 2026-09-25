@@ -68,16 +68,16 @@ function segmentLength(width: number, from: number, to: number): number {
   return diagonal ? DIAGONAL_UNITS : TILE_UNITS;
 }
 
-/** Advances every walking villager by its role's walk speed. Removes the path on arrival. */
+/** Advances every walking villager by its job's walk speed. Removes the path on arrival. */
 export function movementSystem(state: GameState, content: Content): void {
   const { map } = state;
   const { path: paths, position, villager } = state.components;
   for (const id of idsOf(paths)) {
     const path = paths[id];
-    const role = villager[id]?.role;
-    if (!path || role === undefined) continue;
+    const job = villager[id]?.job;
+    if (!path || job === undefined) continue;
 
-    let budget = content.villagerRoles[role].walkSpeed;
+    let budget = content.jobs[job].walkSpeed;
     while (budget > 0 && path.next < path.tiles.length) {
       const { from, to } = segment(path);
       const left = segmentLength(map.width, from, to) - path.progress;

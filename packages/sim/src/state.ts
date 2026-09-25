@@ -1,15 +1,15 @@
 // The game state: plain, JSON-serializable data. See CLAUDE.md "Simulation rules".
 import type {
   BuildingId,
+  JobId,
   MapObjectId,
   ResourceAmount,
   ResourceId,
   TerrainId,
-  VillagerRoleId,
 } from '@candlemarch/content';
 import type { LogisticsState } from './logistics/model';
 
-export const STATE_VERSION = 1;
+export const STATE_VERSION = 2;
 export const TICKS_PER_SECOND = 20;
 /** Sub-tile units per tile. Positions are integers in these units. */
 export const TILE_UNITS = 1000;
@@ -61,7 +61,7 @@ export interface SiteComponent {
 }
 
 export interface VillagerComponent {
-  role: VillagerRoleId;
+  job: JobId;
   /** Building the villager works for, if any. */
   workplace: EntityId | null;
   carrying: ResourceAmount | null;

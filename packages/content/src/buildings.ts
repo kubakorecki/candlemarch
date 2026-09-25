@@ -7,7 +7,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     size: { w: 2, h: 2 },
     door: { x: 1, y: 2 },
     placeable: false,
-    employs: [{ role: 'woodcutter', count: 1 }],
+    employs: [{ job: 'woodcutter', count: 1 }],
     gathers: 'tree',
     outputBuffer: { resource: 'logs', capacity: 4 },
   },

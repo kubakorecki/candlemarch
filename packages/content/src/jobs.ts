@@ -1,6 +1,6 @@
-import type { VillagerRoleDef, VillagerRoleId } from './types';
+import type { JobDef, JobId } from './types';
 
-export const villagerRoles: Record<VillagerRoleId, VillagerRoleDef> = {
+export const jobs: Record<JobId, JobDef> = {
   woodcutter: {
     id: 'woodcutter',
     name: 'Woodcutter',

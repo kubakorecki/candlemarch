@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { content } from '../src/index';
 
-const { resources, terrain, mapObjects, villagerRoles, buildings } = content;
+const { resources, terrain, mapObjects, jobs, buildings } = content;
 
 function expectPositiveInt(value: number, label: string): void {
   expect(Number.isInteger(value) && value > 0, `${label} = ${value}`).toBe(true);
@@ -9,7 +9,7 @@ function expectPositiveInt(value: number, label: string): void {
 
 describe('content validation', () => {
   it('every record key matches its id', () => {
-    for (const table of [resources, terrain, mapObjects, villagerRoles, buildings]) {
+    for (const table of [resources, terrain, mapObjects, jobs, buildings]) {
       for (const [key, def] of Object.entries(table)) {
         expect(def.id).toBe(key);
       }
@@ -25,19 +25,19 @@ describe('content validation', () => {
     }
   });
 
-  it('villager roles use positive integers', () => {
-    for (const role of Object.values(villagerRoles)) {
-      expectPositiveInt(role.walkSpeed, `${role.id}.walkSpeed`);
-      expectPositiveInt(role.carryCapacity, `${role.id}.carryCapacity`);
-      expectPositiveInt(role.idleRetryTicks, `${role.id}.idleRetryTicks`);
+  it('jobs use positive integers', () => {
+    for (const job of Object.values(jobs)) {
+      expectPositiveInt(job.walkSpeed, `${job.id}.walkSpeed`);
+      expectPositiveInt(job.carryCapacity, `${job.id}.carryCapacity`);
+      expectPositiveInt(job.idleRetryTicks, `${job.id}.idleRetryTicks`);
     }
   });
 
   it('buildings reference existing ids', () => {
     for (const b of Object.values(buildings)) {
-      for (const job of b.employs) {
-        expect(villagerRoles, `${b.id} employs`).toHaveProperty(job.role);
-        expectPositiveInt(job.count, `${b.id}.employs.${job.role}`);
+      for (const slot of b.employs) {
+        expect(jobs, `${b.id} employs`).toHaveProperty(slot.job);
+        expectPositiveInt(slot.count, `${b.id}.employs.${slot.job}`);
       }
       if (b.gathers !== undefined) {
         expect(mapObjects, `${b.id}.gathers`).toHaveProperty(b.gathers);

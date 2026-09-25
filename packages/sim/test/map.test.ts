@@ -20,8 +20,8 @@ describe('createInitialState', () => {
     expect(buildings.map((id) => s.components.building[id]?.type)).toEqual(['woodcutters_hut']);
 
     const villagers = idsOf(s.components.villager).map((id) => s.components.villager[id]);
-    expect(villagers.map((v) => v?.role).sort()).toEqual(['carrier', 'woodcutter']);
-    const woodcutter = villagers.find((v) => v?.role === 'woodcutter');
+    expect(villagers.map((v) => v?.job).sort()).toEqual(['carrier', 'woodcutter']);
+    const woodcutter = villagers.find((v) => v?.job === 'woodcutter');
     expect(woodcutter?.workplace).toBe(buildings[0]);
   });
 
