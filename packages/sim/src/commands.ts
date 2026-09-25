@@ -2,6 +2,7 @@
 import type { BuildingId, Content } from '@candlemarch/content';
 import { createEntity, destroyEntity } from './entities';
 import { canPlaceBuilding } from './grid';
+import { placeFlag, removeFlag } from './logistics/flagRelay';
 import { layPath, removePath } from './roads';
 import type { EntityId, GameState, Tile } from './state';
 import { placeStockpile, removeStockpile } from './stockpiles';
@@ -12,7 +13,9 @@ export type Command =
   | { type: 'layPath'; from: Tile; to: Tile }
   | { type: 'removePath'; from: Tile; to: Tile }
   | { type: 'placeStockpile'; x: number; y: number; w: number; h: number }
-  | { type: 'removeStockpile'; id: EntityId };
+  | { type: 'removeStockpile'; id: EntityId }
+  | { type: 'placeFlag'; x: number; y: number }
+  | { type: 'removeFlag'; x: number; y: number };
 
 /** Applies one command. Commands that aren't valid right now are ignored. */
 export function applyCommand(state: GameState, command: Command, content: Content): void {
@@ -45,6 +48,14 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'removeStockpile': {
       removeStockpile(state, command.id);
+      return;
+    }
+    case 'placeFlag': {
+      placeFlag(state, content, command.x, command.y);
+      return;
+    }
+    case 'removeFlag': {
+      removeFlag(state, command.x, command.y);
       return;
     }
   }

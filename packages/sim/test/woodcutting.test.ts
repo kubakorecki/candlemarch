@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Command } from '../src/commands';
 import { idsOf } from '../src/entities';
+import { haulsOf } from '../src/logistics/jobDispatch';
 import { createInitialState, type MapDef } from '../src/map';
 import { meadowMap } from '../src/maps/meadow';
 import type { GameState } from '../src/state';
@@ -68,7 +69,7 @@ describe('woodcutting', () => {
       (s) =>
         idsOf(s.components.mapObject).length === 0 &&
         Object.values(s.components.villager).every((v) => v.carrying === null) &&
-        idsOf(s.logistics.hauls).length === 0 &&
+        idsOf(haulsOf(s)).length === 0 &&
         idsOf(s.components.path).length === 0,
       5000,
       placeHut,

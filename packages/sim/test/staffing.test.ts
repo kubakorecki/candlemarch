@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Command } from '../src/commands';
 import { idsOf } from '../src/entities';
+import { haulsOf } from '../src/logistics/jobDispatch';
 import { createInitialState, type MapDef } from '../src/map';
 import type { GameState } from '../src/state';
 import { openPositions } from '../src/systems/staffing';
@@ -63,17 +64,17 @@ describe('placed workplaces', () => {
 
     const built = runUntil(s0, (s) => newHut(s) !== undefined, 3000, commands);
     const hut = newHut(built) as number;
-    expect(built.logistics.hauls[carrier]).toBeDefined();
+    expect(haulsOf(built)[carrier]).toBeDefined();
     expect(built.components.villager[carrier]?.job).toBe('carrier');
     expect(openPositions(built, content, hut)).toEqual(['woodcutter']);
 
     // The position stays open while the carrier hauls, and is filled on the tick the haul ends.
     let s = built;
-    for (let i = 0; i < 1000 && s.logistics.hauls[carrier]; i++) {
+    for (let i = 0; i < 1000 && haulsOf(s)[carrier]; i++) {
       expect(openPositions(s, content, hut)).toEqual(['woodcutter']);
       s = run(s, 1);
     }
-    expect(s.logistics.hauls[carrier]).toBeUndefined();
+    expect(haulsOf(s)[carrier]).toBeUndefined();
     expect(s.components.villager[carrier]).toMatchObject({ job: 'woodcutter', workplace: hut });
     expect(openPositions(s, content, hut)).toEqual([]);
   });
@@ -92,7 +93,7 @@ describe('placed workplaces', () => {
 
     const built = runUntil(s0, (s) => newHut(s) !== undefined, 3000, { 0: [placeHut] });
     const hut = newHut(built) as number;
-    expect(built.logistics.hauls).toEqual({}); // both carriers are idle
+    expect(haulsOf(built)).toEqual({}); // both carriers are idle
     expect(built.components.villager[first]).toMatchObject({ job: 'woodcutter', workplace: hut });
     expect(built.components.villager[second]).toMatchObject({ job: 'carrier', workplace: null });
   });

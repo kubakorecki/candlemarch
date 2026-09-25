@@ -62,6 +62,20 @@ export function walkTo(
   return true;
 }
 
+/**
+ * Starts a walk through `tiles` (tile indices, each a step from the one before), starting from
+ * the tile the villager stands on. Used where the route is fixed, such as along a road.
+ */
+export function walkAlong(state: GameState, id: EntityId, tiles: readonly number[]): void {
+  const here = villagerTile(state, id);
+  if (!here) return;
+  delete state.components.path[id];
+  if (tiles.length > 0) {
+    const start = tileIndex(state.map, here.x, here.y);
+    state.components.path[id] = { start, tiles: [...tiles], next: 0, progress: 0 };
+  }
+}
+
 /** Cuts the current walk short so it ends at the tile being walked towards. */
 export function stopAtNextTile(state: GameState, id: EntityId): void {
   const path = state.components.path[id];

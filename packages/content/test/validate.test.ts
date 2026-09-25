@@ -41,6 +41,7 @@ describe('content validation', () => {
 
   it('logistics numbers are positive integers', () => {
     expectPositiveInt(content.logistics.stockpileTileCapacity, 'stockpileTileCapacity');
+    expectPositiveInt(content.logistics.flagCapacity, 'flagCapacity');
   });
 
   it('buildings reference existing ids', () => {

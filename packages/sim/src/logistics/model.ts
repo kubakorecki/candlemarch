@@ -1,11 +1,12 @@
-// The seam between hauling and the rest of the sim. Two models will be prototyped
-// (job dispatch now, Settlers-style flag relay later); each keeps its own plain-data state.
+// The seam between hauling and the rest of the sim. Two models are prototyped (job dispatch
+// and Settlers-style flag relay); each keeps its own plain-data state.
 import type { Content } from '@candlemarch/content';
 import type { EntityId, GameState } from '../state';
 import type { JobDispatchState } from './jobDispatch';
+import type { FlagRelayState } from './relayState';
 
 /** Logistics state of whichever model the game uses. Extend the union for new models. */
-export type LogisticsState = JobDispatchState;
+export type LogisticsState = JobDispatchState | FlagRelayState;
 export type LogisticsModelId = LogisticsState['model'];
 
 export interface LogisticsModel {

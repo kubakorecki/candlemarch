@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Command } from '../src/commands';
 import { idsOf } from '../src/entities';
+import { haulsOf } from '../src/logistics/jobDispatch';
 import { createInitialState, type MapDef } from '../src/map';
 import { meadowMap } from '../src/maps/meadow';
 import type { GameState } from '../src/state';
@@ -13,7 +14,7 @@ function carrier(s: GameState) {
   const id = idsOf(s.components.villager).find(
     (v) => s.components.villager[v]?.job === 'carrier',
   ) as number;
-  return { id, villager: s.components.villager[id], haul: s.logistics.hauls[id] };
+  return { id, villager: s.components.villager[id], haul: haulsOf(s)[id] };
 }
 
 describe('hauling (job dispatch)', () => {

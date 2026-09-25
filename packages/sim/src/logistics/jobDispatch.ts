@@ -35,6 +35,11 @@ export function initJobDispatch(): JobDispatchState {
   return { model: 'jobDispatch', hauls: {} };
 }
 
+/** Current hauls, keyed by carrier. Empty when the game uses another logistics model. */
+export function haulsOf(state: GameState): Store<Haul> {
+  return state.logistics.model === 'jobDispatch' ? state.logistics.hauls : {};
+}
+
 function carrierIds(state: GameState): EntityId[] {
   const { villager } = state.components;
   return idsOf(villager).filter((id) => villager[id]?.job === 'carrier');
@@ -85,7 +90,7 @@ function freeRoomOnTile(
   const stockpile = state.components.stockpile[pile];
   if (!stockpile) return 0;
   let room = roomOnTile(stockpile, index, resource, content.logistics.stockpileTileCapacity);
-  for (const haul of Object.values(state.logistics.hauls)) {
+  for (const haul of Object.values(haulsOf(state))) {
     const bound =
       haul.phase === 'return'
         ? haul.from === pile && haul.fromTile === index
@@ -135,7 +140,7 @@ function pickupFor(
   supply: Supply,
   near: number,
 ): Pickup | null {
-  const { hauls } = state.logistics;
+  const hauls = haulsOf(state);
   const { map } = state;
   if (supply.kind === 'building') {
     const door = entityDoor(state, content, supply.source);
@@ -199,7 +204,7 @@ function endTile(
 
 /** Advances one carrier's haul by one tick. */
 function advanceHaul(state: GameState, content: Content, id: EntityId, haul: Haul): void {
-  const { hauls } = state.logistics;
+  const hauls = haulsOf(state);
   const { building, site, stockpile, villager, path } = state.components;
   const carrier = villager[id];
   if (!carrier) {
@@ -310,7 +315,7 @@ function take(state: GameState, haul: Haul): number {
  * nearest source with goods free to take.
  */
 function dispatch(state: GameState, content: Content, id: EntityId): void {
-  const { hauls } = state.logistics;
+  const hauls = haulsOf(state);
   const { map } = state;
   const carrier = state.components.villager[id];
   const here = villagerTile(state, id);
@@ -359,7 +364,7 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
 export const jobDispatch: LogisticsModel = {
   init: initJobDispatch,
   update(state, content) {
-    const { hauls } = state.logistics;
+    const hauls = haulsOf(state);
     for (const id of carrierIds(state)) {
       const haul = hauls[id];
       if (haul) advanceHaul(state, content, id, haul);
@@ -368,6 +373,6 @@ export const jobDispatch: LogisticsModel = {
     }
   },
   isIdle(state, carrier) {
-    return state.logistics.hauls[carrier] === undefined;
+    return haulsOf(state)[carrier] === undefined;
   },
 };
