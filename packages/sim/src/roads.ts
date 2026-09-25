@@ -1,6 +1,6 @@
 // Roads: the per-tile road layer, laying and removing paths, and road speed.
 import type { Content } from '@candlemarch/content';
-import { blockedGrid, inBounds, tileAt, tileIndex } from './grid';
+import { blockedGrid, inBounds, tileAt, tileIndex, tilesUnderStockpiles } from './grid';
 import type { GameState, MapState, Tile } from './state';
 
 /** Walking speed off-road, as a percentage. Road speeds are relative to it. */
@@ -38,17 +38,23 @@ function endsInBounds(state: GameState, from: Tile, to: Tile): boolean {
 
 /**
  * Whether a path can be laid along the L from `from` to `to`: every tile is walkable,
- * buildable, and free of trees and building or site footprints. Door tiles and tiles that
- * already hold a path are fine.
+ * buildable, and free of trees, building or site footprints and stockpiles. Door tiles and
+ * tiles that already hold a path are fine.
  */
 export function canLayPath(state: GameState, content: Content, from: Tile, to: Tile): boolean {
   if (!endsInBounds(state, from, to)) return false;
   const { map } = state;
   const blocked = blockedGrid(state, content);
+  const piles = tilesUnderStockpiles(state);
   return lShapeTiles(from, to).every((t) => {
     const i = tileIndex(map, t.x, t.y);
     const terrain = map.terrain[i];
-    return terrain !== undefined && content.terrain[terrain].buildable && blocked[i] === 0;
+    return (
+      terrain !== undefined &&
+      content.terrain[terrain].buildable &&
+      blocked[i] === 0 &&
+      !piles.has(i)
+    );
   });
 }
 

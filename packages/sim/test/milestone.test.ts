@@ -21,9 +21,9 @@ const placeHut: Record<number, Command[]> = {
 };
 
 /**
- * A busier script: two huts, one of them cancelled mid-way, an invalid placement, and a dirt
- * path from the woodcutter's hut door (9,13) to the first hut's door (4,17), part of which is
- * removed later.
+ * A busier script: two huts, one of them cancelled mid-way, an invalid placement, a dirt path
+ * from the woodcutter's hut door (9,13) to the first hut's door (4,17), part of which is
+ * removed later, and two stockpiles, one of them removed later.
  */
 const script: Record<number, Command[]> = {
   0: [
@@ -36,8 +36,13 @@ const script: Record<number, Command[]> = {
     { type: 'placeBuilding', building: 'hut', x: 18, y: 18 },
     { type: 'placeBuilding', building: 'hut', x: 13, y: 6 }, // on a tree: ignored
   ],
+  60: [
+    { type: 'placeStockpile', x: 14, y: 15, w: 3, h: 2 },
+    { type: 'placeStockpile', x: 2, y: 20, w: 2, h: 1 },
+  ],
   700: [{ type: 'cancelConstruction', siteId: 22 }], // the second hut
   1500: [{ type: 'removePath', from: { x: 5, y: 15 }, to: { x: 5, y: 16 } }],
+  2500: [{ type: 'removeStockpile', id: 24 }],
 };
 
 const fresh = (seed = 1) => createInitialState(seed, meadowMap, content);
@@ -65,21 +70,28 @@ describe('milestone 0', () => {
     const b = run(fresh(7), 3000, script);
     expect(a).toEqual(b);
     // The script really exercised the cancel. IDs: trees 1-17, woodcutter's hut 18,
-    // woodcutter 19, carrier 20, first site 21, second site 22.
+    // woodcutter 19, carrier 20, first site 21, second site 22, stockpiles 23 and 24.
     expect(a.components.site[22]).toBeUndefined();
     expect(a.components.building[22]).toBeUndefined();
     expect(huts(a)).toHaveLength(1);
     // 10 path tiles laid, 2 removed.
     expect(Object.keys(a.map.roads)).toHaveLength(8);
+    // Once the hut was done, logs went to the stockpiles; one of them was removed.
+    expect(idsOf(a.components.stockpile)).toEqual([23]);
+    expect(Object.keys(a.components.stockpile[23]?.goods ?? {}).length).toBeGreaterThan(0);
   });
 
-  it('save/load mid-run continues exactly like an uninterrupted run', () => {
-    const uninterrupted = run(fresh(3), 3000, script);
+  // 1234: the first hut is being supplied. 2700: logs are going to the stockpile.
+  it.each([1234, 2700])(
+    'save/load at tick %i continues exactly like an uninterrupted run',
+    (at) => {
+      const uninterrupted = run(fresh(3), 3000, script);
 
-    const midway = run(fresh(3), 1234, script);
-    const loaded = deserialize(serialize(midway));
-    const resumed = run(loaded, 3000 - 1234, script);
+      const midway = run(fresh(3), at, script);
+      const loaded = deserialize(serialize(midway));
+      const resumed = run(loaded, 3000 - at, script);
 
-    expect(resumed).toEqual(uninterrupted);
-  });
+      expect(resumed).toEqual(uninterrupted);
+    },
+  );
 });

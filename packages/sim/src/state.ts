@@ -63,6 +63,14 @@ export interface SiteComponent {
   buildProgress: number;
 }
 
+/** An open-air store of goods covering a rectangle of tiles. */
+export interface StockpileComponent {
+  /** Size in tiles. The entity's `tile` is its origin (smallest x and y). */
+  size: { w: number; h: number };
+  /** Goods on each tile that holds any, keyed by map tile index. Empty tiles are absent. */
+  goods: Record<number, ResourceAmount>;
+}
+
 export interface VillagerComponent {
   job: JobId;
   /** Building the villager works for, if any. */
@@ -89,11 +97,12 @@ export type WoodcutterTask =
   | { kind: 'toHut' };
 
 export interface Components {
-  /** Anchor tile of static things: map objects, buildings, construction sites. */
+  /** Anchor tile of static things: map objects, buildings, construction sites, stockpiles. */
   tile: Store<Tile>;
   mapObject: Store<MapObjectComponent>;
   building: Store<BuildingComponent>;
   site: Store<SiteComponent>;
+  stockpile: Store<StockpileComponent>;
   villager: Store<VillagerComponent>;
   position: Store<Point>;
   path: Store<PathComponent>;

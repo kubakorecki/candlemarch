@@ -51,6 +51,7 @@ export function createEmptyState(seed: number): GameState {
       mapObject: {},
       building: {},
       site: {},
+      stockpile: {},
       villager: {},
       position: {},
       path: {},

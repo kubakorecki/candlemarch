@@ -1,7 +1,14 @@
 // Tile maths, footprints, walkability and building placement.
 import type { BuildingDef, BuildingId, Content } from '@candlemarch/content';
 import { idsOf } from './entities';
-import { type GameState, type MapState, type Point, TILE_UNITS, type Tile } from './state';
+import {
+  type EntityId,
+  type GameState,
+  type MapState,
+  type Point,
+  TILE_UNITS,
+  type Tile,
+} from './state';
 
 export function inBounds(map: MapState, x: number, y: number): boolean {
   return (
@@ -30,15 +37,20 @@ export function tileOfPoint(point: Point): Tile {
   return { x: Math.floor(point.x / TILE_UNITS), y: Math.floor(point.y / TILE_UNITS) };
 }
 
-/** Tiles covered by a building placed with its origin at `origin`. */
-export function footprint(def: BuildingDef, origin: Tile): Tile[] {
+/** Tiles of the w×h rectangle with its origin at `origin`, row by row (ascending tile index). */
+export function rectTiles(origin: Tile, w: number, h: number): Tile[] {
   const tiles: Tile[] = [];
-  for (let dy = 0; dy < def.size.h; dy++) {
-    for (let dx = 0; dx < def.size.w; dx++) {
+  for (let dy = 0; dy < h; dy++) {
+    for (let dx = 0; dx < w; dx++) {
       tiles.push({ x: origin.x + dx, y: origin.y + dy });
     }
   }
   return tiles;
+}
+
+/** Tiles covered by a building placed with its origin at `origin`. */
+export function footprint(def: BuildingDef, origin: Tile): Tile[] {
+  return rectTiles(origin, def.size.w, def.size.h);
 }
 
 export function doorTile(def: BuildingDef, origin: Tile): Tile {
@@ -87,10 +99,39 @@ export function blockedGrid(state: GameState, content: Content): Uint8Array {
   return blocked;
 }
 
+/** Tile indices of every building and site door on the map. */
+export function doorTiles(state: GameState, content: Content): Set<number> {
+  const { map } = state;
+  const doors = new Set<number>();
+  for (const s of structures(state)) {
+    const d = doorTile(content.buildings[s.type], s.origin);
+    if (inBounds(map, d.x, d.y)) doors.add(tileIndex(map, d.x, d.y));
+  }
+  return doors;
+}
+
+/** Map tile indices of a stockpile's tiles, ascending. Empty if `id` isn't a stockpile. */
+export function stockpileTileIndices(state: GameState, id: EntityId): number[] {
+  const pile = state.components.stockpile[id];
+  const origin = state.components.tile[id];
+  if (!pile || !origin) return [];
+  return rectTiles(origin, pile.size.w, pile.size.h).map((t) => tileIndex(state.map, t.x, t.y));
+}
+
+/** Tile indices covered by any stockpile. */
+export function tilesUnderStockpiles(state: GameState): Set<number> {
+  const tiles = new Set<number>();
+  for (const id of idsOf(state.components.stockpile)) {
+    for (const i of stockpileTileIndices(state, id)) tiles.add(i);
+  }
+  return tiles;
+}
+
 /**
  * Whether a building of this type fits with its origin at (x, y): every footprint tile is in
- * bounds, buildable, and free of trees, roads, other footprints and other doors; its door tile
- * is in bounds, walkable and not blocked (it may be on a road). Doesn't check whether the player may place this type.
+ * bounds, buildable, and free of trees, roads, stockpiles, other footprints and other doors; its
+ * door tile is in bounds, walkable, not blocked and not on a stockpile (it may be on a road).
+ * Doesn't check whether the player may place this type.
  */
 export function fitsAt(
   state: GameState,
@@ -103,24 +144,23 @@ export function fitsAt(
   const def = content.buildings[type];
   if (!inBounds(map, x, y)) return false;
   const blocked = blockedGrid(state, content);
-
-  const doors = new Set<number>();
-  for (const s of structures(state)) {
-    const d = doorTile(content.buildings[s.type], s.origin);
-    if (inBounds(map, d.x, d.y)) doors.add(tileIndex(map, d.x, d.y));
-  }
+  const doors = doorTiles(state, content);
+  const piles = tilesUnderStockpiles(state);
 
   for (const t of footprint(def, { x, y })) {
     if (!inBounds(map, t.x, t.y)) return false;
     const i = tileIndex(map, t.x, t.y);
     const terrain = map.terrain[i];
     if (terrain === undefined || !content.terrain[terrain].buildable) return false;
-    if (blocked[i] === 1 || doors.has(i) || map.roads[i] !== undefined) return false;
+    if (blocked[i] === 1 || doors.has(i) || piles.has(i) || map.roads[i] !== undefined) {
+      return false;
+    }
   }
 
   const door = doorTile(def, { x, y });
   if (!inBounds(map, door.x, door.y)) return false;
-  return blocked[tileIndex(map, door.x, door.y)] === 0;
+  const doorIndex = tileIndex(map, door.x, door.y);
+  return blocked[doorIndex] === 0 && !piles.has(doorIndex);
 }
 
 /** Whether the player may place a building of this type at (x, y) right now. */

@@ -15,6 +15,7 @@ describe('serialize / deserialize', () => {
     const s = createInitialState(9, meadowMap, content);
     const data = JSON.parse(serialize(s));
     delete data.components.site;
+    delete data.components.stockpile;
     delete data.logistics;
     delete data.map.roads;
     expect(deserialize(JSON.stringify(data))).toEqual(s);

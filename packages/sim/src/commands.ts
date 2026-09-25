@@ -4,12 +4,15 @@ import { createEntity, destroyEntity } from './entities';
 import { canPlaceBuilding } from './grid';
 import { layPath, removePath } from './roads';
 import type { EntityId, GameState, Tile } from './state';
+import { placeStockpile, removeStockpile } from './stockpiles';
 
 export type Command =
   | { type: 'placeBuilding'; building: BuildingId; x: number; y: number }
   | { type: 'cancelConstruction'; siteId: EntityId }
   | { type: 'layPath'; from: Tile; to: Tile }
-  | { type: 'removePath'; from: Tile; to: Tile };
+  | { type: 'removePath'; from: Tile; to: Tile }
+  | { type: 'placeStockpile'; x: number; y: number; w: number; h: number }
+  | { type: 'removeStockpile'; id: EntityId };
 
 /** Applies one command. Commands that aren't valid right now are ignored. */
 export function applyCommand(state: GameState, command: Command, content: Content): void {
@@ -33,6 +36,15 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'removePath': {
       removePath(state, command.from, command.to);
+      return;
+    }
+    case 'placeStockpile': {
+      const { x, y, w, h } = command;
+      placeStockpile(state, content, x, y, w, h);
+      return;
+    }
+    case 'removeStockpile': {
+      removeStockpile(state, command.id);
       return;
     }
   }

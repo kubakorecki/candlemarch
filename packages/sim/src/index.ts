@@ -9,3 +9,4 @@ export { canLayPath, lShapeTiles, roadNeighbours } from './roads';
 export { deserialize, serialize } from './save';
 export * from './state';
 export { step } from './step';
+export { canPlaceStockpile } from './stockpiles';

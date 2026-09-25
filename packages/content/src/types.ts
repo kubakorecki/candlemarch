@@ -59,6 +59,12 @@ export interface RoadDef {
   speedPercent: number;
 }
 
+/** Numbers shared by every logistics model. */
+export interface LogisticsDef {
+  /** Units one stockpile tile holds. */
+  stockpileTileCapacity: number;
+}
+
 export interface BuildingDef {
   id: BuildingId;
   name: string;
@@ -85,4 +91,5 @@ export interface Content {
   jobs: Record<JobId, JobDef>;
   buildings: Record<BuildingId, BuildingDef>;
   roads: Record<RoadId, RoadDef>;
+  logistics: LogisticsDef;
 }

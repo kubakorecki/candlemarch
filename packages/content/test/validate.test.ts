@@ -39,6 +39,10 @@ describe('content validation', () => {
     }
   });
 
+  it('logistics numbers are positive integers', () => {
+    expectPositiveInt(content.logistics.stockpileTileCapacity, 'stockpileTileCapacity');
+  });
+
   it('buildings reference existing ids', () => {
     for (const b of Object.values(buildings)) {
       for (const slot of b.employs) {
