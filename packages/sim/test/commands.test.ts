@@ -47,6 +47,14 @@ describe('placeBuilding', () => {
     expect(canPlaceBuilding(s, content, 'hut', 4, 5)).toBe(false); // on its door
     expect(canPlaceBuilding(s, content, 'hut', 5, 4)).toBe(true);
   });
+  it("won't place a building on a road, but its door may be on one", () => {
+    const road = { type: 'layPath', from: { x: 2, y: 4 }, to: { x: 6, y: 4 } } as const;
+    const s0 = step(fresh(), [road], content);
+    expect(canPlaceBuilding(s0, content, 'hut', 4, 4)).toBe(false); // footprint on the road
+    const s = step(s0, [{ type: 'placeBuilding', building: 'hut', x: 4, y: 4 }], content);
+    expect(idsOf(s.components.site)).toHaveLength(0);
+    expect(canPlaceBuilding(s0, content, 'hut', 4, 3)).toBe(true); // door (4,4) on the road
+  });
 });
 
 describe('cancelConstruction', () => {

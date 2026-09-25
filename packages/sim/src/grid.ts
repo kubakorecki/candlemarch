@@ -89,8 +89,8 @@ export function blockedGrid(state: GameState, content: Content): Uint8Array {
 
 /**
  * Whether a building of this type fits with its origin at (x, y): every footprint tile is in
- * bounds, buildable, and free of trees, other footprints and other doors; its door tile is in
- * bounds, walkable and not blocked. Doesn't check whether the player may place this type.
+ * bounds, buildable, and free of trees, roads, other footprints and other doors; its door tile
+ * is in bounds, walkable and not blocked (it may be on a road). Doesn't check whether the player may place this type.
  */
 export function fitsAt(
   state: GameState,
@@ -115,7 +115,7 @@ export function fitsAt(
     const i = tileIndex(map, t.x, t.y);
     const terrain = map.terrain[i];
     if (terrain === undefined || !content.terrain[terrain].buildable) return false;
-    if (blocked[i] === 1 || doors.has(i)) return false;
+    if (blocked[i] === 1 || doors.has(i) || map.roads[i] !== undefined) return false;
   }
 
   const door = doorTile(def, { x, y });
