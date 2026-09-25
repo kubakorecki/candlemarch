@@ -10,3 +10,4 @@ export { deserialize, serialize } from './save';
 export * from './state';
 export { step } from './step';
 export { canPlaceStockpile } from './stockpiles';
+export { openPositions } from './systems/staffing';

@@ -38,7 +38,10 @@ describe('placeBuilding', () => {
 
   it("won't place buildings the player can't build", () => {
     const s0 = fresh();
-    expect(canPlaceBuilding(s0, content, 'woodcutters_hut', 2, 2)).toBe(false);
+    expect(canPlaceBuilding(s0, content, 'woodcutters_hut', 2, 2)).toBe(true);
+    const hut = { ...content.buildings.hut, placeable: false };
+    const mapOnly = { ...content, buildings: { ...content.buildings, hut } };
+    expect(canPlaceBuilding(s0, mapOnly, 'hut', 2, 2)).toBe(false);
   });
 
   it("won't place a site on another site's footprint or door", () => {

@@ -5,6 +5,7 @@ import { doorTile, fitsAt, inBounds, tileCenter } from './grid';
 import { DEFAULT_LOGISTICS_MODEL, logisticsModels } from './logistics';
 import { seedRng } from './rng';
 import { type EntityId, type GameState, STATE_VERSION, type Tile } from './state';
+import { assignJob } from './villagers';
 
 export interface MapDef {
   name: string;
@@ -31,7 +32,7 @@ function spawnVillager(
   const id = createEntity(state);
   state.components.villager[id] = { job, workplace, carrying: null };
   state.components.position[id] = tileCenter(tile);
-  if (job === 'woodcutter') state.components.woodcutter[id] = { kind: 'idle', retryAt: 0 };
+  assignJob(state, id, job, workplace);
   return id;
 }
 

@@ -367,4 +367,7 @@ export const jobDispatch: LogisticsModel = {
       else if (!state.components.path[id]) dispatch(state, content, id);
     }
   },
+  isIdle(state, carrier) {
+    return state.logistics.hauls[carrier] === undefined;
+  },
 };

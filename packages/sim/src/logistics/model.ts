@@ -1,7 +1,7 @@
 // The seam between hauling and the rest of the sim. Two models will be prototyped
 // (job dispatch now, Settlers-style flag relay later); each keeps its own plain-data state.
 import type { Content } from '@candlemarch/content';
-import type { GameState } from '../state';
+import type { EntityId, GameState } from '../state';
 import type { JobDispatchState } from './jobDispatch';
 
 /** Logistics state of whichever model the game uses. Extend the union for new models. */
@@ -13,4 +13,6 @@ export interface LogisticsModel {
   init(): LogisticsState;
   /** Runs once per tick, after production and before construction. Mutates `state`. */
   update(state: GameState, content: Content): void;
+  /** Whether the carrier has no logistics work right now, so a Workplace may draft it. */
+  isIdle(state: GameState, carrier: EntityId): boolean;
 }

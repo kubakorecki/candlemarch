@@ -5,6 +5,7 @@ import type { GameState } from './state';
 import { constructionSystem } from './systems/construction';
 import { haulingSystem } from './systems/hauling';
 import { movementSystem } from './systems/movement';
+import { staffingSystem } from './systems/staffing';
 import { woodcuttingSystem } from './systems/woodcutting';
 
 /** Deep copy of plain-data state. Doubles as a guard that state stays JSON-serializable. */
@@ -19,6 +20,7 @@ function cloneState(state: GameState): GameState {
  * 3. woodcutting
  * 4. hauling (the game's logistics model)
  * 5. construction
+ * 6. staffing: finished or understaffed workplaces draft idle carriers
  * then `tick` increments.
  */
 export function step(state: GameState, commands: readonly Command[], content: Content): GameState {
@@ -28,6 +30,7 @@ export function step(state: GameState, commands: readonly Command[], content: Co
   woodcuttingSystem(next, content);
   haulingSystem(next, content);
   constructionSystem(next, content);
+  staffingSystem(next, content);
   next.tick += 1;
   return next;
 }

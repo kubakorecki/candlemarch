@@ -6,10 +6,14 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     name: "Woodcutter's hut",
     size: { w: 2, h: 2 },
     door: { x: 1, y: 2 },
-    placeable: false,
+    placeable: true,
     employs: [{ job: 'woodcutter', count: 1 }],
     gathers: 'tree',
     outputBuffer: { resource: 'logs', capacity: 4 },
+    construction: {
+      cost: [{ resource: 'logs', amount: 6 }],
+      buildTicks: 200, // 10 s
+    },
   },
   hut: {
     id: 'hut',
