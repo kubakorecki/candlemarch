@@ -99,6 +99,22 @@ export function blockedGrid(state: GameState, content: Content): Uint8Array {
   return blocked;
 }
 
+/** Walkable tiles around `tile` (8 directions), where a gatherer can stand. */
+export function standingTiles(state: GameState, blocked: Uint8Array, tile: Tile): Tile[] {
+  const result: Tile[] = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const x = tile.x + dx;
+      const y = tile.y + dy;
+      if (inBounds(state.map, x, y) && blocked[tileIndex(state.map, x, y)] === 0) {
+        result.push({ x, y });
+      }
+    }
+  }
+  return result;
+}
+
 /** Tile indices of every building and site door on the map. */
 export function doorTiles(state: GameState, content: Content): Set<number> {
   const { map } = state;

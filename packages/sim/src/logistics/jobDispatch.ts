@@ -43,7 +43,7 @@ function carrierIds(state: GameState): EntityId[] {
 }
 
 /** Units of `resource` at `source` already promised to hauls that haven't picked up yet. */
-function reserved(hauls: Store<Haul>, source: EntityId, resource: ResourceId): number {
+export function reserved(hauls: Store<Haul>, source: EntityId, resource: ResourceId): number {
   let total = 0;
   for (const haul of Object.values(hauls)) {
     if (haul.from === source && haul.resource === resource && haul.phase === 'pickup') {
@@ -53,8 +53,8 @@ function reserved(hauls: Store<Haul>, source: EntityId, resource: ResourceId): n
   return total;
 }
 
-/** Units of `resource` on their way to `target`. */
-function incoming(hauls: Store<Haul>, target: EntityId, resource: ResourceId): number {
+/** Units of `resource` carriers are bringing to `target`. */
+export function haulsIncoming(hauls: Store<Haul>, target: EntityId, resource: ResourceId): number {
   let total = 0;
   for (const haul of Object.values(hauls)) {
     if (haul.to === target && haul.resource === resource && haul.phase !== 'return')
@@ -63,8 +63,24 @@ function incoming(hauls: Store<Haul>, target: EntityId, resource: ResourceId): n
   return total;
 }
 
+/**
+ * Units of `resource` on their way to `target`: carriers' hauls, plus what the hero promised a
+ * site from the moment it was ordered to deliver there.
+ */
+function incoming(state: GameState, target: EntityId, resource: ResourceId): number {
+  let total = haulsIncoming(state.logistics.hauls, target, resource);
+  if (!state.components.site[target]) return total;
+  for (const hero of Object.values(state.components.hero)) {
+    const order = hero.order;
+    if (order?.kind === 'deliver' && order.target === target && order.resource === resource) {
+      total += order.amount;
+    }
+  }
+  return total;
+}
+
 /** Units on stockpile tile `index` promised to hauls that haven't picked up yet. */
-function reservedOnTile(hauls: Store<Haul>, index: number): number {
+export function reservedOnTile(hauls: Store<Haul>, index: number): number {
   let total = 0;
   for (const haul of Object.values(hauls)) {
     if (haul.fromTile === index && haul.phase === 'pickup') total += haul.amount;
@@ -77,7 +93,7 @@ function reservedOnTile(hauls: Store<Haul>, index: number): number {
  * arrive, including goods being returned to it. 0 if any of them brings another resource,
  * since a tile holds one resource.
  */
-function freeRoomOnTile(
+export function freeRoomOnTile(
   state: GameState,
   content: Content,
   pile: EntityId,
@@ -103,7 +119,7 @@ function freeRoomOnTile(
  * The tile of `tiles` nearest to tile `near` whose `amountAt` is positive, ties to the lowest
  * tile index; or null if there's none.
  */
-function nearestTile(
+export function nearestTile(
   width: number,
   tiles: readonly number[],
   near: number,
@@ -329,7 +345,7 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
 
   for (const group of demandGroups(state, listDemands(state, content))) {
     const open = group.flatMap((demand) => {
-      const need = demand.amount - incoming(hauls, demand.target, demand.resource);
+      const need = demand.amount - incoming(state, demand.target, demand.resource);
       return need > 0 ? [{ demand, need }] : [];
     });
     const first = open[0];

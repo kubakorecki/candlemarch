@@ -160,7 +160,7 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
       throw new Error(`map ${map.name}: hero out of bounds at ${x},${y}`);
     }
     const id = createEntity(state);
-    state.components.hero[id] = { type: DEFAULT_HERO };
+    state.components.hero[id] = { type: DEFAULT_HERO, carrying: null, order: null };
     state.components.position[id] = tileCenter({ x, y });
   }
 

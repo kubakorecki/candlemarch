@@ -31,6 +31,7 @@ import {
   drawGoodsStack,
   drawGround,
   drawHero,
+  drawHeroLoad,
   drawMissingIcon,
   drawPileGround,
   drawPlacementGhost,
@@ -64,6 +65,11 @@ interface HeroView {
   body: Graphics;
   /** Selection ring on the ground under the feet. */
   ring: Graphics;
+  /** Swings while the hero chops. */
+  axe: Graphics;
+  /** Logs in the hero's hands, and how many are drawn. */
+  load: Graphics;
+  loadDrawn: number;
 }
 
 /** Screen pixels around the hero's drawn shape that still count as clicking it. */
@@ -304,7 +310,19 @@ export class WorldRenderer {
     const bob = walking ? Math.abs(Math.sin(timeMs / 90)) * 3 : 0;
     view.node.position.set(w.x, w.y);
     view.body.position.set(0, -bob);
+    view.load.position.set(0, -bob);
     view.node.zIndex = depthOf(g.x, g.y) + 0.02;
+
+    const hero = state.components.hero[id];
+    const count = hero?.carrying?.amount ?? 0;
+    if (count !== view.loadDrawn) {
+      drawHeroLoad(view.load, count);
+      view.loadDrawn = count;
+    }
+    // Chopping: a gather order, standing still next to the tree.
+    const chopping = hero?.order?.kind === 'gather' && !state.components.path[id];
+    view.axe.visible = chopping;
+    if (chopping) view.axe.rotation = -0.4 + Math.abs(Math.sin(timeMs / 160)) * 1.3;
   }
 
   private drawVillagers(
@@ -457,9 +475,14 @@ export class WorldRenderer {
       ring.visible = this.heroSelected;
       const body = new Graphics();
       drawHero(body);
-      node.addChild(ring, body);
+      const axe = new Graphics();
+      drawAxe(axe);
+      axe.position.set(11, -22);
+      axe.visible = false;
+      const load = new Graphics();
+      node.addChild(ring, body, axe, load);
       this.objects.addChild(node);
-      this.hero = { node, body, ring };
+      this.hero = { node, body, ring, axe, load, loadDrawn: 0 };
     }
     return this.hero;
   }

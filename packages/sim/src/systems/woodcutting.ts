@@ -2,26 +2,10 @@
 import type { Content } from '@candlemarch/content';
 import { workTicks } from '../aura';
 import { destroyEntity, idsOf } from '../entities';
-import { blockedGrid, doorTile, inBounds, tileIndex } from '../grid';
+import { blockedGrid, doorTile, standingTiles, tileIndex } from '../grid';
 import { tileDistance } from '../pathfinding';
 import type { EntityId, GameState, Tile } from '../state';
 import { isAt, villagerTile, walkTo } from './movement';
-
-/** Walkable tiles around `tile` (8 directions), where a gatherer can stand. */
-function standingTiles(state: GameState, blocked: Uint8Array, tile: Tile): Tile[] {
-  const result: Tile[] = [];
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      if (dx === 0 && dy === 0) continue;
-      const x = tile.x + dx;
-      const y = tile.y + dy;
-      if (inBounds(state.map, x, y) && blocked[tileIndex(state.map, x, y)] === 0) {
-        result.push({ x, y });
-      }
-    }
-  }
-  return result;
-}
 
 /** Starts a walk to the nearest reachable tree with something left. Returns its ID, or null. */
 function walkToNearestTree(state: GameState, content: Content, id: EntityId): EntityId | null {

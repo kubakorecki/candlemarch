@@ -1,29 +1,359 @@
-// The hero: one per game, not a villager, walks only where the player orders it.
-import type { Content } from '@candlemarch/content';
-import { idsOf } from './entities';
-import type { EntityId, GameState } from './state';
-import { rerouteTo } from './systems/movement';
+// The hero: one per game, not a villager, acts only on the player's orders. It walks, chops trees
+// and carries goods by hand to kickstart the village (spec, logistics stage 1).
+import type { Content, ResourceId } from '@candlemarch/content';
+import { destroyEntity, idsOf } from './entities';
+import {
+  blockedGrid,
+  entityDoor,
+  footprint,
+  standingTiles,
+  stockpileTileIndices,
+  tileAt,
+  tileIndex,
+} from './grid';
+import {
+  freeRoomOnTile,
+  haulsIncoming,
+  nearestTile,
+  reserved,
+  reservedOnTile,
+} from './logistics/jobDispatch';
+import type { EntityId, GameState, HeroComponent, HeroTask, Tile } from './state';
+import { addToTile, amountOnTile, takeFromTile } from './stockpiles';
+import { isAt, rerouteTo, villagerTile } from './systems/movement';
 
 /** An order for the hero, given by right-clicking. */
-export type HeroOrder = { order: 'move'; x: number; y: number };
+export type HeroOrder =
+  | { order: 'move'; x: number; y: number }
+  | { order: 'gather'; tree: EntityId }
+  | { order: 'deliver'; target: EntityId }
+  | { order: 'pickup'; source: EntityId };
 
 /** The hero's entity ID, or null if this game has none. */
 export function heroOf(state: GameState): EntityId | null {
   return idsOf(state.components.hero)[0] ?? null;
 }
 
+/** Units of `resource` the hero can still pick up: 0 if its hands hold something else. */
+function roomFor(content: Content, hero: HeroComponent, resource: ResourceId): number {
+  const capacity = content.heroes[hero.type].carryCapacity;
+  if (!hero.carrying) return capacity;
+  return hero.carrying.resource === resource ? capacity - hero.carrying.amount : 0;
+}
+
+/** Walkable tiles next to tree `tree`, where the hero can chop it from. */
+function treeStandingTiles(state: GameState, content: Content, tree: EntityId): Tile[] {
+  const at = state.components.tile[tree];
+  return at ? standingTiles(state, blockedGrid(state, content), at) : [];
+}
+
 /**
- * Gives the hero a new order, replacing the current one. A move walks to the tile by the quickest
- * route (roads included). An order the hero can't carry out, such as a tile it can't reach, is
- * ignored and the current order stands.
+ * Gives the hero a new order, replacing the current one. An order the hero can't carry out, such
+ * as a tile it can't reach or a tree when its hands are full, is ignored and the current order
+ * stands.
+ * - move: walk to the tile by the quickest route (roads included).
+ * - gather: walk next to the tree and chop it until it's gone or the hero's hands are full.
+ * - deliver: carry what's in hand to a site that still needs it, once carriers' hauls are
+ *   counted, or to a stockpile with room that doesn't refuse it. The hero promises a site what it
+ *   will bring, and carriers count that as incoming.
+ * - pickup: take goods no carrier has claimed from a building's output buffer or a stockpile,
+ *   as many as the hero's hands still hold.
  */
 export function orderHero(state: GameState, content: Content, order: HeroOrder): void {
   const id = heroOf(state);
-  if (id === null) return;
+  const hero = id === null ? undefined : state.components.hero[id];
+  if (id === null || !hero) return;
   switch (order.order) {
     case 'move': {
-      rerouteTo(state, content, id, [{ x: order.x, y: order.y }]);
+      if (rerouteTo(state, content, id, [{ x: order.x, y: order.y }])) hero.order = null;
+      return;
+    }
+    case 'gather': {
+      const tree = state.components.mapObject[order.tree];
+      if (!tree || tree.amount <= 0) return;
+      const def = content.mapObjects[tree.type];
+      if (roomFor(content, hero, def.resource) <= 0) return;
+      if (!rerouteTo(state, content, id, treeStandingTiles(state, content, order.tree))) return;
+      hero.order = { kind: 'gather', tree: order.tree, ticksLeft: def.gatherTicks };
+      return;
+    }
+    case 'deliver': {
+      const task = deliverTask(state, content, hero, order.target);
+      if (!task || !rerouteTo(state, content, id, [tileAt(state.map, task.tile)])) return;
+      hero.order = task;
+      return;
+    }
+    case 'pickup': {
+      const task = pickupTask(state, content, hero, order.source);
+      if (!task || !rerouteTo(state, content, id, [tileAt(state.map, task.tile)])) return;
+      hero.order = task;
       return;
     }
   }
+}
+
+type PickupTask = Extract<HeroTask, { kind: 'pickup' }>;
+
+/**
+ * A pickup from `source`: its door if it's a building, or the stockpile tile nearest the hero with
+ * unclaimed goods it has room for (resources in content order). Null if there's nothing to take.
+ */
+function pickupTask(
+  state: GameState,
+  content: Content,
+  hero: HeroComponent,
+  source: EntityId,
+): PickupTask | null {
+  const building = state.components.building[source];
+  if (building) {
+    const resource = content.buildings[building.type].outputBuffer?.resource;
+    const door = entityDoor(state, content, source);
+    if (!resource || !door || unclaimedAt(state, source, resource, null) <= 0) return null;
+    if (roomFor(content, hero, resource) <= 0) return null;
+    return { kind: 'pickup', source, resource, tile: tileIndex(state.map, door.x, door.y) };
+  }
+  for (const resource of Object.keys(content.resources) as ResourceId[]) {
+    if (roomFor(content, hero, resource) <= 0) continue;
+    const tile = pileTileWithGoods(state, source, resource);
+    if (tile !== null) return { kind: 'pickup', source, resource, tile };
+  }
+  return null;
+}
+
+/**
+ * Units of `resource` at `source` no carrier has claimed: in a building's output buffer, or on
+ * stockpile tile `tile`.
+ */
+function unclaimedAt(
+  state: GameState,
+  source: EntityId,
+  resource: ResourceId,
+  tile: number | null,
+): number {
+  const { hauls } = state.logistics;
+  const building = state.components.building[source];
+  if (building) return (building.stock[resource] ?? 0) - reserved(hauls, source, resource);
+  const pile = state.components.stockpile[source];
+  if (!pile || tile === null) return 0;
+  return amountOnTile(pile, tile, resource) - reservedOnTile(hauls, tile);
+}
+
+/** The tile of stockpile `pile` nearest the hero with unclaimed `resource`, or null. */
+function pileTileWithGoods(state: GameState, pile: EntityId, resource: ResourceId): number | null {
+  const id = heroOf(state);
+  const here = id === null ? null : villagerTile(state, id);
+  if (!here) return null;
+  const found = nearestTile(
+    state.map.width,
+    stockpileTileIndices(state, pile),
+    tileIndex(state.map, here.x, here.y),
+    (i) => unclaimedAt(state, pile, resource, i),
+  );
+  return found?.tile ?? null;
+}
+
+type DeliverTask = Extract<HeroTask, { kind: 'deliver' }>;
+
+/** A delivery of what the hero holds to `target`, or null if `target` doesn't want it. */
+function deliverTask(
+  state: GameState,
+  content: Content,
+  hero: HeroComponent,
+  target: EntityId,
+): DeliverTask | null {
+  const goods = hero.carrying;
+  if (!goods) return null;
+  const { resource } = goods;
+  if (state.components.stockpile[target]) {
+    const tile = pileTileWithRoom(state, content, target, resource);
+    return tile === null ? null : { kind: 'deliver', target, resource, tile, amount: goods.amount };
+  }
+  const site = state.components.site[target];
+  const door = entityDoor(state, content, target);
+  if (!site || !door) return null;
+  const cost = content.buildings[site.type].construction?.cost.find((c) => c.resource === resource);
+  const missing = (cost?.amount ?? 0) - (site.delivered[resource] ?? 0);
+  const amount = Math.min(
+    goods.amount,
+    missing - haulsIncoming(state.logistics.hauls, target, resource),
+  );
+  if (amount <= 0) return null;
+  const tile = tileIndex(state.map, door.x, door.y);
+  return { kind: 'deliver', target, resource, tile, amount };
+}
+
+/** The tree, building, site or stockpile covering `tile`, if any. */
+function thingAt(state: GameState, content: Content, tile: Tile): EntityId | null {
+  const { mapObject, building, site, stockpile } = state.components;
+  const same = (t: Tile) => t.x === tile.x && t.y === tile.y;
+  for (const id of idsOf(state.components.tile)) {
+    const origin = state.components.tile[id] as Tile;
+    if (mapObject[id] && same(origin)) return id;
+    const type = building[id]?.type ?? site[id]?.type;
+    if (type && footprint(content.buildings[type], origin).some(same)) return id;
+    const pile = stockpile[id];
+    if (pile && stockpileTileIndices(state, id).includes(tileIndex(state.map, tile.x, tile.y))) {
+      return id;
+    }
+  }
+  return null;
+}
+
+/**
+ * What right-clicking `tile` orders the hero to do: chop a tree; deliver what it holds to a site
+ * or stockpile that wants it, or else pick up from a building or stockpile with goods; walk onto
+ * open ground. Null when there's something on the tile but nothing to do with it. The client uses
+ * this so the rules stay in the sim; the command is still checked when it's applied.
+ */
+export function heroOrderAt(state: GameState, content: Content, tile: Tile): HeroOrder | null {
+  const id = heroOf(state);
+  const hero = id === null ? undefined : state.components.hero[id];
+  if (!hero) return null;
+  const thing = thingAt(state, content, tile);
+  if (thing === null) return { order: 'move', x: tile.x, y: tile.y };
+  const tree = state.components.mapObject[thing];
+  if (tree) {
+    const resource = content.mapObjects[tree.type].resource;
+    return roomFor(content, hero, resource) > 0 ? { order: 'gather', tree: thing } : null;
+  }
+  if (deliverTask(state, content, hero, thing)) return { order: 'deliver', target: thing };
+  if (pickupTask(state, content, hero, thing)) return { order: 'pickup', source: thing };
+  return null;
+}
+
+/** Whether tile `a` touches tile `b`, diagonals included. */
+function touches(a: Tile, b: Tile): boolean {
+  return Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1;
+}
+
+/** Works the hero's order for one tick, once it has walked where the order needs it. */
+export function heroSystem(state: GameState, content: Content): void {
+  const id = heroOf(state);
+  const hero = id === null ? undefined : state.components.hero[id];
+  if (id === null || !hero?.order || state.components.path[id]) return;
+  const order = hero.order;
+
+  switch (order.kind) {
+    case 'gather': {
+      const tree = state.components.mapObject[order.tree];
+      const at = state.components.tile[order.tree];
+      const here = villagerTile(state, id);
+      if (!tree || !at || !here || tree.amount <= 0) {
+        hero.order = null; // someone else finished it
+        return;
+      }
+      if (!touches(here, at)) {
+        // Knocked off its walk: try again, or give up if the tree can't be reached any more.
+        if (!rerouteTo(state, content, id, treeStandingTiles(state, content, order.tree))) {
+          hero.order = null;
+        }
+        return;
+      }
+      order.ticksLeft -= 1;
+      if (order.ticksLeft > 0) return;
+      // The same gather rules as a woodcutter, but the hero keeps chopping while it has room.
+      const def = content.mapObjects[tree.type];
+      const amount = Math.min(
+        def.yieldPerGather,
+        tree.amount,
+        roomFor(content, hero, def.resource),
+      );
+      tree.amount -= amount;
+      hero.carrying = { resource: def.resource, amount: (hero.carrying?.amount ?? 0) + amount };
+      if (tree.amount === 0) destroyEntity(state, order.tree);
+      if (tree.amount === 0 || roomFor(content, hero, def.resource) <= 0) hero.order = null;
+      else order.ticksLeft = def.gatherTicks;
+      return;
+    }
+    case 'deliver': {
+      const site = state.components.site[order.target];
+      const pile = state.components.stockpile[order.target];
+      if ((!site && !pile) || hero.carrying?.resource !== order.resource) {
+        hero.order = null; // the site was cancelled or finished, or the pile removed: keep the goods
+        return;
+      }
+      const at = tileAt(state.map, order.tile);
+      if (!isAt(state, id, at)) {
+        if (!rerouteTo(state, content, id, [at])) hero.order = null;
+        return;
+      }
+      if (site) {
+        site.delivered[order.resource] = (site.delivered[order.resource] ?? 0) + order.amount;
+        takeFromHands(hero, order.amount);
+        hero.order = null;
+        return;
+      }
+      // A stockpile: put down what fits here, then carry the rest to the next tile with room.
+      const room = freeRoomOnTile(state, content, order.target, order.tile, order.resource);
+      const amount = Math.min(hero.carrying.amount, room);
+      if (pile && amount > 0) addToTile(pile, order.tile, { resource: order.resource, amount });
+      takeFromHands(hero, amount);
+      const next = hero.carrying
+        ? pileTileWithRoom(state, content, order.target, order.resource)
+        : null;
+      if (next === null || !rerouteTo(state, content, id, [tileAt(state.map, next)])) {
+        hero.order = null;
+        return;
+      }
+      order.tile = next;
+      return;
+    }
+    case 'pickup': {
+      const building = state.components.building[order.source];
+      const pile = state.components.stockpile[order.source];
+      if (!building && !pile) {
+        hero.order = null; // the stockpile was removed
+        return;
+      }
+      const at = tileAt(state.map, order.tile);
+      if (!isAt(state, id, at)) {
+        if (!rerouteTo(state, content, id, [at])) hero.order = null;
+        return;
+      }
+      const amount = Math.min(
+        roomFor(content, hero, order.resource),
+        unclaimedAt(state, order.source, order.resource, order.tile),
+      );
+      if (amount > 0) {
+        if (building)
+          building.stock[order.resource] = (building.stock[order.resource] ?? 0) - amount;
+        else if (pile) takeFromTile(pile, order.tile, order.resource, amount);
+        hero.carrying = {
+          resource: order.resource,
+          amount: (hero.carrying?.amount ?? 0) + amount,
+        };
+      }
+      hero.order = null;
+      return;
+    }
+  }
+}
+
+/**
+ * The tile of stockpile `pile` nearest the hero with room for `resource` once carriers' promised
+ * deliveries are counted, ties to the lowest tile index; null if none or the pile refuses it.
+ */
+function pileTileWithRoom(
+  state: GameState,
+  content: Content,
+  pile: EntityId,
+  resource: ResourceId,
+): number | null {
+  const id = heroOf(state);
+  const here = id === null ? null : villagerTile(state, id);
+  if (!here || state.components.stockpile[pile]?.refuses.includes(resource)) return null;
+  const found = nearestTile(
+    state.map.width,
+    stockpileTileIndices(state, pile),
+    tileIndex(state.map, here.x, here.y),
+    (i) => freeRoomOnTile(state, content, pile, i, resource),
+  );
+  return found?.tile ?? null;
+}
+
+/** Removes `amount` from the hero's hands, emptying them at 0. */
+function takeFromHands(hero: HeroComponent, amount: number): void {
+  if (!hero.carrying) return;
+  const left = hero.carrying.amount - amount;
+  hero.carrying = left > 0 ? { resource: hero.carrying.resource, amount: left } : null;
 }

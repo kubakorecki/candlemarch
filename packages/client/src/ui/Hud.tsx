@@ -30,6 +30,12 @@ export function Hud({ game }: { game: Game }) {
             {hud.hutLogs}/{hud.hutCapacity} logs
           </span>
         </div>
+        {hud.heroLoad && (
+          <div className="row">
+            <span className="muted">Hero carries</span>
+            <span>{hud.heroLoad}</span>
+          </div>
+        )}
       </div>
 
       {hud.message && <div className="panel message">{hud.message}</div>}

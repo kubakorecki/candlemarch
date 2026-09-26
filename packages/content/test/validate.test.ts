@@ -36,6 +36,7 @@ describe('content validation', () => {
   it('heroes use positive integers', () => {
     for (const hero of Object.values(heroes)) {
       expectPositiveInt(hero.walkSpeed, `${hero.id}.walkSpeed`);
+      expectPositiveInt(hero.carryCapacity, `${hero.id}.carryCapacity`);
       expectPositiveInt(hero.aura.radiusTiles, `${hero.id}.aura.radiusTiles`);
       expectPositiveInt(hero.aura.speedPercent, `${hero.id}.aura.speedPercent`);
     }

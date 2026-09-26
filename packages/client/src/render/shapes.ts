@@ -316,6 +316,13 @@ export function drawCarriedLog(g: Graphics): void {
   drawLog(g, 0, -52 * s, s);
 }
 
+/** `count` logs stacked over the hero's head, drawn relative to its feet. */
+export function drawHeroLoad(g: Graphics, count: number): void {
+  g.clear();
+  const s = TILE_H / 64;
+  for (let i = 0; i < count; i++) drawLog(g, (i % 2) * 3 * s, (-64 - 7 * i) * s, s);
+}
+
 /** An axe; its pivot (0, 0) is the handle end, held at the villager's side. */
 export function drawAxe(g: Graphics): void {
   g.clear();

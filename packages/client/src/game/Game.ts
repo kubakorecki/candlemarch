@@ -10,6 +10,7 @@ import {
   type EntityId,
   type GameState,
   heroOf,
+  heroOrderAt,
   idsOf,
   lShapeTiles,
   type MapName,
@@ -83,6 +84,8 @@ export interface HudState {
   pile: { id: EntityId; priority: StockpilePriority; refuses: ResourceId[] } | null;
   /** The hero is selected, so right-click orders it. */
   heroSelected: boolean;
+  /** What the hero holds, e.g. "3/5 logs", or null if this game has no hero. */
+  heroLoad: string | null;
   message: string | null;
 }
 
@@ -105,6 +108,7 @@ export class Game {
     seconds: 0,
     pile: null,
     heroSelected: false,
+    heroLoad: null,
     message: null,
   };
   private readonly listeners = new Set<() => void>();
@@ -276,6 +280,7 @@ export class Game {
       ready: true,
       hutLogs: hut && buffer ? (hut.stock[buffer.resource] ?? 0) : 0,
       hutCapacity: buffer?.capacity ?? 0,
+      heroLoad: heroLoadLabel(state),
       seconds: Math.floor(state.tick / TICKS_PER_SECOND),
     });
   }
@@ -358,8 +363,9 @@ export class Game {
       this.selectHero(hero);
       this.selectPile(hero ? null : stockpileAt(state, this.tileAt(sx, sy)));
     } else if (button === 2 && this.hud.heroSelected) {
-      const { x, y } = this.tileAt(sx, sy);
-      this.bridge.command({ type: 'orderHero', order: 'move', x, y });
+      const order = heroOrderAt(state, content, this.tileAt(sx, sy));
+      if (order) this.bridge.command({ type: 'orderHero', ...order });
+      else this.setHud({ message: 'Nothing for the hero to do there.' });
     }
   }
 
@@ -367,7 +373,9 @@ export class Game {
     this.renderer.setHeroSelected(selected);
     this.setHud({
       heroSelected: selected,
-      message: selected ? 'Hero selected. Right-click to move. Esc deselects.' : null,
+      message: selected
+        ? 'Hero selected. Right-click to walk, chop a tree, or carry goods. Esc deselects.'
+        : null,
     });
   }
 
@@ -520,6 +528,17 @@ function demolishCommand(state: GameState, tile: Tile): Command | null {
     }
   }
   return null;
+}
+
+/** What the hero holds, as "3/5 logs", or null if there's no hero. */
+function heroLoadLabel(state: GameState): string | null {
+  const id = heroOf(state);
+  const hero = id === null ? undefined : state.components.hero[id];
+  if (!hero) return null;
+  const capacity = content.heroes[hero.type].carryCapacity;
+  const goods = hero.carrying;
+  const name = content.resources[goods?.resource ?? 'logs'].name.toLowerCase();
+  return `${goods?.amount ?? 0}/${capacity} ${name}`;
 }
 
 export function formatTime(seconds: number): string {
