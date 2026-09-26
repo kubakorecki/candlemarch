@@ -59,6 +59,11 @@ export interface HeroDef {
   name: string;
   /** Walking speed in milli-tiles per tick (1000 = one tile per tick). */
   walkSpeed: number;
+  /**
+   * Production bonus: Workplaces with a footprint tile within `radiusTiles` of the hero work at
+   * `speedPercent` of their normal speed.
+   */
+  aura: { radiusTiles: number; speedPercent: number };
 }
 
 export interface RoadDef {

@@ -1,11 +1,13 @@
 // Draws sim snapshots with PixiJS. Reads state only; all game rules stay in the sim.
 import type { BuildingId, Content } from '@candlemarch/content';
 import {
+  boostedWorkplaces,
   type EntityId,
   type GameState,
   idsOf,
   openPositions,
   type Point,
+  TILE_UNITS,
   type Tile,
 } from '@candlemarch/sim';
 import { Application, Container, Graphics, Text } from 'pixi.js';
@@ -20,7 +22,9 @@ import {
 } from './iso';
 import { palette } from './palette';
 import {
+  drawAuraRadius,
   drawAxe,
+  drawBoostedMark,
   drawBuilding,
   drawCarriedLog,
   drawGoodsStack,
@@ -83,12 +87,15 @@ export class WorldRenderer {
   private readonly ground = new Graphics();
   private readonly roads = new Graphics();
   private readonly pileGround = new Graphics();
+  /** The hero's aura radius (while selected) and the Workplaces it boosts, on the ground. */
+  private readonly aura = new Graphics();
   private readonly objects = new Container({ sortableChildren: true });
   private readonly ghost = new Graphics();
   private readonly statics = new Map<string, StaticView>();
   private readonly villagers = new Map<EntityId, VillagerView>();
   private hero: HeroView | null = null;
   private heroSelected = false;
+  private lastState: GameState | null = null;
   private groundKey = '';
   private roadsKey = '';
   private pileGroundKey = '';
@@ -104,7 +111,14 @@ export class WorldRenderer {
       resolution: window.devicePixelRatio,
     });
     parent.appendChild(this.app.canvas);
-    this.world.addChild(this.ground, this.roads, this.pileGround, this.objects, this.ghost);
+    this.world.addChild(
+      this.ground,
+      this.roads,
+      this.pileGround,
+      this.aura,
+      this.objects,
+      this.ghost,
+    );
     this.app.stage.addChild(this.world);
   }
 
@@ -211,6 +225,9 @@ export class WorldRenderer {
         this.statics.delete(key);
       }
     }
+
+    this.lastState = state;
+    this.drawAura(state);
   }
 
   /** Places villagers and the hero between their previous and current positions (`alpha` 0..1). */
@@ -227,6 +244,7 @@ export class WorldRenderer {
   setHeroSelected(selected: boolean): void {
     this.heroSelected = selected;
     if (this.hero) this.hero.ring.visible = selected;
+    if (this.lastState) this.drawAura(this.lastState);
   }
 
   /** Whether screen point (sx, sy) is on the hero as last drawn. */
@@ -239,6 +257,30 @@ export class WorldRenderer {
       sy >= b.minY - HERO_HIT_PADDING &&
       sy <= b.maxY + HERO_HIT_PADDING
     );
+  }
+
+  /**
+   * Marks every Workplace the sim says is boosted and, while the hero is selected, its aura
+   * radius. The radius is centred on the hero's tile, as the sim measures it, so it moves a tile
+   * at a time.
+   */
+  private drawAura(state: GameState): void {
+    const g = this.aura;
+    g.clear();
+    const { building, hero, position, tile } = state.components;
+    for (const id of boostedWorkplaces(state, this.content)) {
+      const b = building[id];
+      const at = tile[id];
+      if (b && at) drawBoostedMark(g, this.content.buildings[b.type], at.x, at.y);
+    }
+    const heroId = idsOf(hero)[0];
+    const h = heroId === undefined ? undefined : hero[heroId];
+    const pos = heroId === undefined ? undefined : position[heroId];
+    if (this.heroSelected && h && pos) {
+      const tx = Math.floor(pos.x / TILE_UNITS);
+      const ty = Math.floor(pos.y / TILE_UNITS);
+      drawAuraRadius(g, tx + 0.5, ty + 0.5, this.content.heroes[h.type].aura.radiusTiles);
+    }
   }
 
   private drawHero(

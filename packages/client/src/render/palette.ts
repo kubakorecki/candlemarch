@@ -41,6 +41,7 @@ export const palette = {
   heroTunic: 0x4a5a4c,
   heroTrim: 0xc9a25a,
   selection: 0xe8cf86,
+  aura: 0xd9b45b,
 
   valid: 0x9dbf73,
   invalid: 0xc4584a,

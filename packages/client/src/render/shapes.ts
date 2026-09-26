@@ -1,7 +1,7 @@
 // Placeholder art drawn in code: bold ink outlines, flat earthy fills. Colours come from palette.ts.
 import type { BuildingDef } from '@candlemarch/content';
 import type { Graphics } from 'pixi.js';
-import { gridToWorld, TILE_H, type Vec } from './iso';
+import { gridToWorld, TILE_H, TILE_W, type Vec } from './iso';
 import { palette } from './palette';
 
 const INK = { width: 3, color: palette.ink, join: 'round', cap: 'round' } as const;
@@ -287,6 +287,26 @@ export function drawSelectionRing(g: Graphics): void {
   const s = TILE_H / 64;
   g.ellipse(0, 0, 22 * s, 11 * s).stroke({ width: 7 * s, color: palette.ink, alpha: 0.7 });
   g.ellipse(0, 0, 22 * s, 11 * s).stroke({ width: 3.5 * s, color: palette.selection });
+}
+
+/**
+ * The hero's aura: a circle of `radiusTiles` around grid point (gx, gy), which on the 2:1
+ * isometric ground is an ellipse.
+ */
+export function drawAuraRadius(g: Graphics, gx: number, gy: number, radiusTiles: number): void {
+  const c = gridToWorld(gx, gy);
+  const rx = (radiusTiles * TILE_W) / Math.SQRT2;
+  const ry = (radiusTiles * TILE_H) / Math.SQRT2;
+  g.ellipse(c.x, c.y, rx, ry)
+    .fill({ color: palette.aura, alpha: 0.08 })
+    .stroke({ width: 3, color: palette.aura, alpha: 0.7 });
+}
+
+/** Ground marking under a Workplace the hero's aura is boosting. */
+export function drawBoostedMark(g: Graphics, def: BuildingDef, ox: number, oy: number): void {
+  g.poly(flat(diamond(ox - 0.15, oy - 0.15, def.size.w + 0.3, def.size.h + 0.3)))
+    .fill({ color: palette.aura, alpha: 0.25 })
+    .stroke({ width: 4, color: palette.aura, alpha: 0.9, join: 'round' });
 }
 
 /** A log held over the head, drawn relative to the villager's feet. */

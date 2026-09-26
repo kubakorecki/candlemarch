@@ -1,5 +1,6 @@
 // Woodcutters: walk to the nearest tree, chop, carry the logs to their hut's output buffer, repeat.
 import type { Content } from '@candlemarch/content';
+import { workTicks } from '../aura';
 import { destroyEntity, idsOf } from '../entities';
 import { blockedGrid, doorTile, inBounds, tileIndex } from '../grid';
 import { tileDistance } from '../pathfinding';
@@ -60,8 +61,10 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
     if (!task || !v || path[id]) continue; // still walking
 
     const job = content.jobs[v.job];
-    const hut = v.workplace != null ? building[v.workplace] : undefined;
-    const hutOrigin = v.workplace != null ? state.components.tile[v.workplace] : undefined;
+    const hutId = v.workplace;
+    if (hutId === null) continue;
+    const hut = building[hutId];
+    const hutOrigin = state.components.tile[hutId];
     if (!hut || !hutOrigin) continue;
     const hutDef = content.buildings[hut.type];
     const buffer = hutDef.outputBuffer;
@@ -86,8 +89,9 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
       case 'toTree': {
         const tree = mapObject[task.tree];
         if (tree && tree.amount > 0) {
-          const def = content.mapObjects[tree.type];
-          tasks[id] = { kind: 'chopping', tree: task.tree, ticksLeft: def.gatherTicks };
+          // A hero's aura near the hut when the chop starts speeds up the whole chop.
+          const ticks = workTicks(state, content, hutId, content.mapObjects[tree.type].gatherTicks);
+          tasks[id] = { kind: 'chopping', tree: task.tree, ticksLeft: ticks };
         } else {
           tasks[id] = { kind: 'idle', retryAt: state.tick }; // someone else finished it
         }

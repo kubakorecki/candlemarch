@@ -6,5 +6,6 @@ export const heroes: Record<HeroId, HeroDef> = {
     id: 'placeholder',
     name: 'Hero',
     walkSpeed: 100, // 2 tiles per second, a little quicker than villagers
+    aura: { radiusTiles: 5, speedPercent: 125 },
   },
 };
