@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { content } from '../src/index';
 
-const { resources, terrain, mapObjects, jobs, buildings, roads } = content;
+const { resources, terrain, mapObjects, jobs, buildings, heroes, roads } = content;
 
 function expectPositiveInt(value: number, label: string): void {
   expect(Number.isInteger(value) && value > 0, `${label} = ${value}`).toBe(true);
@@ -9,7 +9,7 @@ function expectPositiveInt(value: number, label: string): void {
 
 describe('content validation', () => {
   it('every record key matches its id', () => {
-    for (const table of [resources, terrain, mapObjects, jobs, buildings, roads]) {
+    for (const table of [resources, terrain, mapObjects, jobs, buildings, heroes, roads]) {
       for (const [key, def] of Object.entries(table)) {
         expect(def.id).toBe(key);
       }
@@ -30,6 +30,12 @@ describe('content validation', () => {
       expectPositiveInt(job.walkSpeed, `${job.id}.walkSpeed`);
       expectPositiveInt(job.carryCapacity, `${job.id}.carryCapacity`);
       expectPositiveInt(job.idleRetryTicks, `${job.id}.idleRetryTicks`);
+    }
+  });
+
+  it('heroes use positive integers', () => {
+    for (const hero of Object.values(heroes)) {
+      expectPositiveInt(hero.walkSpeed, `${hero.id}.walkSpeed`);
     }
   });
 

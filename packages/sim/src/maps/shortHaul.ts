@@ -28,4 +28,5 @@ export const shortHaulMap: MapDef = {
     { job: 'carrier', x: 7, y: 10 },
     { job: 'carrier', x: 8, y: 10 },
   ],
+  hero: { x: 6, y: 10 },
 };

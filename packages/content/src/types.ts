@@ -6,6 +6,7 @@ export type MapObjectId = 'tree';
 export type BuildingId = 'woodcutters_hut' | 'hut';
 export type JobId = 'woodcutter' | 'carrier';
 export type RoadId = 'dirt_path';
+export type HeroId = 'placeholder';
 
 /** A number of units of one resource. */
 export interface ResourceAmount {
@@ -52,6 +53,14 @@ export interface JobDef {
   idleRetryTicks: number;
 }
 
+/** A hero the player controls. Not a villager: has no Job and can't die. */
+export interface HeroDef {
+  id: HeroId;
+  name: string;
+  /** Walking speed in milli-tiles per tick (1000 = one tile per tick). */
+  walkSpeed: number;
+}
+
 export interface RoadDef {
   id: RoadId;
   name: string;
@@ -90,6 +99,7 @@ export interface Content {
   mapObjects: Record<MapObjectId, MapObjectDef>;
   jobs: Record<JobId, JobDef>;
   buildings: Record<BuildingId, BuildingDef>;
+  heroes: Record<HeroId, HeroDef>;
   roads: Record<RoadId, RoadDef>;
   logistics: LogisticsDef;
 }

@@ -62,6 +62,34 @@ export function walkTo(
   return true;
 }
 
+/**
+ * Like `walkTo`, but a walker already walking first finishes the step it's on, so it doesn't
+ * jump back to the tile centre it last passed. Used when a walk is replaced mid-way.
+ */
+export function rerouteTo(
+  state: GameState,
+  content: Content,
+  id: EntityId,
+  goals: readonly Tile[],
+): boolean {
+  const path = state.components.path[id];
+  if (!path) return walkTo(state, content, id, goals);
+  const { map } = state;
+  const { from, to } = segment(path);
+  const goalIndices = goals
+    .filter((g) => inBounds(map, g.x, g.y))
+    .map((g) => tileIndex(map, g.x, g.y));
+  const rest = findPath(walkGrid(state, content), to, goalIndices);
+  if (rest === null) return false;
+  state.components.path[id] = {
+    start: from,
+    tiles: [to, ...rest],
+    next: 0,
+    progress: path.progress,
+  };
+  return true;
+}
+
 /** Cuts the current walk short so it ends at the tile being walked towards. */
 export function stopAtNextTile(state: GameState, id: EntityId): void {
   const path = state.components.path[id];
@@ -80,22 +108,31 @@ function segmentLength(width: number, from: number, to: number): number {
   return diagonal ? DIAGONAL_UNITS : TILE_UNITS;
 }
 
+/** Off-road walking speed of a villager (from its Job) or hero, in milli-tiles per tick. */
+function walkSpeedOf(state: GameState, content: Content, id: EntityId): number | undefined {
+  const job = state.components.villager[id]?.job;
+  if (job !== undefined) return content.jobs[job].walkSpeed;
+  const hero = state.components.hero[id]?.type;
+  if (hero !== undefined) return content.heroes[hero].walkSpeed;
+  return undefined;
+}
+
 /**
- * Advances every walking villager by its job's walk speed, faster on roads. Removes the walk
- * (its `PathComponent`) on arrival.
+ * Advances every walker (villagers and the hero) by its walk speed, faster on roads. Removes the
+ * walk (its `PathComponent`) on arrival.
  */
 export function movementSystem(state: GameState, content: Content): void {
   const { map } = state;
-  const { path: paths, position, villager } = state.components;
+  const { path: paths, position } = state.components;
   for (const id of idsOf(paths)) {
     const path = paths[id];
-    const job = villager[id]?.job;
-    if (!path || job === undefined) continue;
+    const speed = walkSpeedOf(state, content, id);
+    if (!path || speed === undefined) continue;
 
     // Speed depends on the tile being walked onto. Budget left over after reaching a tile
     // centre is rescaled to the next segment's speed.
     let percent = speedPercentAt(map, content, segment(path).to);
-    let budget = Math.trunc((content.jobs[job].walkSpeed * percent) / 100);
+    let budget = Math.trunc((speed * percent) / 100);
     while (budget > 0 && path.next < path.tiles.length) {
       const { from, to } = segment(path);
       const left = segmentLength(map.width, from, to) - path.progress;

@@ -2,7 +2,7 @@ import type { MapDef } from '../map';
 
 /**
  * Milestone-0 map, 24×24: a small wood north-east of the woodcutter's hut (17 trees),
- * open meadow elsewhere for placing huts, and one carrier.
+ * open meadow elsewhere for placing huts, one carrier and the hero.
  */
 export const meadowMap: MapDef = {
   name: 'meadow',
@@ -34,4 +34,5 @@ export const meadowMap: MapDef = {
   ],
   buildings: [{ type: 'woodcutters_hut', x: 8, y: 11 }],
   villagers: [{ job: 'carrier', x: 7, y: 14 }],
+  hero: { x: 9, y: 15 },
 };

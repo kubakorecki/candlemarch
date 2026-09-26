@@ -1,6 +1,7 @@
 // The game state: plain, JSON-serializable data. See CLAUDE.md "Simulation rules".
 import type {
   BuildingId,
+  HeroId,
   JobId,
   MapObjectId,
   ResourceAmount,
@@ -84,6 +85,14 @@ export interface VillagerComponent {
   carrying: ResourceAmount | null;
 }
 
+/**
+ * The hero the player controls (one per game). Not a villager: it has no Job and walks only
+ * where it's ordered. It has a `position`, and a `path` while walking.
+ */
+export interface HeroComponent {
+  type: HeroId;
+}
+
 /** A walk in progress along tile centres. Removed on arrival. */
 export interface PathComponent {
   /** Tile index the walk started from. */
@@ -110,6 +119,7 @@ export interface Components {
   site: Store<SiteComponent>;
   stockpile: Store<StockpileComponent>;
   villager: Store<VillagerComponent>;
+  hero: Store<HeroComponent>;
   position: Store<Point>;
   path: Store<PathComponent>;
   woodcutter: Store<WoodcutterTask>;

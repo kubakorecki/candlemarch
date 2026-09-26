@@ -2,6 +2,7 @@
 import type {
   BuildingId,
   Content,
+  HeroId,
   JobId,
   MapObjectId,
   RoadId,
@@ -26,7 +27,12 @@ export interface MapDef {
   stockpiles?: { x: number; y: number; w: number; h: number }[];
   /** Villagers without a workplace (e.g. carriers), by tile. */
   villagers: { job: JobId; x: number; y: number }[];
+  /** Where the hero starts, if the map has one. */
+  hero?: { x: number; y: number };
 }
+
+/** The hero every map spawns, until the player picks one at game start. */
+const DEFAULT_HERO: HeroId = 'placeholder';
 
 /** What each character in `MapDef.rows` stands for. */
 export const MAP_LEGEND: Record<
@@ -69,6 +75,7 @@ export function createEmptyState(seed: number): GameState {
       site: {},
       stockpile: {},
       villager: {},
+      hero: {},
       position: {},
       path: {},
       woodcutter: {},
@@ -79,8 +86,8 @@ export function createEmptyState(seed: number): GameState {
 
 /**
  * A new game on `map`. Entities are created in this order: trees (row-major), buildings with
- * their employees (spawned at the door), sites, stockpiles, then free villagers. Throws if the
- * map is malformed or anything on it couldn't be placed there.
+ * their employees (spawned at the door), sites, stockpiles, free villagers, then the hero. Throws
+ * if the map is malformed or anything on it couldn't be placed there.
  */
 export function createInitialState(seed: number, map: MapDef, content: Content): GameState {
   const height = map.rows.length;
@@ -145,6 +152,16 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
       throw new Error(`map ${map.name}: villager out of bounds at ${v.x},${v.y}`);
     }
     spawnVillager(state, v.job, { x: v.x, y: v.y }, null);
+  }
+
+  if (map.hero) {
+    const { x, y } = map.hero;
+    if (!inBounds(state.map, x, y)) {
+      throw new Error(`map ${map.name}: hero out of bounds at ${x},${y}`);
+    }
+    const id = createEntity(state);
+    state.components.hero[id] = { type: DEFAULT_HERO };
+    state.components.position[id] = tileCenter({ x, y });
   }
 
   return state;

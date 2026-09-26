@@ -257,6 +257,38 @@ export function drawVillager(g: Graphics, bodyColor: number): void {
     .stroke(INK);
 }
 
+/**
+ * The hero, drawn around (0, 0) = their feet: taller than a villager, in a flared cloak with a
+ * gold circlet, so it reads apart from villagers at a glance.
+ */
+export function drawHero(g: Graphics): void {
+  g.clear();
+  const s = TILE_H / 64;
+  groundShadow(g, 14 * s, 6 * s);
+  // Cloak: a trapezoid flaring towards the ground, behind the body.
+  g.poly([-7 * s, -40 * s, 7 * s, -40 * s, 15 * s, -2 * s, -15 * s, -2 * s])
+    .fill(palette.heroCloak)
+    .stroke(INK);
+  g.roundRect(-8 * s, -38 * s, 16 * s, 32 * s, 7 * s)
+    .fill(palette.heroTunic)
+    .stroke(INK);
+  g.rect(-8 * s, -20 * s, 16 * s, 4 * s).fill(palette.heroTrim);
+  g.circle(0, -48 * s, 9 * s)
+    .fill(palette.skin)
+    .stroke(INK);
+  g.moveTo(-9 * s, -52 * s)
+    .lineTo(9 * s, -52 * s)
+    .stroke({ width: 4 * s, color: palette.heroTrim, cap: 'round' });
+}
+
+/** A selection ring on the ground around (0, 0). */
+export function drawSelectionRing(g: Graphics): void {
+  g.clear();
+  const s = TILE_H / 64;
+  g.ellipse(0, 0, 22 * s, 11 * s).stroke({ width: 7 * s, color: palette.ink, alpha: 0.7 });
+  g.ellipse(0, 0, 22 * s, 11 * s).stroke({ width: 3.5 * s, color: palette.selection });
+}
+
 /** A log held over the head, drawn relative to the villager's feet. */
 export function drawCarriedLog(g: Graphics): void {
   g.clear();

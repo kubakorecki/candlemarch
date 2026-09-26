@@ -29,4 +29,5 @@ export const longHaulMap: MapDef = {
     { job: 'carrier', x: 19, y: 10 },
     { job: 'carrier', x: 20, y: 10 },
   ],
+  hero: { x: 17, y: 10 },
 };

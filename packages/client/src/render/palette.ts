@@ -37,6 +37,11 @@ export const palette = {
   skin: 0xd6b48e,
   axeHead: 0x9aa0a3,
 
+  heroCloak: 0x6b3b45,
+  heroTunic: 0x4a5a4c,
+  heroTrim: 0xc9a25a,
+  selection: 0xe8cf86,
+
   valid: 0x9dbf73,
   invalid: 0xc4584a,
 

@@ -80,6 +80,8 @@ export interface HudState {
   seconds: number;
   /** The stockpile selected by clicking it with no tool, and its settings. */
   pile: { id: EntityId; priority: StockpilePriority; refuses: ResourceId[] } | null;
+  /** The hero is selected, so right-click orders it. */
+  heroSelected: boolean;
   message: string | null;
 }
 
@@ -101,6 +103,7 @@ export class Game {
     hutCapacity: 0,
     seconds: 0,
     pile: null,
+    heroSelected: false,
     message: null,
   };
   private readonly listeners = new Set<() => void>();
@@ -146,14 +149,17 @@ export class Game {
   selectTool(tool: ToolId): void {
     this.dragStart = null;
     this.selectPile(null);
+    this.selectHero(false);
     const hint = toolDef(tool)?.hint ?? '';
     this.setHud({ tool, message: `${hint} Esc or right-click cancels.` });
     this.updateGhost();
   }
 
+  /** Leaves the current tool and clears any selection. */
   cancelTool(): void {
     this.dragStart = null;
     this.selectPile(null);
+    this.selectHero(false);
     this.setHud({ tool: null, message: null });
     this.updateGhost();
   }
@@ -239,7 +245,7 @@ export class Game {
     this.renderer.applyCamera(this.camera);
     const state = this.bridge.state;
     if (state) {
-      this.renderer.drawVillagers(
+      this.renderer.drawWalkers(
         state,
         this.bridge.prevPositions,
         this.bridge.alpha,
@@ -258,6 +264,9 @@ export class Game {
     this.renderer.syncStatics(state);
     this.refreshPile(state);
     this.updateGhost();
+    if (this.hud.heroSelected && idsOf(state.components.hero).length === 0) {
+      this.selectHero(false); // a new game or a load without a hero
+    }
 
     const { building } = state.components;
     const hut = Object.values(building).find((b) => b.type === 'woodcutters_hut');
@@ -282,9 +291,7 @@ export class Game {
   private onClick(sx: number, sy: number, button: number, shiftKey: boolean): void {
     const tool = this.hud.tool;
     if (!tool) {
-      const state = this.bridge.state;
-      const pile = state && button === 0 ? stockpileAt(state, this.tileAt(sx, sy)) : null;
-      this.selectPile(pile);
+      this.onSelectClick(sx, sy, button);
       return;
     }
     if (button === 2) {
@@ -336,6 +343,31 @@ export class Game {
         this.bridge.command({ type: 'placeStockpile', ...r });
       else this.setHud({ message: "Can't place a stockpile there." });
     }
+  }
+
+  /**
+   * Clicks with no tool. Left-click selects the hero if it's under the cursor, else the stockpile
+   * there (or nothing). Right-click orders the selected hero, RTS style.
+   */
+  private onSelectClick(sx: number, sy: number, button: number): void {
+    const state = this.bridge.state;
+    if (!state) return;
+    if (button === 0) {
+      const hero = this.renderer.hitHero(sx, sy);
+      this.selectHero(hero);
+      this.selectPile(hero ? null : stockpileAt(state, this.tileAt(sx, sy)));
+    } else if (button === 2 && this.hud.heroSelected) {
+      const { x, y } = this.tileAt(sx, sy);
+      this.bridge.command({ type: 'orderHero', order: 'move', x, y });
+    }
+  }
+
+  private selectHero(selected: boolean): void {
+    this.renderer.setHeroSelected(selected);
+    this.setHud({
+      heroSelected: selected,
+      message: selected ? 'Hero selected. Right-click to move. Esc deselects.' : null,
+    });
   }
 
   private onKey(e: KeyboardEvent): void {

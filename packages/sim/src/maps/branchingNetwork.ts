@@ -43,4 +43,5 @@ export const branchingNetworkMap: MapDef = {
     { job: 'carrier', x: 19, y: 8 },
     { job: 'carrier', x: 20, y: 8 },
   ],
+  hero: { x: 12, y: 8 },
 };

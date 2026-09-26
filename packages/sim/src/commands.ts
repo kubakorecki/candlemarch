@@ -2,6 +2,7 @@
 import type { BuildingId, Content, ResourceId } from '@candlemarch/content';
 import { createEntity, destroyEntity } from './entities';
 import { canPlaceBuilding } from './grid';
+import { type HeroOrder, orderHero } from './hero';
 import { layPath, removePath } from './roads';
 import type { EntityId, GameState, StockpilePriority, Tile } from './state';
 import { placeStockpile, removeStockpile, STOCKPILE_PRIORITIES } from './stockpiles';
@@ -14,7 +15,8 @@ export type Command =
   | { type: 'placeStockpile'; x: number; y: number; w: number; h: number }
   | { type: 'removeStockpile'; id: EntityId }
   | { type: 'setStockpilePriority'; id: EntityId; priority: StockpilePriority }
-  | { type: 'setStockpileAccepts'; id: EntityId; resource: ResourceId; accepts: boolean };
+  | { type: 'setStockpileAccepts'; id: EntityId; resource: ResourceId; accepts: boolean }
+  | ({ type: 'orderHero' } & HeroOrder);
 
 /** Applies one command. Commands that aren't valid right now are ignored. */
 export function applyCommand(state: GameState, command: Command, content: Content): void {
@@ -62,6 +64,11 @@ export function applyCommand(state: GameState, command: Command, content: Conten
       const refused = command.accepts ? others : [...others, command.resource];
       const order = Object.keys(content.resources);
       pile.refuses = refused.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+      return;
+    }
+    case 'orderHero': {
+      const { type: _, ...order } = command;
+      orderHero(state, content, order);
       return;
     }
   }

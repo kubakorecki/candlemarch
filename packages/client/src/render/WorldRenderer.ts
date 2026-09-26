@@ -25,10 +25,12 @@ import {
   drawCarriedLog,
   drawGoodsStack,
   drawGround,
+  drawHero,
   drawMissingIcon,
   drawPileGround,
   drawPlacementGhost,
   drawRoads,
+  drawSelectionRing,
   drawSite,
   drawTileGhost,
   drawTree,
@@ -51,6 +53,25 @@ interface VillagerView {
   axe: Graphics;
 }
 
+interface HeroView {
+  node: Container;
+  /** The figure; bobs while walking. */
+  body: Graphics;
+  /** Selection ring on the ground under the feet. */
+  ring: Graphics;
+}
+
+/** Screen pixels around the hero's drawn shape that still count as clicking it. */
+const HERO_HIT_PADDING = 10;
+
+/** A walker's position between its previous and current tick, in grid coordinates. */
+function interpolate(from: Point, to: Point, alpha: number): { x: number; y: number } {
+  return unitsToGrid({
+    x: from.x + (to.x - from.x) * alpha,
+    y: from.y + (to.y - from.y) * alpha,
+  });
+}
+
 /** Tool preview: a building footprint, or a set of tiles. */
 export type PlacementGhost =
   | { kind: 'building'; type: BuildingId; x: number; y: number; valid: boolean }
@@ -66,6 +87,8 @@ export class WorldRenderer {
   private readonly ghost = new Graphics();
   private readonly statics = new Map<string, StaticView>();
   private readonly villagers = new Map<EntityId, VillagerView>();
+  private hero: HeroView | null = null;
+  private heroSelected = false;
   private groundKey = '';
   private roadsKey = '';
   private pileGroundKey = '';
@@ -190,8 +213,60 @@ export class WorldRenderer {
     }
   }
 
-  /** Places villagers between their previous and current positions (`alpha` 0..1). */
-  drawVillagers(
+  /** Places villagers and the hero between their previous and current positions (`alpha` 0..1). */
+  drawWalkers(
+    state: GameState,
+    prevPositions: Record<EntityId, Point>,
+    alpha: number,
+    timeMs: number,
+  ): void {
+    this.drawVillagers(state, prevPositions, alpha, timeMs);
+    this.drawHero(state, prevPositions, alpha, timeMs);
+  }
+
+  setHeroSelected(selected: boolean): void {
+    this.heroSelected = selected;
+    if (this.hero) this.hero.ring.visible = selected;
+  }
+
+  /** Whether screen point (sx, sy) is on the hero as last drawn. */
+  hitHero(sx: number, sy: number): boolean {
+    if (!this.hero) return false;
+    const b = this.hero.node.getBounds();
+    return (
+      sx >= b.minX - HERO_HIT_PADDING &&
+      sx <= b.maxX + HERO_HIT_PADDING &&
+      sy >= b.minY - HERO_HIT_PADDING &&
+      sy <= b.maxY + HERO_HIT_PADDING
+    );
+  }
+
+  private drawHero(
+    state: GameState,
+    prevPositions: Record<EntityId, Point>,
+    alpha: number,
+    timeMs: number,
+  ): void {
+    const { hero, position } = state.components;
+    const id = idsOf(hero)[0];
+    const to = id === undefined ? undefined : position[id];
+    if (id === undefined || !to) {
+      this.hero?.node.destroy({ children: true });
+      this.hero = null;
+      return;
+    }
+    const view = this.heroView();
+    const from = prevPositions[id] ?? to;
+    const g = interpolate(from, to, alpha);
+    const w = gridToWorld(g.x, g.y);
+    const walking = from.x !== to.x || from.y !== to.y;
+    const bob = walking ? Math.abs(Math.sin(timeMs / 90)) * 3 : 0;
+    view.node.position.set(w.x, w.y);
+    view.body.position.set(0, -bob);
+    view.node.zIndex = depthOf(g.x, g.y) + 0.02;
+  }
+
+  private drawVillagers(
     state: GameState,
     prevPositions: Record<EntityId, Point>,
     alpha: number,
@@ -206,10 +281,7 @@ export class WorldRenderer {
       seen.add(id);
       const view = this.villagerView(id, v.job === 'woodcutter');
       const from = prevPositions[id] ?? to;
-      const g = unitsToGrid({
-        x: from.x + (to.x - from.x) * alpha,
-        y: from.y + (to.y - from.y) * alpha,
-      });
+      const g = interpolate(from, to, alpha);
       const w = gridToWorld(g.x, g.y);
       const walking = from.x !== to.x || from.y !== to.y;
       const bob = walking ? Math.abs(Math.sin(timeMs / 90)) * 3 : 0;
@@ -334,6 +406,21 @@ export class WorldRenderer {
     const c = gridToWorld(ox + w / 2, oy + h / 2);
     view.label.position.set(c.x, c.y - TILE_H);
     return view.label;
+  }
+
+  private heroView(): HeroView {
+    if (!this.hero) {
+      const node = new Container();
+      const ring = new Graphics();
+      drawSelectionRing(ring);
+      ring.visible = this.heroSelected;
+      const body = new Graphics();
+      drawHero(body);
+      node.addChild(ring, body);
+      this.objects.addChild(node);
+      this.hero = { node, body, ring };
+    }
+    return this.hero;
   }
 
   private villagerView(id: EntityId, woodcutter: boolean): VillagerView {

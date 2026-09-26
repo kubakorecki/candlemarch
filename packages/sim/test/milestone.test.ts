@@ -23,7 +23,7 @@ const placeHut: Record<number, Command[]> = {
 /**
  * A busier script: two huts, one of them cancelled mid-way, an invalid placement, a dirt path
  * from the woodcutter's hut door (9,13) to the first hut's door (4,17), part of which is
- * removed later, and two stockpiles, one of them removed later.
+ * removed later, two stockpiles, one of them removed later, and the hero walking about.
  */
 const script: Record<number, Command[]> = {
   0: [
@@ -32,6 +32,8 @@ const script: Record<number, Command[]> = {
     { type: 'layPath', from: { x: 5, y: 17 }, to: { x: 4, y: 17 } },
     { type: 'layPath', from: { x: 3, y: 16 }, to: { x: 6, y: 16 } }, // through the hut: ignored
   ],
+  30: [{ type: 'orderHero', order: 'move', x: 20, y: 20 }],
+  45: [{ type: 'orderHero', order: 'move', x: 2, y: 22 }], // replaces the walk mid-way
   50: [
     { type: 'placeBuilding', building: 'hut', x: 18, y: 18 },
     { type: 'placeBuilding', building: 'hut', x: 13, y: 6 }, // on a tree: ignored
@@ -40,9 +42,10 @@ const script: Record<number, Command[]> = {
     { type: 'placeStockpile', x: 14, y: 15, w: 3, h: 2 },
     { type: 'placeStockpile', x: 2, y: 20, w: 2, h: 1 },
   ],
-  700: [{ type: 'cancelConstruction', siteId: 22 }], // the second hut
+  700: [{ type: 'cancelConstruction', siteId: 23 }], // the second hut
+  1200: [{ type: 'orderHero', order: 'move', x: 12, y: 12 }],
   1500: [{ type: 'removePath', from: { x: 5, y: 15 }, to: { x: 5, y: 16 } }],
-  2500: [{ type: 'removeStockpile', id: 24 }],
+  2500: [{ type: 'removeStockpile', id: 25 }],
 };
 
 const fresh = (seed = 1) => createInitialState(seed, meadowMap, content);
@@ -70,15 +73,16 @@ describe('milestone 0', () => {
     const b = run(fresh(7), 3000, script);
     expect(a).toEqual(b);
     // The script really exercised the cancel. IDs: trees 1-17, woodcutter's hut 18,
-    // woodcutter 19, carrier 20, first site 21, second site 22, stockpiles 23 and 24.
-    expect(a.components.site[22]).toBeUndefined();
-    expect(a.components.building[22]).toBeUndefined();
+    // woodcutter 19, carrier 20, hero 21, first site 22, second site 23, stockpiles 24
+    // and 25.
+    expect(a.components.site[23]).toBeUndefined();
+    expect(a.components.building[23]).toBeUndefined();
     expect(huts(a)).toHaveLength(1);
     // 10 path tiles laid, 2 removed.
     expect(Object.keys(a.map.roads)).toHaveLength(8);
     // Once the hut was done, logs went to the stockpiles; one of them was removed.
-    expect(idsOf(a.components.stockpile)).toEqual([23]);
-    expect(Object.keys(a.components.stockpile[23]?.goods ?? {}).length).toBeGreaterThan(0);
+    expect(idsOf(a.components.stockpile)).toEqual([24]);
+    expect(Object.keys(a.components.stockpile[24]?.goods ?? {}).length).toBeGreaterThan(0);
   });
 
   // 1234: the first hut is being supplied. 2700: logs are going to the stockpile.
