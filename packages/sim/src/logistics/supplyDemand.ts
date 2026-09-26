@@ -3,7 +3,7 @@ import type { Content, ResourceId } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { stockpileTileIndices } from '../grid';
 import type { EntityId, GameState } from '../state';
-import { amountOnTile, roomOnTile } from '../stockpiles';
+import { amountOnTile, roomOnTile, STOCKPILE_PRIORITIES } from '../stockpiles';
 
 /** Goods waiting in a building's output buffer or on a stockpile. */
 export interface Supply {
@@ -58,8 +58,8 @@ export function listSupplies(state: GameState, content: Content): Supply[] {
 
 /**
  * Missing materials of every construction site (oldest site first, costs in content order),
- * then room on every stockpile (oldest first, resources in content order). Sites always come
- * before stockpiles.
+ * then room on every stockpile that doesn't refuse the resource (oldest first, resources in
+ * content order). Sites always come before stockpiles.
  */
 export function listDemands(state: GameState, content: Content): Demand[] {
   const result: Demand[] = [];
@@ -79,6 +79,7 @@ export function listDemands(state: GameState, content: Content): Demand[] {
     const pile = state.components.stockpile[id];
     if (!pile) continue;
     for (const resource of resourceIds(content)) {
+      if (pile.refuses.includes(resource)) continue;
       let room = 0;
       for (const i of stockpileTileIndices(state, id))
         room += roomOnTile(pile, i, resource, capacity);
@@ -86,6 +87,28 @@ export function listDemands(state: GameState, content: Content): Demand[] {
     }
   }
   return result;
+}
+
+/**
+ * Demands in the order they're served: each site on its own, oldest first, then stockpiles,
+ * highest priority first, those of one priority wanting one resource (resources in content
+ * order) as one group. Within a group, goods go to whichever demand is nearest, ties to the
+ * older one.
+ */
+export function demandGroups(state: GameState, demands: readonly Demand[]): Demand[][] {
+  const groups: Demand[][] = demands.filter((d) => d.kind === 'site').map((d) => [d]);
+  const piles = demands.filter((d) => d.kind === 'stockpile');
+  const resources = [...new Set(piles.map((d) => d.resource))];
+  for (const priority of STOCKPILE_PRIORITIES) {
+    for (const resource of resources) {
+      const group = piles.filter(
+        (d) =>
+          d.resource === resource && state.components.stockpile[d.target]?.priority === priority,
+      );
+      if (group.length > 0) groups.push(group);
+    }
+  }
+  return groups;
 }
 
 /** Whether goods from `supply` may be hauled to `demand`. A stockpile never supplies another. */

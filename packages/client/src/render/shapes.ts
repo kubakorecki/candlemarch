@@ -296,3 +296,97 @@ export function drawPlacementGhost(
     .fill({ color, alpha: 0.15 })
     .stroke({ width: 2, color, alpha: 0.9 });
 }
+
+/** Road tiles on one tile: `open` says which of +x, +y, −x, −y also hold road. */
+export interface RoadTile {
+  x: number;
+  y: number;
+  open: [boolean, boolean, boolean, boolean];
+}
+
+/** Rects (in tiles, relative to the tile origin) of a road piece's centre and arms, `pad` wider. */
+function roadRects(t: RoadTile, pad: number): [number, number, number, number][] {
+  const a = 0.3 - pad;
+  const b = 0.4 + pad * 2;
+  const rects: [number, number, number, number][] = [[a, a, b, b]];
+  if (t.open[0]) rects.push([a + b, a, 1 - a - b, b]);
+  if (t.open[1]) rects.push([a, a + b, b, 1 - a - b]);
+  if (t.open[2]) rects.push([0, a, a, b]);
+  if (t.open[3]) rects.push([a, 0, b, a]);
+  return rects;
+}
+
+/** Dirt paths: straight pieces, corners and junctions from each tile's open sides. */
+export function drawRoads(g: Graphics, tiles: RoadTile[]): void {
+  g.clear();
+  for (const [pad, color] of [
+    [0.06, palette.dirtDark],
+    [0, palette.dirt],
+  ] as const) {
+    for (const t of tiles) {
+      for (const [rx, ry, rw, rh] of roadRects(t, pad)) {
+        g.poly(flat(diamond(t.x + rx, t.y + ry, rw, rh))).fill(color);
+      }
+    }
+  }
+}
+
+/** Bare dirt under a stockpile rectangle. */
+export function drawPileGround(g: Graphics, x: number, y: number, w: number, h: number): void {
+  g.poly(flat(diamond(x, y, w, h)))
+    .fill(palette.pileGround)
+    .stroke(THIN_INK);
+}
+
+/** Goods on one stockpile tile, drawn around (0, 0) = the tile centre. */
+export function drawGoodsStack(g: Graphics, count: number): void {
+  g.clear();
+  drawLogPile(g, 0, 6, count);
+}
+
+/** A Flag, drawn around (0, 0) = the tile centre, with `goods` waiting beside it. */
+export function drawFlag(g: Graphics, pole: boolean, goods: number): void {
+  g.clear();
+  const s = TILE_H / 64;
+  if (pole) {
+    groundShadow(g, 8 * s, 4 * s);
+    g.rect(-2 * s, -40 * s, 4 * s, 40 * s)
+      .fill(palette.flagPole)
+      .stroke(THIN_INK);
+    g.poly([2 * s, -40 * s, 22 * s, -33 * s, 2 * s, -26 * s])
+      .fill(palette.flagCloth)
+      .stroke(THIN_INK);
+  }
+  if (goods > 0) drawLogPile(g, 16 * s, 10 * s, goods);
+}
+
+/** A warning bubble centred on (x, y): a worker (`carrier` false) or a log, struck through. */
+export function drawMissingIcon(g: Graphics, x: number, y: number, carrier: boolean): void {
+  const s = TILE_H / 64;
+  const r = 13 * s;
+  g.circle(x, y, r).fill(palette.iconBg).stroke(INK);
+  if (carrier) {
+    drawLog(g, x, y, s * 0.8);
+  } else {
+    g.circle(x, y - 4 * s, 3.5 * s).fill(palette.ink);
+    g.roundRect(x - 5 * s, y + 1 * s, 10 * s, 8 * s, 3 * s).fill(palette.ink);
+  }
+  g.moveTo(x - r * 0.7, y - r * 0.7)
+    .lineTo(x + r * 0.7, y + r * 0.7)
+    .stroke({ width: 3 * s, color: palette.invalid, cap: 'round' });
+}
+
+/** Tool preview: a set of tiles tinted valid/invalid. */
+export function drawTileGhost(
+  g: Graphics,
+  tiles: { x: number; y: number }[],
+  valid: boolean,
+): void {
+  g.clear();
+  const color = valid ? palette.valid : palette.invalid;
+  for (const t of tiles) {
+    g.poly(flat(diamond(t.x, t.y)))
+      .fill({ color, alpha: 0.4 })
+      .stroke({ width: 2, color, alpha: 0.9 });
+  }
+}

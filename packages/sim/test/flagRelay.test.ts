@@ -377,6 +377,24 @@ describe('stockpile flags', () => {
     flagAt(5, 2),
   ];
 
+  it('go to the nearest stockpile with room along the road, not the oldest', () => {
+    const s0 = run(stocked(relayGame(lane2), 3), 1, {
+      0: [
+        { type: 'layPath', from: { x: 1, y: 2 }, to: { x: 12, y: 2 } },
+        { type: 'placeStockpile', x: 12, y: 3, w: 1, h: 1 },
+        { type: 'placeStockpile', x: 4, y: 3, w: 1, h: 1 },
+        flagAt(4, 2),
+        flagAt(12, 2),
+      ],
+    });
+    const [older, newer] = idsOf(s0.components.stockpile) as [number, number];
+    const total = (s: GameState, id: number) =>
+      Object.values(s.components.stockpile[id]?.goods ?? {}).reduce((n, g) => n + g.amount, 0);
+    const s = runUntil(s0, (x) => total(x, newer) === 3, 3000);
+    expect(total(s, newer)).toBe(3);
+    expect(total(s, older)).toBe(0);
+  });
+
   it('take goods onto the nearest tile with room, ties by tile index', () => {
     const s0 = run(stocked(relayGame(lane2), 10), 1, { 0: pileCommands });
     const pile = idsOf(s0.components.stockpile)[0] as number;

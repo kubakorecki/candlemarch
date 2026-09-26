@@ -1,7 +1,16 @@
+import { content, type ResourceId } from '@candlemarch/content';
+import { STOCKPILE_PRIORITIES, type StockpilePriority } from '@candlemarch/sim';
 import { useSyncExternalStore } from 'react';
 import { SPEEDS, type Speed } from '../game/clock';
-import { formatTime, type Game } from '../game/Game';
+import { formatTime, type Game, TOOLS } from '../game/Game';
 import { MODEL_LABELS } from './modelLabels';
+
+const PRIORITY_LABELS: Record<StockpilePriority, string> = {
+  high: 'High',
+  normal: 'Normal',
+  low: 'Low',
+};
+const RESOURCE_IDS = Object.keys(content.resources) as ResourceId[];
 
 const SPEED_LABELS: Record<Speed, string> = { 0: '⏸', 1: '1×', 2: '2×', 3: '3×' };
 
@@ -30,16 +39,50 @@ export function Hud({ game }: { game: Game }) {
 
       {hud.message && <div className="panel message">{hud.message}</div>}
 
+      {hud.pile && (
+        <div className="panel pile">
+          <div className="title">Stockpile</div>
+          <div className="row">
+            <span className="muted">Priority</span>
+            <span className="choices">
+              {STOCKPILE_PRIORITIES.map((priority) => (
+                <button
+                  key={priority}
+                  type="button"
+                  className={hud.pile?.priority === priority ? 'active' : ''}
+                  onClick={() => game.setPilePriority(priority)}
+                >
+                  {PRIORITY_LABELS[priority]}
+                </button>
+              ))}
+            </span>
+          </div>
+          {RESOURCE_IDS.map((resource) => (
+            <label key={resource} className="row">
+              <span className="muted">Takes {content.resources[resource].name.toLowerCase()}</span>
+              <input
+                type="checkbox"
+                checked={!hud.pile?.refuses.includes(resource)}
+                onChange={(e) => game.setPileAccepts(resource, e.target.checked)}
+              />
+            </label>
+          ))}
+        </div>
+      )}
+
       <div className="panel toolbar">
-        <button
-          type="button"
-          className={hud.buildMode === 'hut' ? 'active' : ''}
-          disabled={!hud.ready}
-          onClick={() => (hud.buildMode === 'hut' ? game.cancelBuild() : game.startBuild('hut'))}
-          title="Build a hut (B)"
-        >
-          Build hut
-        </button>
+        {TOOLS.map((tool) => (
+          <button
+            key={tool.id}
+            type="button"
+            className={hud.tool === tool.id ? 'active' : ''}
+            disabled={!hud.ready}
+            onClick={() => (hud.tool === tool.id ? game.cancelTool() : game.selectTool(tool.id))}
+            title={`${tool.label} (${tool.key.toUpperCase()})`}
+          >
+            {tool.label}
+          </button>
+        ))}
         <span className="divider" />
         {SPEEDS.map((speed) => (
           <button

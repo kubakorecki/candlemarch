@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createInitialState } from '../src/map';
+import { maps } from '../src/maps';
 import { meadowMap } from '../src/maps/meadow';
 import { deserialize, serialize } from '../src/save';
 import type { STATE_VERSION } from '../src/state';
@@ -18,6 +19,17 @@ describe('serialize / deserialize', () => {
     delete data.components.stockpile;
     delete data.logistics;
     delete data.map.roads;
+    expect(deserialize(JSON.stringify(data))).toEqual(s);
+  });
+
+  it('gives stockpiles saved before priorities and filters the defaults', () => {
+    const s = createInitialState(9, maps.shortHaul, content);
+    const data = JSON.parse(serialize(s));
+    for (const pile of Object.values(data.components.stockpile) as Record<string, unknown>[]) {
+      delete pile.priority;
+      delete pile.refuses;
+    }
+    expect(Object.keys(data.components.stockpile).length).toBeGreaterThan(0);
     expect(deserialize(JSON.stringify(data))).toEqual(s);
   });
 

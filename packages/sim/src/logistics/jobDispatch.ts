@@ -2,12 +2,19 @@
 import type { Content, ResourceId } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { entityDoor, stockpileTileIndices, tileAt, tileIndex } from '../grid';
-import { findPath, type Grid, tileDistance } from '../pathfinding';
+import { tileDistance, travelCosts } from '../pathfinding';
 import type { EntityId, GameState, Store, Tile } from '../state';
 import { addToTile, amountOnTile, roomOnTile, takeFromTile } from '../stockpiles';
 import { isAt, stopAtNextTile, villagerTile, walkGrid, walkTo } from '../systems/movement';
 import type { LogisticsModel } from './model';
-import { canServe, type Demand, listDemands, listSupplies, type Supply } from './supplyDemand';
+import {
+  canServe,
+  type Demand,
+  demandGroups,
+  listDemands,
+  listSupplies,
+  type Supply,
+} from './supplyDemand';
 
 export interface Haul {
   resource: ResourceId;
@@ -311,8 +318,10 @@ function take(state: GameState, haul: Haul): number {
 }
 
 /**
- * Gives an idle carrier the first unmet demand (sites before stockpiles), served from the
- * nearest source with goods free to take.
+ * Gives an idle carrier the first unmet demand group (sites one by one, then stockpiles by
+ * priority), served from the source quickest to walk to with goods free to take. Among a group's
+ * demands the carrier takes the one quickest to walk to from the pickup, roads included, so
+ * goods go to the nearest stockpile with room.
  */
 function dispatch(state: GameState, content: Content, id: EntityId): void {
   const hauls = haulsOf(state);
@@ -323,29 +332,48 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
   const capacity = content.jobs[carrier.job].carryCapacity;
   const hereIndex = tileIndex(map, here.x, here.y);
   const supplies = listSupplies(state, content);
-  let grid: Grid | null = null;
+  const grid = walkGrid(state, content);
+  const fromHere = travelCosts(grid, hereIndex);
+  // Walking costs from each pickup tile, computed when first needed.
+  const fromPickup: Record<number, Float64Array> = {};
 
-  for (const demand of listDemands(state, content)) {
-    const need = demand.amount - incoming(hauls, demand.target, demand.resource);
-    if (need <= 0) continue;
+  for (const group of demandGroups(state, listDemands(state, content))) {
+    const open = group.flatMap((demand) => {
+      const need = demand.amount - incoming(hauls, demand.target, demand.resource);
+      return need > 0 ? [{ demand, need }] : [];
+    });
+    const first = open[0];
+    if (!first) continue;
 
+    // Every demand in a group takes the same resource from the same kinds of source.
     const sources = supplies
-      .filter((s) => canServe(s, demand))
+      .filter((s) => canServe(s, first.demand))
       .flatMap((s) => {
         const pickup = pickupFor(state, content, s, hereIndex);
         if (!pickup) return [];
-        const distance = tileDistance(map.width, hereIndex, pickup.tile);
-        return [{ source: s.source, pickup, distance }];
+        const cost = fromHere[pickup.tile] as number;
+        return cost === Number.POSITIVE_INFINITY ? [] : [{ source: s.source, pickup, cost }];
       })
-      .sort((a, b) => a.distance - b.distance || a.source - b.source);
+      .sort((a, b) => a.cost - b.cost || a.source - b.source);
 
     for (const { source, pickup } of sources) {
-      const dropoff = dropoffFor(state, content, demand, pickup.tile);
-      if (!dropoff) continue;
-      // Only take a haul whose drop-off is reachable from the pickup.
-      grid ??= walkGrid(state, content);
-      const leg = findPath(grid, pickup.tile, [dropoff.tile]);
-      if (leg === null || !walkTo(state, content, id, [tileAt(map, pickup.tile)])) continue;
+      fromPickup[pickup.tile] ??= travelCosts(grid, pickup.tile);
+      const costs = fromPickup[pickup.tile] as Float64Array;
+      const dropoffs = open
+        .flatMap(({ demand, need }) => {
+          const dropoff = dropoffFor(state, content, demand, pickup.tile);
+          if (!dropoff) return [];
+          const cost = costs[dropoff.tile] as number;
+          // Only take a haul whose drop-off is reachable from the pickup.
+          return cost === Number.POSITIVE_INFINITY ? [] : [{ demand, need, dropoff, cost }];
+        })
+        // A stable sort, so ties go to the earlier demand.
+        .sort((a, b) => a.cost - b.cost);
+
+      const best = dropoffs[0];
+      if (!best) continue;
+      if (!walkTo(state, content, id, [tileAt(map, pickup.tile)])) continue;
+      const { demand, need, dropoff } = best;
       const haul: Haul = {
         resource: demand.resource,
         amount: Math.min(capacity, pickup.available, need, dropoff.room),

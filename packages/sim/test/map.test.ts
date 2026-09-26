@@ -79,7 +79,12 @@ describe('createInitialState with roads, flags, stockpiles and sites', () => {
     // IDs: woodcutter's hut 1, its woodcutter 2, site 3, stockpile 4, carrier 5.
     expect(s.components.site[3]).toEqual({ type: 'hut', delivered: {}, buildProgress: 0 });
     expect(s.components.tile[3]).toEqual({ x: 3, y: 1 });
-    expect(s.components.stockpile[4]).toEqual({ size: { w: 2, h: 2 }, goods: {} });
+    expect(s.components.stockpile[4]).toEqual({
+      size: { w: 2, h: 2 },
+      priority: 'normal',
+      refuses: [],
+      goods: {},
+    });
     expect(s.components.tile[4]).toEqual({ x: 7, y: 1 });
     expect(s.components.villager[5]?.job).toBe('carrier');
   });

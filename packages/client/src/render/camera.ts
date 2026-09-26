@@ -1,5 +1,6 @@
 // Camera input: drag to pan, mouse wheel to zoom around the cursor. Clicks that don't drag
-// are reported as clicks.
+// are reported as clicks. A left press the handlers claim with `onToolDown` becomes a tool drag
+// instead of a pan.
 import { type CameraView, screenToWorld } from './iso';
 
 const MIN_ZOOM = 0.25;
@@ -11,11 +12,15 @@ export interface CameraInputHandlers {
   onHover(sx: number, sy: number): void;
   onLeave(): void;
   onClick(sx: number, sy: number, button: number, shiftKey: boolean): void;
+  /** A left press; return true to take it as a tool drag, reported on release by `onToolUp`. */
+  onToolDown(sx: number, sy: number): boolean;
+  onToolUp(sx: number, sy: number, shiftKey: boolean): void;
 }
 
 export class CameraInput {
   private press: { x: number; y: number; camX: number; camY: number; dragging: boolean } | null =
     null;
+  private toolPress = false;
   private readonly abort = new AbortController();
 
   constructor(
@@ -45,6 +50,11 @@ export class CameraInput {
   private down(e: PointerEvent): void {
     if (e.button !== 0 && e.button !== 1) return;
     const p = this.local(e);
+    if (e.button === 0 && this.handlers.onToolDown(p.x, p.y)) {
+      this.toolPress = true;
+      this.canvas.setPointerCapture(e.pointerId);
+      return;
+    }
     this.press = { ...p, camX: this.camera.x, camY: this.camera.y, dragging: false };
     this.canvas.setPointerCapture(e.pointerId);
   }
@@ -74,7 +84,10 @@ export class CameraInput {
     this.press = null;
     this.canvas.style.cursor = '';
     if (this.canvas.hasPointerCapture(e.pointerId)) this.canvas.releasePointerCapture(e.pointerId);
-    if (e.button === 2) {
+    if (this.toolPress && e.button === 0) {
+      this.toolPress = false;
+      this.handlers.onToolUp(p.x, p.y, e.shiftKey);
+    } else if (e.button === 2) {
       this.handlers.onClick(p.x, p.y, 2, e.shiftKey);
     } else if (press && !press.dragging) {
       this.handlers.onClick(p.x, p.y, e.button, e.shiftKey);

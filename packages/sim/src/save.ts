@@ -35,5 +35,9 @@ function normalizeLoadedState(loaded: LoadedState): GameState {
     map: { ...empty.map, ...loaded.map },
     components: { ...empty.components, ...loaded.components },
   };
+  for (const pile of Object.values(state.components.stockpile)) {
+    pile.priority ??= 'normal';
+    pile.refuses ??= [];
+  }
   return state;
 }

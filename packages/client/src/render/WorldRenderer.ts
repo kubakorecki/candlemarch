@@ -1,6 +1,14 @@
 // Draws sim snapshots with PixiJS. Reads state only; all game rules stay in the sim.
 import type { BuildingId, Content } from '@candlemarch/content';
-import { type EntityId, type GameState, idsOf, type Point } from '@candlemarch/sim';
+import {
+  type EntityId,
+  type GameState,
+  idsOf,
+  openPositions,
+  type Point,
+  type Tile,
+  unstaffedSegments,
+} from '@candlemarch/sim';
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import {
   type CameraView,
@@ -16,11 +24,18 @@ import {
   drawAxe,
   drawBuilding,
   drawCarriedLog,
+  drawFlag,
+  drawGoodsStack,
   drawGround,
+  drawMissingIcon,
+  drawPileGround,
   drawPlacementGhost,
+  drawRoads,
   drawSite,
+  drawTileGhost,
   drawTree,
   drawVillager,
+  type RoadTile,
 } from './shapes';
 
 /** A tree, building or construction site, redrawn only when what it shows changes. */
@@ -38,22 +53,24 @@ interface VillagerView {
   axe: Graphics;
 }
 
-export interface PlacementGhost {
-  type: BuildingId;
-  x: number;
-  y: number;
-  valid: boolean;
-}
+/** Tool preview: a building footprint, or a set of tiles. */
+export type PlacementGhost =
+  | { kind: 'building'; type: BuildingId; x: number; y: number; valid: boolean }
+  | { kind: 'tiles'; tiles: Tile[]; valid: boolean };
 
 export class WorldRenderer {
   readonly app = new Application();
   private readonly world = new Container();
   private readonly ground = new Graphics();
+  private readonly roads = new Graphics();
+  private readonly pileGround = new Graphics();
   private readonly objects = new Container({ sortableChildren: true });
   private readonly ghost = new Graphics();
   private readonly statics = new Map<string, StaticView>();
   private readonly villagers = new Map<EntityId, VillagerView>();
   private groundKey = '';
+  private roadsKey = '';
+  private pileGroundKey = '';
 
   constructor(private readonly content: Content) {}
 
@@ -66,7 +83,7 @@ export class WorldRenderer {
       resolution: window.devicePixelRatio,
     });
     parent.appendChild(this.app.canvas);
-    this.world.addChild(this.ground, this.objects, this.ghost);
+    this.world.addChild(this.ground, this.roads, this.pileGround, this.objects, this.ghost);
     this.app.stage.addChild(this.world);
   }
 
@@ -97,6 +114,8 @@ export class WorldRenderer {
       this.groundKey = groundKey;
     }
 
+    this.syncRoads(state);
+
     const seen = new Set<string>();
     const { tile, mapObject, building, site } = state.components;
 
@@ -122,10 +141,15 @@ export class WorldRenderer {
       if (!b || !at) continue;
       const def = this.content.buildings[b.type];
       const stock = def.outputBuffer ? (b.stock[def.outputBuffer.resource] ?? 0) : 0;
+      const unstaffed = openPositions(state, this.content, id).length > 0;
       const view = this.staticView(`building:${id}`, seen);
-      const key = `${b.type}@${at.x},${at.y}:${stock}`;
+      const key = `${b.type}@${at.x},${at.y}:${stock}:${unstaffed}`;
       if (view.key !== key) {
         drawBuilding(view.graphics, def, at.x, at.y, stock);
+        if (unstaffed) {
+          const c = gridToWorld(at.x + def.size.w / 2, at.y + def.size.h / 2);
+          drawMissingIcon(view.graphics, c.x, c.y - TILE_H * 2.4, false);
+        }
         view.key = key;
         view.node.zIndex = depthOf(at.x + def.size.w - 0.5, at.y + def.size.h - 0.5);
       }
@@ -157,6 +181,9 @@ export class WorldRenderer {
           ? `${delivered}/${needed} logs`
           : `building ${Math.floor(progress * 100)}%`;
     }
+
+    this.syncStockpiles(state, seen);
+    this.syncFlags(state, seen);
 
     for (const [key, view] of this.statics) {
       if (!seen.has(key)) {
@@ -206,7 +233,7 @@ export class WorldRenderer {
 
   setGhost(ghost: PlacementGhost | null): void {
     this.ghost.visible = ghost !== null;
-    if (ghost) {
+    if (ghost?.kind === 'building') {
       drawPlacementGhost(
         this.ghost,
         this.content.buildings[ghost.type],
@@ -214,6 +241,104 @@ export class WorldRenderer {
         ghost.y,
         ghost.valid,
       );
+    } else if (ghost) {
+      drawTileGhost(this.ghost, ghost.tiles, ghost.valid);
+    }
+  }
+
+  private syncRoads(state: GameState): void {
+    const { map } = state;
+    const key = Object.keys(map.roads).join(',');
+    if (key === this.roadsKey) return;
+    this.roadsKey = key;
+    const has = (x: number, y: number) =>
+      x >= 0 &&
+      y >= 0 &&
+      x < map.width &&
+      y < map.height &&
+      map.roads[y * map.width + x] !== undefined;
+    const tiles: RoadTile[] = Object.keys(map.roads).map((k) => {
+      const i = Number(k);
+      const x = i % map.width;
+      const y = Math.floor(i / map.width);
+      return { x, y, open: [has(x + 1, y), has(x, y + 1), has(x - 1, y), has(x, y - 1)] };
+    });
+    drawRoads(this.roads, tiles);
+  }
+
+  /** Bare dirt under each stockpile, and a stack per tile that grows with its amount. */
+  private syncStockpiles(state: GameState, seen: Set<string>): void {
+    const { tile, stockpile } = state.components;
+    const width = state.map.width;
+    const rects: string[] = [];
+    for (const id of idsOf(stockpile)) {
+      const pile = stockpile[id];
+      const at = tile[id];
+      if (!pile || !at) continue;
+      rects.push(`${at.x},${at.y},${pile.size.w},${pile.size.h}`);
+      for (const [k, goods] of Object.entries(pile.goods)) {
+        const i = Number(k);
+        const x = i % width;
+        const y = Math.floor(i / width);
+        const view = this.staticView(`pileTile:${i}`, seen);
+        const key = `${x},${y}:${goods.resource}:${goods.amount}`;
+        if (view.key !== key) {
+          drawGoodsStack(view.graphics, goods.amount);
+          view.key = key;
+          const c = tileCenterWorld(x, y);
+          view.node.position.set(c.x, c.y);
+          view.node.zIndex = depthOf(x + 0.5, y + 0.5);
+        }
+      }
+    }
+    const key = rects.join(';');
+    if (key === this.pileGroundKey) return;
+    this.pileGroundKey = key;
+    this.pileGround.clear();
+    for (const r of rects) {
+      const [x, y, w, h] = r.split(',').map(Number) as [number, number, number, number];
+      drawPileGround(this.pileGround, x, y, w, h);
+    }
+  }
+
+  /** Flags, goods waiting on Flags (doors included), and "no carrier" over unstaffed Segments. */
+  private syncFlags(state: GameState, seen: Set<string>): void {
+    const logistics = state.logistics;
+    if (logistics.model !== 'flagRelay') return;
+    const width = state.map.width;
+    const tiles = new Set<number>(logistics.flags);
+    for (const k of Object.keys(logistics.waiting)) tiles.add(Number(k));
+    const placed = new Set(logistics.flags);
+    for (const i of tiles) {
+      const pole = placed.has(i);
+      const goods = logistics.waiting[i]?.length ?? 0;
+      if (!pole && goods === 0) continue;
+      const x = i % width;
+      const y = Math.floor(i / width);
+      const view = this.staticView(`flag:${i}`, seen);
+      const key = `${x},${y}:${pole}:${goods}`;
+      if (view.key !== key) {
+        drawFlag(view.graphics, pole, goods);
+        view.key = key;
+        const c = tileCenterWorld(x, y);
+        view.node.position.set(c.x, c.y);
+        view.node.zIndex = depthOf(x + 0.5, y + 0.5);
+      }
+    }
+    for (const segment of unstaffedSegments(state)) {
+      const mid = segment.tiles[Math.floor(segment.tiles.length / 2)] ?? segment.ends[0];
+      const view = this.staticView(`noCarrier:${segment.ends.join('-')}`, seen);
+      const key = `${mid}/${width}`;
+      if (view.key !== key) {
+        view.graphics.clear();
+        drawMissingIcon(view.graphics, 0, -TILE_H * 0.8, true);
+        view.key = key;
+        const x = mid % width;
+        const y = Math.floor(mid / width);
+        const c = tileCenterWorld(x, y);
+        view.node.position.set(c.x, c.y);
+        view.node.zIndex = depthOf(x + 0.5, y + 0.5) + 0.5;
+      }
     }
   }
 

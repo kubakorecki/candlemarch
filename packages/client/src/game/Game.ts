@@ -1,28 +1,88 @@
 // Glue between the sim worker, the renderer, input and the React HUD. Holds UI-only state
 // (speed, build mode); everything about the world comes from sim snapshots.
-import { type BuildingId, content } from '@candlemarch/content';
+import { type BuildingId, content, type ResourceId } from '@candlemarch/content';
 import {
+  type Command,
+  canLayPath,
   canPlaceBuilding,
+  canPlaceFlag,
+  canPlaceStockpile,
   DEFAULT_LOGISTICS_MODEL,
   DEFAULT_MAP,
+  type EntityId,
   type GameState,
+  idsOf,
   type LogisticsModelId,
+  lShapeTiles,
   type MapName,
+  type StockpilePriority,
   TICKS_PER_SECOND,
+  type Tile,
 } from '@candlemarch/sim';
 import { CameraInput } from '../render/camera';
 import { type CameraView, gridToWorld, screenToTile } from '../render/iso';
-import { WorldRenderer } from '../render/WorldRenderer';
+import { type PlacementGhost, WorldRenderer } from '../render/WorldRenderer';
 import type { Speed } from './clock';
 import { SimBridge } from './SimBridge';
 
 const SAVE_KEY = 'candlemarch.save';
 const NEW_GAME_SEED = 1;
 
+export type ToolId = BuildingId | 'path' | 'removePath' | 'flag' | 'stockpile' | 'demolish';
+
+/** HUD tools in toolbar order, with their keyboard shortcut. `drag` tools act on press-drag-release. */
+export const TOOLS: readonly {
+  id: ToolId;
+  label: string;
+  key: string;
+  drag: boolean;
+  hint: string;
+}[] = [
+  {
+    id: 'hut',
+    label: 'Hut',
+    key: 'b',
+    drag: false,
+    hint: 'Click to place. Shift-click places more.',
+  },
+  {
+    id: 'woodcutters_hut',
+    label: "Woodcutter's hut",
+    key: 'w',
+    drag: false,
+    hint: 'Click to place. Shift-click places more.',
+  },
+  { id: 'path', label: 'Path', key: 'r', drag: true, hint: 'Drag to lay an L-shaped path.' },
+  { id: 'removePath', label: 'Remove path', key: 'x', drag: true, hint: 'Drag to remove path.' },
+  {
+    id: 'flag',
+    label: 'Flag',
+    key: 'f',
+    drag: false,
+    hint: 'Click a path to place or remove a Flag.',
+  },
+  { id: 'stockpile', label: 'Stockpile', key: 's', drag: true, hint: 'Drag a rectangle.' },
+  {
+    id: 'demolish',
+    label: 'Demolish',
+    key: 'd',
+    drag: false,
+    hint: 'Click a Flag, stockpile or construction site to remove it.',
+  },
+];
+
+function toolDef(id: ToolId) {
+  return TOOLS.find((t) => t.id === id);
+}
+
+function isBuilding(id: ToolId): id is BuildingId {
+  return id in content.buildings;
+}
+
 export interface HudState {
   ready: boolean;
   speed: Speed;
-  buildMode: BuildingId | null;
+  tool: ToolId | null;
   /** Logs in the woodcutter's hut output buffer, and its capacity. */
   hutLogs: number;
   hutCapacity: number;
@@ -30,6 +90,8 @@ export interface HudState {
   seconds: number;
   /** Logistics model of the running game. */
   model: LogisticsModelId | null;
+  /** The stockpile selected by clicking it with no tool, and its settings. */
+  pile: { id: EntityId; priority: StockpilePriority; refuses: ResourceId[] } | null;
   message: string | null;
 }
 
@@ -38,16 +100,20 @@ export class Game {
   private readonly bridge: SimBridge;
   private input: CameraInput | null = null;
   private readonly camera: CameraView = { x: 0, y: 0, zoom: 0.6 };
-  private hover: { x: number; y: number } | null = null;
+  private hover: Tile | null = null;
+  /** Tile a tool drag started on, while one is in progress. */
+  private dragStart: Tile | null = null;
+  private selectedPile: EntityId | null = null;
   private lastSpeed: Speed = 1;
   private hud: HudState = {
     ready: false,
     speed: 1,
-    buildMode: null,
+    tool: null,
     hutLogs: 0,
     hutCapacity: 0,
     seconds: 0,
     model: null,
+    pile: null,
     message: null,
   };
   private readonly listeners = new Set<() => void>();
@@ -90,24 +156,38 @@ export class Game {
     this.setSpeed(this.bridge.speed === 0 ? this.lastSpeed : 0);
   }
 
-  startBuild(type: BuildingId): void {
-    this.setHud({
-      buildMode: type,
-      message: 'Click a tile to place it. Esc or right-click cancels.',
-    });
+  selectTool(tool: ToolId): void {
+    this.dragStart = null;
+    this.selectPile(null);
+    const hint = toolDef(tool)?.hint ?? '';
+    this.setHud({ tool, message: `${hint} Esc or right-click cancels.` });
     this.updateGhost();
   }
 
-  cancelBuild(): void {
-    this.setHud({ buildMode: null, message: null });
+  cancelTool(): void {
+    this.dragStart = null;
+    this.selectPile(null);
+    this.setHud({ tool: null, message: null });
     this.updateGhost();
+  }
+
+  setPilePriority(priority: StockpilePriority): void {
+    const id = this.selectedPile;
+    if (id !== null) this.bridge.command({ type: 'setStockpilePriority', id, priority });
+  }
+
+  setPileAccepts(resource: ResourceId, accepts: boolean): void {
+    const id = this.selectedPile;
+    if (id !== null) this.bridge.command({ type: 'setStockpileAccepts', id, resource, accepts });
   }
 
   /** Starts a new game on `map` with logistics model `model`, replacing the current one. */
   newGame(map: MapName, model: LogisticsModelId): void {
     this.cameraCentred = false;
     this.bridge.newGame(NEW_GAME_SEED, map, model);
-    this.setHud({ buildMode: null, message: null });
+    this.dragStart = null;
+    this.selectedPile = null;
+    this.setHud({ tool: null, pile: null, message: null });
     this.updateGhost();
   }
 
@@ -129,7 +209,9 @@ export class Game {
     // The save may be on another map, so centre the camera on it.
     this.cameraCentred = false;
     this.bridge.load(json);
-    this.setHud({ buildMode: null, message: 'Loaded.' });
+    this.dragStart = null;
+    this.selectedPile = null;
+    this.setHud({ tool: null, pile: null, message: 'Loaded.' });
   }
 
   destroy(): void {
@@ -156,6 +238,8 @@ export class Game {
           this.updateGhost();
         },
         onClick: (sx, sy, button, shiftKey) => this.onClick(sx, sy, button, shiftKey),
+        onToolDown: (sx, sy) => this.onToolDown(sx, sy),
+        onToolUp: (sx, sy) => this.onToolUp(sx, sy),
       },
     );
     window.addEventListener('keydown', (e) => this.onKey(e), { signal: this.abort.signal });
@@ -185,6 +269,7 @@ export class Game {
       this.cameraCentred = true;
     }
     this.renderer.syncStatics(state);
+    this.refreshPile(state);
     this.updateGhost();
 
     const { building } = state.components;
@@ -209,46 +294,163 @@ export class Game {
   }
 
   private onClick(sx: number, sy: number, button: number, shiftKey: boolean): void {
-    const type = this.hud.buildMode;
-    if (!type) return;
+    const tool = this.hud.tool;
+    if (!tool) {
+      const state = this.bridge.state;
+      const pile = state && button === 0 ? stockpileAt(state, this.tileAt(sx, sy)) : null;
+      this.selectPile(pile);
+      return;
+    }
     if (button === 2) {
-      this.cancelBuild();
+      this.cancelTool();
       return;
     }
     const tile = this.tileAt(sx, sy);
     const state = this.bridge.state;
-    if (!state || !canPlaceBuilding(state, content, type, tile.x, tile.y)) {
-      this.setHud({ message: "Can't build there." });
+    if (!state) return;
+    if (isBuilding(tool)) {
+      if (!canPlaceBuilding(state, content, tool, tile.x, tile.y)) {
+        this.setHud({ message: "Can't build there." });
+        return;
+      }
+      this.bridge.command({ type: 'placeBuilding', building: tool, x: tile.x, y: tile.y });
+      if (shiftKey) this.setHud({ message: 'Placed. Shift-click to place more.' });
+      else this.cancelTool();
       return;
     }
-    this.bridge.command({ type: 'placeBuilding', building: type, x: tile.x, y: tile.y });
-    if (shiftKey) this.setHud({ message: 'Placed. Shift-click to place more.' });
-    else this.cancelBuild();
+    const command =
+      tool === 'flag'
+        ? flagCommand(state, tile)
+        : tool === 'demolish'
+          ? demolishCommand(state, tile)
+          : null;
+    if (command) this.bridge.command(command);
+    else if (tool === 'flag' && state.logistics.model !== 'flagRelay')
+      this.setHud({ message: 'Flags are only used by flag relay.' });
+    else
+      this.setHud({
+        message: tool === 'flag' ? "Can't place a Flag there." : 'Nothing to remove there.',
+      });
+  }
+
+  private onToolDown(sx: number, sy: number): boolean {
+    const tool = this.hud.tool;
+    if (!tool || !toolDef(tool)?.drag) return false;
+    this.dragStart = this.tileAt(sx, sy);
+    this.updateGhost();
+    return true;
+  }
+
+  private onToolUp(sx: number, sy: number): void {
+    const from = this.dragStart;
+    const tool = this.hud.tool;
+    const state = this.bridge.state;
+    this.dragStart = null;
+    this.updateGhost();
+    if (!from || !tool || !state) return;
+    const to = this.tileAt(sx, sy);
+    if (tool === 'path') {
+      if (canLayPath(state, content, from, to)) this.bridge.command({ type: 'layPath', from, to });
+      else this.setHud({ message: "Can't lay a path there." });
+    } else if (tool === 'removePath') {
+      this.bridge.command({ type: 'removePath', from, to });
+    } else if (tool === 'stockpile') {
+      const r = rect(from, to);
+      if (canPlaceStockpile(state, content, r.x, r.y, r.w, r.h))
+        this.bridge.command({ type: 'placeStockpile', ...r });
+      else this.setHud({ message: "Can't place a stockpile there." });
+    }
   }
 
   private onKey(e: KeyboardEvent): void {
-    if (e.key === 'Escape') this.cancelBuild();
+    if (e.key === 'Escape') this.cancelTool();
     else if (e.key === ' ') {
       e.preventDefault();
       this.togglePause();
     } else if (e.key === '1' || e.key === '2' || e.key === '3')
       this.setSpeed(Number(e.key) as Speed);
-    else if (e.key === 'b') this.startBuild('hut');
+    else {
+      const tool = TOOLS.find((t) => t.key === e.key.toLowerCase());
+      if (tool) this.selectTool(tool.id);
+    }
   }
 
   private tileAt(sx: number, sy: number): { x: number; y: number } {
     return screenToTile(sx, sy, this.camera, this.renderer.screenWidth, this.renderer.screenHeight);
   }
 
-  private updateGhost(): void {
-    const type = this.hud.buildMode;
+  private selectPile(id: EntityId | null): void {
+    this.selectedPile = id;
     const state = this.bridge.state;
-    if (!type || !this.hover || !state) {
-      this.renderer.setGhost(null);
+    if (state) this.refreshPile(state);
+    this.updateGhost();
+  }
+
+  /** Copies the selected stockpile's settings into the HUD, or deselects it once it's gone. */
+  private refreshPile(state: GameState): void {
+    const id = this.selectedPile;
+    const pile = id === null ? undefined : state.components.stockpile[id];
+    if (id === null || !pile) {
+      this.selectedPile = null;
+      this.setHud({ pile: null });
       return;
     }
-    const { x, y } = this.hover;
-    this.renderer.setGhost({ type, x, y, valid: canPlaceBuilding(state, content, type, x, y) });
+    const next = { id, priority: pile.priority, refuses: pile.refuses };
+    if (JSON.stringify(next) !== JSON.stringify(this.hud.pile)) this.setHud({ pile: next });
+  }
+
+  /** The tool's preview under the cursor, or else the selected stockpile highlighted. */
+  private updateGhost(): void {
+    const state = this.bridge.state;
+    const tool = this.hud.tool;
+    if (state && tool && this.hover) {
+      this.renderer.setGhost(this.ghostFor(state, tool, this.hover));
+      return;
+    }
+    const id = this.selectedPile;
+    const at = id === null ? undefined : state?.components.tile[id];
+    const pile = id === null ? undefined : state?.components.stockpile[id];
+    this.renderer.setGhost(
+      at && pile
+        ? { kind: 'tiles', tiles: rectTiles(at, pile.size.w, pile.size.h), valid: true }
+        : null,
+    );
+  }
+
+  private ghostFor(state: GameState, tool: ToolId, hover: Tile): PlacementGhost {
+    const { x, y } = hover;
+    if (isBuilding(tool)) {
+      return {
+        kind: 'building',
+        type: tool,
+        x,
+        y,
+        valid: canPlaceBuilding(state, content, tool, x, y),
+      };
+    }
+    const from = this.dragStart ?? hover;
+    switch (tool) {
+      case 'path':
+        return {
+          kind: 'tiles',
+          tiles: lShapeTiles(from, hover),
+          valid: canLayPath(state, content, from, hover),
+        };
+      case 'removePath':
+        return { kind: 'tiles', tiles: lShapeTiles(from, hover), valid: true };
+      case 'stockpile': {
+        const r = rect(from, hover);
+        return {
+          kind: 'tiles',
+          tiles: rectTiles(r, r.w, r.h),
+          valid: canPlaceStockpile(state, content, r.x, r.y, r.w, r.h),
+        };
+      }
+      case 'flag':
+        return { kind: 'tiles', tiles: [hover], valid: flagCommand(state, hover) !== null };
+      case 'demolish':
+        return { kind: 'tiles', tiles: [hover], valid: demolishCommand(state, hover) !== null };
+    }
   }
 
   private setHud(patch: Partial<HudState>): void {
@@ -258,6 +460,72 @@ export class Game {
     this.hud = next;
     for (const listener of this.listeners) listener();
   }
+}
+
+/** The rectangle with corners `a` and `b`, both included. */
+function rect(a: Tile, b: Tile): { x: number; y: number; w: number; h: number } {
+  return {
+    x: Math.min(a.x, b.x),
+    y: Math.min(a.y, b.y),
+    w: Math.abs(a.x - b.x) + 1,
+    h: Math.abs(a.y - b.y) + 1,
+  };
+}
+
+function rectTiles(origin: Tile, w: number, h: number): Tile[] {
+  const tiles: Tile[] = [];
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) tiles.push({ x: origin.x + i, y: origin.y + j });
+  }
+  return tiles;
+}
+
+function covers(origin: Tile | undefined, w: number, h: number, tile: Tile): boolean {
+  return (
+    origin !== undefined &&
+    tile.x >= origin.x &&
+    tile.y >= origin.y &&
+    tile.x < origin.x + w &&
+    tile.y < origin.y + h
+  );
+}
+
+/** The stockpile covering `tile`, if any. */
+function stockpileAt(state: GameState, tile: Tile): EntityId | null {
+  const { tile: at, stockpile } = state.components;
+  for (const id of idsOf(stockpile)) {
+    const pile = stockpile[id];
+    if (pile && covers(at[id], pile.size.w, pile.size.h, tile)) return id;
+  }
+  return null;
+}
+
+function hasFlag(state: GameState, tile: Tile): boolean {
+  const index = tile.y * state.map.width + tile.x;
+  return state.logistics.model === 'flagRelay' && state.logistics.flags.includes(index);
+}
+
+/** Places a Flag where one can go, or removes the one already there. */
+function flagCommand(state: GameState, tile: Tile): Command | null {
+  if (hasFlag(state, tile)) return { type: 'removeFlag', ...tile };
+  if (canPlaceFlag(state, content, tile.x, tile.y)) return { type: 'placeFlag', ...tile };
+  return null;
+}
+
+/** Removes the Flag, stockpile or construction site on `tile`, in that order of preference. */
+function demolishCommand(state: GameState, tile: Tile): Command | null {
+  if (hasFlag(state, tile)) return { type: 'removeFlag', ...tile };
+  const pile = stockpileAt(state, tile);
+  if (pile !== null) return { type: 'removeStockpile', id: pile };
+  const { tile: at, site } = state.components;
+  for (const id of idsOf(site)) {
+    const s = site[id];
+    const size = s ? content.buildings[s.type].size : null;
+    if (size && covers(at[id], size.w, size.h, tile)) {
+      return { type: 'cancelConstruction', siteId: id };
+    }
+  }
+  return null;
 }
 
 export function formatTime(seconds: number): string {

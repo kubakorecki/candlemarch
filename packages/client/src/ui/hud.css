@@ -108,6 +108,25 @@ body,
   cursor: default;
 }
 
+.pile {
+  top: 150px;
+  left: 16px;
+  min-width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pile .row {
+  align-items: center;
+  gap: 8px;
+}
+
+.choices {
+  display: flex;
+  gap: 4px;
+}
+
 .new-game {
   top: 16px;
   right: 16px;

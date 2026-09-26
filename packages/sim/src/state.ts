@@ -63,10 +63,16 @@ export interface SiteComponent {
   buildProgress: number;
 }
 
+/** Stockpiles of higher priority are filled first, whatever the distance. */
+export type StockpilePriority = 'low' | 'normal' | 'high';
+
 /** An open-air store of goods covering a rectangle of tiles. */
 export interface StockpileComponent {
   /** Size in tiles. The entity's `tile` is its origin (smallest x and y). */
   size: { w: number; h: number };
+  priority: StockpilePriority;
+  /** Resources it takes no more of. Goods already on it stay. */
+  refuses: ResourceId[];
   /** Goods on each tile that holds any, keyed by map tile index. Empty tiles are absent. */
   goods: Record<number, ResourceAmount>;
 }

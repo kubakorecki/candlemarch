@@ -9,7 +9,10 @@ import {
   tileIndex,
   tilesUnderStockpiles,
 } from './grid';
-import type { EntityId, GameState, StockpileComponent } from './state';
+import type { EntityId, GameState, StockpileComponent, StockpilePriority } from './state';
+
+/** Stockpile priorities, highest first. */
+export const STOCKPILE_PRIORITIES: readonly StockpilePriority[] = ['high', 'normal', 'low'];
 
 /**
  * Whether a stockpile can be placed on the w×h rectangle with its origin at (x, y): every tile
@@ -56,7 +59,7 @@ export function placeStockpile(
   if (!canPlaceStockpile(state, content, x, y, w, h)) return;
   const id = createEntity(state);
   state.components.tile[id] = { x, y };
-  state.components.stockpile[id] = { size: { w, h }, goods: {} };
+  state.components.stockpile[id] = { size: { w, h }, priority: 'normal', refuses: [], goods: {} };
 }
 
 /** Removes a stockpile. Its goods are lost. Ignored if `id` isn't a stockpile. */

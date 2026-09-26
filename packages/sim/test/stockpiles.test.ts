@@ -28,7 +28,12 @@ describe('placeStockpile', () => {
     expect(piles).toHaveLength(1);
     const id = piles[0] as number;
     expect(s.components.tile[id]).toEqual({ x: 4, y: 4 });
-    expect(s.components.stockpile[id]).toEqual({ size: { w: 3, h: 2 }, goods: {} });
+    expect(s.components.stockpile[id]).toEqual({
+      size: { w: 3, h: 2 },
+      priority: 'normal',
+      refuses: [],
+      goods: {},
+    });
   });
 
   it('ignores rectangles with any tile that is taken or off the map', () => {
@@ -132,6 +137,99 @@ describe('stockpiles in job dispatch', () => {
     expect(hutStock(all)).toBe(0);
   });
 
+  it('go to the nearest stockpile with room, not the oldest', () => {
+    const far: Command = { type: 'placeStockpile', x: 10, y: 6, w: 1, h: 1 };
+    const near: Command = { type: 'placeStockpile', x: 3, y: 2, w: 1, h: 1 };
+    const s0 = step(stocked(10), [far, near], content);
+    const [older, newer] = idsOf(s0.components.stockpile) as [number, number];
+    const cap = content.logistics.stockpileTileCapacity;
+
+    const nearFull = runUntil(s0, (s) => pileTotal(s, newer) === cap, 3000);
+    expect(pileTotal(nearFull, newer)).toBe(cap);
+    expect(pileTotal(nearFull, older)).toBe(0);
+    // Only once the near one is full does the far one get any.
+    const all = runUntil(nearFull, (s) => pileTotal(s, older) === 10 - cap, 3000);
+    expect(pileTotal(all, older)).toBe(10 - cap);
+  });
+
+  it('measure nearness by walking time, so a road makes a farther stockpile nearer', () => {
+    // Off-road (7,7) is 8070 straight from the door (1,2), and at least 7736 to walk. Along the
+    // road, (11,2) is 9 × 666 + 1000 = 6994 to walk, though 10000 straight.
+    const s0 = step(
+      stocked(1),
+      [
+        { type: 'layPath', from: { x: 1, y: 2 }, to: { x: 10, y: 2 } },
+        { type: 'placeStockpile', x: 7, y: 7, w: 1, h: 1 },
+        { type: 'placeStockpile', x: 11, y: 2, w: 1, h: 1 },
+      ],
+      content,
+    );
+    const [offRoad, onRoad] = idsOf(s0.components.stockpile) as [number, number];
+    const s = runUntil(s0, (x) => pileTotal(x, offRoad) + pileTotal(x, onRoad) === 1, 2000);
+    expect(pileTotal(s, onRoad)).toBe(1);
+  });
+
+  it('fill higher priority stockpiles first, however far', () => {
+    const base = stocked(2);
+    const near = base.nextId;
+    const far = near + 1;
+    // Set in the same tick as placing, before the carrier is given a haul.
+    const s1 = step(
+      base,
+      [
+        { type: 'placeStockpile', x: 3, y: 2, w: 1, h: 1 },
+        { type: 'placeStockpile', x: 10, y: 6, w: 1, h: 1 },
+        { type: 'setStockpilePriority', id: far, priority: 'high' },
+      ],
+      content,
+    );
+    const s = runUntil(s1, (x) => pileTotal(x, far) === 2, 3000);
+    expect(pileTotal(s, far)).toBe(2);
+    expect(pileTotal(s, near)).toBe(0);
+  });
+
+  it("don't take resources they refuse; goods already on them stay", () => {
+    const s0 = step(
+      stocked(3),
+      [
+        { type: 'placeStockpile', x: 3, y: 2, w: 1, h: 1 },
+        { type: 'placeStockpile', x: 10, y: 6, w: 1, h: 1 },
+      ],
+      content,
+    );
+    const [near, far] = idsOf(s0.components.stockpile) as [number, number];
+    const one = runUntil(s0, (x) => pileTotal(x, near) === 1, 1000);
+    const refuse: Command = {
+      type: 'setStockpileAccepts',
+      id: near,
+      resource: 'logs',
+      accepts: false,
+    };
+    const s1 = step(one, [refuse], content);
+    expect(s1.components.stockpile[near]?.refuses).toEqual(['logs']);
+    const s = runUntil(s1, (x) => pileTotal(x, far) === 2, 3000);
+    expect(pileTotal(s, far)).toBe(2);
+    expect(pileTotal(s, near)).toBe(1);
+
+    const again = step(s, [{ ...refuse, accepts: true }], content);
+    expect(again.components.stockpile[near]?.refuses).toEqual([]);
+  });
+
+  it('ignore settings for things that are not stockpiles, and unknown values', () => {
+    const s0 = step(stocked(0), [{ type: 'placeStockpile', x: 3, y: 2, w: 1, h: 1 }], content);
+    const pile = idsOf(s0.components.stockpile)[0] as number;
+    const s1 = step(
+      s0,
+      [
+        { type: 'setStockpilePriority', id: pile, priority: 'urgent' as 'high' },
+        { type: 'setStockpileAccepts', id: pile, resource: 'stone' as ResourceId, accepts: false },
+        { type: 'setStockpilePriority', id: 999, priority: 'high' },
+      ],
+      content,
+    );
+    expect(s1.components.stockpile[pile]).toEqual(s0.components.stockpile[pile]);
+  });
+
   it(`hold at most ${content.logistics.stockpileTileCapacity} units per tile`, () => {
     const s0 = step(stocked(20), [{ type: 'placeStockpile', x: 4, y: 4, w: 1, h: 2 }], content);
     const pile = idsOf(s0.components.stockpile)[0] as number;
@@ -229,6 +327,8 @@ describe('stockpile tile capacity with returns', () => {
     s1.components.tile[pile] = { x: 6, y: 6 };
     s1.components.stockpile[pile] = {
       size: { w: 1, h: 1 },
+      priority: 'normal',
+      refuses: [],
       goods: { [tile]: { resource: 'logs', amount: 8 } },
     };
 

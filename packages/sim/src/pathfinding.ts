@@ -106,7 +106,7 @@ function pop(heap: Node[]): Node | undefined {
  * (a villager can always walk off its tile). Blocked goals are ignored.
  */
 export function findPath(grid: Grid, start: number, goals: readonly number[]): number[] | null {
-  const { width, height, blocked, speedPercent } = grid;
+  const { width, height, blocked } = grid;
   const size = width * height;
   const goalSet = new Set(goals.filter((g) => g >= 0 && g < size && blocked[g] === 0));
   if (goalSet.has(start)) return [];
@@ -147,26 +147,65 @@ export function findPath(grid: Grid, start: number, goals: readonly number[]): n
       return path.reverse();
     }
 
-    const cx = current % width;
-    const cy = Math.floor(current / width);
-    for (const [dx, dy] of NEIGHBOURS) {
-      const nx = cx + dx;
-      const ny = cy + dy;
-      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-      const next = ny * width + nx;
-      if (blocked[next] === 1 || closed[next] === 1) continue;
-      const diagonal = dx !== 0 && dy !== 0;
-      if (diagonal && (blocked[cy * width + nx] === 1 || blocked[ny * width + cx] === 1)) continue;
-
-      const length = diagonal ? DIAGONAL_UNITS : TILE_UNITS;
-      const g = (cost[current] as number) + stepCost(length, speedPercent[next] as number);
+    forEachStep(grid, current, (next, step) => {
+      if (closed[next] === 1) return;
+      const g = (cost[current] as number) + step;
       if (g < (cost[next] as number)) {
         cost[next] = g;
         cameFrom[next] = current;
         const h = heuristic(next);
         push(open, { f: g + h, h, index: next });
       }
-    }
+    });
   }
   return null;
+}
+
+/**
+ * Walking cost from `start` to every tile, in the same units as `findPath` (sub-tile units at
+ * off-road speed). Unreachable tiles cost `Infinity`. Blocked tiles are never entered.
+ */
+export function travelCosts(grid: Grid, start: number): Float64Array {
+  const size = grid.width * grid.height;
+  const cost = new Float64Array(size).fill(Number.POSITIVE_INFINITY);
+  if (start < 0 || start >= size) return cost;
+  const closed = new Uint8Array(size);
+  const open: Node[] = [];
+  cost[start] = 0;
+  push(open, { f: 0, h: 0, index: start });
+  for (let node = pop(open); node !== undefined; node = pop(open)) {
+    const current = node.index;
+    if (closed[current] === 1) continue;
+    closed[current] = 1;
+    forEachStep(grid, current, (next, step) => {
+      const g = (cost[current] as number) + step;
+      if (closed[next] === 0 && g < (cost[next] as number)) {
+        cost[next] = g;
+        push(open, { f: g, h: 0, index: next });
+      }
+    });
+  }
+  return cost;
+}
+
+/** Calls `visit` for each tile one step from `current`, in neighbour order, with its cost. */
+function forEachStep(
+  grid: Grid,
+  current: number,
+  visit: (next: number, cost: number) => void,
+): void {
+  const { width, height, blocked, speedPercent } = grid;
+  const cx = current % width;
+  const cy = Math.floor(current / width);
+  for (const [dx, dy] of NEIGHBOURS) {
+    const nx = cx + dx;
+    const ny = cy + dy;
+    if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+    const next = ny * width + nx;
+    if (blocked[next] === 1) continue;
+    const diagonal = dx !== 0 && dy !== 0;
+    if (diagonal && (blocked[cy * width + nx] === 1 || blocked[ny * width + cx] === 1)) continue;
+    const length = diagonal ? DIAGONAL_UNITS : TILE_UNITS;
+    visit(next, stepCost(length, speedPercent[next] as number));
+  }
 }

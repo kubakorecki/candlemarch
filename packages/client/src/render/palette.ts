@@ -22,6 +22,13 @@ export const palette = {
   door: 0x3b2d21,
 
   siteGround: 0x8a7556,
+
+  dirt: 0x9a8260,
+  dirtDark: 0x6f5a40,
+  pileGround: 0x7d6849,
+  flagPole: 0x4a3a2b,
+  flagCloth: 0xa8553d,
+  iconBg: 0xefe4cc,
   sitePost: 0xb59a70,
 
   log: 0x8b6541,

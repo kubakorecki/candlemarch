@@ -1,11 +1,11 @@
 // Player commands: the only way the outside world changes the sim.
-import type { BuildingId, Content } from '@candlemarch/content';
+import type { BuildingId, Content, ResourceId } from '@candlemarch/content';
 import { createEntity, destroyEntity } from './entities';
 import { canPlaceBuilding } from './grid';
 import { placeFlag, removeFlag } from './logistics/flagRelay';
 import { layPath, removePath } from './roads';
-import type { EntityId, GameState, Tile } from './state';
-import { placeStockpile, removeStockpile } from './stockpiles';
+import type { EntityId, GameState, StockpilePriority, Tile } from './state';
+import { placeStockpile, removeStockpile, STOCKPILE_PRIORITIES } from './stockpiles';
 
 export type Command =
   | { type: 'placeBuilding'; building: BuildingId; x: number; y: number }
@@ -14,6 +14,8 @@ export type Command =
   | { type: 'removePath'; from: Tile; to: Tile }
   | { type: 'placeStockpile'; x: number; y: number; w: number; h: number }
   | { type: 'removeStockpile'; id: EntityId }
+  | { type: 'setStockpilePriority'; id: EntityId; priority: StockpilePriority }
+  | { type: 'setStockpileAccepts'; id: EntityId; resource: ResourceId; accepts: boolean }
   | { type: 'placeFlag'; x: number; y: number }
   | { type: 'removeFlag'; x: number; y: number };
 
@@ -48,6 +50,21 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'removeStockpile': {
       removeStockpile(state, command.id);
+      return;
+    }
+    case 'setStockpilePriority': {
+      const pile = state.components.stockpile[command.id];
+      if (pile && STOCKPILE_PRIORITIES.includes(command.priority)) pile.priority = command.priority;
+      return;
+    }
+    case 'setStockpileAccepts': {
+      const pile = state.components.stockpile[command.id];
+      if (!pile || !(command.resource in content.resources)) return;
+      const others = pile.refuses.filter((r) => r !== command.resource);
+      // Kept in content order, so the same choices always give the same state.
+      const refused = command.accepts ? others : [...others, command.resource];
+      const order = Object.keys(content.resources);
+      pile.refuses = refused.sort((a, b) => order.indexOf(a) - order.indexOf(b));
       return;
     }
     case 'placeFlag': {

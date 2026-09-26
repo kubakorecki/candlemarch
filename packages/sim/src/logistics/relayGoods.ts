@@ -5,7 +5,7 @@ import type { EntityId } from '../state';
 import { amountOnStockpile } from '../stockpiles';
 import { distancesTo, stockpileFlags } from './flagNetwork';
 import type { Destination, FlagRelayState, Good, RelayTick } from './relayState';
-import { canServe, type Demand, listDemands, listSupplies } from './supplyDemand';
+import { canServe, type Demand, demandGroups, listDemands, listSupplies } from './supplyDemand';
 
 /**
  * Flags where goods for or from `entity` are handed over: a building's or site's door if it's a
@@ -148,33 +148,41 @@ function sources(tick: RelayTick, demand: Demand): Source[] {
 }
 
 /**
- * Binds goods to demands, one unit at a time: each demand (sites oldest first, then stockpiles)
- * takes goods from the source nearest along the road until its need is covered or nothing
- * connected is left. Ties go to the lower source Flag ID, then the lower destination Flag ID,
- * then the earlier source.
+ * Binds goods to demands, one unit at a time: each demand group (sites oldest first, then the
+ * stockpiles of one priority wanting a resource together, highest priority first) takes goods from the source nearest along the road
+ * to any of its demands, until every need is covered or nothing connected is left. So goods go
+ * to the nearest stockpile with room. Ties go to the lower source Flag ID, then the lower
+ * destination Flag ID, then the older demand, then the earlier source.
  */
 export function dispatchGoods(tick: RelayTick): void {
   const { state, content, relay, net } = tick;
-  for (const demand of listDemands(state, content)) {
-    const targets = handoverFlags(tick, demand.target).sort((a, b) => a - b);
-    let need = demand.amount - incoming(relay, demand.target, demand.resource);
-    while (need > 0) {
-      let best: { source: Source; to: number; distance: number } | null = null;
-      for (const source of sources(tick, demand)) {
-        for (const to of targets) {
-          const distance = distancesTo(net, to).get(source.flag);
-          if (distance === undefined) continue;
-          const better =
-            !best ||
-            distance < best.distance ||
-            (distance === best.distance && source.flag < best.source.flag) ||
-            (distance === best.distance && source.flag === best.source.flag && to < best.to);
-          if (better) best = { source, to, distance };
+  for (const group of demandGroups(state, listDemands(state, content))) {
+    const open = group.map((demand) => ({
+      demand,
+      targets: handoverFlags(tick, demand.target).sort((a, b) => a - b),
+      need: demand.amount - incoming(relay, demand.target, demand.resource),
+    }));
+    while (true) {
+      let best: { source: Source; to: number; distance: number; entry: (typeof open)[0] } | null =
+        null;
+      for (const entry of open) {
+        if (entry.need <= 0) continue;
+        for (const source of sources(tick, entry.demand)) {
+          for (const to of entry.targets) {
+            const distance = distancesTo(net, to).get(source.flag);
+            if (distance === undefined) continue;
+            const better =
+              !best ||
+              distance < best.distance ||
+              (distance === best.distance && source.flag < best.source.flag) ||
+              (distance === best.distance && source.flag === best.source.flag && to < best.to);
+            if (better) best = { source, to, distance, entry };
+          }
         }
       }
       if (!best) break;
-      best.source.send({ entity: demand.target, flag: best.to });
-      need -= 1;
+      best.source.send({ entity: best.entry.demand.target, flag: best.to });
+      best.entry.need -= 1;
     }
   }
 }
