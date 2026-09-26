@@ -3,11 +3,12 @@
 import type { Content } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { footprint, tileOfPoint } from './grid';
+import { heroOf } from './hero';
 import type { EntityId, GameState } from './state';
 
 /**
- * Work speed of a building as a percentage: 100 normally, or the best `aura.speedPercent` of any
- * hero within its `aura.radiusTiles`. Only Workplaces (buildings that employ villagers) are
+ * Work speed of a building as a percentage: 100 normally, or the hero's `aura.speedPercent` when
+ * it's within the hero's `aura.radiusTiles`. Only Workplaces (buildings that employ villagers) are
  * boosted. The radius is a circle around the hero's tile: a footprint tile counts when
  * dx² + dy² ≤ radius², in whole tiles.
  */
@@ -17,21 +18,17 @@ export function workSpeedPercent(state: GameState, content: Content, building: E
   if (!b || !origin) return 100;
   const def = content.buildings[b.type];
   if (def.employs.length === 0) return 100;
-  const tiles = footprint(def, origin);
 
-  let best = 100;
-  for (const id of idsOf(state.components.hero)) {
-    const hero = state.components.hero[id];
-    const pos = state.components.position[id];
-    if (!hero || !pos) continue;
-    const { radiusTiles, speedPercent } = content.heroes[hero.type].aura;
-    const at = tileOfPoint(pos);
-    const inRange = tiles.some(
-      (t) => (t.x - at.x) ** 2 + (t.y - at.y) ** 2 <= radiusTiles * radiusTiles,
-    );
-    if (inRange) best = Math.max(best, speedPercent);
-  }
-  return best;
+  const id = heroOf(state);
+  const hero = id === null ? undefined : state.components.hero[id];
+  const pos = id === null ? undefined : state.components.position[id];
+  if (!hero || !pos) return 100;
+  const { radiusTiles, speedPercent } = content.heroes[hero.type].aura;
+  const at = tileOfPoint(pos);
+  const inRange = footprint(def, origin).some(
+    (t) => (t.x - at.x) ** 2 + (t.y - at.y) ** 2 <= radiusTiles * radiusTiles,
+  );
+  return inRange ? speedPercent : 100;
 }
 
 /** Workplaces a hero's aura is boosting right now, in ID order. */

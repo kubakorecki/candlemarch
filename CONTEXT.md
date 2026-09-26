@@ -56,6 +56,10 @@ _Avoid_: Warehouse, depot, storage zone
 What a villager currently does: the work of their Workplace, or Carrier if they have none. A villager's Job can change; the person stays the same.
 _Avoid_: Role, profession, occupation
 
+**Hero**:
+The one unit the player controls directly, with the mouse, RTS style. Not a villager: has no Job and can't die. Its aura makes nearby Workplaces work faster.
+_Avoid_: Player character, avatar, champion
+
 ### Resources
 
 **Logs**:

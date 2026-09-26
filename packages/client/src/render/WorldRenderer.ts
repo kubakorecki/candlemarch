@@ -4,11 +4,12 @@ import {
   boostedWorkplaces,
   type EntityId,
   type GameState,
+  heroOf,
   idsOf,
   openPositions,
   type Point,
-  TILE_UNITS,
   type Tile,
+  tileOfPoint,
 } from '@candlemarch/sim';
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import {
@@ -273,13 +274,12 @@ export class WorldRenderer {
       const at = tile[id];
       if (b && at) drawBoostedMark(g, this.content.buildings[b.type], at.x, at.y);
     }
-    const heroId = idsOf(hero)[0];
-    const h = heroId === undefined ? undefined : hero[heroId];
-    const pos = heroId === undefined ? undefined : position[heroId];
+    const heroId = heroOf(state);
+    const h = heroId === null ? undefined : hero[heroId];
+    const pos = heroId === null ? undefined : position[heroId];
     if (this.heroSelected && h && pos) {
-      const tx = Math.floor(pos.x / TILE_UNITS);
-      const ty = Math.floor(pos.y / TILE_UNITS);
-      drawAuraRadius(g, tx + 0.5, ty + 0.5, this.content.heroes[h.type].aura.radiusTiles);
+      const at = tileOfPoint(pos);
+      drawAuraRadius(g, at.x + 0.5, at.y + 0.5, this.content.heroes[h.type].aura.radiusTiles);
     }
   }
 
@@ -289,10 +289,9 @@ export class WorldRenderer {
     alpha: number,
     timeMs: number,
   ): void {
-    const { hero, position } = state.components;
-    const id = idsOf(hero)[0];
-    const to = id === undefined ? undefined : position[id];
-    if (id === undefined || !to) {
+    const id = heroOf(state);
+    const to = id === null ? undefined : state.components.position[id];
+    if (id === null || !to) {
       this.hero?.node.destroy({ children: true });
       this.hero = null;
       return;

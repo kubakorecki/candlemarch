@@ -2,7 +2,8 @@
 export { boostedWorkplaces } from './aura';
 export type { Command } from './commands';
 export { idsOf } from './entities';
-export { canPlaceBuilding, doorTile, footprint, tileCenter } from './grid';
+export { canPlaceBuilding, doorTile, footprint, tileCenter, tileOfPoint } from './grid';
+export { heroOf } from './hero';
 export type { Haul, LogisticsState } from './logistics/jobDispatch';
 export { createInitialState, type MapDef } from './map';
 export { DEFAULT_MAP, type MapName, maps } from './maps';

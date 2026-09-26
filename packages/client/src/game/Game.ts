@@ -9,6 +9,7 @@ import {
   DEFAULT_MAP,
   type EntityId,
   type GameState,
+  heroOf,
   idsOf,
   lShapeTiles,
   type MapName,
@@ -264,7 +265,7 @@ export class Game {
     this.renderer.syncStatics(state);
     this.refreshPile(state);
     this.updateGhost();
-    if (this.hud.heroSelected && idsOf(state.components.hero).length === 0) {
+    if (this.hud.heroSelected && heroOf(state) === null) {
       this.selectHero(false); // a new game or a load without a hero
     }
 
