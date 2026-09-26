@@ -537,8 +537,8 @@ function heroLoadLabel(state: GameState): string | null {
   if (!hero) return null;
   const capacity = content.heroes[hero.type].carryCapacity;
   const goods = hero.carrying;
-  const name = content.resources[goods?.resource ?? 'logs'].name.toLowerCase();
-  return `${goods?.amount ?? 0}/${capacity} ${name}`;
+  if (!goods) return `0/${capacity}`;
+  return `${goods.amount}/${capacity} ${content.resources[goods.resource].name.toLowerCase()}`;
 }
 
 export function formatTime(seconds: number): string {

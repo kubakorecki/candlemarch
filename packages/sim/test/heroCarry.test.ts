@@ -93,6 +93,29 @@ describe('hero delivering', () => {
     expect(hutStock(s)).toBe(3);
   });
 
+  it('takes no delivery order for goods carriers are already bringing', () => {
+    const s0 = yardWith(4, 5);
+    const site = siteId(s0);
+    const target = s0.components.site[site];
+    if (target) target.delivered.logs = 5; // 1 still missing
+    const s1 = step(s0, [], content);
+    expect(haulsTo(s1, site)).toBe(1); // a carrier took the last one
+    const s2 = step(s1, [{ type: 'orderHero', order: 'deliver', target: site }], content);
+    expect(hero(s2)?.order).toBeNull();
+  });
+
+  it('keeps its goods when the site is cancelled on the way', () => {
+    const s0 = yardWith(0, 5);
+    const site = siteId(s0);
+    const s = run(s0, 10, {
+      0: [{ type: 'orderHero', order: 'deliver', target: site }],
+      5: [{ type: 'cancelConstruction', siteId: site }],
+    });
+    expect(s.components.site[site]).toBeUndefined();
+    expect(hero(s)?.order).toBeNull();
+    expect(hero(s)?.carrying).toEqual({ resource: 'logs', amount: 5 });
+  });
+
   it('takes no delivery order with empty hands', () => {
     const s0 = yardWith(0, 0);
     const s = step(s0, [{ type: 'orderHero', order: 'deliver', target: siteId(s0) }], content);
@@ -290,6 +313,18 @@ describe('hero gathering', () => {
     // 2 tiles of walking (20 ticks at 100/tick) then 3 chops of 40 ticks; the tick it arrives
     // on already counts towards the first chop.
     expect(end.tick).toBe(20 + 3 * 40 - 1);
+  });
+
+  it('gives up when someone else fells the tree first', () => {
+    const s0 = createInitialState(1, clearing, content);
+    const tree = treeAt(s0, 5, 1);
+    const s1 = run(s0, 5, { 0: [{ type: 'orderHero', order: 'gather', tree }] });
+    // As a woodcutter taking the last log would.
+    delete s1.components.mapObject[tree];
+    delete s1.components.tile[tree];
+    const end = runUntil(s1, idle, 200);
+    expect(hero(end)?.order).toBeNull();
+    expect(hero(end)?.carrying).toBeNull();
   });
 
   it('stops chopping once its hands are full, and takes no gather order then', () => {

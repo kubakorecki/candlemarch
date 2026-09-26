@@ -20,7 +20,7 @@ import {
 } from './logistics/jobDispatch';
 import type { EntityId, GameState, HeroComponent, HeroTask, Tile } from './state';
 import { addToTile, amountOnTile, takeFromTile } from './stockpiles';
-import { isAt, rerouteTo, villagerTile } from './systems/movement';
+import { isAt, rerouteTo, stopAtNextTile, villagerTile } from './systems/movement';
 
 /** An order for the hero, given by right-clicking. */
 export type HeroOrder =
@@ -227,21 +227,39 @@ function touches(a: Tile, b: Tile): boolean {
 }
 
 /** Works the hero's order for one tick, once it has walked where the order needs it. */
+/** Whether the tree, site, stockpile or building an order is for still exists. */
+function orderTargetExists(state: GameState, order: HeroTask): boolean {
+  const { mapObject, site, stockpile, building } = state.components;
+  switch (order.kind) {
+    case 'gather':
+      return (mapObject[order.tree]?.amount ?? 0) > 0;
+    case 'deliver':
+      return site[order.target] !== undefined || stockpile[order.target] !== undefined;
+    case 'pickup':
+      return building[order.source] !== undefined || stockpile[order.source] !== undefined;
+  }
+}
+
 export function heroSystem(state: GameState, content: Content): void {
   const id = heroOf(state);
   const hero = id === null ? undefined : state.components.hero[id];
-  if (id === null || !hero?.order || state.components.path[id]) return;
+  if (id === null || !hero?.order) return;
   const order = hero.order;
+  // Checked even while walking: the order ends as soon as what it's for is gone (tree felled,
+  // site cancelled or built, stockpile removed), and the hero stops at the next tile.
+  if (!orderTargetExists(state, order)) {
+    hero.order = null;
+    stopAtNextTile(state, id);
+    return;
+  }
+  if (state.components.path[id]) return;
 
   switch (order.kind) {
     case 'gather': {
       const tree = state.components.mapObject[order.tree];
       const at = state.components.tile[order.tree];
       const here = villagerTile(state, id);
-      if (!tree || !at || !here || tree.amount <= 0) {
-        hero.order = null; // someone else finished it
-        return;
-      }
+      if (!tree || !at || !here) return;
       if (!touches(here, at)) {
         // Knocked off its walk: try again, or give up if the tree can't be reached any more.
         if (!rerouteTo(state, content, id, treeStandingTiles(state, content, order.tree))) {
@@ -258,6 +276,10 @@ export function heroSystem(state: GameState, content: Content): void {
         tree.amount,
         roomFor(content, hero, def.resource),
       );
+      if (amount <= 0) {
+        hero.order = null; // hands full, or holding something else
+        return;
+      }
       tree.amount -= amount;
       hero.carrying = { resource: def.resource, amount: (hero.carrying?.amount ?? 0) + amount };
       if (tree.amount === 0) destroyEntity(state, order.tree);
@@ -268,8 +290,8 @@ export function heroSystem(state: GameState, content: Content): void {
     case 'deliver': {
       const site = state.components.site[order.target];
       const pile = state.components.stockpile[order.target];
-      if ((!site && !pile) || hero.carrying?.resource !== order.resource) {
-        hero.order = null; // the site was cancelled or finished, or the pile removed: keep the goods
+      if (hero.carrying?.resource !== order.resource) {
+        hero.order = null;
         return;
       }
       const at = tileAt(state.map, order.tile);
@@ -301,10 +323,6 @@ export function heroSystem(state: GameState, content: Content): void {
     case 'pickup': {
       const building = state.components.building[order.source];
       const pile = state.components.stockpile[order.source];
-      if (!building && !pile) {
-        hero.order = null; // the stockpile was removed
-        return;
-      }
       const at = tileAt(state.map, order.tile);
       if (!isAt(state, id, at)) {
         if (!rerouteTo(state, content, id, [at])) hero.order = null;

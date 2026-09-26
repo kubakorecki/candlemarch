@@ -110,4 +110,13 @@ describe('hero', () => {
     delete data.components.hero;
     expect(deserialize(JSON.stringify(data))).toEqual(s);
   });
+
+  it('loads a save made before the hero could carry', () => {
+    const s = createInitialState(1, field, content);
+    const data = JSON.parse(serialize(s));
+    const hero = data.components.hero[heroId(s)];
+    delete hero.carrying;
+    delete hero.order;
+    expect(deserialize(JSON.stringify(data))).toEqual(s);
+  });
 });
