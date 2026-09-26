@@ -7,7 +7,6 @@ import {
   openPositions,
   type Point,
   type Tile,
-  unstaffedSegments,
 } from '@candlemarch/sim';
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import {
@@ -24,7 +23,6 @@ import {
   drawAxe,
   drawBuilding,
   drawCarriedLog,
-  drawFlag,
   drawGoodsStack,
   drawGround,
   drawMissingIcon,
@@ -148,7 +146,7 @@ export class WorldRenderer {
         drawBuilding(view.graphics, def, at.x, at.y, stock);
         if (unstaffed) {
           const c = gridToWorld(at.x + def.size.w / 2, at.y + def.size.h / 2);
-          drawMissingIcon(view.graphics, c.x, c.y - TILE_H * 2.4, false);
+          drawMissingIcon(view.graphics, c.x, c.y - TILE_H * 2.4);
         }
         view.key = key;
         view.node.zIndex = depthOf(at.x + def.size.w - 0.5, at.y + def.size.h - 0.5);
@@ -183,7 +181,6 @@ export class WorldRenderer {
     }
 
     this.syncStockpiles(state, seen);
-    this.syncFlags(state, seen);
 
     for (const [key, view] of this.statics) {
       if (!seen.has(key)) {
@@ -298,47 +295,6 @@ export class WorldRenderer {
     for (const r of rects) {
       const [x, y, w, h] = r.split(',').map(Number) as [number, number, number, number];
       drawPileGround(this.pileGround, x, y, w, h);
-    }
-  }
-
-  /** Flags, goods waiting on Flags (doors included), and "no carrier" over unstaffed Segments. */
-  private syncFlags(state: GameState, seen: Set<string>): void {
-    const logistics = state.logistics;
-    if (logistics.model !== 'flagRelay') return;
-    const width = state.map.width;
-    const tiles = new Set<number>(logistics.flags);
-    for (const k of Object.keys(logistics.waiting)) tiles.add(Number(k));
-    const placed = new Set(logistics.flags);
-    for (const i of tiles) {
-      const pole = placed.has(i);
-      const goods = logistics.waiting[i]?.length ?? 0;
-      if (!pole && goods === 0) continue;
-      const x = i % width;
-      const y = Math.floor(i / width);
-      const view = this.staticView(`flag:${i}`, seen);
-      const key = `${x},${y}:${pole}:${goods}`;
-      if (view.key !== key) {
-        drawFlag(view.graphics, pole, goods);
-        view.key = key;
-        const c = tileCenterWorld(x, y);
-        view.node.position.set(c.x, c.y);
-        view.node.zIndex = depthOf(x + 0.5, y + 0.5);
-      }
-    }
-    for (const segment of unstaffedSegments(state)) {
-      const mid = segment.tiles[Math.floor(segment.tiles.length / 2)] ?? segment.ends[0];
-      const view = this.staticView(`noCarrier:${segment.ends.join('-')}`, seen);
-      const key = `${mid}/${width}`;
-      if (view.key !== key) {
-        view.graphics.clear();
-        drawMissingIcon(view.graphics, 0, -TILE_H * 0.8, true);
-        view.key = key;
-        const x = mid % width;
-        const y = Math.floor(mid / width);
-        const c = tileCenterWorld(x, y);
-        view.node.position.set(c.x, c.y);
-        view.node.zIndex = depthOf(x + 0.5, y + 0.5) + 0.5;
-      }
     }
   }
 

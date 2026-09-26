@@ -26,8 +26,6 @@ export const palette = {
   dirt: 0x9a8260,
   dirtDark: 0x6f5a40,
   pileGround: 0x7d6849,
-  flagPole: 0x4a3a2b,
-  flagCloth: 0xa8553d,
   iconBg: 0xefe4cc,
   sitePost: 0xb59a70,
 

@@ -1,7 +1,7 @@
 // Workplaces draft idle carriers into their open positions.
 import type { Content, JobId } from '@candlemarch/content';
 import { idsOf } from '../entities';
-import { logisticsModels } from '../logistics';
+import { isCarrierIdle } from '../logistics/jobDispatch';
 import type { EntityId, GameState } from '../state';
 import { assignJob } from '../villagers';
 
@@ -30,12 +30,11 @@ export function openPositions(state: GameState, content: Content, building: Enti
  * left open when no Carrier is idle are tried again next tick.
  */
 export function staffingSystem(state: GameState, content: Content): void {
-  const model = logisticsModels[state.logistics.model];
   const { villager } = state.components;
   for (const building of idsOf(state.components.building)) {
     for (const job of openPositions(state, content, building)) {
       const carrier = idsOf(villager).find(
-        (id) => villager[id]?.job === 'carrier' && model.isIdle(state, id),
+        (id) => villager[id]?.job === 'carrier' && isCarrierIdle(state, id),
       );
       if (carrier === undefined) return;
       assignJob(state, carrier, job, building);

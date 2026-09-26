@@ -77,13 +77,6 @@ export function amountOnTile(
   return goods?.resource === resource ? goods.amount : 0;
 }
 
-/** Units of `resource` on the whole stockpile. */
-export function amountOnStockpile(pile: StockpileComponent, resource: ResourceId): number {
-  let total = 0;
-  for (const index of Object.keys(pile.goods)) total += amountOnTile(pile, Number(index), resource);
-  return total;
-}
-
 /**
  * Units of `resource` stockpile tile `index` can still take: the capacity minus what's there,
  * or 0 if it holds another resource.

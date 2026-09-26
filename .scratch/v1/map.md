@@ -64,11 +64,11 @@ Vocabulary follows `CONTEXT.md`. Design follows `docs/spec.md`.
 - 2026-09-25 — Glossary: House/Hut/Workplace, Rank building (not "milestone building"), Logs/Planks/Firewood (never "wood"), Job (not "role"). See `CONTEXT.md`.
 - 2026-09-25 — Every milestone is ticketed. Tickets that wait on a decision are `needs-info`; each milestone with thin spec coverage opens with a design-session ticket.
 - 2026-09-25 — Bloomery, brewery and farm move to M5, and smithy and carpenter's workshop to M6. Why: the Tavern (M6's rank building) needs iron bars and ale in stock, and the Craftsfolk tier needs furniture.
+- 2026-09-26 — M1 playtest picked job dispatch over flag relay; Flags were fiddly to lay out. See `docs/adr/0001-logistics-model.md`.
 
 ## Fog
 
 - How the hero fits the automation loop, until the M1.5 playtest.
-- Whether flag relay's road-layout rules feel fair, until the M1 playtest.
 - Map size and whether full-state snapshots and a per-tick JSON copy survive a real valley, until M4.
 - Every number in the spec (costs, rank requirements, day length), until the balance harness and playtests.
 - Audio (music, sound effects): not in the spec at all yet.

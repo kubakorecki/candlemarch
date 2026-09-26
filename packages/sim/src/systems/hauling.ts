@@ -1,8 +1,8 @@
-// Hauling is delegated to the game's logistics model.
+// Carriers haul goods by job dispatch.
 import type { Content } from '@candlemarch/content';
-import { logisticsModels } from '../logistics';
+import { updateHauls } from '../logistics/jobDispatch';
 import type { GameState } from '../state';
 
 export function haulingSystem(state: GameState, content: Content): void {
-  logisticsModels[state.logistics.model].update(state, content);
+  updateHauls(state, content);
 }

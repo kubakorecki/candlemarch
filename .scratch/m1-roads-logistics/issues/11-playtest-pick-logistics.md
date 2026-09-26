@@ -1,6 +1,6 @@
 # Gate: playtest A vs B and pick a logistics model
 
-Status: ready-for-human
+Status: resolved
 Type: playtest
 Blocked by: 08, 09, 10
 
@@ -22,3 +22,7 @@ Then:
 ## Done when
 
 - ADR-0001 exists, the loser is gone, and `pnpm check` passes.
+
+## Comments
+
+2026-09-26 — Owner picked **job dispatch**; flag relay dropped because laying out Flags was fiddly. Recorded in `docs/adr/0001-logistics-model.md`. Flag relay, its tests, the `LogisticsModel` interface and registry, the Flag tool and the model picker are deleted (`STATE_VERSION` 4). Spec Logistics section and open question updated; Flag and Segment removed from `CONTEXT.md`. The four `needs-info` tickets are revisited below them.

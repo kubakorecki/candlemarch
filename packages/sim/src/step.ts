@@ -18,7 +18,7 @@ function cloneState(state: GameState): GameState {
  * 1. commands, in array order
  * 2. movement: walkers advance; arrivals are visible to the systems below this same tick
  * 3. woodcutting
- * 4. hauling (the game's logistics model)
+ * 4. hauling (job dispatch)
  * 5. construction
  * 6. staffing: finished or understaffed workplaces draft idle carriers
  * then `tick` increments.

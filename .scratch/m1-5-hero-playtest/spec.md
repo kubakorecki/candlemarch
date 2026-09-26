@@ -19,4 +19,4 @@ Done when the owner has played with the hero and recorded the hero's role, and t
 
 ## Waiting on
 
-- Hand-carry depends on the logistics model (under flag relay, may the hero carry off-road?), so it waits for `m1-roads-logistics/11`.
+- Hand-carry: the logistics pick is made (job dispatch, ADR-0001). One question remains in ticket 02: whether the dispatcher counts the hero's load.

@@ -11,7 +11,7 @@ Blocked by: 01, m1-roads-logistics/11, m5-hamlet/12
 
 ## Open questions
 
-- Cost, speed and how it interacts with the chosen logistics model (design session 01, Q10).
+- Cost and speed (design session 01, Q10). Logistics interaction is settled by ADR-0001: job dispatch measures nearness by walking cost, so a faster road draws Hauls onto it with no extra rule.
 
 ## Done when
 

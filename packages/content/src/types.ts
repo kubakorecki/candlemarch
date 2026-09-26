@@ -59,12 +59,10 @@ export interface RoadDef {
   speedPercent: number;
 }
 
-/** Numbers shared by every logistics model. */
+/** Logistics numbers. */
 export interface LogisticsDef {
   /** Units one stockpile tile holds. */
   stockpileTileCapacity: number;
-  /** Goods one Flag holds while they wait for a carrier (flag relay). */
-  flagCapacity: number;
 }
 
 export interface BuildingDef {

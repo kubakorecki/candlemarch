@@ -95,7 +95,7 @@ These keep the game testable, saveable and replayable. Treat them as non-negotia
 
 - Work in small, reviewable steps. Run `pnpm check` before saying a step is done.
 - When the spec is ambiguous, choose the simplest option that keeps the design open, and log it in `docs/decisions.md` (one line: date, decision, why).
-- Don't build future features ahead of time. The exception is logistics: two models will be prototyped (job dispatch and flag relay), so keep hauling logic behind a clear interface.
+- Don't build future features ahead of time.
 - Prefer clear, boring code over clever abstractions. The owner reviews everything.
 - Commit messages: short imperative summary, e.g. `sim: add hauling system`.
 

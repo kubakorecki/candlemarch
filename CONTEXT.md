@@ -38,14 +38,6 @@ _Avoid_: Street, track
 The first kind of Road: free, laid instantly, gives a modest speed bonus.
 _Avoid_: Trail, dirt road
 
-**Flag**:
-A point on a Road where goods are set down and handed on in the flag-relay model. Every building door counts as a Flag.
-_Avoid_: Waypoint, node
-
-**Segment**:
-The stretch of Road between two neighbouring Flags, worked by one Carrier in the flag-relay model.
-_Avoid_: Edge, link, leg
-
 **Carrier**:
 A villager whose Job is moving goods between buildings. The default Job of a villager without a Workplace.
 _Avoid_: Hauler, porter (porters are a late magical upgrade)

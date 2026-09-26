@@ -1,9 +1,8 @@
 import type { MapDef } from '../map';
 
 /**
- * Long haul, 40×14: a woodcutter's hut at (3,5) with its door (4,7) on a 30-tile path east to a
- * Flag at (33,7), next to a 3×3 stockpile at (34,6). Flags at (13,7) and (23,7) split the path
- * into three Segments. Three Carriers.
+ * Long haul, 40×14: a woodcutter's hut at (3,5) with its door (4,7) on a 30-tile path east to
+ * (33,7), next to a 3×3 stockpile at (34,6). Three Carriers.
  */
 export const longHaulMap: MapDef = {
   name: 'longHaul',
@@ -15,7 +14,7 @@ export const longHaulMap: MapDef = {
     'T.......................................',
     '........................................',
     '........................................',
-    '....=========F=========F=========F......',
+    '....==============================......',
     '........................................',
     '........................................',
     '........................................',

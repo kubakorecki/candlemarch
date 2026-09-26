@@ -10,7 +10,7 @@ Blocked by: 01, m1-roads-logistics/11
 
 ## Open questions
 
-- How handcarts are made and assigned, capacity, road-only or not, under the chosen model (design session 01, Q10).
+- How handcarts are made and assigned, capacity, and road-only or not (design session 01, Q10). Under job dispatch (ADR-0001) a handcart raises the amount per Haul; if road-only, dispatch needs a route that stays on roads.
 
 ## Done when
 

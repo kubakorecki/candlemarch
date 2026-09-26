@@ -8,12 +8,7 @@ import type {
   TerrainId,
 } from '@candlemarch/content';
 import { createEntity } from './entities';
-import { canPlaceBuilding, doorTile, fitsAt, inBounds, tileAt, tileCenter } from './grid';
-import { DEFAULT_LOGISTICS_MODEL, logisticsModels } from './logistics';
-import { canPlaceFlag } from './logistics/flagNetwork';
-import { placeFlag } from './logistics/flagRelay';
-import type { LogisticsModelId } from './logistics/model';
-import { relayOf } from './logistics/relayState';
+import { canPlaceBuilding, doorTile, fitsAt, inBounds, tileCenter } from './grid';
 import { seedRng } from './rng';
 import { type EntityId, type GameState, STATE_VERSION, type Tile } from './state';
 import { canPlaceStockpile, placeStockpile } from './stockpiles';
@@ -33,18 +28,14 @@ export interface MapDef {
   villagers: { job: JobId; x: number; y: number }[];
 }
 
-/**
- * What each character in `MapDef.rows` stands for. A Flag only exists under flag relay; under
- * other logistics models its tile is a plain path.
- */
+/** What each character in `MapDef.rows` stands for. */
 export const MAP_LEGEND: Record<
   string,
-  { terrain: TerrainId; object?: MapObjectId; road?: RoadId; flag?: true }
+  { terrain: TerrainId; object?: MapObjectId; road?: RoadId }
 > = {
   '.': { terrain: 'grass' },
   T: { terrain: 'grass', object: 'tree' },
   '=': { terrain: 'grass', road: 'dirt_path' },
-  F: { terrain: 'grass', road: 'dirt_path', flag: true },
 };
 
 function spawnVillager(
@@ -82,30 +73,22 @@ export function createEmptyState(seed: number): GameState {
       path: {},
       woodcutter: {},
     },
-    logistics: logisticsModels[DEFAULT_LOGISTICS_MODEL].init(),
+    logistics: { hauls: {} },
   };
 }
 
 /**
- * A new game on `map` using logistics model `model`. Entities are created in this order: trees
- * (row-major), buildings with their employees (spawned at the door), sites, stockpiles, then
- * free villagers. Flags are placed last, in tile order. Throws if the map is malformed or
- * anything on it couldn't be placed there.
+ * A new game on `map`. Entities are created in this order: trees (row-major), buildings with
+ * their employees (spawned at the door), sites, stockpiles, then free villagers. Throws if the
+ * map is malformed or anything on it couldn't be placed there.
  */
-export function createInitialState(
-  seed: number,
-  map: MapDef,
-  content: Content,
-  model: LogisticsModelId = DEFAULT_LOGISTICS_MODEL,
-): GameState {
+export function createInitialState(seed: number, map: MapDef, content: Content): GameState {
   const height = map.rows.length;
   const width = map.rows[0]?.length ?? 0;
   if (width === 0) throw new Error(`map ${map.name}: empty`);
 
   const state = createEmptyState(seed);
   state.map = { width, height, terrain: [], roads: {} };
-  state.logistics = logisticsModels[model].init();
-  const flags: number[] = [];
 
   map.rows.forEach((row, y) => {
     if (row.length !== width) throw new Error(`map ${map.name}: row ${y} has length ${row.length}`);
@@ -115,7 +98,6 @@ export function createInitialState(
       const index = state.map.terrain.length;
       state.map.terrain.push(cell.terrain);
       if (cell.road) state.map.roads[index] = cell.road;
-      if (cell.flag) flags.push(index);
       if (cell.object) {
         const id = createEntity(state);
         state.components.tile[id] = { x, y };
@@ -163,16 +145,6 @@ export function createInitialState(
       throw new Error(`map ${map.name}: villager out of bounds at ${v.x},${v.y}`);
     }
     spawnVillager(state, v.job, { x: v.x, y: v.y }, null);
-  }
-
-  if (relayOf(state)) {
-    for (const index of flags) {
-      const { x, y } = tileAt(state.map, index);
-      if (!canPlaceFlag(state, content, x, y)) {
-        throw new Error(`map ${map.name}: Flag can't be placed at ${x},${y}`);
-      }
-      placeFlag(state, content, x, y);
-    }
   }
 
   return state;

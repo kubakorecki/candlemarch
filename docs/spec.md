@@ -118,12 +118,11 @@ v1 has 10 raw resources and 12 refined goods across three tiers. *(Proposed; the
 
 ## Logistics
 
-Carriers walking on roads are the village's conveyor belts. *(Decided)* How belt-like they feel will be settled by prototyping both models below. *(Decided: prototype before choosing)*
+Carriers walking on roads are the village's conveyor belts. *(Decided)*
 
-| Model | How it works | Belt feel | Build cost | Risk |
-| --- | --- | --- | --- | --- |
-| A. Job dispatch (prototype 1) | A dispatcher assigns each haul (pick up at A, drop at B). Carriers path over roads, which make them faster. | Medium: traffic is visible, throughput limited by carrier count and distance | Low, well-understood | Bottlenecks are less legible |
-| B. Flag relay (Settlers 2 style) (prototype 2) | Roads are split into segments between flags; one carrier per segment hands goods on at each flag. | High: each segment is a belt with real throughput | Higher | Frustrating if road layout is unforgiving |
+**Model: job dispatch** *(Decided, [ADR-0001](adr/0001-logistics-model.md))*. A dispatcher assigns each haul (pick up at A, drop at B) to an idle carrier. Carriers path over any walkable tiles and walk faster on roads; the dispatcher measures nearness by walking cost, so better roads draw traffic. Throughput is set by carrier count and distance.
+
+Flag relay (Settlers 2 style: one carrier per road segment between flags, handing goods on at each flag) was prototyped against it and dropped: laying out flags was fiddly. What it would have given, bottlenecks visible on the road itself, now has to come from the readability tools below.
 
 **Collisions:** villagers never block each other; they pass through. This is standard in the genre and removes merging and jam logic. A soft slowdown on crowded road tiles can come later if bottlenecks need to be more visible. *(Proposed)*
 
@@ -426,7 +425,7 @@ Milestone 0 is one resource gathered, carried and turned into a building. *(Deci
 
 **After milestone 0** *(Proposed order)*
 
-1. Logistics prototypes A and B, then pick one.
+1. ~~Logistics prototypes A and B, then pick one.~~ Done: job dispatch (ADR-0001).
 2. Hero playtesting on top of the chosen logistics.
 3. Map-size prototype.
 
@@ -435,7 +434,7 @@ Milestone 0 is one resource gathered, carried and turned into a building. *(Deci
 These stay open until prototypes and playtests answer them. Everything tagged Proposed above is the working default until then.
 
 - [x] Title: Candlemarch (Lanternwood is taken on Steam)
-- [ ] Logistics: model A or B? Decided by prototype.
+- [x] Logistics: job dispatch (ADR-0001), after an A/B playtest against flag relay.
 - [ ] Economy: should tools wear out?
 - [ ] Hero role in the automation loop? Decided by playtest.
 - [ ] Map size? Decided by prototype.

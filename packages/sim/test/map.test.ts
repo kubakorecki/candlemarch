@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { idsOf } from '../src/entities';
 import { blockedGrid, tileIndex } from '../src/grid';
-import { initJobDispatch } from '../src/logistics/jobDispatch';
-import { relayOf } from '../src/logistics/relayState';
 import { createInitialState, type MapDef } from '../src/map';
 import { maps } from '../src/maps';
 import { meadowMap } from '../src/maps/meadow';
@@ -58,18 +56,18 @@ describe('createInitialState', () => {
   });
 });
 
-// Woodcutter's hut at (0,0) with its door (1,2) on a path along row 2 to a Flag at (6,2), next
-// to a 2×2 stockpile at (7,1). A hut site at (3,1) has its door (3,2) on the path too.
+// Woodcutter's hut at (0,0) with its door (1,2) on a path along row 2 to (6,2), next to a 2×2
+// stockpile at (7,1). A hut site at (3,1) has its door (3,2) on the path too.
 const yard: MapDef = {
   name: 'yard',
-  rows: ['..........', '..........', '.=====F...', '..........'],
+  rows: ['..........', '..........', '.======...', '..........'],
   buildings: [{ type: 'woodcutters_hut', x: 0, y: 0 }],
   sites: [{ type: 'hut', x: 3, y: 1 }],
   stockpiles: [{ x: 7, y: 1, w: 2, h: 2 }],
   villagers: [{ job: 'carrier', x: 9, y: 3 }],
 };
 
-describe('createInitialState with roads, flags, stockpiles and sites', () => {
+describe('createInitialState with roads, stockpiles and sites', () => {
   it('lays paths, and places sites, then stockpiles, then free villagers', () => {
     const s = createInitialState(1, yard, content);
     expect(Object.keys(s.map.roads).map(Number)).toEqual(
@@ -89,35 +87,21 @@ describe('createInitialState with roads, flags, stockpiles and sites', () => {
     expect(s.components.villager[5]?.job).toBe('carrier');
   });
 
-  it('uses job dispatch by default, which has no Flags', () => {
-    const s = createInitialState(1, yard, content);
-    expect(s.logistics).toEqual(initJobDispatch());
-    expect(createInitialState(1, yard, content, 'jobDispatch')).toEqual(s);
+  it('starts with no hauls', () => {
+    expect(createInitialState(1, yard, content).logistics).toEqual({ hauls: {} });
   });
 
-  it('places Flags under flag relay', () => {
-    const s = createInitialState(1, yard, content, 'flagRelay');
-    expect(relayOf(s)?.flags).toEqual([tileIndex(s.map, 6, 2)]);
-  });
-
-  it('rejects stockpiles, sites and Flags that could not be placed', () => {
+  it('rejects stockpiles and sites that could not be placed', () => {
     const onRoad = { ...yard, stockpiles: [{ x: 4, y: 2, w: 1, h: 1 }] };
     expect(() => createInitialState(1, onRoad, content)).toThrow(/stockpile/);
     const onHut = { ...yard, sites: [{ type: 'hut' as const, x: 1, y: 1 }] };
     expect(() => createInitialState(1, onHut, content)).toThrow(/site/);
-    // A Flag next to the woodcutter's hut door (1,2).
-    const crowded = { ...yard, rows: ['..........', '..........', '.=F===F...', '..........'] };
-    expect(() => createInitialState(1, crowded, content, 'flagRelay')).toThrow(/Flag/);
   });
 });
 
 describe('maps', () => {
-  it.each(Object.entries(maps))(
-    '%s is listed under its name and builds under both models',
-    (name, map) => {
-      expect(map.name).toBe(name);
-      expect(() => createInitialState(1, map, content, 'jobDispatch')).not.toThrow();
-      expect(() => createInitialState(1, map, content, 'flagRelay')).not.toThrow();
-    },
-  );
+  it.each(Object.entries(maps))('%s is listed under its name and builds', (name, map) => {
+    expect(map.name).toBe(name);
+    expect(() => createInitialState(1, map, content)).not.toThrow();
+  });
 });

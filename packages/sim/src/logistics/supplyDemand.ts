@@ -1,4 +1,4 @@
-// What can be hauled and where it is needed. Shared by every logistics model.
+// What can be hauled and where it is needed.
 import type { Content, ResourceId } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { stockpileTileIndices } from '../grid';

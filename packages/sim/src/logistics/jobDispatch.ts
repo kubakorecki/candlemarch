@@ -1,4 +1,5 @@
-// Logistics model A: a dispatcher hands each idle carrier one haul (pick up at A, drop at B).
+// Job dispatch: a dispatcher hands each idle carrier one haul (pick up at A, drop at B).
+// Chosen over flag relay in docs/adr/0001-logistics-model.md.
 import type { Content, ResourceId } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { entityDoor, stockpileTileIndices, tileAt, tileIndex } from '../grid';
@@ -6,7 +7,6 @@ import { tileDistance, travelCosts } from '../pathfinding';
 import type { EntityId, GameState, Store, Tile } from '../state';
 import { addToTile, amountOnTile, roomOnTile, takeFromTile } from '../stockpiles';
 import { isAt, stopAtNextTile, villagerTile, walkGrid, walkTo } from '../systems/movement';
-import type { LogisticsModel } from './model';
 import {
   canServe,
   type Demand,
@@ -32,19 +32,9 @@ export interface Haul {
   phase: 'pickup' | 'dropoff' | 'return';
 }
 
-export interface JobDispatchState {
-  model: 'jobDispatch';
+export interface LogisticsState {
   /** Current haul per carrier, keyed by the carrier's entity ID. */
   hauls: Store<Haul>;
-}
-
-export function initJobDispatch(): JobDispatchState {
-  return { model: 'jobDispatch', hauls: {} };
-}
-
-/** Current hauls, keyed by carrier. Empty when the game uses another logistics model. */
-export function haulsOf(state: GameState): Store<Haul> {
-  return state.logistics.model === 'jobDispatch' ? state.logistics.hauls : {};
 }
 
 function carrierIds(state: GameState): EntityId[] {
@@ -97,7 +87,7 @@ function freeRoomOnTile(
   const stockpile = state.components.stockpile[pile];
   if (!stockpile) return 0;
   let room = roomOnTile(stockpile, index, resource, content.logistics.stockpileTileCapacity);
-  for (const haul of Object.values(haulsOf(state))) {
+  for (const haul of Object.values(state.logistics.hauls)) {
     const bound =
       haul.phase === 'return'
         ? haul.from === pile && haul.fromTile === index
@@ -147,7 +137,7 @@ function pickupFor(
   supply: Supply,
   near: number,
 ): Pickup | null {
-  const hauls = haulsOf(state);
+  const { hauls } = state.logistics;
   const { map } = state;
   if (supply.kind === 'building') {
     const door = entityDoor(state, content, supply.source);
@@ -211,7 +201,7 @@ function endTile(
 
 /** Advances one carrier's haul by one tick. */
 function advanceHaul(state: GameState, content: Content, id: EntityId, haul: Haul): void {
-  const hauls = haulsOf(state);
+  const { hauls } = state.logistics;
   const { building, site, stockpile, villager, path } = state.components;
   const carrier = villager[id];
   if (!carrier) {
@@ -324,7 +314,7 @@ function take(state: GameState, haul: Haul): number {
  * goods go to the nearest stockpile with room.
  */
 function dispatch(state: GameState, content: Content, id: EntityId): void {
-  const hauls = haulsOf(state);
+  const { hauls } = state.logistics;
   const { map } = state;
   const carrier = state.components.villager[id];
   const here = villagerTile(state, id);
@@ -389,18 +379,18 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
   }
 }
 
-export const jobDispatch: LogisticsModel = {
-  init: initJobDispatch,
-  update(state, content) {
-    const hauls = haulsOf(state);
-    for (const id of carrierIds(state)) {
-      const haul = hauls[id];
-      if (haul) advanceHaul(state, content, id, haul);
-      // A carrier freed this tick waits until the next one; this keeps each step simple.
-      else if (!state.components.path[id]) dispatch(state, content, id);
-    }
-  },
-  isIdle(state, carrier) {
-    return haulsOf(state)[carrier] === undefined;
-  },
-};
+/** Advances every carrier's haul by one tick, and hands idle carriers new ones. */
+export function updateHauls(state: GameState, content: Content): void {
+  const { hauls } = state.logistics;
+  for (const id of carrierIds(state)) {
+    const haul = hauls[id];
+    if (haul) advanceHaul(state, content, id, haul);
+    // A carrier freed this tick waits until the next one; this keeps each step simple.
+    else if (!state.components.path[id]) dispatch(state, content, id);
+  }
+}
+
+/** Whether the carrier has no haul right now, so a Workplace may draft it. */
+export function isCarrierIdle(state: GameState, carrier: EntityId): boolean {
+  return state.logistics.hauls[carrier] === undefined;
+}

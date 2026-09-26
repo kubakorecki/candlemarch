@@ -5,14 +5,11 @@ import {
   type Command,
   canLayPath,
   canPlaceBuilding,
-  canPlaceFlag,
   canPlaceStockpile,
-  DEFAULT_LOGISTICS_MODEL,
   DEFAULT_MAP,
   type EntityId,
   type GameState,
   idsOf,
-  type LogisticsModelId,
   lShapeTiles,
   type MapName,
   type StockpilePriority,
@@ -28,7 +25,7 @@ import { SimBridge } from './SimBridge';
 const SAVE_KEY = 'candlemarch.save';
 const NEW_GAME_SEED = 1;
 
-export type ToolId = BuildingId | 'path' | 'removePath' | 'flag' | 'stockpile' | 'demolish';
+export type ToolId = BuildingId | 'path' | 'removePath' | 'stockpile' | 'demolish';
 
 /** HUD tools in toolbar order, with their keyboard shortcut. `drag` tools act on press-drag-release. */
 export const TOOLS: readonly {
@@ -54,20 +51,13 @@ export const TOOLS: readonly {
   },
   { id: 'path', label: 'Path', key: 'r', drag: true, hint: 'Drag to lay an L-shaped path.' },
   { id: 'removePath', label: 'Remove path', key: 'x', drag: true, hint: 'Drag to remove path.' },
-  {
-    id: 'flag',
-    label: 'Flag',
-    key: 'f',
-    drag: false,
-    hint: 'Click a path to place or remove a Flag.',
-  },
   { id: 'stockpile', label: 'Stockpile', key: 's', drag: true, hint: 'Drag a rectangle.' },
   {
     id: 'demolish',
     label: 'Demolish',
     key: 'd',
     drag: false,
-    hint: 'Click a Flag, stockpile or construction site to remove it.',
+    hint: 'Click a stockpile or construction site to remove it.',
   },
 ];
 
@@ -88,8 +78,6 @@ export interface HudState {
   hutCapacity: number;
   /** In-game time in whole seconds. */
   seconds: number;
-  /** Logistics model of the running game. */
-  model: LogisticsModelId | null;
   /** The stockpile selected by clicking it with no tool, and its settings. */
   pile: { id: EntityId; priority: StockpilePriority; refuses: ResourceId[] } | null;
   message: string | null;
@@ -112,7 +100,6 @@ export class Game {
     hutLogs: 0,
     hutCapacity: 0,
     seconds: 0,
-    model: null,
     pile: null,
     message: null,
   };
@@ -181,10 +168,10 @@ export class Game {
     if (id !== null) this.bridge.command({ type: 'setStockpileAccepts', id, resource, accepts });
   }
 
-  /** Starts a new game on `map` with logistics model `model`, replacing the current one. */
-  newGame(map: MapName, model: LogisticsModelId): void {
+  /** Starts a new game on `map`, replacing the current one. */
+  newGame(map: MapName): void {
     this.cameraCentred = false;
-    this.bridge.newGame(NEW_GAME_SEED, map, model);
+    this.bridge.newGame(NEW_GAME_SEED, map);
     this.dragStart = null;
     this.selectedPile = null;
     this.setHud({ tool: null, pile: null, message: null });
@@ -244,7 +231,7 @@ export class Game {
     );
     window.addEventListener('keydown', (e) => this.onKey(e), { signal: this.abort.signal });
     this.renderer.app.ticker.add((ticker) => this.frame(ticker.deltaMS));
-    this.newGame(DEFAULT_MAP, DEFAULT_LOGISTICS_MODEL);
+    this.newGame(DEFAULT_MAP);
   }
 
   private frame(deltaMs: number): void {
@@ -280,7 +267,6 @@ export class Game {
       hutLogs: hut && buffer ? (hut.stock[buffer.resource] ?? 0) : 0,
       hutCapacity: buffer?.capacity ?? 0,
       seconds: Math.floor(state.tick / TICKS_PER_SECOND),
-      model: state.logistics.model,
     });
   }
 
@@ -318,19 +304,9 @@ export class Game {
       else this.cancelTool();
       return;
     }
-    const command =
-      tool === 'flag'
-        ? flagCommand(state, tile)
-        : tool === 'demolish'
-          ? demolishCommand(state, tile)
-          : null;
+    const command = tool === 'demolish' ? demolishCommand(state, tile) : null;
     if (command) this.bridge.command(command);
-    else if (tool === 'flag' && state.logistics.model !== 'flagRelay')
-      this.setHud({ message: 'Flags are only used by flag relay.' });
-    else
-      this.setHud({
-        message: tool === 'flag' ? "Can't place a Flag there." : 'Nothing to remove there.',
-      });
+    else this.setHud({ message: 'Nothing to remove there.' });
   }
 
   private onToolDown(sx: number, sy: number): boolean {
@@ -446,8 +422,6 @@ export class Game {
           valid: canPlaceStockpile(state, content, r.x, r.y, r.w, r.h),
         };
       }
-      case 'flag':
-        return { kind: 'tiles', tiles: [hover], valid: flagCommand(state, hover) !== null };
       case 'demolish':
         return { kind: 'tiles', tiles: [hover], valid: demolishCommand(state, hover) !== null };
     }
@@ -500,21 +474,8 @@ function stockpileAt(state: GameState, tile: Tile): EntityId | null {
   return null;
 }
 
-function hasFlag(state: GameState, tile: Tile): boolean {
-  const index = tile.y * state.map.width + tile.x;
-  return state.logistics.model === 'flagRelay' && state.logistics.flags.includes(index);
-}
-
-/** Places a Flag where one can go, or removes the one already there. */
-function flagCommand(state: GameState, tile: Tile): Command | null {
-  if (hasFlag(state, tile)) return { type: 'removeFlag', ...tile };
-  if (canPlaceFlag(state, content, tile.x, tile.y)) return { type: 'placeFlag', ...tile };
-  return null;
-}
-
-/** Removes the Flag, stockpile or construction site on `tile`, in that order of preference. */
+/** Removes the stockpile or construction site on `tile`, stockpile first. */
 function demolishCommand(state: GameState, tile: Tile): Command | null {
-  if (hasFlag(state, tile)) return { type: 'removeFlag', ...tile };
   const pile = stockpileAt(state, tile);
   if (pile !== null) return { type: 'removeStockpile', id: pile };
   const { tile: at, site } = state.components;

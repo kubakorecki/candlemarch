@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import type { Command } from '../src/commands';
 import { idsOf } from '../src/entities';
 import { blockedGrid, canPlaceBuilding, tileAt, tileIndex } from '../src/grid';
-import { haulsOf } from '../src/logistics/jobDispatch';
 import { createInitialState, type MapDef } from '../src/map';
 import { canLayPath } from '../src/roads';
 import type { GameState, StockpileComponent } from '../src/state';
@@ -103,7 +102,7 @@ function carrierOf(s: GameState) {
   const id = idsOf(s.components.villager).find(
     (v) => s.components.villager[v]?.job === 'carrier',
   ) as number;
-  return { id, haul: haulsOf(s)[id], position: s.components.position[id] };
+  return { id, haul: s.logistics.hauls[id], position: s.components.position[id] };
 }
 
 /** Goods of the stockpile with this ID, as "x,y": "resource amount". */
@@ -337,10 +336,11 @@ describe('stockpile tile capacity with returns', () => {
     const site = idsOf(placed.components.site)[0] as number;
     const loaded = runUntil(
       placed,
-      (s) => haulsOf(s)[id]?.phase === 'dropoff' && haulsOf(s)[3]?.phase === 'dropoff',
+      (s) =>
+        s.logistics.hauls[id]?.phase === 'dropoff' && s.logistics.hauls[3]?.phase === 'dropoff',
       500,
     );
-    expect(haulsOf(loaded)[id]?.from).toBe(pile);
+    expect(loaded.logistics.hauls[id]?.from).toBe(pile);
 
     // The site is cancelled, so both logs go back; the stockpile tile must not overfill.
     const cancelled = step(loaded, [{ type: 'cancelConstruction', siteId: site }], content);

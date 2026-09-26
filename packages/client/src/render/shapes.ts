@@ -344,33 +344,13 @@ export function drawGoodsStack(g: Graphics, count: number): void {
   drawLogPile(g, 0, 6, count);
 }
 
-/** A Flag, drawn around (0, 0) = the tile centre, with `goods` waiting beside it. */
-export function drawFlag(g: Graphics, pole: boolean, goods: number): void {
-  g.clear();
-  const s = TILE_H / 64;
-  if (pole) {
-    groundShadow(g, 8 * s, 4 * s);
-    g.rect(-2 * s, -40 * s, 4 * s, 40 * s)
-      .fill(palette.flagPole)
-      .stroke(THIN_INK);
-    g.poly([2 * s, -40 * s, 22 * s, -33 * s, 2 * s, -26 * s])
-      .fill(palette.flagCloth)
-      .stroke(THIN_INK);
-  }
-  if (goods > 0) drawLogPile(g, 16 * s, 10 * s, goods);
-}
-
-/** A warning bubble centred on (x, y): a worker (`carrier` false) or a log, struck through. */
-export function drawMissingIcon(g: Graphics, x: number, y: number, carrier: boolean): void {
+/** A warning bubble centred on (x, y): a worker, struck through. */
+export function drawMissingIcon(g: Graphics, x: number, y: number): void {
   const s = TILE_H / 64;
   const r = 13 * s;
   g.circle(x, y, r).fill(palette.iconBg).stroke(INK);
-  if (carrier) {
-    drawLog(g, x, y, s * 0.8);
-  } else {
-    g.circle(x, y - 4 * s, 3.5 * s).fill(palette.ink);
-    g.roundRect(x - 5 * s, y + 1 * s, 10 * s, 8 * s, 3 * s).fill(palette.ink);
-  }
+  g.circle(x, y - 4 * s, 3.5 * s).fill(palette.ink);
+  g.roundRect(x - 5 * s, y + 1 * s, 10 * s, 8 * s, 3 * s).fill(palette.ink);
   g.moveTo(x - r * 0.7, y - r * 0.7)
     .lineTo(x + r * 0.7, y + r * 0.7)
     .stroke({ width: 3 * s, color: palette.invalid, cap: 'round' });
