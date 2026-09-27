@@ -18,3 +18,7 @@ Blocked by: 03, m2-camp-winter/10
 
 - Headless tests: population drops with hunting, recovers over time, an emptied region stays empty for the set time.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-27 — M2 design session (m2-camp-winter/01) already gives each Hunting ground a Game count, a ceiling that follows standing trees (surplus flees when trees are felled), and a catch chance of 50% × game ÷ max. This ticket adds recovery: Game regrows toward the ceiling, and foresters raise the ceiling again. See spec, World and map, "Before full ecology (M2)".

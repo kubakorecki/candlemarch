@@ -18,6 +18,14 @@ _Avoid_: Shack
 Any building that employs villagers, such as the woodcutter's hut, the quarry or the smithy. Its name may include "hut".
 _Avoid_: Job building, production building
 
+**Granary**:
+The building that stores Food and where villagers eat their Meal. Food never goes to a Stockpile.
+_Avoid_: Food store, pantry, storehouse
+
+**Chopping block**:
+The Workplace where Logs are split into Firewood. The woodcutter's hut only fells trees.
+_Avoid_: Woodshed, splitting hut
+
 **Rank building**:
 The building whose completion raises the village to its next rank: village hall, tavern, guildhall.
 _Avoid_: Milestone building
@@ -56,9 +64,71 @@ _Avoid_: Warehouse, depot, storage zone
 What a villager currently does: the work of their Workplace, or Carrier if they have none. A villager's Job can change; the person stays the same.
 _Avoid_: Role, profession, occupation
 
+**Home**:
+The House a villager is assigned to live in. A villager keeps their Home when their Job changes.
+_Avoid_: Residence, lodging
+
+**Homeless**:
+A villager with no Home. They sleep in the open where they stand.
+_Avoid_: Unhoused, vagrant
+
+**Tired**:
+The state of a villager who didn't get a night's sleep at Home: they walk and work slower the next day.
+_Avoid_: Exhausted, sleepy
+
+**Hungry**:
+The state of a villager who missed their last Meal: they walk and work slower. Too many missed Meals in a row and they starve.
+_Avoid_: Starving (as a state), famished
+
+**Cold**:
+The state of a villager who spent the last winter night in a cold House or in the open: they walk and work slower. Two such nights in a row and they freeze.
+_Avoid_: Chilled, freezing (as a state)
+
+**Newcomer**:
+A villager who arrives by immigration. They enter at the map's entry tile and start as a Carrier.
+_Avoid_: Immigrant, settler (settlers are the starting villagers)
+
 **Hero**:
 The one unit the player controls directly, with the mouse, RTS style. Not a villager: has no Job and can't die. Its aura makes nearby Workplaces work faster.
 _Avoid_: Player character, avatar, champion
+
+### Time
+
+**Dusk**:
+The moment night begins. The working day ends: villagers finish what they hold, eat and go Home.
+_Avoid_: Evening, nightfall
+
+**Dawn**:
+The moment night ends and a new day begins. Spoilage happens here.
+_Avoid_: Morning, daybreak
+
+### Food
+
+**Food**:
+Any resource a villager can eat as a Meal: for now berries, mushrooms, fish and meat.
+_Avoid_: Provisions, rations
+
+**Meal**:
+The Food a villager eats at a Granary once a day, at Dusk.
+_Avoid_: Ration, feeding
+
+**Spoilage**:
+The share of every stack of Food that is lost at each Dawn. Each Food has its own rate.
+_Avoid_: Rot, decay
+
+### Land
+
+**Hunting ground**:
+A region of forest holding Game. Felling its trees lowers how much Game it can hold, and the surplus flees.
+_Avoid_: Game region, hunting area
+
+**Game**:
+The animals in a Hunting ground, counted as one number. Hunts take them; logging drives them away.
+_Avoid_: Wildlife, animals (as a count)
+
+**Forage patch**:
+A berry bush or mushroom patch in the forest, where foragers gather Food. It refills each season only while a standing tree is near enough to shade it.
+_Avoid_: Bush (alone), forage tree
 
 ### Resources
 

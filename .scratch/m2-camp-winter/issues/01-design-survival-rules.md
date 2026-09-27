@@ -1,6 +1,6 @@
 # Design session: survival rules
 
-Status: ready-for-human
+Status: resolved
 Type: grilling
 Blocked by: none
 
@@ -26,3 +26,11 @@ A `/grill-with-docs` session that settles the M2 rules the spec leaves open. Rec
 ## Done when
 
 - Every question has an answer in the spec, and the dependent tickets are updated.
+
+## Comments
+
+2026-09-27 — Settled in a `/grill-with-docs` session. Answers are in `docs/spec.md` (World and map "Before full ecology (M2)"; Time; Resources "Spoilage" and "Firewood"; Logistics "Construction" and readability; Villagers "Daily life and survival" and "Population"; Heroes; Failure states "Alerts"; Progression "Starting Camp"; expansion backlog), with the spoilage model in [ADR-0002](../../../docs/adr/0002-spoilage-daily-share.md) and new terms in `CONTEXT.md`.
+
+In short: Q1 one Meal at Dusk at the nearest Granary, no variety yet. Q2 Hungry after 1 missed Meal, starve after 3; Cold after 1 cold winter night, freeze after 2; each −50%, only the worst applies; plus Tired from a short night. Q3 cold slows Spoilage in winter and hunting continues; no drying rack. Q4 daily share (ADR-0002). Q5 Hut holds 3, automatic Homes nearest the Workplace, Homeless sleep in the open. Q6 finish what's in hand at Dusk, no proximity rule. Q7 one Newcomer per Dawn outside winter with a free place and 5 Meals per head. Q8 a separate Chopping block (Woodsplitter, 1 log → 2 firewood, pauses at a firewood target). Q9 Hunting grounds whose Game ceiling follows standing trees, with a catch chance. Q10 no builders; build timer runs by day. Q11 red and amber alerts plus a death log. Q12 Granary with 20 meat, Stockpile with 30 logs, 5 Homeless Carriers and the hero. Also: longer winter nights, no hero needs, forage patches that need shade, ticket 19's definitions.
+
+Tickets 02, 06, 08, 10–17, 19 and 20 are rewritten; the `needs-info` ones are promoted to `ready-for-agent`. New ticket 22 (construction by day).

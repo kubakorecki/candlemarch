@@ -1,21 +1,21 @@
-# Warmth: houses burn firewood in winter
+# Warmth: Houses burn firewood in winter; Cold
 
-Status: needs-info
+Status: ready-for-agent
 Type: task
-Blocked by: 01, 06, 13
+Blocked by: 06, 13
 
 ## What
 
-- In winter every occupied house burns firewood at a content rate. A house with firewood is warm.
-- Houses are demands for firewood (a small house buffer) during autumn and winter.
-- Residents of a cold house get colder over time.
-- Client: a "no firewood" icon on cold houses.
+Spec: Villagers, "Daily life and survival".
 
-## Open questions (design session 01, Q2)
-
-- Rates, buffer size, how cold progresses.
+- Houses have a firewood buffer (content, 5) and are demands for firewood from the start of autumn to the end of winter.
+- In winter, at Dusk, each occupied House burns 1 firewood (content, per House not per resident). If it can't, it's cold that night.
+- A villager who spends a winter night in a cold House or in the open gets a **cold night**. A per-villager count of cold nights in a row; at 1 or more they're **Cold**: 50% slower, through the shared slowdown helper (worst applies). A warm night resets the count. Death at the limit is ticket 15.
+- House buffers count toward the chopping block's firewood target (ticket 06).
+- The hero never gets cold.
+- Client: a "no firewood" icon on cold Houses; a Cold icon on villagers; the panel shows it.
 
 ## Done when
 
-- Headless tests: firewood is delivered and burned in winter; a house without it goes cold.
+- Headless tests: firewood is delivered from autumn and burned at winter Dusks; a House without it goes cold; its residents become Cold and recover after a warm night; Homeless villagers get cold in winter only; determinism, save/load.
 - `pnpm check` passes.

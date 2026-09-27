@@ -1,6 +1,6 @@
 # Candlemarch — Design Spec v0.1
 
-Last updated: 2026-09-23
+Last updated: 2026-09-27
 
 A medieval-fantasy village builder where the fun is designing a settlement that runs itself. This is a living spec: it will change after every design round.
 
@@ -58,12 +58,22 @@ Each game is a procedurally generated valley seeded with handcrafted points of i
 - Game animals live in forest regions with a population that drops with hunting and recovers slowly. **Overhunting** empties a region for seasons.
 - Result: the player sets aside forest reserves for food instead of clear-cutting.
 
+**Before full ecology (M2)** *(Decided in design session M2-01; numbers Proposed)*. M4 adds regrowth and recovery on top of these rules.
+
+- **Hunting grounds:** a Hunting ground is a region of forest (hand-drawn on M2 maps, generated in M4) holding a single **Game** count, e.g. 20. Its ceiling follows the forest: `max game × standing trees ÷ trees at the start`. Felling trees lowers the ceiling, and animals above it **flee** at once.
+- **Hunt chance** = 50% × game ÷ max game, rolled with the seeded PRNG. A catch gives 4 meat and 1 hide and removes one animal; a miss comes back empty. Overhunting shows as more and more empty trips. Nothing recovers until M4, when game regrows toward the ceiling and foresters raise it.
+- **Visible:** each ground is outlined with a health word and colour (Thriving / Thinning / Scarce / Empty). Selecting it or a hunter's lodge shows "Game 12 / 20 · 2 fled due to logging · catch chance 30%". A "fled" puff shows when felling drives game out, a "no catch" icon over a hunter back empty-handed, and the woodcutter's hut placement preview warns when its radius overlaps a Hunting ground.
+- **Forage patches:** berry bushes and mushroom patches are their own map objects in the forest. Trees don't give food. A patch's stock refills at the start of its seasons (bushes: small in spring, large in summer; mushrooms: autumn; nothing in winter), but only while a standing tree is within 2 tiles (shade). A patch without shade withers: drawn bare, with a "no shade" hint when selected. The forager gathers from the nearest patch in radius with stock left.
+- **Fish** don't deplete; fishing stops while the river is frozen.
+
 ## Time, day/night and seasons
 
 One in-game year lasts about 60 minutes at 1× speed. *(Decided: roughly an hour; the split below is Proposed and tunable.)*
 
 - **Controls:** real-time with pause and 1× / 2× / 3× speed. *(Decided)*
 - **Day/night:** visible cycle, villagers go home and sleep at night. *(Decided)* Proposed length: 3 minutes per day (2 day, 1 night), 5 days per season.
+- **Night length is set per season** in content, and winter nights are longer (Proposed: 1.5 of the 3 minutes). *(Decided)* The day stays 3 minutes; longer nights mean less work time and more cold nights.
+- A new game starts at **Dawn on spring day 1**.
 - **Night** is when monsters spawn. *(Decided)*
 
 | Season | Production | Consumption | Threat |
@@ -71,7 +81,7 @@ One in-game year lasts about 60 minutes at 1× speed. *(Decided: roughly an hour
 | Spring | Sowing; forest regrows fastest | Normal | Low |
 | Summer | Harvest begins; berries peak | Normal | Bandits more active |
 | Autumn | Main harvest; mushrooms peak | Stockpiling, preserving | Rising |
-| Winter | Fields idle, river freezes (mill stops), no foraging | Every house burns firewood | Highest; longer nights |
+| Winter | Fields idle, river freezes (mill stops, no fishing), no foraging; hunting goes on | Every house burns firewood; food spoils slower in the cold | Highest; longer nights |
 
 *(Table is Proposed.)* Winter is the yearly exam: without enough preserved food and firewood, villagers freeze or starve.
 
@@ -84,8 +94,8 @@ v1 has 10 raw resources and 12 refined goods across three tiers. *(Proposed; the
 | Resource | Source | Building | Notes |
 | --- | --- | --- | --- |
 | Logs | Forest tiles | Woodcutter's hut | Removes trees |
-| Berries, mushrooms | Standing forest | Forager's hut | Seasonal; spoil fast |
-| Game meat, hides | Forest region | Hunter's lodge | Can be overhunted; hides are sold until the tannery arrives (v1.x) |
+| Berries, mushrooms | Forage patches (need standing trees nearby) | Forager's hut | Seasonal; spoil fast |
+| Game meat, hides | Hunting ground | Hunter's lodge | Can be overhunted, and logging drives game away; hides are sold until the tannery arrives (v1.x) |
 | Fish | River | Fisher's hut | Stops when river freezes |
 | Stone | Rock | Quarry | Depletes |
 | Clay | Riverbank | Clay pit | Depletes slowly |
@@ -96,7 +106,7 @@ v1 has 10 raw resources and 12 refined goods across three tiers. *(Proposed; the
 
 | Tier | Output | Inputs | Building | Needs master |
 | --- | --- | --- | --- | --- |
-| 1 | Firewood | Logs | Woodcutter's hut | — |
+| 1 | Firewood | Logs | Chopping block | — |
 | 1 | Charcoal | Logs | Charcoal kiln | — |
 | 1 | Planks | Logs | Sawpit | Carpenter |
 | 1 | Cut stone | Stone | Stonecutter | Mason |
@@ -109,10 +119,14 @@ v1 has 10 raw resources and 12 refined goods across three tiers. *(Proposed; the
 | 3 | Bread | Flour, firewood | Bakery | Baker |
 | 3 | Furniture | Planks, iron bars | Carpenter's workshop | Carpenter |
 
+**Firewood** *(Decided: its own building; details Proposed)*: the woodcutter's hut only fells trees. A **Chopping block** (1×1, cheap in logs) employs one Woodsplitter and splits 1 log into 2 firewood. It pauses while the village holds at least a target amount of firewood (Stockpiles plus House buffers; content default, e.g. 40), so it doesn't turn every log into firewood. The target becomes an editable standing order in M5. Logs go to construction sites first, then workshop inputs, then Stockpiles.
+
 **Spoilage** *(Decided: food spoils and preservation is its own tech)*
 
 - Raw meat, fish, berries and mushrooms spoil in days; bread in about a season; smoked meat, grain and flour last much longer.
 - A **root cellar** slows spoilage for food stored in it.
+- **Model** *(Decided, [ADR-0002](adr/0002-spoilage-daily-share.md))*: at each Dawn every stack of Food in a Granary or workplace buffer loses `ceil(amount × rate%)`. Food in someone's hands doesn't spoil. Rates are per Food in content (Proposed: berries 35%, fish and meat 25%, smoked goods about 3%).
+- **Cold keeps food** *(Decided)*: in winter every rate is multiplied by a content percentage (Proposed 20%, so meat loses 5% a day). With winter hunting, this is how a Camp gets through its first winter before the Butcher's smokehouse (M5). There is no no-master drying rack; it would undercut the smokehouse.
 
 **Mills:** windmills and watermills are ordinary production buildings that must sit on a hill or river. There is no power network. *(Proposed, following the no-power rule.)*
 
@@ -126,13 +140,15 @@ Flag relay (Settlers 2 style: one carrier per road segment between flags, handin
 
 **Collisions:** villagers never block each other; they pass through. This is standard in the genre and removes merging and jam logic. A soft slowdown on crowded road tiles can come later if bottlenecks need to be more visible. *(Proposed)*
 
-**Making bottlenecks readable** *(Proposed)*: icons over idle workshops ("waiting for charcoal"), a carrier-utilization meter, and a road heat-map overlay.
+**Making bottlenecks readable** *(Proposed)*: icons over idle workshops ("waiting for charcoal", "output full", "no worker"), a carrier-utilization meter, and a road heat-map overlay. **Carrier utilization** is the share of Carriers holding a Haul, averaged over the last in-game day; **road traffic** is Carrier steps onto each Road tile over the same window. *(Decided in design session M2-01)*
+
+**Construction** *(Decided for M2)*: no builder villagers. A site's build timer starts once every material has arrived and runs only by day. Builders come back only if a playtest asks for them.
 
 **Storage** *(Decided: a mix; details Proposed)*
 
 - **Workshop buffers:** each workshop holds a few units of inputs and outputs.
 - **Stockpile zones:** open-air areas for bulk raw goods (logs, stone, clay).
-- **Food store (granary):** villagers eat from it. *(Decided)* The root cellar is its preserving upgrade.
+- **Food store (granary):** villagers eat from it. *(Decided)* The root cellar is its preserving upgrade. Food never goes to a Stockpile.
 - **Market stockpile:** goods set aside for sale. *(Decided)*
 - **Standing orders:** "keep 50 planks, pause the sawpit above 100." These are the main automation tool.
 
@@ -162,11 +178,23 @@ A house's residents rise a tier when their needs are met, and the house upgrades
 | Craftsfolk | Cottage | Two kinds of food, ale at a tavern, furniture | v1 |
 | Burghers | Townhouse | Bread, chapel, market, safety (walls) | v1.x |
 
+**Daily life and survival** *(Decided in design session M2-01; every number is content and Proposed)*
+
+- **Meals:** each villager eats one Meal a day, at Dusk, on the way home: 1 unit of Food at the nearest Granary that has some, fastest-spoiling Food first (ties by resource ID). No delivery to houses. Food variety doesn't matter until Craftsfolk. A villager who finds no food goes home hungry.
+- **Homes:** a Hut holds 3. A Homeless villager is given a free place automatically, in the House nearest their Workplace by walking cost (Carriers: nearest to where they stand), villagers in ID order. Nobody is moved once housed, and there's no manual assignment yet. A demolished House makes its residents Homeless. Homeless villagers sleep in the open where they stand.
+- **Dusk:** no new work or Haul starts. A Carrier holding goods finishes delivering them; one still walking to a pickup drops the Haul. A gatherer abandons a chop in progress and drops goods in hand at their Workplace. Then everyone eats, walks home and sleeps. At Dawn they walk to work. A villager who hasn't reached home by Dawn turns back to work. There's no rule that Houses must be near Workplaces; the morning commute costs daylight.
+- **Tired:** a villager who slept less than half the night at Home (Homeless ones included) walks and works 50% slower until the next Dusk, with a "zzz" icon.
+- **Hungry:** a villager who missed their last Meal walks and works 50% slower; the panel shows "2 days without food; dies after 3". After 3 missed Meals in a row they starve at that Dusk. One Meal resets the count.
+- **Warmth:** in winter each occupied House burns 1 firewood per night, taken at Dusk (per House, not per resident). A House that can't pay is cold that night. Houses keep a firewood buffer of 5 and ask for firewood from the start of autumn to the end of winter.
+- **Cold:** a winter night in a cold House or in the open makes a villager Cold: 50% slower, with an icon. After 2 cold nights in a row they freeze at Dawn. A warm night resets the count. Freezing is deliberately faster than starving.
+- **Slowdowns don't stack:** only the worst of Tired, Hungry and Cold applies, and every icon shows. The hero's aura still multiplies on top.
+
 **Happiness** raises or lowers work speed. The tavern, for example, makes nearby villagers work a bit faster. *(Decided)* Long unhappiness makes villagers leave. *(Decided as an option)*
 
 **Population** *(Proposed)*
 
 - v1: growth by **immigration only**. Newcomers arrive when there is free housing, surplus food and good happiness.
+- **Immigration rule (M2)** *(Decided in design session M2-01; numbers Proposed)*: checked at each Dawn. One Newcomer arrives when there's at least one free place in a House, Food in Granaries is at least 5 Meals × (population + 1), and it isn't winter (the roads are snowed in). Newcomers enter at the map's entry tile, walk to the House they're given and start as Carriers. Happiness joins the rule in M5.
 - v2: families, births and aging.
 - Villager-to-villager relationships (friendships, marriages) stay out of v1; they distract from management. A good home is what villagers care about. *(Decided)*
 
@@ -262,6 +290,8 @@ The player controls one hero, an RTS-style unit who kickstarts the village and t
 
 Later candidates: Priest (happiness, healing), Merchant (better trade prices), Warden (defence).
 
+**The hero has no needs** *(Decided)*: it doesn't eat, sleep or freeze, and can keep working at night.
+
 **The hero can't die.** *(Decided)* When defeated, the hero is knocked out and recovers at the village hall after a while. *(Proposed)* This costs time and leaves the village exposed that night.
 
 **Progression** *(Proposed)*: heroes gain a new perk at each village rank instead of grinding XP, keeping the focus on the village.
@@ -299,6 +329,8 @@ The village climbs four ranks; each rank-up is a milestone building you pour goo
 | Village | Tavern | Coin, planks, iron bars, ale in stock, 25 residents | Craftsfolk tier; Miller and Baker invitations; cobblestone roads, handcarts |
 | Town | Town charter (guildhall) | Coin, cut stone, bricks, tools, 50 residents, all tier-2 needs met | v1 "win" in sandbox; endless play continues |
 
+**Starting Camp** *(Decided in design session M2-01; amounts Proposed)*: a new game starts at Dawn on spring day 1 with a Granary holding 20 meat, a 2×2 Stockpile holding 30 logs, and 5 settlers (Carriers, all Homeless) plus the hero at the map's entry tile. No Houses or Workplaces. The first day's job is two Huts; anyone without a Home at Dusk is Tired on day 2.
+
 Exact numbers come from balance simulation. The example tavern cost (10,000 gold, 1,000 wood, 100 iron bars) sets the scale.
 
 **Game modes** *(Decided: campaign with missions, plus sandbox)*
@@ -317,6 +349,10 @@ The village can die, and the game ends when it does. *(Decided)*
 
 - **Game over:** no living villagers remain (the hero alone can't sustain a village). *(Proposed trigger)*
 - **Death spiral warnings** *(Proposed)*: clear alerts before it's too late, such as "8 days of food left, winter in 3 days" or "no firewood in 4 homes."
+- **Alerts** *(Decided in design session M2-01; thresholds Proposed)*: worked out from the current state, not stored, listed in the HUD; clicking one moves the camera to it.
+    - **Red**, someone dies at the next Dusk or Dawn: "Wynn will starve at dusk", "Oda will freeze at dawn".
+    - **Amber**: "About N days of Food left" (Granary Food ÷ population under 3 days); in autumn, "Food for N days, winter in M days" (Food can't cover the rest of autumn plus winter); in autumn and winter, "N Houses have no firewood" (an occupied House's buffer is empty); in autumn, "Firewood for N nights, winter needs M" (stock below occupied Houses × winter nights); "N villagers Hungry / Cold / Homeless"; "Old Wood is Scarce" (a Hunting ground turns Scarce).
+    - Food projections ignore Spoilage and say "about". Deaths go to a short message log ("Ada starved, day 14"), not the alert list. Through autumn the HUD shows "winter in N days".
 - **Soft losses along the way:** masters dying or leaving, villagers emigrating, the crown revoking privileges after missed tribute.
 - In campaign missions, some objectives can also fail (e.g. the mission fails if a key master dies).
 
@@ -401,6 +437,9 @@ v1.x deepens the v1 loop; v2+ adds new layers. Order within each release is not 
 | Taxes and mercenaries | v1.x | Coin from higher tiers; hired defence |
 | Weather events | v1.x | Storms, drought, harsh winters, plague |
 | Festivals | v1.x | Seasonal events that spend goods for big happiness boosts |
+| Kitchens and tavern meals | v1.x | Places to eat besides the Granary, serving cooked meals that give buffs instead of raw food |
+| More House types | v1.x | A family house, a single room for loners who dislike company, larger shared houses |
+| Choose a starting point | v1.x | The player picks where on the map the Camp starts |
 | Apprentices | v2 | Villagers train into journeymen under a master |
 | Families and births | v2 | Aging, children, generations |
 | Villager relationships | v2 | Friendships, rivalries, marriages |

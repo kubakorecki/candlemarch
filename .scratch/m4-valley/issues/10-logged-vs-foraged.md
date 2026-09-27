@@ -16,3 +16,7 @@ Blocked by: 03, m2-camp-winter/08
 
 - Headless tests: a woodcutter never fells in a foraging area and vice versa.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-27 — M2 design session (m2-camp-winter/01): foraging now uses Forage patches (berry bushes, mushroom patches) as map objects, not trees, and a patch refills only with a standing tree within 2 tiles. Reconcile the "logged or foraged tile" rule with that shade rule here.
