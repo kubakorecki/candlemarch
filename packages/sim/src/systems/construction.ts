@@ -25,6 +25,7 @@ export function constructionSystem(state: GameState, content: Content): void {
         stock: {},
         input: {},
         workerLimit: maxWorkers(content, site.type),
+        cold: false,
       };
     }
   }

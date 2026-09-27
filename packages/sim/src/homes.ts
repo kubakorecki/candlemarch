@@ -4,13 +4,26 @@ import type { Content } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { entityDoor, tileIndex } from './grid';
 import { type Grid, travelCosts } from './pathfinding';
-import type { EntityId, GameState } from './state';
-import { villagerTile, walkGrid } from './systems/movement';
+import type { EntityId, GameState, Tile } from './state';
+import { isAt, villagerTile, walkGrid } from './systems/movement';
 
 /** Places a House has, or 0 when `building` isn't a House (or doesn't exist). */
 export function housePlaces(state: GameState, content: Content, building: EntityId): number {
   const b = state.components.building[building];
   return b ? (content.buildings[b.type].residents ?? 0) : 0;
+}
+
+/** Door of villager `id`'s Home, or null when it's Homeless. */
+export function homeDoor(state: GameState, content: Content, id: EntityId): Tile | null {
+  const home = state.components.villager[id]?.home ?? null;
+  if (home === null || housePlaces(state, content, home) === 0) return null;
+  return entityDoor(state, content, home);
+}
+
+/** Whether villager `id` stands at its Home's door, which is where it sleeps. */
+export function isAtHome(state: GameState, content: Content, id: EntityId): boolean {
+  const door = homeDoor(state, content, id);
+  return door !== null && isAt(state, id, door);
 }
 
 /** Villagers whose Home is `house`, in ID order. */

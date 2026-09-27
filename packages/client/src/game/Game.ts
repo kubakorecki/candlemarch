@@ -131,6 +131,8 @@ export interface VillagerInfo {
   tired: boolean;
   /** "2 days without food; dies after 3" while Hungry, otherwise null. */
   hunger: string | null;
+  /** "1 cold night; freezes after 2" while Cold, otherwise null. */
+  cold: string | null;
 }
 
 /** A row of the workers view: one villager, as display text, and where it can be reassigned. */
@@ -195,6 +197,8 @@ export interface HudState {
   homeless: number;
   /** Villagers who missed their last Meal. */
   hungry: number;
+  /** Villagers who spent their last night cold. */
+  cold: number;
   /** Food in every Granary. */
   food: number;
   /** The stockpile selected by clicking it with no tool, and its settings. */
@@ -244,6 +248,7 @@ export class Game {
     isNight: false,
     homeless: 0,
     hungry: 0,
+    cold: 0,
     food: 0,
     pile: null,
     villager: null,
@@ -468,6 +473,7 @@ export class Game {
       isNight: time.isNight,
       homeless: Object.values(state.components.villager).filter((v) => v.home === null).length,
       hungry: Object.values(state.components.villager).filter((v) => v.missedMeals > 0).length,
+      cold: Object.values(state.components.villager).filter((v) => v.coldNights > 0).length,
       food: villageFood(state, content),
     });
   }
@@ -965,7 +971,7 @@ function demolishCommand(state: GameState, tile: Tile): Command | null {
 }
 
 /**
- * Villager `id`'s name, Job, Workplace, Home, Tired and hunger for the panel, or null if it's
+ * Villager `id`'s name, Job, Workplace, Home, Tired, hunger and cold for the panel, or null if it's
  * gone.
  */
 function villagerInfo(state: GameState, id: EntityId): VillagerInfo | null {
@@ -979,7 +985,14 @@ function villagerInfo(state: GameState, id: EntityId): VillagerInfo | null {
     home: v.home === null ? null : (names[v.home] ?? null),
     tired: v.tired,
     hunger: v.missedMeals > 0 ? hungerLabel(v.missedMeals) : null,
+    cold: v.coldNights > 0 ? coldLabel(v.coldNights) : null,
   };
+}
+
+/** "1 cold night; freezes after 2". */
+function coldLabel(coldNights: number): string {
+  const nights = coldNights === 1 ? '1 cold night' : `${coldNights} cold nights`;
+  return `${nights}; freezes after ${content.needs.cold.freezeAfterColdNights}`;
 }
 
 /** "2 days without food; dies after 3". */

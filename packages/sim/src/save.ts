@@ -46,6 +46,7 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
   for (const b of Object.values(state.components.building)) {
     b.input ??= {};
     b.workerLimit ??= maxWorkers(content, b.type);
+    b.cold ??= false;
   }
   const { villager } = state.components;
   for (const id of idsOf(villager)) {
@@ -57,6 +58,7 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     v.sleptTicks ??= 0;
     v.tired ??= false;
     v.missedMeals ??= 0;
+    v.coldNights ??= 0;
   }
   for (const hero of Object.values(state.components.hero)) {
     hero.carrying ??= null;

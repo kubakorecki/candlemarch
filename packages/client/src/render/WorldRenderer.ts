@@ -9,6 +9,7 @@ import {
   groundHealth,
   heroOf,
   idsOf,
+  isColdHouse,
   isRiverFrozen,
   isWithered,
   openPositions,
@@ -43,6 +44,7 @@ import {
   drawHuntingGround,
   drawMissingIcon,
   drawMushroomPatch,
+  drawNoFirewoodIcon,
   drawPileGround,
   drawPlacementGhost,
   drawRoads,
@@ -316,8 +318,9 @@ export class WorldRenderer {
           : outputPile(def.outputBuffer, b.stock);
       const input = buffered(def.inputBuffer?.[0]?.resource, b.input);
       const unstaffed = openPositions(state, this.content, id).length > 0;
+      const cold = isColdHouse(state, this.content, id);
       const view = this.staticView(`building:${id}`, seen);
-      const key = `${b.type}@${at.x},${at.y}:${input?.amount}:${output?.resource}${output?.amount}:${unstaffed}`;
+      const key = `${b.type}@${at.x},${at.y}:${input?.amount}:${output?.resource}${output?.amount}:${unstaffed}:${cold}`;
       if (view.key !== key) {
         if (b.type === 'chopping_block')
           drawChoppingBlock(view.graphics, at.x, at.y, input, output);
@@ -325,6 +328,10 @@ export class WorldRenderer {
         if (unstaffed) {
           const c = gridToWorld(at.x + def.size.w / 2, at.y + def.size.h / 2);
           drawMissingIcon(view.graphics, c.x, c.y - TILE_H * 2.4);
+        }
+        if (cold) {
+          const c = gridToWorld(at.x + def.size.w / 2, at.y + def.size.h / 2);
+          drawNoFirewoodIcon(view.graphics, c.x, c.y - TILE_H * 2.4);
         }
         view.key = key;
         view.node.zIndex = depthOf(at.x + def.size.w - 0.5, at.y + def.size.h - 0.5);
@@ -518,10 +525,11 @@ export class WorldRenderer {
       view.load.visible = carried !== null;
       const homeless = v.home === null;
       const hungry = v.missedMeals > 0;
+      const cold = v.coldNights > 0;
       const noCatch = bag !== null && bag.length === 0;
-      const status = `${homeless}:${v.tired}:${hungry}:${noCatch}`;
+      const status = `${homeless}:${v.tired}:${hungry}:${cold}:${noCatch}`;
       if (status !== view.statusDrawn) {
-        drawVillagerStatus(view.status, { homeless, tired: v.tired, hungry, noCatch });
+        drawVillagerStatus(view.status, { homeless, tired: v.tired, hungry, cold, noCatch });
         view.statusDrawn = status;
       }
       // Its goods take the icons' place while it carries something.

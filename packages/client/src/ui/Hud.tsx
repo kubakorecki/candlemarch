@@ -61,6 +61,10 @@ export function Hud({ game }: { game: Game }) {
             <span className={hud.hungry > 0 ? 'warn' : ''}>{hud.hungry}</span>
           </div>
           <div className="row">
+            <span className="muted">Cold</span>
+            <span className={hud.cold > 0 ? 'warn' : ''}>{hud.cold}</span>
+          </div>
+          <div className="row">
             <span className="muted">Food in Granaries</span>
             <span>{hud.food}</span>
           </div>
@@ -249,6 +253,12 @@ export function Hud({ game }: { game: Game }) {
               <div className="row">
                 <span className="muted">Hungry</span>
                 <span className="warn">{hud.villager.hunger}</span>
+              </div>
+            )}
+            {hud.villager.cold && (
+              <div className="row">
+                <span className="muted">Cold</span>
+                <span className="warn">{hud.villager.cold}</span>
               </div>
             )}
           </div>

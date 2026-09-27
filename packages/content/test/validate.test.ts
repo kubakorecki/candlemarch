@@ -92,11 +92,12 @@ describe('content validation', () => {
   });
 
   it('needs use percents from 1 to 100', () => {
-    const { tired, hungry } = content.needs;
+    const { tired, hungry, cold } = content.needs;
     for (const [label, value] of [
       ['tired.minSleepPercent', tired.minSleepPercent],
       ['tired.speedPercent', tired.speedPercent],
       ['hungry.speedPercent', hungry.speedPercent],
+      ['cold.speedPercent', cold.speedPercent],
     ] as const) {
       expectPositiveInt(value, label);
       expect(value <= 100, `${label} = ${value}`).toBe(true);
@@ -107,6 +108,20 @@ describe('content validation', () => {
     const { hungry } = content.needs;
     expectPositiveInt(hungry.mealUnits, 'hungry.mealUnits');
     expectPositiveInt(hungry.starveAfterMissedMeals, 'hungry.starveAfterMissedMeals');
+  });
+
+  it('warmth burns an existing, non-Food resource from whole-number buffers in real seasons', () => {
+    const { cold } = content.needs;
+    expect(content.resources, 'cold.fuel').toHaveProperty(cold.fuel);
+    expect(content.resources[cold.fuel].storage, 'cold.fuel is not Food').not.toBe('granary');
+    expectPositiveInt(cold.houseBuffer, 'cold.houseBuffer');
+    expectPositiveInt(cold.burnPerNight, 'cold.burnPerNight');
+    expect(cold.burnPerNight <= cold.houseBuffer, 'a House can hold a night of fuel').toBe(true);
+    expectPositiveInt(cold.freezeAfterColdNights, 'cold.freezeAfterColdNights');
+    const seasons = content.calendar.seasons.map((s) => s.id);
+    for (const id of [...cold.stockUpSeasons, ...cold.coldSeasons]) expect(seasons).toContain(id);
+    // Houses must be asking for fuel whenever they burn it.
+    for (const id of cold.coldSeasons) expect(cold.stockUpSeasons).toContain(id);
   });
 
   it('houses hold a positive whole number of residents', () => {

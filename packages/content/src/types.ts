@@ -171,6 +171,22 @@ export interface NeedsDef {
    * works at `speedPercent`. After `starveAfterMissedMeals` missed Meals in a row they starve.
    */
   hungry: { mealUnits: number; speedPercent: number; starveAfterMissedMeals: number };
+  /**
+   * Warmth. Each House keeps up to `houseBuffer` of `fuel` and asks for it in `stockUpSeasons`.
+   * At each Dusk of a `coldSeasons` season an occupied House burns `burnPerNight`; one that can't
+   * is cold that night. A night there in a cold House or in the open is a cold night: Cold at 1
+   * or more in a row (walks and works at `speedPercent`), freezes to death at
+   * `freezeAfterColdNights`. A warm night resets the count.
+   */
+  cold: {
+    fuel: ResourceId;
+    houseBuffer: number;
+    burnPerNight: number;
+    stockUpSeasons: SeasonId[];
+    coldSeasons: SeasonId[];
+    speedPercent: number;
+    freezeAfterColdNights: number;
+  };
 }
 
 /** Hunting grounds: forest regions holding Game, which logging drives away. */

@@ -5,11 +5,15 @@ import { idsOf } from '../entities';
 import { doorTile } from '../grid';
 import { workTicks } from '../speed';
 import type { EntityId, GameState } from '../state';
+import { fuelIn } from '../warmth';
 import { isAt, walkTo } from './movement';
 
-/** Units of `resource` the village holds: on Stockpiles. */
-export function villageStock(state: GameState, resource: ResourceId): number {
+/** Units of `resource` the village holds: on Stockpiles, and for fuel in Houses too. */
+export function villageStock(state: GameState, content: Content, resource: ResourceId): number {
   let total = 0;
+  if (resource === content.needs.cold.fuel) {
+    for (const id of idsOf(state.components.building)) total += fuelIn(state, content, id);
+  }
   for (const pile of Object.values(state.components.stockpile)) {
     for (const goods of Object.values(pile.goods)) {
       if (goods.resource === resource) total += goods.amount;
@@ -25,7 +29,7 @@ export function villageStock(state: GameState, resource: ResourceId): number {
 export function isPaused(state: GameState, content: Content, building: EntityId): boolean {
   const b = state.components.building[building];
   const target = b ? content.buildings[b.type].stockTarget : undefined;
-  return target !== undefined && villageStock(state, target.resource) >= target.amount;
+  return target !== undefined && villageStock(state, content, target.resource) >= target.amount;
 }
 
 /** Units of `resource` that crafters working at `building` will put in its output buffer. */

@@ -9,6 +9,7 @@ import { tileDistance, travelCosts } from '../pathfinding';
 import type { EntityId, GameState, Store, Tile } from '../state';
 import { addToTile, amountOnTile, roomOnTile, takeFromTile } from '../stockpiles';
 import { isAt, stopAtNextTile, villagerTile, walkGrid, walkTo } from '../systems/movement';
+import { isHouse } from '../warmth';
 import {
   canServe,
   type Demand,
@@ -287,7 +288,11 @@ function advanceHaul(state: GameState, content: Content, id: EntityId, haul: Hau
       const pile = stockpile[haul.to];
       if (carrier.carrying && target) {
         target.delivered[haul.resource] = (target.delivered[haul.resource] ?? 0) + haul.amount;
-      } else if (carrier.carrying && workshop && isGranary(state, content, haul.to)) {
+      } else if (
+        carrier.carrying &&
+        workshop &&
+        (isGranary(state, content, haul.to) || isHouse(state, content, haul.to))
+      ) {
         workshop.stock[haul.resource] = (workshop.stock[haul.resource] ?? 0) + haul.amount;
       } else if (carrier.carrying && workshop) {
         workshop.input[haul.resource] = (workshop.input[haul.resource] ?? 0) + haul.amount;

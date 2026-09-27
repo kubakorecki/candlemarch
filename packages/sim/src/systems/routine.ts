@@ -7,23 +7,10 @@ import { calendarAt, dawnTick, duskTick, isDawn, isDusk, isNight } from '../cale
 import { idsOf } from '../entities';
 import { nearestGranaryWithMeal, takeMeal } from '../granary';
 import { entityDoor } from '../grid';
-import { housePlaces } from '../homes';
+import { homeDoor, isAtHome } from '../homes';
 import { abandonHaul } from '../logistics/jobDispatch';
-import type { EntityId, GameState, Tile } from '../state';
+import type { EntityId, GameState } from '../state';
 import { isAt, rerouteTo, stopAtNextTile } from './movement';
-
-/** Door of villager `id`'s Home, or null when it's Homeless. */
-function homeDoor(state: GameState, content: Content, id: EntityId): Tile | null {
-  const home = state.components.villager[id]?.home ?? null;
-  if (home === null || housePlaces(state, content, home) === 0) return null;
-  return entityDoor(state, content, home);
-}
-
-/** Whether villager `id` stands at its Home's door, which is where it sleeps. */
-function isAtHome(state: GameState, content: Content, id: EntityId): boolean {
-  const door = homeDoor(state, content, id);
-  return door !== null && isAt(state, id, door);
-}
 
 /**
  * Ends villager `id`'s working day, after Dusk: drops what can't be finished and returns whether

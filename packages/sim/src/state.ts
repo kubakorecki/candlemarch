@@ -53,7 +53,7 @@ export interface MapObjectComponent {
 
 export interface BuildingComponent {
   type: BuildingId;
-  /** Output buffer contents, or the Food a Granary holds. */
+  /** Output buffer contents, the Food a Granary holds, or a House's fuel. */
   stock: ResourceAmounts;
   /** Input buffer contents. Empty unless the building is a workshop. */
   input: ResourceAmounts;
@@ -62,6 +62,11 @@ export interface BuildingComponent {
    * player sets it; it starts at the maximum.
    */
   workerLimit: number;
+  /**
+   * A House that couldn't burn fuel at a cold season's Dusk, or wasn't lived in then: cold until
+   * Dawn. Always false otherwise.
+   */
+  cold: boolean;
 }
 
 export interface SiteComponent {
@@ -109,6 +114,8 @@ export interface VillagerComponent {
   tired: boolean;
   /** Meals missed in a row. Hungry at 1 or more: slower until it eats. */
   missedMeals: number;
+  /** Cold nights in a row (a cold season's night in a cold House or in the open). Cold at 1 or more. */
+  coldNights: number;
 }
 
 /**

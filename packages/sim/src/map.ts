@@ -70,6 +70,7 @@ function spawnVillager(
     sleptTicks: 0,
     tired: false,
     missedMeals: 0,
+    coldNights: 0,
   };
   state.components.position[id] = tileCenter(tile);
   assignJob(state, content, id, job, workplace);
@@ -152,6 +153,7 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
       stock: {},
       input: {},
       workerLimit: maxWorkers(content, b.type),
+      cold: false,
     };
     for (const slot of def.employs) {
       for (let i = 0; i < slot.count; i++) {

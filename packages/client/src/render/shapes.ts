@@ -680,28 +680,53 @@ export function drawMissingIcon(g: Graphics, x: number, y: number): void {
     .stroke({ width: 3 * s, color: palette.invalid, cap: 'round' });
 }
 
+/** A warning bubble centred on (x, y) over a cold House: a piece of firewood, struck through. */
+export function drawNoFirewoodIcon(g: Graphics, x: number, y: number): void {
+  const s = TILE_H / 64;
+  const r = 13 * s;
+  g.circle(x, y, r).fill(palette.iconBg).stroke(INK);
+  drawFirewood(g, x - 1 * s, y, s * 0.8);
+  g.moveTo(x - r * 0.7, y - r * 0.7)
+    .lineTo(x + r * 0.7, y + r * 0.7)
+    .stroke({ width: 3 * s, color: palette.invalid, cap: 'round' });
+}
+
+/** A six-armed snowflake centred on (x, y), `r` from the centre to each arm's tip. */
+function drawSnowflake(g: Graphics, x: number, y: number, r: number, width: number): void {
+  for (let i = 0; i < 3; i++) {
+    const a = (i * Math.PI) / 3 + Math.PI / 2;
+    const dx = Math.cos(a) * r;
+    const dy = Math.sin(a) * r;
+    g.moveTo(x - dx, y - dy).lineTo(x + dx, y + dy);
+  }
+  g.stroke({ width, color: palette.ink, cap: 'round' });
+}
+
 /** What a villager's status icons show. */
 export interface VillagerStatus {
   homeless: boolean;
   tired: boolean;
   hungry: boolean;
+  cold: boolean;
   /** A hunter walking back from a hunt empty-handed. */
   noCatch: boolean;
 }
 
 /**
  * Status icons over a villager's head, drawn relative to its feet: a House struck through when
- * it's Homeless, "zzz" when it's Tired, an empty bowl when it's Hungry, a haunch struck through
+ * it's Homeless, "zzz" when it's Tired, an empty bowl when it's Hungry, a snowflake when it's
+ * Cold, a haunch struck through
  * when a hunter comes back with no catch. Every icon that applies shows, side by side.
  */
 export function drawVillagerStatus(g: Graphics, status: VillagerStatus): void {
   g.clear();
   const s = TILE_H / 64;
-  const { homeless, tired, hungry, noCatch } = status;
+  const { homeless, tired, hungry, cold, noCatch } = status;
   const icons = [
     homeless && 'homeless',
     tired && 'tired',
     hungry && 'hungry',
+    cold && 'cold',
     noCatch && 'noCatch',
   ].filter(Boolean);
   const r = 9 * s;
@@ -734,6 +759,8 @@ export function drawVillagerStatus(g: Graphics, status: VillagerStatus): void {
       g.moveTo(x - 7 * s, y - 1.5 * s)
         .lineTo(x + 7 * s, y - 1.5 * s)
         .stroke({ width: 1.5 * s, color: palette.ink, cap: 'round' });
+    } else if (icon === 'cold') {
+      drawSnowflake(g, x, y, 6 * s, 1.5 * s);
     } else if (icon === 'noCatch') {
       drawMeat(g, x - 1 * s, y, s * 0.55);
       g.moveTo(x - r * 0.7, y - r * 0.7)

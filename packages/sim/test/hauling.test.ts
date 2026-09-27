@@ -110,6 +110,7 @@ describe('hauling on roads (job dispatch)', () => {
       stock: { logs: 4 },
       input: {},
       workerLimit: 1,
+      cold: false,
     };
     const s = runUntil(s0, (st) => carrier(st).haul?.phase === 'dropoff', 100, { 0: commands });
     const path = s.components.path[carrier(s).id];

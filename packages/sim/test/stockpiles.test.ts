@@ -95,6 +95,7 @@ function stocked(logs: number): GameState {
     stock: { logs },
     input: {},
     workerLimit: 1,
+    cold: false,
   };
   return s;
 }
@@ -336,6 +337,7 @@ describe('stockpile tile capacity with returns', () => {
       sleptTicks: 0,
       tired: false,
       missedMeals: 0,
+      coldNights: 0,
     };
     s1.components.position[id] = { x: 6500, y: 7500 };
     const tile = tileIndex(s1.map, 6, 6);
@@ -412,6 +414,7 @@ describe('what stockpiles store', () => {
       stock: { logs },
       input: {},
       workerLimit: 1,
+      cold: false,
     };
     const s = step(s0, [{ type: 'placeStockpile', x: 4, y: 4, w: 1, h: 2 }], content);
     return {

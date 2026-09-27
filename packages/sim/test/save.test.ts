@@ -57,6 +57,18 @@ describe('serialize / deserialize', () => {
     expect(deserialize(JSON.stringify(data), content)).toEqual(s);
   });
 
+  it('gives villagers and buildings saved before warmth no cold', () => {
+    const s = createInitialState(9, meadowMap, content);
+    const data = JSON.parse(serialize(s));
+    for (const v of Object.values(data.components.villager) as Record<string, unknown>[]) {
+      delete v.coldNights;
+    }
+    for (const b of Object.values(data.components.building) as Record<string, unknown>[]) {
+      delete b.cold;
+    }
+    expect(deserialize(JSON.stringify(data), content)).toEqual(s);
+  });
+
   it('rejects saves from another version', () => {
     const s = createInitialState(9, meadowMap, content);
     expect(() =>
