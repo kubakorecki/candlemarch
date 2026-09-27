@@ -19,6 +19,7 @@ import {
   reserved,
   reservedOnTile,
 } from './logistics/jobDispatch';
+import { inputRoom } from './logistics/supplyDemand';
 import type { EntityId, GameState, HeroComponent, HeroTask, Tile } from './state';
 import { addToTile, amountOnTile, takeFromTile } from './stockpiles';
 import { isAt, rerouteTo, stopAtNextTile, villagerTile } from './systems/movement';
@@ -54,9 +55,10 @@ function treeStandingTiles(state: GameState, content: Content, tree: EntityId): 
  * stands.
  * - move: walk to the tile by the quickest route (roads included).
  * - gather: walk next to the tree and chop it until it's gone or the hero's hands are full.
- * - deliver: carry what's in hand to a site that still needs it, once carriers' hauls are
- *   counted, or to a stockpile with room that doesn't refuse it. The hero promises a site what it
- *   will bring, and carriers count that as incoming.
+ * - deliver: carry what's in hand to a site that still needs it or a workshop whose input buffer
+ *   has room for it, once carriers' hauls are counted, or to a stockpile with room that doesn't
+ *   refuse it. The hero promises a site or workshop what it will bring, and carriers count that
+ *   as incoming.
  * - pickup: take goods no carrier has claimed from a building's output buffer or a stockpile,
  *   as many as the hero's hands still hold.
  */
@@ -155,6 +157,22 @@ function pileTileWithGoods(state: GameState, pile: EntityId, resource: ResourceI
 
 type DeliverTask = Extract<HeroTask, { kind: 'deliver' }>;
 
+/**
+ * Units of `resource` a site still lacks or a workshop's input buffer has room for, not counting
+ * anything on its way. 0 for anything else.
+ */
+function wanted(
+  state: GameState,
+  content: Content,
+  target: EntityId,
+  resource: ResourceId,
+): number {
+  const site = state.components.site[target];
+  if (!site) return inputRoom(state, content, target, resource);
+  const cost = content.buildings[site.type].construction?.cost.find((c) => c.resource === resource);
+  return (cost?.amount ?? 0) - (site.delivered[resource] ?? 0);
+}
+
 /** A delivery of what the hero holds to `target`, or null if `target` doesn't want it. */
 function deliverTask(
   state: GameState,
@@ -169,14 +187,12 @@ function deliverTask(
     const tile = pileTileWithRoom(state, content, target, resource);
     return tile === null ? null : { kind: 'deliver', target, resource, tile, amount: goods.amount };
   }
-  const site = state.components.site[target];
   const door = entityDoor(state, content, target);
-  if (!site || !door) return null;
-  const cost = content.buildings[site.type].construction?.cost.find((c) => c.resource === resource);
-  const missing = (cost?.amount ?? 0) - (site.delivered[resource] ?? 0);
+  if (!door) return null;
   const amount = Math.min(
     goods.amount,
-    missing - haulsIncoming(state.logistics.hauls, target, resource),
+    wanted(state, content, target, resource) -
+      haulsIncoming(state.logistics.hauls, target, resource),
   );
   if (amount <= 0) return null;
   const tile = tileIndex(state.map, door.x, door.y);
@@ -201,10 +217,10 @@ function thingAt(state: GameState, content: Content, tile: Tile): EntityId | nul
 }
 
 /**
- * What right-clicking `tile` orders the hero to do: chop a tree; deliver what it holds to a site
- * or stockpile that wants it, or else pick up from a building or stockpile with goods; walk onto
- * open ground. Null when there's something on the tile but nothing to do with it. The client uses
- * this so the rules stay in the sim; the command is still checked when it's applied.
+ * What right-clicking `tile` orders the hero to do: chop a tree; deliver what it holds to a site,
+ * workshop or stockpile that wants it, or else pick up from a building or stockpile with goods;
+ * walk onto open ground. Null when there's something on the tile but nothing to do with it. The
+ * client uses this so the rules stay in the sim; the command is still checked when it's applied.
  */
 export function heroOrderAt(state: GameState, content: Content, tile: Tile): HeroOrder | null {
   const id = heroOf(state);
@@ -237,7 +253,11 @@ function orderTargetExists(state: GameState, order: HeroTask): boolean {
     case 'gather':
       return (mapObject[order.tree]?.amount ?? 0) > 0;
     case 'deliver':
-      return site[order.target] !== undefined || stockpile[order.target] !== undefined;
+      return (
+        site[order.target] !== undefined ||
+        building[order.target] !== undefined ||
+        stockpile[order.target] !== undefined
+      );
     case 'pickup':
       return building[order.source] !== undefined || stockpile[order.source] !== undefined;
   }
@@ -292,6 +312,7 @@ export function heroSystem(state: GameState, content: Content): void {
     }
     case 'deliver': {
       const site = state.components.site[order.target];
+      const workshop = state.components.building[order.target];
       const pile = state.components.stockpile[order.target];
       if (hero.carrying?.resource !== order.resource) {
         hero.order = null;
@@ -302,8 +323,11 @@ export function heroSystem(state: GameState, content: Content): void {
         if (!rerouteTo(state, content, id, [at])) hero.order = null;
         return;
       }
-      if (site) {
-        site.delivered[order.resource] = (site.delivered[order.resource] ?? 0) + order.amount;
+      // A site's or workshop's promised amount goes in whole, even if the workshop has paused since:
+      // its room was held.
+      const into = site?.delivered ?? workshop?.input;
+      if (into) {
+        into[order.resource] = (into[order.resource] ?? 0) + order.amount;
         takeFromHands(hero, order.amount);
         hero.order = null;
         return;

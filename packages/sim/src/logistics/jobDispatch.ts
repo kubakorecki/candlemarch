@@ -65,11 +65,11 @@ export function haulsIncoming(hauls: Store<Haul>, target: EntityId, resource: Re
 
 /**
  * Units of `resource` on their way to `target`: carriers' hauls, plus what the hero promised a
- * site from the moment it was ordered to deliver there.
+ * site or workshop from the moment it was ordered to deliver there.
  */
 function incoming(state: GameState, target: EntityId, resource: ResourceId): number {
   let total = haulsIncoming(state.logistics.hauls, target, resource);
-  if (!state.components.site[target]) return total;
+  if (state.components.stockpile[target]) return total;
   for (const hero of Object.values(state.components.hero)) {
     const order = hero.order;
     if (order?.kind === 'deliver' && order.target === target && order.resource === resource) {

@@ -25,6 +25,22 @@ export interface Demand {
   amount: number;
 }
 
+/**
+ * Units of `resource` workshop `building`'s input buffer still has room for (not counting anything
+ * already on its way), or 0 if it has no slot for it, is paused, or isn't a workshop.
+ */
+export function inputRoom(
+  state: GameState,
+  content: Content,
+  building: EntityId,
+  resource: ResourceId,
+): number {
+  const b = state.components.building[building];
+  const slot = b && content.buildings[b.type].inputBuffer?.find((s) => s.resource === resource);
+  if (!b || !slot || isPaused(state, content, building)) return 0;
+  return Math.max(0, slot.capacity - (b.input[resource] ?? 0));
+}
+
 /** Resource IDs in content order. */
 function resourceIds(content: Content): ResourceId[] {
   return Object.keys(content.resources) as ResourceId[];
@@ -78,10 +94,8 @@ export function listDemands(state: GameState, content: Content): Demand[] {
   }
   for (const id of idsOf(state.components.building)) {
     const b = state.components.building[id];
-    const slots = b ? content.buildings[b.type].inputBuffer : undefined;
-    if (!b || !slots || isPaused(state, content, id)) continue;
-    for (const slot of slots) {
-      const room = slot.capacity - (b.input[slot.resource] ?? 0);
+    for (const slot of b ? (content.buildings[b.type].inputBuffer ?? []) : []) {
+      const room = inputRoom(state, content, id, slot.resource);
       if (room > 0)
         result.push({ target: id, kind: 'workshop', resource: slot.resource, amount: room });
     }

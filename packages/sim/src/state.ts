@@ -110,9 +110,9 @@ export type HeroTask =
   /** Chop `tree` until it's gone or the hero's hands are full; `ticksLeft` of the current chop. */
   | { kind: 'gather'; tree: EntityId; ticksLeft: number }
   /**
-   * Put down goods at a site or stockpile. For a site, `amount` is what the hero promised it,
-   * counted as incoming from the moment of the order so carriers don't bring the same goods; for a
-   * stockpile it's what the hero set out with, and nothing is reserved.
+   * Put down goods at a site, workshop or stockpile. For a site or workshop, `amount` is what the
+   * hero promised it, counted as incoming from the moment of the order so carriers don't bring the
+   * same goods; for a stockpile it's what the hero set out with, and nothing is reserved.
    */
   | { kind: 'deliver'; target: EntityId; resource: ResourceId; tile: number; amount: number }
   /** Take goods carriers haven't claimed from a building's output buffer or a stockpile tile. */

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { idsOf } from '../src/entities';
+import { heroOf, heroOrderAt } from '../src/hero';
 import { listDemands, listSupplies } from '../src/logistics/supplyDemand';
 import { createInitialState, type MapDef } from '../src/map';
 import { deserialize, serialize } from '../src/save';
 import type { EntityId, GameState, StockpileComponent } from '../src/state';
+import { step } from '../src/step';
 import { content, run, runUntil } from './helpers';
 
 // A chopping block at (2,2) with its door at (2,3), and its woodsplitter.
@@ -243,5 +245,89 @@ describe('production logistics', () => {
     const splitter = splitters[0] as EntityId;
     expect(end.components.villager[splitter]?.job).toBe('woodsplitter');
     expect(end.components.crafter[splitter]).toBeDefined();
+  });
+});
+
+/**
+ * A chopping block at (2,2) (door (2,3)), a woodcutter's hut at (6,0) (door (7,2)) with no trees,
+ * one carrier, and the hero at (4,4) holding `inHand` logs.
+ */
+function workyard(inHand: number, hutLogs = 0): GameState {
+  const map: MapDef = {
+    name: 'workyard',
+    rows: Array(7).fill('..........'),
+    buildings: [
+      { type: 'chopping_block', x: 2, y: 2 },
+      { type: 'woodcutters_hut', x: 6, y: 0 },
+    ],
+    villagers: [{ job: 'carrier', x: 8, y: 5 }],
+    hero: { x: 4, y: 4 },
+  };
+  const s = createInitialState(1, map, content);
+  const id = heroOf(s) as EntityId;
+  const h = s.components.hero[id];
+  if (h && inHand > 0) h.carrying = { resource: 'logs', amount: inHand };
+  const hut = idsOf(s.components.building).find(
+    (b) => s.components.building[b]?.type === 'woodcutters_hut',
+  );
+  const b = hut === undefined ? undefined : s.components.building[hut];
+  if (b) b.stock.logs = hutLogs;
+  return s;
+}
+
+const heroCarrying = (s: GameState) => s.components.hero[heroOf(s) as EntityId]?.carrying ?? null;
+const heroIdle = (s: GameState) =>
+  s.tick > 0 && s.components.hero[heroOf(s) as EntityId]?.order === null;
+
+describe('the hero feeding a workshop', () => {
+  it('right-clicking a chopping block with logs in hand delivers them to its input buffer', () => {
+    const s0 = workyard(5);
+    const block = blockOf(s0);
+    expect(heroOrderAt(s0, content, { x: 2, y: 2 })).toEqual({ order: 'deliver', target: block });
+
+    const done = runUntil(s0, heroIdle, 500, {
+      0: [{ type: 'orderHero', order: 'deliver', target: block }],
+    });
+    // The buffer holds 4; the hero keeps the fifth. The splitter may already have taken one.
+    expect(logsIn(done) + firewood(done) / 2).toBe(4);
+    expect(heroCarrying(done)).toEqual({ resource: 'logs', amount: 1 });
+  });
+
+  it('takes no delivery order for a paused workshop or a full input buffer', () => {
+    const full = workyard(3);
+    const b = full.components.building[blockOf(full)];
+    if (b) b.input.logs = 4;
+    expect(heroOrderAt(full, content, { x: 2, y: 2 })).toBeNull();
+    const after = run(full, 1, {
+      0: [{ type: 'orderHero', order: 'deliver', target: blockOf(full) }],
+    });
+    expect(after.components.hero[heroOf(after) as EntityId]?.order).toBeNull();
+
+    const paused = createInitialState(
+      1,
+      { ...yard, stockpiles: [{ x: 0, y: 5, w: 5, h: 1 }], hero: { x: 5, y: 4 } },
+      content,
+    );
+    const pile = paused.components.stockpile[idsOf(paused.components.stockpile)[0] as EntityId];
+    for (let x = 0; x < 5; x++) {
+      (pile as StockpileComponent).goods[5 * 8 + x] = { resource: 'firewood', amount: 8 };
+    }
+    const h = paused.components.hero[heroOf(paused) as EntityId];
+    if (h) h.carrying = { resource: 'logs', amount: 3 };
+    expect(heroOrderAt(paused, content, { x: 2, y: 2 })).toBeNull();
+  });
+
+  it("carriers count the hero's promise, and bring nothing it covers", () => {
+    // The hero promises all 4 the buffer holds; the hut has logs a carrier could bring.
+    let s = workyard(4, 4);
+    const block = blockOf(s);
+    const order = [{ type: 'orderHero' as const, order: 'deliver' as const, target: block }];
+    s = step(s, order, content);
+    while (!heroIdle(s)) {
+      expect(Object.values(s.logistics.hauls).filter((h) => h.to === block)).toEqual([]);
+      s = step(s, [], content);
+    }
+    expect(heroCarrying(s)).toBeNull();
+    expect(logsIn(s) + firewood(s) / 2).toBe(4);
   });
 });
