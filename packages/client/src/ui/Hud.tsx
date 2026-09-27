@@ -146,6 +146,21 @@ export function Hud({ game }: { game: Game }) {
           </div>
         )}
 
+        {hud.patch && (
+          <div className="panel patch">
+            <div className="title">{hud.patch.name}</div>
+            <div className="row">
+              <span className="muted">Holds</span>
+              <span>{hud.patch.stock}</span>
+            </div>
+            {hud.patch.noShade && (
+              <div className="row">
+                <span className="warn">{hud.patch.noShade}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {hud.pile && (
           <div className="panel pile">
             <div className="title">Stockpile</div>

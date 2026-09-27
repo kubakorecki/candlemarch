@@ -1,11 +1,17 @@
 // ID unions and definition shapes. IDs are string literal unions so a typo is a type error.
 
-export type ResourceId = 'logs' | 'firewood' | 'fish';
+export type ResourceId = 'logs' | 'firewood' | 'fish' | 'berries' | 'mushrooms';
 export type RecipeId = 'split_logs';
 export type TerrainId = 'grass' | 'river';
-export type MapObjectId = 'tree';
-export type BuildingId = 'woodcutters_hut' | 'hut' | 'chopping_block' | 'fishers_hut' | 'granary';
-export type JobId = 'woodcutter' | 'carrier' | 'woodsplitter' | 'fisher';
+export type MapObjectId = 'tree' | 'berry_bush' | 'mushroom_patch';
+export type BuildingId =
+  | 'woodcutters_hut'
+  | 'hut'
+  | 'chopping_block'
+  | 'fishers_hut'
+  | 'foragers_hut'
+  | 'granary';
+export type JobId = 'woodcutter' | 'carrier' | 'woodsplitter' | 'fisher' | 'forager';
 export type RoadId = 'dirt_path';
 export type HeroId = 'placeholder';
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
@@ -66,18 +72,31 @@ export interface RecipeDef {
   workTicks: number;
 }
 
-/** Something standing on a tile that blocks it, such as a tree. */
+/** Something standing on a tile that blocks it, such as a tree or a forage patch. */
 export interface MapObjectDef {
   id: MapObjectId;
   name: string;
   /** What gathering it yields. */
   resource: ResourceId;
-  /** How many units it holds when the map starts. It is removed once empty. */
+  /** How many units it holds when the map starts. It is removed once empty, unless it forages. */
   amount: number;
   /** Ticks of work for one gather. */
   gatherTicks: number;
   /** Units taken per gather. */
   yieldPerGather: number;
+  /** Makes it a forage patch: it stays when empty and refills each season while shaded. */
+  forage?: ForageDef;
+}
+
+/**
+ * A forage patch's seasons. At the start of each season its stock is set to that season's amount
+ * while a `shadedBy` object stands within `shadeTiles` (Chebyshev distance); without shade it
+ * withers, and is set to nothing.
+ */
+export interface ForageDef {
+  stock: Record<SeasonId, number>;
+  shadedBy: MapObjectId;
+  shadeTiles: number;
 }
 
 export interface JobDef {
@@ -164,8 +183,13 @@ export interface BuildingDef {
   placeable: boolean;
   /** Villagers the building employs when it exists. */
   employs: { job: JobId; count: number }[];
-  /** Map object its workers gather from, if any. */
-  gathers?: MapObjectId;
+  /** Map objects its workers gather from, if any. */
+  gathers?: MapObjectId[];
+  /**
+   * Its workers gather only within this many tiles of its footprint (Chebyshev distance). Without
+   * it they go anywhere.
+   */
+  workRadius?: number;
   /**
    * Its workers fish at its door, putting each catch in the output buffer. Fish never run out;
    * fishing stops while the river is frozen.
@@ -173,8 +197,8 @@ export interface BuildingDef {
   fishes?: { catchTicks: number; yieldPerCatch: number };
   /** Its door must be on a riverbank tile. */
   doorOnRiverbank?: boolean;
-  /** Where its workers drop what they produce, if anything. */
-  outputBuffer?: { resource: ResourceId; capacity: number };
+  /** Where its workers drop what they produce, if anything: a capacity per resource. */
+  outputBuffer?: { resource: ResourceId; capacity: number }[];
   /** Recipes its workers work through, in order of preference. Makes the building a workshop. */
   recipes?: RecipeId[];
   /** What a workshop holds of each of its recipes' inputs. Carriers fill it. */

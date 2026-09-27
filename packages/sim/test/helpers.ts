@@ -32,7 +32,9 @@ export function runUntil(
 /** Total units of `resource` anywhere in the world: map objects, buffers, sites and hands. */
 export function totalLogs(s: GameState): number {
   let total = 0;
-  for (const o of Object.values(s.components.mapObject)) total += o.amount;
+  for (const o of Object.values(s.components.mapObject)) {
+    if (content.mapObjects[o.type].resource === 'logs') total += o.amount;
+  }
   for (const b of Object.values(s.components.building))
     total += (b.stock.logs ?? 0) + (b.input.logs ?? 0);
   for (const site of Object.values(s.components.site)) total += site.delivered.logs ?? 0;

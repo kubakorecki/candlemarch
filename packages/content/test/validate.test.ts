@@ -7,6 +7,10 @@ function expectPositiveInt(value: number, label: string): void {
   expect(Number.isInteger(value) && value > 0, `${label} = ${value}`).toBe(true);
 }
 
+function expectNonNegativeInt(value: number, label: string): void {
+  expect(Number.isInteger(value) && value >= 0, `${label} = ${value}`).toBe(true);
+}
+
 describe('content validation', () => {
   it('every record key matches its id', () => {
     for (const table of [resources, terrain, mapObjects, jobs, recipes, buildings, heroes, roads]) {
@@ -19,9 +23,26 @@ describe('content validation', () => {
   it('map objects reference existing resources and use positive integers', () => {
     for (const obj of Object.values(mapObjects)) {
       expect(resources).toHaveProperty(obj.resource);
-      expectPositiveInt(obj.amount, `${obj.id}.amount`);
+      // A forage patch may start empty (mushrooms in spring); anything else would vanish at once.
+      if (obj.forage) expectNonNegativeInt(obj.amount, `${obj.id}.amount`);
+      else expectPositiveInt(obj.amount, `${obj.id}.amount`);
       expectPositiveInt(obj.gatherTicks, `${obj.id}.gatherTicks`);
       expectPositiveInt(obj.yieldPerGather, `${obj.id}.yieldPerGather`);
+    }
+  });
+
+  it('forage patches have a stock for every season and a shade that exists', () => {
+    const first = content.calendar.seasons[0]?.id as SeasonId;
+    for (const obj of Object.values(mapObjects)) {
+      if (!obj.forage) continue;
+      for (const season of content.calendar.seasons) {
+        expectNonNegativeInt(obj.forage.stock[season.id], `${obj.id}.forage.stock.${season.id}`);
+      }
+      expect(mapObjects, `${obj.id}.forage.shadedBy`).toHaveProperty(obj.forage.shadedBy);
+      expect(mapObjects[obj.forage.shadedBy].forage, `${obj.id} shaded by a patch`).toBeUndefined();
+      expectPositiveInt(obj.forage.shadeTiles, `${obj.id}.forage.shadeTiles`);
+      // A game starts on the first season's first day: the patch starts with that season's stock.
+      expect(obj.amount, `${obj.id} starts with ${first}'s stock`).toBe(obj.forage.stock[first]);
     }
   });
 
@@ -130,12 +151,13 @@ describe('content validation', () => {
         expect(jobs, `${b.id} employs`).toHaveProperty(slot.job);
         expectPositiveInt(slot.count, `${b.id}.employs.${slot.job}`);
       }
-      if (b.gathers !== undefined) {
-        expect(mapObjects, `${b.id}.gathers`).toHaveProperty(b.gathers);
+      for (const obj of b.gathers ?? []) {
+        expect(mapObjects, `${b.id}.gathers`).toHaveProperty(obj);
       }
-      if (b.outputBuffer) {
-        expect(resources, `${b.id}.outputBuffer`).toHaveProperty(b.outputBuffer.resource);
-        expectPositiveInt(b.outputBuffer.capacity, `${b.id}.outputBuffer.capacity`);
+      if (b.workRadius !== undefined) expectPositiveInt(b.workRadius, `${b.id}.workRadius`);
+      for (const slot of b.outputBuffer ?? []) {
+        expect(resources, `${b.id}.outputBuffer`).toHaveProperty(slot.resource);
+        expectPositiveInt(slot.capacity, `${b.id}.outputBuffer.${slot.resource}`);
       }
       for (const cost of b.construction?.cost ?? []) {
         expect(resources, `${b.id} cost`).toHaveProperty(cost.resource);
@@ -178,13 +200,11 @@ describe('content validation', () => {
             `${b.id} holds ${id}'s ${input.resource}`,
           ).toBeGreaterThanOrEqual(input.amount);
         }
-        // One output buffer, so every recipe yields just its resource.
         for (const output of recipes[id].outputs) {
-          expect(b.outputBuffer?.resource, `${b.id} stores ${id}'s output`).toBe(output.resource);
-          expect(
-            b.outputBuffer?.capacity ?? 0,
-            `${b.id} holds ${id}'s output`,
-          ).toBeGreaterThanOrEqual(output.amount);
+          const slot = b.outputBuffer?.find((s) => s.resource === output.resource);
+          expect(slot?.capacity ?? 0, `${b.id} holds ${id}'s output`).toBeGreaterThanOrEqual(
+            output.amount,
+          );
         }
       }
     }
@@ -213,8 +233,13 @@ describe('content validation', () => {
 
   it('a gathering building has somewhere to put what it gathers', () => {
     for (const b of Object.values(buildings)) {
-      if (b.gathers === undefined) continue;
-      expect(b.outputBuffer?.resource).toBe(mapObjects[b.gathers].resource);
+      for (const obj of b.gathers ?? []) {
+        const resource = mapObjects[obj].resource;
+        const slot = b.outputBuffer?.find((s) => s.resource === resource);
+        expect(slot?.capacity ?? 0, `${b.id} holds ${resource}`).toBeGreaterThanOrEqual(
+          mapObjects[obj].yieldPerGather,
+        );
+      }
     }
   });
 
@@ -225,7 +250,8 @@ describe('content validation', () => {
       expectPositiveInt(b.fishes.yieldPerCatch, `${b.id}.fishes.yieldPerCatch`);
       expect(b.doorOnRiverbank, `${b.id}.doorOnRiverbank`).toBe(true);
       expect(b.employs.length, `${b.id} employs someone`).toBeGreaterThan(0);
-      expect(b.outputBuffer?.capacity ?? 0, `${b.id} holds a catch`).toBeGreaterThanOrEqual(
+      expect(b.outputBuffer?.length, `${b.id} has one output`).toBe(1);
+      expect(b.outputBuffer?.[0]?.capacity ?? 0, `${b.id} holds a catch`).toBeGreaterThanOrEqual(
         b.fishes.yieldPerCatch,
       );
     }

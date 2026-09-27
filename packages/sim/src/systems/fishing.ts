@@ -21,7 +21,7 @@ export function fishingSystem(state: GameState, content: Content): void {
     const origin = tile[hutId];
     if (!hut || !origin) continue;
     const def = content.buildings[hut.type];
-    const buffer = def.outputBuffer;
+    const buffer = def.outputBuffer?.[0]; // a fishing building has one output: its catch
     if (!def.fishes || !buffer) continue;
     const idle = () => {
       tasks[id] = { kind: 'idle', retryAt: state.tick + content.jobs[v.job].idleRetryTicks };

@@ -15,6 +15,8 @@ import {
   heroOf,
   heroOrderAt,
   idsOf,
+  isForagePatch,
+  isWithered,
   lShapeTiles,
   type MapName,
   maxWorkers,
@@ -73,6 +75,13 @@ export const TOOLS: readonly {
     hint: 'Click to place. Shift-click places more.',
   },
   {
+    id: 'foragers_hut',
+    label: "Forager's hut",
+    key: 'o',
+    drag: false,
+    hint: 'Click to place near berry bushes and mushroom patches. Shift-click places more.',
+  },
+  {
     id: 'fishers_hut',
     label: "Fisher's hut",
     key: 'f',
@@ -129,6 +138,15 @@ export interface WorkersView {
   rows: WorkerRow[];
 }
 
+/** What the patch panel shows for the selected forage patch. */
+export interface PatchInfo {
+  name: string;
+  /** "3 berries", or "Nothing to gather". */
+  stock: string;
+  /** "No shade: needs a tree within 2 tiles to regrow" once withered, otherwise null. */
+  noShade: string | null;
+}
+
 /** What the building panel shows for the selected Workplace. */
 export interface BuildingInfo {
   name: string;
@@ -160,6 +178,8 @@ export interface HudState {
   villager: VillagerInfo | null;
   /** The Workplace selected by clicking it with no tool. */
   building: BuildingInfo | null;
+  /** The forage patch selected by clicking it with no tool. */
+  patch: PatchInfo | null;
   /** The workers view, while it's open. */
   workers: WorkersView | null;
   /** The hero is selected, so right-click orders it. */
@@ -180,6 +200,7 @@ export class Game {
   private selectedPile: EntityId | null = null;
   private selectedVillager: EntityId | null = null;
   private selectedBuilding: EntityId | null = null;
+  private selectedPatch: EntityId | null = null;
   private workersOpen = false;
   private lastSpeed: Speed = 1;
   private hud: HudState = {
@@ -197,6 +218,7 @@ export class Game {
     pile: null,
     villager: null,
     building: null,
+    patch: null,
     workers: null,
     heroSelected: false,
     heroLoad: null,
@@ -392,6 +414,7 @@ export class Game {
     this.refreshPile(state);
     this.refreshVillager(state);
     this.refreshBuilding(state);
+    this.refreshPatch(state);
     this.refreshWorkers(state);
     this.updateGhost();
     if (this.hud.heroSelected && heroOf(state) === null) {
@@ -400,7 +423,7 @@ export class Game {
 
     const { building } = state.components;
     const hut = Object.values(building).find((b) => b.type === 'woodcutters_hut');
-    const buffer = content.buildings.woodcutters_hut.outputBuffer;
+    const buffer = content.buildings.woodcutters_hut.outputBuffer?.[0];
     const time = calendarAt(state.tick, content);
     this.setHud({
       ready: true,
@@ -484,7 +507,7 @@ export class Game {
 
   /**
    * Clicks with no tool. Left-click selects the hero if it's under the cursor, else a villager,
-   * else the stockpile there, else the Workplace there (or nothing). Right-click orders the
+   * else the stockpile there, else the Workplace there, else the forage patch there (or nothing). Right-click orders the
    * selected hero, RTS style.
    */
   private onSelectClick(sx: number, sy: number, button: number): void {
@@ -499,7 +522,9 @@ export class Game {
       this.selectHero(hero);
       this.selectVillager(villager);
       this.selectPile(pile);
-      this.selectBuilding(unit ? null : workplaceAt(state, tile));
+      const workplace = unit ? null : workplaceAt(state, tile);
+      this.selectBuilding(workplace);
+      this.selectPatch(unit || workplace !== null ? null : patchAt(state, tile));
     } else if (button === 2 && this.hud.heroSelected) {
       const order = heroOrderAt(state, content, this.tileAt(sx, sy));
       if (order) this.bridge.command({ type: 'orderHero', ...order });
@@ -535,10 +560,11 @@ export class Game {
     return screenToTile(sx, sy, this.camera, this.renderer.screenWidth, this.renderer.screenHeight);
   }
 
-  /** Deselects the hero, villager, stockpile and Workplace, whichever is selected. */
+  /** Deselects the hero, villager, stockpile, Workplace and patch, whichever is selected. */
   private clearSelection(): void {
     this.selectPile(null);
     this.selectBuilding(null);
+    this.selectPatch(null);
     this.selectVillager(null);
     this.selectHero(false);
   }
@@ -583,6 +609,21 @@ export class Game {
     const info = id === null ? null : buildingInfo(state, id);
     if (id !== null && !info) this.selectedBuilding = null;
     if (JSON.stringify(info) !== JSON.stringify(this.hud.building)) this.setHud({ building: info });
+  }
+
+  private selectPatch(id: EntityId | null): void {
+    this.selectedPatch = id;
+    const state = this.bridge.state;
+    if (state) this.refreshPatch(state);
+    else this.setHud({ patch: null });
+  }
+
+  /** Copies the selected forage patch into the HUD. */
+  private refreshPatch(state: GameState): void {
+    const id = this.selectedPatch;
+    const info = id === null ? null : patchInfo(state, id);
+    if (id !== null && !info) this.selectedPatch = null;
+    if (JSON.stringify(info) !== JSON.stringify(this.hud.patch)) this.setHud({ patch: info });
   }
 
   /** Copies every villager into the workers view while it's open. */
@@ -721,6 +762,32 @@ function workplaceAt(state: GameState, tile: Tile): EntityId | null {
     if (covers(at[id], size.w, size.h, tile)) return id;
   }
   return null;
+}
+
+/** The forage patch on `tile`, if any. */
+function patchAt(state: GameState, tile: Tile): EntityId | null {
+  const { tile: at } = state.components;
+  for (const id of idsOf(state.components.mapObject)) {
+    const t = at[id];
+    if (t && t.x === tile.x && t.y === tile.y && isForagePatch(state, content, id)) return id;
+  }
+  return null;
+}
+
+/** Forage patch `id`'s name, stock and shade for the panel, or null if it's gone. */
+function patchInfo(state: GameState, id: EntityId): PatchInfo | null {
+  const obj = state.components.mapObject[id];
+  const def = obj ? content.mapObjects[obj.type] : undefined;
+  if (!obj || !def?.forage) return null;
+  const withered = isWithered(state, content, id);
+  const food = content.resources[def.resource].name.toLowerCase();
+  return {
+    name: def.name,
+    stock: obj.amount > 0 && !withered ? `${obj.amount} ${food}` : 'Nothing to gather',
+    noShade: withered
+      ? `No shade: needs a tree within ${def.forage.shadeTiles} tiles to regrow`
+      : null,
+  };
 }
 
 /**

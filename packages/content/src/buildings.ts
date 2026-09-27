@@ -8,8 +8,8 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     door: { x: 1, y: 2 },
     placeable: true,
     employs: [{ job: 'woodcutter', count: 1 }],
-    gathers: 'tree',
-    outputBuffer: { resource: 'logs', capacity: 4 },
+    gathers: ['tree'],
+    outputBuffer: [{ resource: 'logs', capacity: 4 }],
     construction: {
       cost: [{ resource: 'logs', amount: 6 }],
       buildTicks: 200, // 10 s
@@ -25,7 +25,25 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     doorOnRiverbank: true,
     employs: [{ job: 'fisher', count: 1 }],
     fishes: { catchTicks: 400, yieldPerCatch: 1 }, // 20 s a fish
-    outputBuffer: { resource: 'fish', capacity: 4 },
+    outputBuffer: [{ resource: 'fish', capacity: 4 }],
+    construction: {
+      cost: [{ resource: 'logs', amount: 6 }],
+      buildTicks: 200, // 10 s
+    },
+  },
+  foragers_hut: {
+    id: 'foragers_hut',
+    name: "Forager's hut",
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [{ job: 'forager', count: 1 }],
+    gathers: ['berry_bush', 'mushroom_patch'],
+    workRadius: 8,
+    outputBuffer: [
+      { resource: 'berries', capacity: 4 },
+      { resource: 'mushrooms', capacity: 4 },
+    ],
     construction: {
       cost: [{ resource: 'logs', amount: 6 }],
       buildTicks: 200, // 10 s
@@ -66,7 +84,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     employs: [{ job: 'woodsplitter', count: 1 }],
     recipes: ['split_logs'],
     inputBuffer: [{ resource: 'logs', capacity: 4 }],
-    outputBuffer: { resource: 'firewood', capacity: 4 },
+    outputBuffer: [{ resource: 'firewood', capacity: 4 }],
     // Enough not to turn every log into firewood (spec, Firewood). Standing orders make it editable in M5.
     stockTarget: { resource: 'firewood', amount: 40 },
     construction: {

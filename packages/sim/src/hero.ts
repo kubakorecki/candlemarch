@@ -2,6 +2,7 @@
 // and carries goods by hand to kickstart the village (spec, logistics stage 1).
 import type { Content, ResourceId } from '@candlemarch/content';
 import { destroyEntity, idsOf } from './entities';
+import { isForagePatch } from './forage';
 import {
   blockedGrid,
   entityDoor,
@@ -73,7 +74,8 @@ export function orderHero(state: GameState, content: Content, order: HeroOrder):
     }
     case 'gather': {
       const tree = state.components.mapObject[order.tree];
-      if (!tree || tree.amount <= 0) return;
+      // Trees only: forage patches are the forager's.
+      if (!tree || tree.amount <= 0 || isForagePatch(state, content, order.tree)) return;
       const def = content.mapObjects[tree.type];
       if (roomFor(content, hero, def.resource) <= 0) return;
       if (!rerouteTo(state, content, id, treeStandingTiles(state, content, order.tree))) return;
@@ -98,8 +100,9 @@ export function orderHero(state: GameState, content: Content, order: HeroOrder):
 type PickupTask = Extract<HeroTask, { kind: 'pickup' }>;
 
 /**
- * A pickup from `source`: its door if it's a building, or the stockpile tile nearest the hero with
- * unclaimed goods it has room for (resources in content order). Null if there's nothing to take.
+ * A pickup from `source`: its door if it's a building (its first output with unclaimed goods the
+ * hero has room for), or the stockpile tile nearest the hero with unclaimed goods it has room for
+ * (resources in content order). Null if there's nothing to take.
  */
 function pickupTask(
   state: GameState,
@@ -109,11 +112,14 @@ function pickupTask(
 ): PickupTask | null {
   const building = state.components.building[source];
   if (building) {
-    const resource = content.buildings[building.type].outputBuffer?.resource;
     const door = entityDoor(state, content, source);
-    if (!resource || !door || unclaimedAt(state, source, resource, null) <= 0) return null;
-    if (roomFor(content, hero, resource) <= 0) return null;
-    return { kind: 'pickup', source, resource, tile: tileIndex(state.map, door.x, door.y) };
+    const slot = content.buildings[building.type].outputBuffer?.find(
+      ({ resource }) =>
+        unclaimedAt(state, source, resource, null) > 0 && roomFor(content, hero, resource) > 0,
+    );
+    if (!slot || !door) return null;
+    const tile = tileIndex(state.map, door.x, door.y);
+    return { kind: 'pickup', source, resource: slot.resource, tile };
   }
   for (const resource of Object.keys(content.resources) as ResourceId[]) {
     if (roomFor(content, hero, resource) <= 0) continue;
@@ -233,7 +239,8 @@ export function heroOrderAt(state: GameState, content: Content, tile: Tile): Her
   const tree = state.components.mapObject[thing];
   if (tree) {
     const resource = content.mapObjects[tree.type].resource;
-    return roomFor(content, hero, resource) > 0 ? { order: 'gather', tree: thing } : null;
+    const canChop = !isForagePatch(state, content, thing) && roomFor(content, hero, resource) > 0;
+    return canChop ? { order: 'gather', tree: thing } : null;
   }
   if (deliverTask(state, content, hero, thing)) return { order: 'deliver', target: thing };
   if (pickupTask(state, content, hero, thing)) return { order: 'pickup', source: thing };

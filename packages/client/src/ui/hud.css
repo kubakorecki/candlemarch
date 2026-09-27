@@ -125,7 +125,8 @@ body,
 .pile,
 .villager,
 .workers,
-.building {
+.building,
+.patch {
   display: flex;
   flex-direction: column;
   gap: 6px;

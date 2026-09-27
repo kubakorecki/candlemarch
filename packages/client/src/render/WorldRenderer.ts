@@ -8,6 +8,7 @@ import {
   heroOf,
   idsOf,
   isRiverFrozen,
+  isWithered,
   openPositions,
   type Point,
   type Tile,
@@ -27,6 +28,7 @@ import { palette } from './palette';
 import {
   drawAuraRadius,
   drawAxe,
+  drawBerryBush,
   drawBoostedMark,
   drawBuilding,
   drawCarriedGoods,
@@ -36,6 +38,7 @@ import {
   drawHero,
   drawHeroLoad,
   drawMissingIcon,
+  drawMushroomPatch,
   drawPileGround,
   drawPlacementGhost,
   drawRoads,
@@ -63,6 +66,7 @@ const JOB_COLORS: Record<JobId, number> = {
   woodcutter: palette.woodcutter,
   woodsplitter: palette.woodsplitter,
   fisher: palette.fisher,
+  forager: palette.forager,
 };
 
 interface VillagerView {
@@ -128,6 +132,19 @@ function granaryPile(
     if (amount > 0 && (!best || amount > best.amount)) best = { resource, amount };
   }
   return best && { resource: best.resource, amount: Math.min(best.amount, GRANARY_PILE_MAX) };
+}
+
+/** What a Workplace shows beside its door: its output of which it holds most (first on ties). */
+function outputPile(
+  slots: readonly { resource: ResourceId }[] | undefined,
+  stock: Partial<Record<ResourceId, number>>,
+): ResourceAmount | null {
+  let best: ResourceAmount | null = null;
+  for (const { resource } of slots ?? []) {
+    const amount = stock[resource] ?? 0;
+    if (!best || amount > best.amount) best = { resource, amount };
+  }
+  return best;
 }
 
 /** A walker's position between its previous and current tick, in grid coordinates. */
@@ -227,10 +244,14 @@ export class WorldRenderer {
       const at = tile[id];
       if (!obj || !at) continue;
       const full = this.content.mapObjects[obj.type].amount;
+      const withered = isWithered(state, this.content, id);
       const view = this.staticView(`tree:${id}`, seen);
-      const key = `${at.x},${at.y}:${obj.amount}`;
+      const key = `${obj.type}@${at.x},${at.y}:${obj.amount}:${withered}`;
       if (view.key !== key) {
-        drawTree(view.graphics, obj.amount, full);
+        if (obj.type === 'berry_bush') drawBerryBush(view.graphics, obj.amount, withered);
+        else if (obj.type === 'mushroom_patch') {
+          drawMushroomPatch(view.graphics, obj.amount, withered);
+        } else drawTree(view.graphics, obj.amount, full);
         view.key = key;
         const c = tileCenterWorld(at.x, at.y);
         view.node.position.set(c.x, c.y);
@@ -248,11 +269,11 @@ export class WorldRenderer {
       const output =
         def.foodCapacity !== undefined
           ? granaryPile(this.content, b.stock)
-          : buffered(def.outputBuffer?.resource, b.stock);
+          : outputPile(def.outputBuffer, b.stock);
       const input = buffered(def.inputBuffer?.[0]?.resource, b.input);
       const unstaffed = openPositions(state, this.content, id).length > 0;
       const view = this.staticView(`building:${id}`, seen);
-      const key = `${b.type}@${at.x},${at.y}:${input?.amount}:${output?.amount}:${unstaffed}`;
+      const key = `${b.type}@${at.x},${at.y}:${input?.amount}:${output?.resource}${output?.amount}:${unstaffed}`;
       if (view.key !== key) {
         if (b.type === 'chopping_block')
           drawChoppingBlock(view.graphics, at.x, at.y, input, output);

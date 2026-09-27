@@ -49,18 +49,17 @@ function resourceIds(content: Content): ResourceId[] {
 }
 
 /**
- * Output buffer contents of every building in building ID order, then the goods on every
- * stockpile in stockpile ID order (resources in content order).
+ * Output buffer contents of every building in building ID order (buffer slots in content order),
+ * then the goods on every stockpile in stockpile ID order (resources in content order).
  */
 export function listSupplies(state: GameState, content: Content): Supply[] {
   const result: Supply[] = [];
   for (const id of idsOf(state.components.building)) {
     const b = state.components.building[id];
-    const buffer = b ? content.buildings[b.type].outputBuffer : undefined;
-    if (!b || !buffer) continue;
-    const amount = b.stock[buffer.resource] ?? 0;
-    if (amount > 0) {
-      result.push({ source: id, kind: 'building', resource: buffer.resource, amount });
+    if (!b) continue;
+    for (const { resource } of content.buildings[b.type].outputBuffer ?? []) {
+      const amount = b.stock[resource] ?? 0;
+      if (amount > 0) result.push({ source: id, kind: 'building', resource, amount });
     }
   }
   for (const id of idsOf(state.components.stockpile)) {

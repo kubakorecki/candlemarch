@@ -42,6 +42,8 @@ export const MAP_LEGEND: Record<
 > = {
   '.': { terrain: 'grass' },
   T: { terrain: 'grass', object: 'tree' },
+  b: { terrain: 'grass', object: 'berry_bush' },
+  m: { terrain: 'grass', object: 'mushroom_patch' },
   '=': { terrain: 'grass', road: 'dirt_path' },
   '~': { terrain: 'river' },
 };
@@ -95,6 +97,7 @@ export function createEmptyState(seed: number): GameState {
       woodcutter: {},
       crafter: {},
       fisher: {},
+      forager: {},
     },
     logistics: { hauls: {} },
   };

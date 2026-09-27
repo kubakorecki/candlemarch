@@ -70,7 +70,9 @@ describe('balance harness', () => {
   it('formats a table with a column per resource', () => {
     const lines = formatTable(runScenario(tiny, shortDays), shortDays).split('\n');
     expect(lines).toHaveLength(2 + 4);
-    expect(lines[0]).toMatch(/Tick\s+Date\s+Pop\s+Deaths\s+Logs\s+Firewood\s+Fish/);
-    expect(lines[2]).toMatch(/^\s*0\s+Y1 Spring 1\s+2\s+0\s+0\s+0\s+0$/);
+    expect(lines[0]).toMatch(
+      /Tick\s+Date\s+Pop\s+Deaths\s+Logs\s+Firewood\s+Fish\s+Berries\s+Mushrooms/,
+    );
+    expect(lines[2]).toMatch(/^\s*0\s+Y1 Spring 1\s+2\s+0\s+0\s+0\s+0\s+0\s+0$/);
   });
 });

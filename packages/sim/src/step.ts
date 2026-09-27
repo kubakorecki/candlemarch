@@ -6,8 +6,10 @@ import { homesSystem } from './homes';
 import type { GameState } from './state';
 import { constructionSystem } from './systems/construction';
 import { fishingSystem } from './systems/fishing';
+import { foragingSystem } from './systems/foraging';
 import { haulingSystem } from './systems/hauling';
 import { movementSystem } from './systems/movement';
+import { patchesSystem } from './systems/patches';
 import { productionSystem } from './systems/production';
 import { routineSystem } from './systems/routine';
 import { spoilageSystem } from './systems/spoilage';
@@ -25,15 +27,17 @@ function cloneState(state: GameState): GameState {
  * 2. movement: walkers advance; arrivals are visible to the systems below this same tick
  * 3. homes: Homeless villagers get a free place in a House
  * 4. spoilage: at Dawn, Food in Granaries and workplace buffers loses its daily share
- * 5. routine: at Dusk villagers finish what they hold, eat at a Granary and go Home to sleep; at
+ * 5. patches: at a season's first Dawn, forage patches refill if shaded
+ * 6. routine: at Dusk villagers finish what they hold, eat at a Granary and go Home to sleep; at
  *    Dawn back to work
- * 6. hero: works the player's order (chop, pick up, deliver)
- * 7. woodcutting
- * 8. fishing
- * 9. production: workshop crafters take inputs, work, and fill output buffers
- * 10. hauling (job dispatch)
- * 11. construction, by day only
- * 12. staffing: workplaces below their worker limit draft idle carriers
+ * 7. hero: works the player's order (chop, pick up, deliver)
+ * 8. woodcutting
+ * 9. fishing
+ * 10. foraging
+ * 11. production: workshop crafters take inputs, work, and fill output buffers
+ * 12. hauling (job dispatch)
+ * 13. construction, by day only
+ * 14. staffing: workplaces below their worker limit draft idle carriers
  * then `tick` increments.
  */
 export function step(state: GameState, commands: readonly Command[], content: Content): GameState {
@@ -42,10 +46,12 @@ export function step(state: GameState, commands: readonly Command[], content: Co
   movementSystem(next, content);
   homesSystem(next, content);
   spoilageSystem(next, content);
+  patchesSystem(next, content);
   routineSystem(next, content);
   heroSystem(next, content);
   woodcuttingSystem(next, content);
   fishingSystem(next, content);
+  foragingSystem(next, content);
   productionSystem(next, content);
   haulingSystem(next, content);
   constructionSystem(next, content);

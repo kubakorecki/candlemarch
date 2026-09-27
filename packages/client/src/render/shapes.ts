@@ -151,6 +151,90 @@ export function drawTree(g: Graphics, amount: number, fullAmount: number): void 
   g.stroke({ ...THIN_INK, alpha: 0.6 });
 }
 
+/** A berry bush, drawn like `drawTree`: berries while it has some, bare and dry once withered. */
+export function drawBerryBush(g: Graphics, amount: number, withered: boolean): void {
+  g.clear();
+  const s = TILE_H / 64;
+  groundShadow(g, 26 * s, 11 * s);
+  const dark = withered ? palette.witheredDark : palette.bush;
+  const light = withered ? palette.withered : palette.bushLight;
+  g.ellipse(-10 * s, -12 * s, 16 * s, 13 * s)
+    .fill(dark)
+    .stroke(INK);
+  g.ellipse(10 * s, -13 * s, 16 * s, 13 * s)
+    .fill(dark)
+    .stroke(INK);
+  g.ellipse(0, -24 * s, 17 * s, 13 * s)
+    .fill(light)
+    .stroke(INK);
+  if (withered) {
+    // Dead twigs poking out.
+    g.moveTo(-4 * s, -30 * s).lineTo(-10 * s, -40 * s);
+    g.moveTo(6 * s, -28 * s).lineTo(12 * s, -37 * s);
+    g.stroke(THIN_INK);
+    return;
+  }
+  const spots = [
+    [-12, -14],
+    [8, -26],
+    [12, -12],
+    [-4, -28],
+    [-18, -8],
+    [2, -16],
+    [18, -18],
+    [-10, -24],
+  ];
+  for (const [x, y] of spots.slice(0, Math.min(amount, spots.length))) {
+    drawBerry(g, (x ?? 0) * s, (y ?? 0) * s, s);
+  }
+}
+
+/** A mushroom patch, drawn like `drawTree`: caps while it has some, bare dry litter otherwise. */
+export function drawMushroomPatch(g: Graphics, amount: number, withered: boolean): void {
+  g.clear();
+  const s = TILE_H / 64;
+  g.ellipse(0, 0, 30 * s, 13 * s)
+    .fill(withered ? palette.withered : palette.litter)
+    .stroke(THIN_INK);
+  if (withered) return;
+  const spots = [
+    [-10, -2],
+    [8, 2],
+    [0, -6],
+    [16, -3],
+    [-18, 2],
+    [-2, 5],
+  ];
+  for (const [x, y] of spots.slice(0, Math.min(amount, spots.length))) {
+    drawMushroom(g, (x ?? 0) * s, (y ?? 0) * s, s);
+  }
+}
+
+/** One berry, centred on (x, y). */
+function drawBerry(g: Graphics, x: number, y: number, s: number): void {
+  g.circle(x, y, 3.5 * s)
+    .fill(palette.berry)
+    .stroke({ ...THIN_INK, width: 1.5 });
+  g.circle(x - 1 * s, y - 1.2 * s, 1 * s).fill(palette.berryShine);
+}
+
+/** A cluster of three berries, centred on (x, y). */
+function drawBerries(g: Graphics, x: number, y: number, s: number): void {
+  drawBerry(g, x - 3.5 * s, y + 1 * s, s);
+  drawBerry(g, x + 3.5 * s, y + 1 * s, s);
+  drawBerry(g, x, y - 3 * s, s);
+}
+
+/** One mushroom standing with its foot on (x, y). */
+function drawMushroom(g: Graphics, x: number, y: number, s: number): void {
+  g.roundRect(x - 2 * s, y - 7 * s, 4 * s, 8 * s, 1.5 * s)
+    .fill(palette.mushroomStem)
+    .stroke({ ...THIN_INK, width: 1.5 });
+  g.ellipse(x, y - 8 * s, 7 * s, 4 * s)
+    .fill(palette.mushroomCap)
+    .stroke({ ...THIN_INK, width: 1.5 });
+}
+
 /** One log lying on the ground or on a stack, centred on (x, y). */
 function drawLog(g: Graphics, x: number, y: number, s: number): void {
   g.roundRect(x - 11 * s, y - 4 * s, 22 * s, 8 * s, 4 * s)
@@ -191,6 +275,8 @@ const PIECES: Record<
   logs: { draw: drawLog, w: 20, h: 8 },
   firewood: { draw: drawFirewood, w: 16, h: 7 },
   fish: { draw: drawFish, w: 20, h: 7 },
+  berries: { draw: drawBerries, w: 14, h: 8 },
+  mushrooms: { draw: (g, x, y, s) => drawMushroom(g, x, y + 4 * s, s), w: 14, h: 9 },
 };
 
 /** A pyramid of `count` pieces of `resource` whose bottom row is centred on (x, y). */

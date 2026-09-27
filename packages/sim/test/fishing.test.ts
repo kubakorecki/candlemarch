@@ -57,7 +57,7 @@ const fishery: MapDef = {
 };
 
 const fishes = content.buildings.fishers_hut.fishes ?? { catchTicks: 0, yieldPerCatch: 0 };
-const capacity = content.buildings.fishers_hut.outputBuffer?.capacity ?? 0;
+const capacity = content.buildings.fishers_hut.outputBuffer?.[0]?.capacity ?? 0;
 
 function hutFish(s: GameState): number {
   const hut = idsOf(s.components.building).find(

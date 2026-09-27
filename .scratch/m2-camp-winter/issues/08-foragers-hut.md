@@ -1,6 +1,6 @@
 # Forager's hut and forage patches
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 02, 07, m1-roads-logistics/06
 
@@ -19,3 +19,7 @@ Spec: World and map, "Before full ecology (M2)". Trees don't give food; forage p
 
 - Headless tests: seasonal refill amounts; no refill in winter; felling every tree within 2 tiles stops the refill; the forager picks the nearest stocked patch.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-27: Done. `berry_bush`/`mushroom_patch` map objects with a `forage` def (legend `b`/`m`), `patchesSystem` refills at each season's first Dawn (set to the season's amount if a tree is within 2 tiles Chebyshev, else 0; leftovers don't carry over), `isWithered` derived. Forager's hut (`workRadius` 8, Chebyshev from the footprint) and `foragingSystem`; its output goes to the Granary through the existing Food hauling (ticket 11 was already done). Differs from the issue: `BuildingDef.gathers` is now a list and `outputBuffer` a list of per-resource slots, so one hut holds both Foods; a withered patch yields nothing even with stock left (it's drawn bare); the hero can't pick patches. No playable map places patches yet (ticket 20). See `docs/decisions.md`.

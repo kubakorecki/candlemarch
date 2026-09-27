@@ -2,41 +2,11 @@
 import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { destroyEntity, idsOf } from '../entities';
-import { blockedGrid, doorTile, standingTiles, tileIndex } from '../grid';
-import { tileDistance } from '../pathfinding';
+import { gatherTargets, outputRoom, walkToNearest } from '../gathering';
+import { doorTile } from '../grid';
 import { workTicks } from '../speed';
-import type { EntityId, GameState, Tile } from '../state';
-import { isAt, villagerTile, walkTo } from './movement';
-
-/** Starts a walk to the nearest reachable tree with something left. Returns its ID, or null. */
-function walkToNearestTree(state: GameState, content: Content, id: EntityId): EntityId | null {
-  const workplace = state.components.villager[id]?.workplace;
-  const hut = workplace != null ? state.components.building[workplace] : undefined;
-  const here = villagerTile(state, id);
-  const gathers = hut ? content.buildings[hut.type].gathers : undefined;
-  if (!here || gathers === undefined) return null;
-
-  const { map } = state;
-  const { mapObject, tile } = state.components;
-  const hereIndex = tileIndex(map, here.x, here.y);
-  const candidates = idsOf(mapObject)
-    .filter((t) => mapObject[t]?.type === gathers && (mapObject[t]?.amount ?? 0) > 0)
-    .map((t) => {
-      const at = tile[t] as Tile;
-      return {
-        id: t,
-        at,
-        distance: tileDistance(map.width, hereIndex, tileIndex(map, at.x, at.y)),
-      };
-    })
-    .sort((a, b) => a.distance - b.distance || a.id - b.id);
-
-  const blocked = blockedGrid(state, content);
-  for (const c of candidates) {
-    if (walkTo(state, content, id, standingTiles(state, blocked, c.at))) return c.id;
-  }
-  return null;
-}
+import type { EntityId, GameState } from '../state';
+import { isAt, walkTo } from './movement';
 
 export function woodcuttingSystem(state: GameState, content: Content): void {
   const { woodcutter: tasks, villager, building, mapObject, path } = state.components;
@@ -53,10 +23,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
     const hut = building[hutId];
     const hutOrigin = state.components.tile[hutId];
     if (!hut || !hutOrigin) continue;
-    const hutDef = content.buildings[hut.type];
-    const buffer = hutDef.outputBuffer;
-    if (!buffer) continue;
-    const door = doorTile(hutDef, hutOrigin);
+    const door = doorTile(content.buildings[hut.type], hutOrigin);
     const idle = () => {
       tasks[id] = { kind: 'idle', retryAt: state.tick + job.idleRetryTicks };
     };
@@ -64,11 +31,10 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
     switch (task.kind) {
       case 'idle': {
         if (state.tick < task.retryAt) break;
-        if ((hut.stock[buffer.resource] ?? 0) >= buffer.capacity) {
-          idle(); // buffer full: wait for a carrier to take something
-          break;
-        }
-        const tree = walkToNearestTree(state, content, id);
+        const standing = (t: EntityId) => (mapObject[t]?.amount ?? 0) > 0;
+        const trees = gatherTargets(state, content, hutId, standing);
+        const tree = walkToNearest(state, content, id, trees);
+        // No tree left, or the buffer is full: wait for a carrier to take something.
         if (tree === null) idle();
         else tasks[id] = { kind: 'toTree', tree };
         break;
@@ -114,10 +80,11 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
         }
         const carrying = v.carrying;
         if (carrying) {
-          const stock = hut.stock[carrying.resource] ?? 0;
           // Wait at the door for room, except after Dusk: then the logs go in even if it's full.
-          if (stock + carrying.amount > buffer.capacity && !night) break;
-          hut.stock[carrying.resource] = stock + carrying.amount;
+          if (outputRoom(state, content, hutId, carrying.resource) < carrying.amount && !night) {
+            break;
+          }
+          hut.stock[carrying.resource] = (hut.stock[carrying.resource] ?? 0) + carrying.amount;
           v.carrying = null;
         }
         tasks[id] = { kind: 'idle', retryAt: state.tick };

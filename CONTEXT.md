@@ -130,6 +130,10 @@ _Avoid_: Wildlife, animals (as a count)
 A berry bush or mushroom patch in the forest, where foragers gather Food. It refills each season only while a standing tree is near enough to shade it.
 _Avoid_: Bush (alone), forage tree
 
+**Withered**:
+A Forage patch with no standing tree within 2 tiles. It yields nothing, is drawn bare, and doesn't refill until shade returns.
+_Avoid_: Dead, dried out, unshaded
+
 **Riverbank**:
 A land tile right next to the river (north, east, south or west). A fisher's hut must have its door on one. The river freezes in winter, and nobody fishes then.
 _Avoid_: Shore, river edge

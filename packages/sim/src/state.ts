@@ -165,6 +165,13 @@ export type CrafterTask =
 /** A fisher: waits at its Workplace's door, on the riverbank, and fishes there. */
 export type FisherTask = { kind: 'idle'; retryAt: number } | { kind: 'fishing'; ticksLeft: number };
 
+/** A forager: walks to a forage patch in its hut's radius, gathers, and brings the Food back. */
+export type ForagerTask =
+  | { kind: 'idle'; retryAt: number }
+  | { kind: 'toPatch'; patch: EntityId }
+  | { kind: 'gathering'; patch: EntityId; ticksLeft: number }
+  | { kind: 'toHut' };
+
 export interface Components {
   /** Anchor tile of static things: map objects, buildings, construction sites, stockpiles. */
   tile: Store<Tile>;
@@ -179,6 +186,7 @@ export interface Components {
   woodcutter: Store<WoodcutterTask>;
   crafter: Store<CrafterTask>;
   fisher: Store<FisherTask>;
+  forager: Store<ForagerTask>;
 }
 
 export interface GameState {

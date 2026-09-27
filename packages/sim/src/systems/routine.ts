@@ -29,11 +29,11 @@ function isAtHome(state: GameState, content: Content, id: EntityId): boolean {
  * Ends villager `id`'s working day, after Dusk: drops what can't be finished and returns whether
  * it's still finishing something. A Carrier with goods in hand delivers them (or brings them
  * back); one walking to a pickup drops the Haul. A woodcutter carrying logs takes them to its
- * Workplace; a chop, or the walk to a tree, is abandoned. A crafter finishes a batch under way; a
- * fisher's catch under way is lost.
+ * Workplace; a chop, or the walk to a tree, is abandoned. A forager does the same with Food and
+ * forage patches. A crafter finishes a batch under way; a fisher's catch under way is lost.
  */
 function finishWork(state: GameState, id: EntityId): boolean {
-  const { woodcutter, crafter, fisher } = state.components;
+  const { woodcutter, crafter, fisher, forager } = state.components;
   const haul = state.logistics.hauls[id];
   if (haul?.phase === 'pickup') abandonHaul(state, id);
   else if (haul) return true;
@@ -41,6 +41,9 @@ function finishWork(state: GameState, id: EntityId): boolean {
   const chop = woodcutter[id];
   if (chop?.kind === 'toHut') return true;
   if (chop && chop.kind !== 'idle') woodcutter[id] = { kind: 'idle', retryAt: state.tick };
+  const forage = forager[id];
+  if (forage?.kind === 'toHut') return true;
+  if (forage && forage.kind !== 'idle') forager[id] = { kind: 'idle', retryAt: state.tick };
   if (crafter[id]?.kind === 'working') return true;
   if (fisher[id]?.kind === 'fishing') fisher[id] = { kind: 'idle', retryAt: state.tick };
   return false;

@@ -56,7 +56,8 @@ function startableRecipe(state: GameState, content: Content, building: EntityId)
   const b = state.components.building[building];
   if (!b || isPaused(state, content, building)) return null;
   const def = content.buildings[b.type];
-  const capacity = def.outputBuffer?.capacity ?? 0;
+  const capacity = (resource: ResourceId) =>
+    def.outputBuffer?.find((s) => s.resource === resource)?.capacity ?? 0;
   for (const id of def.recipes ?? []) {
     const recipe = content.recipes[id];
     const hasInputs = recipe.inputs.every((i) => (b.input[i.resource] ?? 0) >= i.amount);
@@ -65,7 +66,7 @@ function startableRecipe(state: GameState, content: Content, building: EntityId)
         (b.stock[o.resource] ?? 0) +
           outputInProgress(state, content, building, o.resource) +
           o.amount <=
-        capacity,
+        capacity(o.resource),
     );
     if (hasInputs && outputsFit) return id;
   }
