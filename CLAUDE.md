@@ -94,6 +94,7 @@ These keep the game testable, saveable and replayable. Treat them as non-negotia
 
 ## Working conventions
 
+- Read `docs/agents/code-map.md` before exploring the code. When you add, move or rename a module, update the map in the same commit.
 - Work in small, reviewable steps. Run `pnpm check` before saying a step is done.
 - When the spec is ambiguous, choose the simplest option that keeps the design open, and log it in `docs/decisions.md` (one line: date, decision, why).
 - Don't build future features ahead of time.
