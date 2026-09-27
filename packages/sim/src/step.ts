@@ -6,6 +6,7 @@ import type { GameState } from './state';
 import { constructionSystem } from './systems/construction';
 import { haulingSystem } from './systems/hauling';
 import { movementSystem } from './systems/movement';
+import { productionSystem } from './systems/production';
 import { staffingSystem } from './systems/staffing';
 import { woodcuttingSystem } from './systems/woodcutting';
 
@@ -20,9 +21,10 @@ function cloneState(state: GameState): GameState {
  * 2. movement: walkers advance; arrivals are visible to the systems below this same tick
  * 3. hero: works the player's order (chop, pick up, deliver)
  * 4. woodcutting
- * 5. hauling (job dispatch)
- * 6. construction
- * 7. staffing: finished or understaffed workplaces draft idle carriers
+ * 5. production: workshop crafters take inputs, work, and fill output buffers
+ * 6. hauling (job dispatch)
+ * 7. construction
+ * 8. staffing: finished or understaffed workplaces draft idle carriers
  * then `tick` increments.
  */
 export function step(state: GameState, commands: readonly Command[], content: Content): GameState {
@@ -31,6 +33,7 @@ export function step(state: GameState, commands: readonly Command[], content: Co
   movementSystem(next, content);
   heroSystem(next, content);
   woodcuttingSystem(next, content);
+  productionSystem(next, content);
   haulingSystem(next, content);
   constructionSystem(next, content);
   staffingSystem(next, content);

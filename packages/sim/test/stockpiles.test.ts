@@ -89,7 +89,7 @@ const bare: MapDef = { ...yard, name: 'bare', rows: Array(8).fill('............'
 function stocked(logs: number): GameState {
   const s = createInitialState(1, bare, content);
   const hut = idsOf(s.components.building)[0] as number;
-  s.components.building[hut] = { type: 'woodcutters_hut', stock: { logs } };
+  s.components.building[hut] = { type: 'woodcutters_hut', stock: { logs }, input: {} };
   return s;
 }
 

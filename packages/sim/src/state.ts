@@ -4,6 +4,7 @@ import type {
   HeroId,
   JobId,
   MapObjectId,
+  RecipeId,
   ResourceAmount,
   ResourceId,
   RoadId,
@@ -54,6 +55,8 @@ export interface BuildingComponent {
   type: BuildingId;
   /** Output buffer contents. */
   stock: ResourceAmounts;
+  /** Input buffer contents. Empty unless the building is a workshop. */
+  input: ResourceAmounts;
 }
 
 export interface SiteComponent {
@@ -133,6 +136,11 @@ export type WoodcutterTask =
   | { kind: 'chopping'; tree: EntityId; ticksLeft: number }
   | { kind: 'toHut' };
 
+/** A workshop worker: waits at its Workplace's door and works through its recipes there. */
+export type CrafterTask =
+  | { kind: 'idle'; retryAt: number }
+  | { kind: 'working'; recipe: RecipeId; ticksLeft: number };
+
 export interface Components {
   /** Anchor tile of static things: map objects, buildings, construction sites, stockpiles. */
   tile: Store<Tile>;
@@ -145,6 +153,7 @@ export interface Components {
   position: Store<Point>;
   path: Store<PathComponent>;
   woodcutter: Store<WoodcutterTask>;
+  crafter: Store<CrafterTask>;
 }
 
 export interface GameState {

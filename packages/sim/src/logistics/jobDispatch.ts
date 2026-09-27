@@ -22,11 +22,11 @@ export interface Haul {
   amount: number;
   /** Building or stockpile to pick up from. */
   from: EntityId;
-  /** Construction site or stockpile to deliver to. */
+  /** Construction site, workshop or stockpile to deliver to. */
   to: EntityId;
   /** Stockpile tile (map tile index) to pick up from. Absent when `from` is a building. */
   fromTile?: number;
-  /** Stockpile tile (map tile index) to deliver to. Absent when `to` is a site. */
+  /** Stockpile tile (map tile index) to deliver to. Absent when `to` is a site or workshop. */
   toTile?: number;
   /** `pickup`: walking to `from`. `dropoff`: carrying to `to`. `return`: carrying back to `from` because `to` is gone. */
   phase: 'pickup' | 'dropoff' | 'return';
@@ -182,8 +182,8 @@ interface Dropoff {
 }
 
 /**
- * Where to drop goods for `demand`: the site's door, or the stockpile tile nearest to tile
- * `near` with room. Null if there's nowhere to put them.
+ * Where to drop goods for `demand`: the site's or workshop's door, or the stockpile tile nearest
+ * to tile `near` with room. Null if there's nowhere to put them.
  */
 function dropoffFor(
   state: GameState,
@@ -192,7 +192,7 @@ function dropoffFor(
   near: number,
 ): Dropoff | null {
   const { map } = state;
-  if (demand.kind === 'site') {
+  if (demand.kind !== 'stockpile') {
     const door = entityDoor(state, content, demand.target);
     if (!door) return null;
     return { tile: tileIndex(map, door.x, door.y), onStockpile: false, room: demand.amount };
@@ -226,7 +226,7 @@ function advanceHaul(state: GameState, content: Content, id: EntityId, haul: Hau
   }
 
   // The site was cancelled or the stockpile removed: abandon the pickup, or bring the goods back.
-  if (!site[haul.to] && !stockpile[haul.to] && haul.phase !== 'return') {
+  if (!site[haul.to] && !building[haul.to] && !stockpile[haul.to] && haul.phase !== 'return') {
     stopAtNextTile(state, id);
     if (haul.phase === 'pickup') delete hauls[id];
     else haul.phase = 'return';
@@ -269,9 +269,12 @@ function advanceHaul(state: GameState, content: Content, id: EntityId, haul: Hau
         return;
       }
       const target = site[haul.to];
+      const workshop = building[haul.to];
       const pile = stockpile[haul.to];
       if (carrier.carrying && target) {
         target.delivered[haul.resource] = (target.delivered[haul.resource] ?? 0) + haul.amount;
+      } else if (carrier.carrying && workshop) {
+        workshop.input[haul.resource] = (workshop.input[haul.resource] ?? 0) + haul.amount;
       } else if (carrier.carrying && pile && haul.toTile !== undefined) {
         if (!addToTile(pile, haul.toTile, carrier.carrying)) {
           haul.phase = 'return'; // the tile holds something else now
@@ -324,10 +327,10 @@ function take(state: GameState, haul: Haul): number {
 }
 
 /**
- * Gives an idle carrier the first unmet demand group (sites one by one, then stockpiles by
- * priority), served from the source quickest to walk to with goods free to take. Among a group's
- * demands the carrier takes the one quickest to walk to from the pickup, roads included, so
- * goods go to the nearest stockpile with room.
+ * Gives an idle carrier the first unmet demand group (sites one by one, then workshop input
+ * buffers one by one, then stockpiles by priority), served from the source quickest to walk to
+ * with goods free to take. Among a group's demands the carrier takes the one quickest to walk to
+ * from the pickup, roads included, so goods go to the nearest stockpile with room.
  */
 function dispatch(state: GameState, content: Content, id: EntityId): void {
   const { hauls } = state.logistics;

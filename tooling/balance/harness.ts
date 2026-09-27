@@ -53,8 +53,10 @@ export function measure(state: GameState, content: Content, seen: Set<EntityId>)
     for (const goods of Object.values(pile.goods)) stock[goods.resource] += goods.amount;
   }
   for (const b of Object.values(building)) {
-    for (const [resource, amount] of Object.entries(b.stock)) {
-      stock[resource as ResourceId] += amount ?? 0;
+    for (const buffer of [b.stock, b.input]) {
+      for (const [resource, amount] of Object.entries(buffer)) {
+        stock[resource as ResourceId] += amount ?? 0;
+      }
     }
   }
 

@@ -33,7 +33,8 @@ export function runUntil(
 export function totalLogs(s: GameState): number {
   let total = 0;
   for (const o of Object.values(s.components.mapObject)) total += o.amount;
-  for (const b of Object.values(s.components.building)) total += b.stock.logs ?? 0;
+  for (const b of Object.values(s.components.building))
+    total += (b.stock.logs ?? 0) + (b.input.logs ?? 0);
   for (const site of Object.values(s.components.site)) total += site.delivered.logs ?? 0;
   for (const v of Object.values(s.components.villager)) total += v.carrying?.amount ?? 0;
   return total;

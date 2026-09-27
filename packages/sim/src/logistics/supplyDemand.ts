@@ -4,6 +4,7 @@ import { idsOf } from '../entities';
 import { stockpileTileIndices } from '../grid';
 import type { EntityId, GameState } from '../state';
 import { amountOnTile, roomOnTile, STOCKPILE_PRIORITIES } from '../stockpiles';
+import { isPaused } from '../systems/production';
 
 /** Goods waiting in a building's output buffer or on a stockpile. */
 export interface Supply {
@@ -14,12 +15,12 @@ export interface Supply {
 }
 
 /**
- * Goods a construction site still lacks, or room a stockpile still has (not counting anything
- * already on its way).
+ * Goods a construction site still lacks, room a workshop's input buffer still has, or room a
+ * stockpile still has (not counting anything already on its way).
  */
 export interface Demand {
   target: EntityId;
-  kind: 'site' | 'stockpile';
+  kind: 'site' | 'workshop' | 'stockpile';
   resource: ResourceId;
   amount: number;
 }
@@ -57,9 +58,10 @@ export function listSupplies(state: GameState, content: Content): Supply[] {
 }
 
 /**
- * Missing materials of every construction site (oldest site first, costs in content order),
- * then room on every stockpile that doesn't refuse the resource (oldest first, resources in
- * content order). Sites always come before stockpiles.
+ * Missing materials of every construction site (oldest site first, costs in content order), then
+ * room in the input buffer of every workshop that isn't paused (oldest first, buffer slots in
+ * content order), then room on every stockpile that doesn't refuse the resource (oldest first,
+ * resources in content order).
  */
 export function listDemands(state: GameState, content: Content): Demand[] {
   const result: Demand[] = [];
@@ -72,6 +74,16 @@ export function listDemands(state: GameState, content: Content): Demand[] {
       if (missing > 0) {
         result.push({ target: id, kind: 'site', resource: cost.resource, amount: missing });
       }
+    }
+  }
+  for (const id of idsOf(state.components.building)) {
+    const b = state.components.building[id];
+    const slots = b ? content.buildings[b.type].inputBuffer : undefined;
+    if (!b || !slots || isPaused(state, content, id)) continue;
+    for (const slot of slots) {
+      const room = slot.capacity - (b.input[slot.resource] ?? 0);
+      if (room > 0)
+        result.push({ target: id, kind: 'workshop', resource: slot.resource, amount: room });
     }
   }
   const capacity = content.logistics.stockpileTileCapacity;
@@ -90,13 +102,16 @@ export function listDemands(state: GameState, content: Content): Demand[] {
 }
 
 /**
- * Demands in the order they're served: each site on its own, oldest first, then stockpiles,
- * highest priority first, those of one priority wanting one resource (resources in content
- * order) as one group. Within a group, goods go to whichever demand is nearest, ties to the
- * older one.
+ * Demands in the order they're served: each site on its own, oldest first, then each workshop
+ * input buffer on its own, oldest first, then stockpiles, highest priority first, those of one
+ * priority wanting one resource (resources in content order) as one group. Within a group, goods
+ * go to whichever demand is nearest, ties to the older one.
  */
 export function demandGroups(state: GameState, demands: readonly Demand[]): Demand[][] {
-  const groups: Demand[][] = demands.filter((d) => d.kind === 'site').map((d) => [d]);
+  const groups: Demand[][] = [
+    ...demands.filter((d) => d.kind === 'site').map((d) => [d]),
+    ...demands.filter((d) => d.kind === 'workshop').map((d) => [d]),
+  ];
   const piles = demands.filter((d) => d.kind === 'stockpile');
   const resources = [...new Set(piles.map((d) => d.resource))];
   for (const priority of STOCKPILE_PRIORITIES) {

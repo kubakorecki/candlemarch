@@ -16,7 +16,7 @@ export function constructionSystem(state: GameState, content: Content): void {
     site.buildProgress += 1;
     if (site.buildProgress >= construction.buildTicks) {
       delete sites[id];
-      building[id] = { type: site.type, stock: {} };
+      building[id] = { type: site.type, stock: {}, input: {} };
     }
   }
 }

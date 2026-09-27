@@ -33,6 +33,17 @@ describe('serialize / deserialize', () => {
     expect(deserialize(JSON.stringify(data), content)).toEqual(s);
   });
 
+  it('gives buildings saved before input buffers an empty one', () => {
+    const s = createInitialState(9, meadowMap, content);
+    const data = JSON.parse(serialize(s));
+    for (const b of Object.values(data.components.building) as Record<string, unknown>[]) {
+      delete b.input;
+    }
+    delete data.components.crafter;
+    expect(Object.keys(data.components.building).length).toBeGreaterThan(0);
+    expect(deserialize(JSON.stringify(data), content)).toEqual(s);
+  });
+
   it('rejects saves from another version', () => {
     const s = createInitialState(9, meadowMap, content);
     expect(() =>

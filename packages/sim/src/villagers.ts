@@ -28,10 +28,12 @@ export function fallbackVillagerName(id: EntityId, content: Content): string {
 
 /**
  * Gives villager `id` a Job and Workplace, replacing its old Job's task state with a fresh one
- * for the new Job. The villager keeps whatever it carries and any walk in progress.
+ * for the new Job. Anyone working at a workshop (a building with recipes) is a crafter. The
+ * villager keeps whatever it carries and any walk in progress.
  */
 export function assignJob(
   state: GameState,
+  content: Content,
   id: EntityId,
   job: JobId,
   workplace: EntityId | null,
@@ -41,5 +43,10 @@ export function assignJob(
   villager.job = job;
   villager.workplace = workplace;
   delete state.components.woodcutter[id];
+  delete state.components.crafter[id];
+  const type = workplace === null ? undefined : state.components.building[workplace]?.type;
   if (job === 'woodcutter') state.components.woodcutter[id] = { kind: 'idle', retryAt: 0 };
+  else if (type && content.buildings[type].recipes) {
+    state.components.crafter[id] = { kind: 'idle', retryAt: 0 };
+  }
 }

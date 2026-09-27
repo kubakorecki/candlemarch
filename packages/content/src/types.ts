@@ -1,10 +1,11 @@
 // ID unions and definition shapes. IDs are string literal unions so a typo is a type error.
 
-export type ResourceId = 'logs';
+export type ResourceId = 'logs' | 'firewood';
+export type RecipeId = 'split_logs';
 export type TerrainId = 'grass' | 'river';
 export type MapObjectId = 'tree';
-export type BuildingId = 'woodcutters_hut' | 'hut';
-export type JobId = 'woodcutter' | 'carrier';
+export type BuildingId = 'woodcutters_hut' | 'hut' | 'chopping_block';
+export type JobId = 'woodcutter' | 'carrier' | 'woodsplitter';
 export type RoadId = 'dirt_path';
 export type HeroId = 'placeholder';
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
@@ -27,6 +28,18 @@ export interface TerrainDef {
   walkable: boolean;
   /** Buildings may be placed on it. */
   buildable: boolean;
+}
+
+/** Work that turns inputs into outputs at a workshop. */
+export interface RecipeDef {
+  id: RecipeId;
+  name: string;
+  /** Taken from the workshop's input buffer when the work starts. */
+  inputs: ResourceAmount[];
+  /** Put in the workshop's output buffer when the work is done. */
+  outputs: ResourceAmount[];
+  /** Ticks of work for one batch, before the hero's aura. */
+  workTicks: number;
 }
 
 /** Something standing on a tile that blocks it, such as a tree. */
@@ -113,6 +126,15 @@ export interface BuildingDef {
   gathers?: MapObjectId;
   /** Where its workers drop what they produce, if anything. */
   outputBuffer?: { resource: ResourceId; capacity: number };
+  /** Recipes its workers work through, in order of preference. Makes the building a workshop. */
+  recipes?: RecipeId[];
+  /** What a workshop holds of each of its recipes' inputs. Carriers fill it. */
+  inputBuffer?: { resource: ResourceId; capacity: number }[];
+  /**
+   * A workshop pauses while the village holds at least this much of the resource: it starts no
+   * new work and asks for no inputs.
+   */
+  stockTarget?: ResourceAmount;
   /** Cost and time to build it from a construction site. Absent for buildings that can't be built. */
   construction?: { cost: ResourceAmount[]; buildTicks: number };
 }
@@ -122,6 +144,7 @@ export interface Content {
   terrain: Record<TerrainId, TerrainDef>;
   mapObjects: Record<MapObjectId, MapObjectDef>;
   jobs: Record<JobId, JobDef>;
+  recipes: Record<RecipeId, RecipeDef>;
   buildings: Record<BuildingId, BuildingDef>;
   heroes: Record<HeroId, HeroDef>;
   roads: Record<RoadId, RoadDef>;

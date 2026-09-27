@@ -1,5 +1,5 @@
 // Draws sim snapshots with PixiJS. Reads state only; all game rules stay in the sim.
-import type { BuildingId, Content } from '@candlemarch/content';
+import type { BuildingId, Content, JobId, ResourceId } from '@candlemarch/content';
 import {
   boostedWorkplaces,
   type EntityId,
@@ -27,7 +27,8 @@ import {
   drawAxe,
   drawBoostedMark,
   drawBuilding,
-  drawCarriedLog,
+  drawCarriedGoods,
+  drawChoppingBlock,
   drawGoodsStack,
   drawGround,
   drawHero,
@@ -53,11 +54,24 @@ interface StaticView {
   key: string;
 }
 
+/** Body colour per Job. */
+const JOB_COLORS: Record<JobId, number> = {
+  carrier: palette.carrier,
+  woodcutter: palette.woodcutter,
+  woodsplitter: palette.woodsplitter,
+};
+
 interface VillagerView {
   node: Container;
   /** Selection ring on the ground under the feet. */
   ring: Graphics;
-  log: Graphics;
+  body: Graphics;
+  /** The Job `body` is coloured for, so it's redrawn when a Carrier is drafted. */
+  bodyJob: JobId;
+  /** What the villager carries, over its head. */
+  load: Graphics;
+  /** The resource `load` shows, so it's redrawn only when that changes. */
+  loadDrawn: ResourceId | null;
   axe: Graphics;
 }
 
@@ -69,9 +83,10 @@ interface HeroView {
   ring: Graphics;
   /** Swings while the hero chops. */
   axe: Graphics;
-  /** Logs in the hero's hands, and how many are drawn. */
+  /** The goods in the hero's hands. */
   load: Graphics;
-  loadDrawn: number;
+  /** What `load` shows, as `resource:amount`, so it's redrawn only when that changes. */
+  loadDrawn: string;
 }
 
 /** Opacity of the night tint at full dark. */
@@ -203,12 +218,17 @@ export class WorldRenderer {
       const at = tile[id];
       if (!b || !at) continue;
       const def = this.content.buildings[b.type];
-      const stock = def.outputBuffer ? (b.stock[def.outputBuffer.resource] ?? 0) : 0;
+      const buffered = (resource: ResourceId | undefined, amounts: typeof b.stock) =>
+        resource ? { resource, amount: amounts[resource] ?? 0 } : null;
+      const output = buffered(def.outputBuffer?.resource, b.stock);
+      const input = buffered(def.inputBuffer?.[0]?.resource, b.input);
       const unstaffed = openPositions(state, this.content, id).length > 0;
       const view = this.staticView(`building:${id}`, seen);
-      const key = `${b.type}@${at.x},${at.y}:${stock}:${unstaffed}`;
+      const key = `${b.type}@${at.x},${at.y}:${input?.amount}:${output?.amount}:${unstaffed}`;
       if (view.key !== key) {
-        drawBuilding(view.graphics, def, at.x, at.y, stock);
+        if (b.type === 'chopping_block')
+          drawChoppingBlock(view.graphics, at.x, at.y, input, output);
+        else drawBuilding(view.graphics, def, at.x, at.y, output);
         if (unstaffed) {
           const c = gridToWorld(at.x + def.size.w / 2, at.y + def.size.h / 2);
           drawMissingIcon(view.graphics, c.x, c.y - TILE_H * 2.4);
@@ -358,10 +378,11 @@ export class WorldRenderer {
     view.node.zIndex = depthOf(g.x, g.y) + 0.02;
 
     const hero = state.components.hero[id];
-    const count = hero?.carrying?.amount ?? 0;
-    if (count !== view.loadDrawn) {
-      drawHeroLoad(view.load, count);
-      view.loadDrawn = count;
+    const carrying = hero?.carrying ?? null;
+    const loadKey = carrying ? `${carrying.resource}:${carrying.amount}` : '';
+    if (loadKey !== view.loadDrawn) {
+      drawHeroLoad(view.load, carrying);
+      view.loadDrawn = loadKey;
     }
     // Chopping: a gather order, standing still next to the tree.
     const chopping = hero?.order?.kind === 'gather' && !state.components.path[id];
@@ -375,14 +396,14 @@ export class WorldRenderer {
     alpha: number,
     timeMs: number,
   ): void {
-    const { villager, position, woodcutter } = state.components;
+    const { villager, position, woodcutter, crafter } = state.components;
     const seen = new Set<EntityId>();
     for (const id of idsOf(villager)) {
       const v = villager[id];
       const to = position[id];
       if (!v || !to) continue;
       seen.add(id);
-      const view = this.villagerView(id, v.job === 'woodcutter');
+      const view = this.villagerView(id, v.job);
       const from = prevPositions[id] ?? to;
       const g = interpolate(from, to, alpha);
       const w = gridToWorld(g.x, g.y);
@@ -391,10 +412,16 @@ export class WorldRenderer {
       view.node.position.set(w.x, w.y - bob);
       view.ring.position.set(0, bob); // stays on the ground while the figure bobs
       view.node.zIndex = depthOf(g.x, g.y) + 0.01;
-      view.log.visible = v.carrying !== null;
-      const chopping = woodcutter[id]?.kind === 'chopping';
-      view.axe.visible = chopping;
-      if (chopping) view.axe.rotation = -0.4 + Math.abs(Math.sin(timeMs / 160)) * 1.3;
+      const carried = v.carrying?.resource ?? null;
+      if (carried && carried !== view.loadDrawn) {
+        drawCarriedGoods(view.load, carried);
+        view.loadDrawn = carried;
+      }
+      view.load.visible = carried !== null;
+      // Chopping a tree, or working a recipe (only splitting logs so far).
+      const swinging = woodcutter[id]?.kind === 'chopping' || crafter[id]?.kind === 'working';
+      view.axe.visible = swinging;
+      if (swinging) view.axe.rotation = -0.4 + Math.abs(Math.sin(timeMs / 160)) * 1.3;
     }
     for (const [id, view] of this.villagers) {
       if (!seen.has(id)) {
@@ -456,7 +483,7 @@ export class WorldRenderer {
         const view = this.staticView(`pileTile:${i}`, seen);
         const key = `${x},${y}:${goods.resource}:${goods.amount}`;
         if (view.key !== key) {
-          drawGoodsStack(view.graphics, goods.amount);
+          drawGoodsStack(view.graphics, goods);
           view.key = key;
           const c = tileCenterWorld(x, y);
           view.node.position.set(c.x, c.y);
@@ -527,12 +554,12 @@ export class WorldRenderer {
       const load = new Graphics();
       node.addChild(ring, body, axe, load);
       this.objects.addChild(node);
-      this.hero = { node, body, ring, axe, load, loadDrawn: 0 };
+      this.hero = { node, body, ring, axe, load, loadDrawn: '' };
     }
     return this.hero;
   }
 
-  private villagerView(id: EntityId, woodcutter: boolean): VillagerView {
+  private villagerView(id: EntityId, job: JobId): VillagerView {
     let view = this.villagers.get(id);
     if (!view) {
       const node = new Container();
@@ -540,18 +567,21 @@ export class WorldRenderer {
       drawSelectionRing(ring);
       ring.visible = id === this.selectedVillager;
       const body = new Graphics();
-      drawVillager(body, woodcutter ? palette.woodcutter : palette.carrier);
+      drawVillager(body, JOB_COLORS[job]);
       const axe = new Graphics();
       drawAxe(axe);
       axe.position.set(9, -18);
       axe.visible = false;
-      const log = new Graphics();
-      drawCarriedLog(log);
-      log.visible = false;
-      node.addChild(ring, body, axe, log);
+      const load = new Graphics();
+      load.visible = false;
+      node.addChild(ring, body, axe, load);
       this.objects.addChild(node);
-      view = { node, ring, log, axe };
+      view = { node, ring, body, bodyJob: job, load, loadDrawn: null, axe };
       this.villagers.set(id, view);
+    }
+    if (view.bodyJob !== job) {
+      drawVillager(view.body, JOB_COLORS[job]);
+      view.bodyJob = job;
     }
     return view;
   }

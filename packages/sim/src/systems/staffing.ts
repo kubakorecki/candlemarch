@@ -37,7 +37,7 @@ export function staffingSystem(state: GameState, content: Content): void {
         (id) => villager[id]?.job === 'carrier' && isCarrierIdle(state, id),
       );
       if (carrier === undefined) return;
-      assignJob(state, carrier, job, building);
+      assignJob(state, content, carrier, job, building);
     }
   }
 }

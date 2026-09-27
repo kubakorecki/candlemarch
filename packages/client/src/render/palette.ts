@@ -33,8 +33,11 @@ export const palette = {
 
   log: 0x8b6541,
   logEnd: 0xc9a06d,
+  firewood: 0xa27a4f,
+  firewoodEnd: 0xd8b98a,
 
   woodcutter: 0x7e5436,
+  woodsplitter: 0x6f5a3a,
   carrier: 0x5a6570,
   skin: 0xd6b48e,
   axeHead: 0x9aa0a3,

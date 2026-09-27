@@ -1,5 +1,5 @@
 // Placeholder art drawn in code: bold ink outlines, flat earthy fills. Colours come from palette.ts.
-import type { BuildingDef, TerrainId } from '@candlemarch/content';
+import type { BuildingDef, ResourceAmount, ResourceId, TerrainId } from '@candlemarch/content';
 import type { Graphics } from 'pixi.js';
 import { gridToWorld, TILE_H, TILE_W, type Vec } from './iso';
 import { palette } from './palette';
@@ -145,17 +145,43 @@ function drawLog(g: Graphics, x: number, y: number, s: number): void {
     .stroke(THIN_INK);
 }
 
-/** A pyramid of `count` logs whose bottom row is centred on (x, y). */
-export function drawLogPile(g: Graphics, x: number, y: number, count: number): void {
+/** One piece of split firewood lying on its side, centred on (x, y): a short log, wedge-ended. */
+function drawFirewood(g: Graphics, x: number, y: number, s: number): void {
+  g.roundRect(x - 8 * s, y - 3.5 * s, 16 * s, 7 * s, 2 * s)
+    .fill(palette.firewood)
+    .stroke(THIN_INK);
+  g.poly([x + 4 * s, y + 3.5 * s, x + 10 * s, y + 3.5 * s, x + 7 * s, y - 3.5 * s])
+    .fill(palette.firewoodEnd)
+    .stroke(THIN_INK);
+}
+
+/** How each resource is drawn as one piece, and the spacing of its pieces in a pile. */
+const PIECES: Record<
+  ResourceId,
+  { draw: (g: Graphics, x: number, y: number, s: number) => void; w: number; h: number }
+> = {
+  logs: { draw: drawLog, w: 20, h: 8 },
+  firewood: { draw: drawFirewood, w: 16, h: 7 },
+};
+
+/** A pyramid of `count` pieces of `resource` whose bottom row is centred on (x, y). */
+export function drawGoodsPile(
+  g: Graphics,
+  resource: ResourceId,
+  x: number,
+  y: number,
+  count: number,
+): void {
   const s = TILE_H / 64;
-  // Smallest triangle that holds them all: rows of k, k-1, ... logs.
+  const piece = PIECES[resource];
+  // Smallest triangle that holds them all: rows of k, k-1, ... pieces.
   let bottom = 1;
   while ((bottom * (bottom + 1)) / 2 < count) bottom++;
   let placed = 0;
   for (let row = 0; placed < count; row++) {
     const inRow = bottom - row;
     for (let i = 0; i < inRow && placed < count; i++, placed++) {
-      drawLog(g, x + (i - (inRow - 1) / 2) * 20 * s, y - row * 8 * s, s);
+      piece.draw(g, x + (i - (inRow - 1) / 2) * piece.w * s, y - row * piece.h * s, s);
     }
   }
 }
@@ -182,14 +208,14 @@ function drawDoor(g: Graphics, def: BuildingDef, ox: number, oy: number): void {
 
 /**
  * A finished building in world coordinates: an iso box with a pyramid roof and a door.
- * `stock` draws a log pile beside the door (the output buffer).
+ * `stock` draws a pile beside the door (the output buffer).
  */
 export function drawBuilding(
   g: Graphics,
   def: BuildingDef,
   ox: number,
   oy: number,
-  stock: number,
+  stock: ResourceAmount | null,
 ): void {
   g.clear();
   const [top, right, bottom, left] = diamond(ox, oy, def.size.w, def.size.h);
@@ -223,9 +249,57 @@ export function drawBuilding(
     .fill(palette.roofDark)
     .stroke(INK);
 
-  if (stock > 0) {
+  if (stock && stock.amount > 0) {
     const door = gridToWorld(ox + def.door.x + 0.5, oy + def.door.y + 0.5);
-    drawLogPile(g, door.x - TILE_H * 0.9, door.y - TILE_H * 0.35, stock);
+    drawGoodsPile(g, stock.resource, door.x - TILE_H * 0.9, door.y - TILE_H * 0.35, stock.amount);
+  }
+}
+
+/**
+ * A chopping block on tile (ox, oy): a stump with an axe in it, the logs waiting to be split
+ * behind it (`input`) and the firewood in front (`output`).
+ */
+export function drawChoppingBlock(
+  g: Graphics,
+  ox: number,
+  oy: number,
+  input: ResourceAmount | null,
+  output: ResourceAmount | null,
+): void {
+  g.clear();
+  const s = TILE_H / 64;
+  const c = gridToWorld(ox + 0.5, oy + 0.5);
+  if (input && input.amount > 0) {
+    drawGoodsPile(g, input.resource, c.x - 24 * s, c.y - 6 * s, input.amount);
+  }
+
+  const rx = 16 * s;
+  const ry = 7 * s;
+  const h = 16 * s;
+  g.ellipse(c.x, c.y + 2 * s, rx * 1.3, ry * 1.3).fill({ color: palette.shadow, alpha: 0.3 });
+  g.poly([c.x - rx, c.y - h, c.x + rx, c.y - h, c.x + rx, c.y, c.x - rx, c.y])
+    .fill(palette.trunk)
+    .stroke(INK);
+  g.ellipse(c.x, c.y, rx, ry).fill(palette.trunk).stroke(INK);
+  g.rect(c.x - rx + 1.5, c.y - h, rx * 2 - 3, h).fill(palette.trunk);
+  g.ellipse(c.x, c.y - h, rx, ry)
+    .fill(palette.logEnd)
+    .stroke(INK);
+  g.ellipse(c.x, c.y - h, rx * 0.5, ry * 0.5).stroke(THIN_INK);
+
+  // The axe, bitten into the top.
+  g.moveTo(c.x + 2 * s, c.y - h - 2 * s)
+    .lineTo(c.x + 14 * s, c.y - h - 22 * s)
+    .stroke({ width: 6 * s, color: palette.ink, cap: 'round' });
+  g.moveTo(c.x + 2 * s, c.y - h - 2 * s)
+    .lineTo(c.x + 14 * s, c.y - h - 22 * s)
+    .stroke({ width: 3 * s, color: palette.log, cap: 'round' });
+  g.poly([c.x - 6 * s, c.y - h - 6 * s, c.x + 4 * s, c.y - h - 2 * s, c.x - 2 * s, c.y - h + 3 * s])
+    .fill(palette.axeHead)
+    .stroke(THIN_INK);
+
+  if (output && output.amount > 0) {
+    drawGoodsPile(g, output.resource, c.x + 20 * s, c.y + 12 * s, output.amount);
   }
 }
 
@@ -269,7 +343,7 @@ export function drawSite(
   }
 
   const centre = lerp(top, bottom, 0.55);
-  drawLogPile(g, centre.x, centre.y, delivered);
+  drawGoodsPile(g, 'logs', centre.x, centre.y, delivered);
   // Front post last so it sits in front of the logs.
   g.moveTo(bottom.x, bottom.y).lineTo(bottom.x, bottom.y - postH);
   g.stroke({ width: 7, color: palette.ink, cap: 'round' });
@@ -342,18 +416,22 @@ export function drawBoostedMark(g: Graphics, def: BuildingDef, ox: number, oy: n
     .stroke({ width: 4, color: palette.aura, alpha: 0.9, join: 'round' });
 }
 
-/** A log held over the head, drawn relative to the villager's feet. */
-export function drawCarriedLog(g: Graphics): void {
+/** One piece of `resource` held over the head, drawn relative to the villager's feet. */
+export function drawCarriedGoods(g: Graphics, resource: ResourceId): void {
   g.clear();
   const s = TILE_H / 64;
-  drawLog(g, 0, -52 * s, s);
+  PIECES[resource].draw(g, 0, -52 * s, s);
 }
 
-/** `count` logs stacked over the hero's head, drawn relative to its feet. */
-export function drawHeroLoad(g: Graphics, count: number): void {
+/** The goods in the hero's hands, stacked over its head, drawn relative to its feet. */
+export function drawHeroLoad(g: Graphics, goods: ResourceAmount | null): void {
   g.clear();
+  if (!goods) return;
   const s = TILE_H / 64;
-  for (let i = 0; i < count; i++) drawLog(g, (i % 2) * 3 * s, (-64 - 7 * i) * s, s);
+  const piece = PIECES[goods.resource];
+  for (let i = 0; i < goods.amount; i++) {
+    piece.draw(g, (i % 2) * 3 * s, (-64 - piece.h * 0.9 * i) * s, s);
+  }
 }
 
 /** An axe; its pivot (0, 0) is the handle end, held at the villager's side. */
@@ -431,9 +509,9 @@ export function drawPileGround(g: Graphics, x: number, y: number, w: number, h: 
 }
 
 /** Goods on one stockpile tile, drawn around (0, 0) = the tile centre. */
-export function drawGoodsStack(g: Graphics, count: number): void {
+export function drawGoodsStack(g: Graphics, goods: ResourceAmount): void {
   g.clear();
-  drawLogPile(g, 0, 6, count);
+  drawGoodsPile(g, goods.resource, 0, 6, goods.amount);
 }
 
 /** A warning bubble centred on (x, y): a worker, struck through. */

@@ -8,6 +8,13 @@ export const jobs: Record<JobId, JobDef> = {
     carryCapacity: 1,
     idleRetryTicks: 20,
   },
+  woodsplitter: {
+    id: 'woodsplitter',
+    name: 'Woodsplitter',
+    walkSpeed: 75,
+    carryCapacity: 1,
+    idleRetryTicks: 20,
+  },
   carrier: {
     id: 'carrier',
     name: 'Carrier',

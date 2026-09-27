@@ -56,7 +56,7 @@ function spawnVillager(
   const id = createEntity(state);
   state.components.villager[id] = { name, job, workplace, carrying: null };
   state.components.position[id] = tileCenter(tile);
-  assignJob(state, id, job, workplace);
+  assignJob(state, content, id, job, workplace);
   return id;
 }
 
@@ -82,6 +82,7 @@ export function createEmptyState(seed: number): GameState {
       position: {},
       path: {},
       woodcutter: {},
+      crafter: {},
     },
     logistics: { hauls: {} },
   };
@@ -126,7 +127,7 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
     const def = content.buildings[b.type];
     const id = createEntity(state);
     state.components.tile[id] = { x: b.x, y: b.y };
-    state.components.building[id] = { type: b.type, stock: {} };
+    state.components.building[id] = { type: b.type, stock: {}, input: {} };
     for (const slot of def.employs) {
       for (let i = 0; i < slot.count; i++) {
         spawnVillager(state, content, slot.job, doorTile(def, { x: b.x, y: b.y }), id);

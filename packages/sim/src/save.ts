@@ -42,6 +42,7 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     pile.priority ??= 'normal';
     pile.refuses ??= [];
   }
+  for (const b of Object.values(state.components.building)) b.input ??= {};
   const { villager } = state.components;
   for (const id of idsOf(villager)) {
     const v = villager[id];

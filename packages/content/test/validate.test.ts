@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { content, type SeasonId } from '../src/index';
 
-const { resources, terrain, mapObjects, jobs, buildings, heroes, roads } = content;
+const { resources, terrain, mapObjects, jobs, recipes, buildings, heroes, roads } = content;
 
 function expectPositiveInt(value: number, label: string): void {
   expect(Number.isInteger(value) && value > 0, `${label} = ${value}`).toBe(true);
@@ -9,7 +9,7 @@ function expectPositiveInt(value: number, label: string): void {
 
 describe('content validation', () => {
   it('every record key matches its id', () => {
-    for (const table of [resources, terrain, mapObjects, jobs, buildings, heroes, roads]) {
+    for (const table of [resources, terrain, mapObjects, jobs, recipes, buildings, heroes, roads]) {
       for (const [key, def] of Object.entries(table)) {
         expect(def.id).toBe(key);
       }
@@ -94,6 +94,52 @@ describe('content validation', () => {
       for (const cost of b.construction?.cost ?? []) {
         expect(resources, `${b.id} cost`).toHaveProperty(cost.resource);
         expectPositiveInt(cost.amount, `${b.id} cost ${cost.resource}`);
+      }
+    }
+  });
+
+  it('recipes reference existing resources and use positive integers', () => {
+    for (const recipe of Object.values(recipes)) {
+      expectPositiveInt(recipe.workTicks, `${recipe.id}.workTicks`);
+      expect(recipe.outputs.length, `${recipe.id} has outputs`).toBeGreaterThan(0);
+      for (const side of [recipe.inputs, recipe.outputs]) {
+        for (const r of side) {
+          expect(resources, `${recipe.id} uses`).toHaveProperty(r.resource);
+          expectPositiveInt(r.amount, `${recipe.id} ${r.resource}`);
+        }
+      }
+    }
+  });
+
+  it('workshops reference existing recipes and have buffers that hold a batch', () => {
+    for (const b of Object.values(buildings)) {
+      for (const slot of b.inputBuffer ?? []) {
+        expect(resources, `${b.id}.inputBuffer`).toHaveProperty(slot.resource);
+        expectPositiveInt(slot.capacity, `${b.id}.inputBuffer.${slot.resource}`);
+      }
+      if (b.stockTarget) {
+        expect(resources, `${b.id}.stockTarget`).toHaveProperty(b.stockTarget.resource);
+        expectPositiveInt(b.stockTarget.amount, `${b.id}.stockTarget.amount`);
+      }
+      if (b.recipes === undefined) continue;
+      expect(b.employs.length, `${b.id} employs someone`).toBeGreaterThan(0);
+      for (const id of b.recipes) {
+        expect(recipes, `${b.id}.recipes`).toHaveProperty(id);
+        for (const input of recipes[id].inputs) {
+          const slot = b.inputBuffer?.find((s) => s.resource === input.resource);
+          expect(
+            slot?.capacity ?? 0,
+            `${b.id} holds ${id}'s ${input.resource}`,
+          ).toBeGreaterThanOrEqual(input.amount);
+        }
+        // One output buffer, so every recipe yields just its resource.
+        for (const output of recipes[id].outputs) {
+          expect(b.outputBuffer?.resource, `${b.id} stores ${id}'s output`).toBe(output.resource);
+          expect(
+            b.outputBuffer?.capacity ?? 0,
+            `${b.id} holds ${id}'s output`,
+          ).toBeGreaterThanOrEqual(output.amount);
+        }
       }
     }
   });
