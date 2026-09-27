@@ -4,6 +4,7 @@ import type { Content, ResourceId } from '@candlemarch/content';
 import {
   type Command,
   calendarAt,
+  carrierUtilization,
   createInitialState,
   type EntityId,
   type GameState,
@@ -32,6 +33,8 @@ export interface DayReport {
   population: number;
   /** Villagers seen earlier in the run who are gone now. */
   deaths: number;
+  /** Carrier utilization over the last in-game day (`carrierUtilization`), in %; null if no Carrier worked. */
+  carriersBusy: number | null;
   /** Goods stored in stockpiles and building buffers. Goods in hands or on sites don't count. */
   stock: Record<ResourceId, number>;
 }
@@ -67,6 +70,7 @@ export function measure(state: GameState, content: Content, seen: Set<EntityId>)
     date: `Y${time.year} ${season} ${time.dayOfSeason}`,
     population: alive.length,
     deaths: seen.size - alive.length,
+    carriersBusy: carrierUtilization(state, content),
     stock,
   };
 }
@@ -85,7 +89,10 @@ export function runScenario(scenario: Scenario, content: Content): DayReport[] {
   return reports;
 }
 
-/** A plain-text table, one row per report and a column per resource. */
+/**
+ * A plain-text table, one row per report: population, deaths, how busy the Carriers were over the
+ * last day, and a column per resource.
+ */
 export function formatTable(reports: DayReport[], content: Content): string {
   const resources = Object.keys(content.resources) as ResourceId[];
   const header = [
@@ -93,6 +100,7 @@ export function formatTable(reports: DayReport[], content: Content): string {
     'Date',
     'Pop',
     'Deaths',
+    'Busy',
     ...resources.map((r) => content.resources[r].name),
   ];
   const rows = reports.map((r) => [
@@ -100,6 +108,7 @@ export function formatTable(reports: DayReport[], content: Content): string {
     r.date,
     String(r.population),
     String(r.deaths),
+    r.carriersBusy === null ? '-' : `${r.carriersBusy}%`,
     ...resources.map((res) => String(r.stock[res])),
   ]);
   const widths = header.map((h, i) =>

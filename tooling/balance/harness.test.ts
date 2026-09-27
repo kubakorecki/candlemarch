@@ -54,6 +54,13 @@ describe('balance harness', () => {
     expect(reports.at(-1)?.stock.logs).toBeGreaterThan(0);
   });
 
+  it("reports the Carriers' busy share of the last day", () => {
+    const reports = runScenario(tiny, shortDays);
+    expect(reports[0]?.carriersBusy).toBeNull();
+    // The one Carrier hauls logs from the hut to the stockpile all day.
+    expect(reports[1]?.carriersBusy).toBeGreaterThan(0);
+  });
+
   it('is deterministic', () => {
     expect(runScenario(tiny, shortDays)).toEqual(runScenario(tiny, shortDays));
   });
@@ -71,8 +78,9 @@ describe('balance harness', () => {
     const lines = formatTable(runScenario(tiny, shortDays), shortDays).split('\n');
     expect(lines).toHaveLength(2 + 4);
     expect(lines[0]).toMatch(
-      /Tick\s+Date\s+Pop\s+Deaths\s+Logs\s+Firewood\s+Fish\s+Berries\s+Mushrooms\s+Meat\s+Hides/,
+      /Tick\s+Date\s+Pop\s+Deaths\s+Busy\s+Logs\s+Firewood\s+Fish\s+Berries\s+Mushrooms\s+Meat\s+Hides/,
     );
-    expect(lines[2]).toMatch(/^\s*0\s+Y1 Spring 1\s+2\s+0\s+0\s+0\s+0\s+0\s+0\s+0\s+0$/);
+    // No Carrier has worked yet at tick 0: "-" for Busy.
+    expect(lines[2]).toMatch(/^\s*0\s+Y1 Spring 1\s+2\s+0\s+-\s+0\s+0\s+0\s+0\s+0\s+0\s+0$/);
   });
 });

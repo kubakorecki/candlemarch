@@ -14,8 +14,8 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 - `entities.ts`: `createEntity`, `destroyEntity` (clears every store), `idsOf` (sorted IDs; use for any ordered loop).
 - `rng.ts`: mulberry32 over `state.rng`: `seedRng`, `nextU32`, `randomInt(state, n)`.
 - `calendar.ts`: derived from `state.tick`, nothing stored: `calendarAt`, `isNight`, `isDawn`, `isDusk`, `dawnTick`, `duskTick`, `isRiverFrozen`.
-- `map.ts`: `MapDef` (optional `entry` tile on the edge where Newcomers arrive → `state.map.entry`; optional `huntingGrounds` rectangles, created last so they never shift other IDs), `MAP_LEGEND` (`.` grass, `T` tree, `b` berry bush, `m` mushroom patch, `=` path, `~` river), `createEmptyState`, `createInitialState(seed, map, content)`.
-- `maps/`: `meadow` (default, milestone 0), `shortHaul`, `longHaul`, `branchingNetwork`; `index.ts` has `maps`, `MapName`, `DEFAULT_MAP`.
+- `map.ts`: `MapDef` (optional `entry` tile on the edge where Newcomers arrive → `state.map.entry`; optional `huntingGrounds` rectangles, created last so they never shift other IDs; start goods: `buildings[].stock`, `stockpiles[].goods`, checked to fit), `MAP_LEGEND` (`.` grass, `T` tree, `b` berry bush, `m` mushroom patch, `=` path, `~` river), `createEmptyState`, `createInitialState(seed, map, content)`.
+- `maps/`: `camp` (default: the Starting Camp, Pinewood, Old Wood Hunting ground with forage patches, river on the south edge), `meadow` (milestone 0; tests rely on its IDs), `shortHaul`, `longHaul`, `branchingNetwork`; `index.ts` has `maps`, `MapName`, `DEFAULT_MAP`.
 - `grid.ts`: tile maths (`tileIndex`, `tileAt`, `tileCenter`, `tileOfPoint`, `rectTiles`), `footprint`, `doorTile`, `entityDoor`, `blockedGrid`, `standingTiles`, `isRiverbank`, `fitsAt` (keeps the entry tile clear), `canPlaceBuilding`.
 - `pathfinding.ts`: A* `findPath`, `travelCosts` (Dijkstra), `tileDistance`; road-aware costs.
 - `roads.ts`: `lShapeTiles`, `canLayPath`, `layPath`, `removePath`, road speed grids.
@@ -63,7 +63,7 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 
 ## tooling
 - `boundaries.test.ts`: import-boundary test (manifests, sim imports, hidden inputs grep).
-- `balance/harness.ts` (`Scenario`, `runScenario`, `formatTable`), `balance/scenarios.ts` (named scenarios), `balance/cli.ts` (`pnpm balance <name>`), `balance/harness.test.ts`.
+- `balance/harness.ts` (`Scenario`, `runScenario`, `formatTable`; `DayReport` has population, deaths, `carriersBusy`, stock), `balance/scenarios.ts` (named scenarios; `camp`/`campNoFirewood` = the scripted sensible Camp layout `campLayout`, building IDs via `campId(n)`), `balance/cli.ts` (`pnpm balance <name>`), `balance/harness.test.ts`, `balance/camp.test.ts` and `balance/campNoFirewood.test.ts` (whole-year runs, ~15–18 s each, one file each so they run in parallel).
 
 ## The tick: `sim/src/step.ts` `step(state, commands, content)`
 Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `movementSystem` → 3 `homesSystem` (`homes.ts`) → 4 `spoilageSystem` (Dawn only) → 5 `patchesSystem` (season's first Dawn) → 6 `warmthSystem` (winter Dusk, Dawn) → 7 `routineSystem` → 8 `immigrationSystem` (Dawn only) → 9 `heroSystem` (`hero.ts`) → 10 `woodcuttingSystem` → 11 `fishingSystem` → 12 `foragingSystem` → 13 `huntingSystem` → 14 `productionSystem` → 15 `haulingSystem` → 16 `constructionSystem` (skips at night) → 17 `staffingSystem` → 18 `trafficSystem` → `tick += 1`. Movement also counts Carrier road steps (`countStep`). Systems mutate the clone.
@@ -99,6 +99,7 @@ Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `m
 - Night tests (`sleep.test.ts`) start a state at Dusk with a `jump(s, tick)` helper that just sets `tick`. A state at tick T hasn't run tick T yet: to see Dawn's effects, run to `DAWN + 1`. Jumping straight to a Dawn makes everyone Tired (no sleep counted).
 - Bottlenecks: `sim/test/bottlenecks.test.ts` (chopping-block `yard`; `yardWith(logs, firewood)`), `sim/test/traffic.test.ts` (`lane`: hut, stockpile, 2 Carriers, a path on row 3; tests walk a Carrier with `walkTo`). Tests that compare states across time must ignore `traffic` (it counts time passing, like `tick`; see `settled` in `woodcutting.test.ts`).
 - Content validation: `content/test/validate.test.ts`. Import boundaries + hidden inputs: `tooling/boundaries.test.ts`.
+- Camp scenario (Y1 to Y2 spring with the sensible layout; without firewood it freezes, alerts first): `tooling/balance/camp*.test.ts`, driving `scenarios.camp*`. Start goods on maps: `sim/test/map.test.ts`.
 - Client unit tests: `client/test/{alertText,autosave,clock,iso,night}.test.ts`. Balance: `pnpm balance meadow` (add scenarios in `tooling/balance/scenarios.ts`).
 
 ## Docs

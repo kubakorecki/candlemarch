@@ -5,15 +5,32 @@ import type {
   HeroId,
   JobId,
   MapObjectId,
+  ResourceAmount,
+  ResourceId,
   RoadId,
   TerrainId,
 } from '@candlemarch/content';
 import { createEntity } from './entities';
-import { canPlaceBuilding, doorTile, fitsAt, isWalkableTerrain, tileCenter } from './grid';
+import { isFood } from './granary';
+import {
+  canPlaceBuilding,
+  doorTile,
+  fitsAt,
+  isWalkableTerrain,
+  rectTiles,
+  tileCenter,
+  tileIndex,
+} from './grid';
 import { standingTrees } from './huntingGrounds';
 import { seedRng } from './rng';
 import { type GameState, STATE_VERSION } from './state';
-import { canPlaceStockpile, placeStockpile } from './stockpiles';
+import {
+  addToTile,
+  canPlaceStockpile,
+  isStockpileGood,
+  placeStockpile,
+  roomOnTile,
+} from './stockpiles';
 import { spawnVillager } from './villagers';
 import { maxWorkers } from './workers';
 
@@ -23,18 +40,48 @@ export interface MapDef {
   rows: string[];
   /** Tile on the map's edge where Newcomers arrive. Without one, nobody immigrates. */
   entry?: { x: number; y: number };
-  /** Buildings standing at map start, by origin tile. */
-  buildings: { type: BuildingId; x: number; y: number }[];
+  /**
+   * Buildings standing at map start, by origin tile, with goods already in `building.stock`:
+   * a Granary's Food, a House's fuel, or a Workplace's output buffer.
+   */
+  buildings: { type: BuildingId; x: number; y: number; stock?: ResourceAmount[] }[];
   /** Construction sites at map start, by origin tile. */
   sites?: { type: BuildingId; x: number; y: number }[];
-  /** Stockpiles at map start, empty, by origin tile and size in tiles. */
-  stockpiles?: { x: number; y: number; w: number; h: number }[];
+  /**
+   * Stockpiles at map start, by origin tile and size in tiles, with `goods` laid on their tiles
+   * row by row, each tile filled to capacity before the next.
+   */
+  stockpiles?: { x: number; y: number; w: number; h: number; goods?: ResourceAmount[] }[];
   /** Villagers without a workplace (e.g. carriers), by tile. */
   villagers: { job: JobId; x: number; y: number }[];
   /** Where the hero starts, if the map has one. */
   hero?: { x: number; y: number };
   /** Hunting grounds: named rectangles of forest, by origin tile and size, starting full of Game. */
   huntingGrounds?: { name: string; x: number; y: number; w: number; h: number; maxGame: number }[];
+}
+
+/**
+ * Whether a `type` building can start holding `stock`: Food up to a Granary's capacity, fuel up
+ * to a House's buffer, or goods up to a Workplace's output slots.
+ */
+function holdsAtStart(
+  content: Content,
+  type: BuildingId,
+  stock: Partial<Record<ResourceId, number>>,
+): boolean {
+  const def = content.buildings[type];
+  const entries = Object.entries(stock) as [ResourceId, number][];
+  if (def.foodCapacity !== undefined) {
+    const total = entries.reduce((sum, [, amount]) => sum + amount, 0);
+    return entries.every(([r]) => isFood(content, r)) && total <= def.foodCapacity;
+  }
+  if (def.residents !== undefined) {
+    const { fuel, houseBuffer } = content.needs.cold;
+    return entries.every(([r, amount]) => r === fuel && amount <= houseBuffer);
+  }
+  return entries.every(([r, amount]) =>
+    (def.outputBuffer ?? []).some((slot) => slot.resource === r && amount <= slot.capacity),
+  );
 }
 
 /** The hero every map spawns, until the player picks one at game start. */
@@ -134,11 +181,18 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
       throw new Error(`map ${map.name}: ${b.type} doesn't fit at ${b.x},${b.y}`);
     }
     const def = content.buildings[b.type];
+    const stock: Partial<Record<ResourceId, number>> = {};
+    for (const goods of b.stock ?? []) {
+      stock[goods.resource] = (stock[goods.resource] ?? 0) + goods.amount;
+    }
+    if (!holdsAtStart(content, b.type, stock)) {
+      throw new Error(`map ${map.name}: ${b.type} at ${b.x},${b.y} can't hold its stock`);
+    }
     const id = createEntity(state);
     state.components.tile[id] = { x: b.x, y: b.y };
     state.components.building[id] = {
       type: b.type,
-      stock: {},
+      stock,
       input: {},
       workerLimit: maxWorkers(content, b.type),
       cold: false,
@@ -159,11 +213,29 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
     state.components.site[id] = { type: site.type, delivered: {}, buildProgress: 0 };
   }
 
-  for (const { x, y, w, h } of map.stockpiles ?? []) {
+  for (const { x, y, w, h, goods } of map.stockpiles ?? []) {
     if (!canPlaceStockpile(state, content, x, y, w, h)) {
       throw new Error(`map ${map.name}: stockpile can't be placed at ${x},${y} (${w}×${h})`);
     }
+    const id = state.nextId;
     placeStockpile(state, content, x, y, w, h);
+    const pile = state.components.stockpile[id];
+    const tiles = rectTiles({ x, y }, w, h).map((t) => tileIndex(state.map, t.x, t.y));
+    const perTile = content.logistics.stockpileTileCapacity;
+    for (const g of goods ?? []) {
+      let left = g.amount;
+      for (const index of tiles) {
+        if (!pile || left <= 0 || !isStockpileGood(content, g.resource)) break;
+        const put = Math.min(left, roomOnTile(pile, index, g.resource, perTile));
+        if (put > 0) addToTile(pile, index, { resource: g.resource, amount: put });
+        left -= put;
+      }
+      if (left > 0) {
+        throw new Error(
+          `map ${map.name}: stockpile at ${x},${y} can't hold ${g.amount} ${g.resource}`,
+        );
+      }
+    }
   }
 
   for (const v of map.villagers) {
