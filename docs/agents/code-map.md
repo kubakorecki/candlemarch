@@ -45,11 +45,12 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 
 ## client (`packages/client/src`)
 - `main.tsx`: React root, `applyPaletteToCss`. `ui/App.tsx`: creates `Game`, mounts `Hud` and (dev only) `NewGamePanel`.
-- `protocol.ts`: `ToWorker` (`newGame`, `load`, `advance {ticks, commands}`, `save`) / `FromWorker` (`snapshot {state, prevPositions}`, `saved`, `error`).
-- `worker/sim.worker.ts`: holds `GameState`, runs `step()` N times per `advance` (commands on the first), posts the full state as a snapshot.
+- `protocol.ts`: `ToWorker` (`newGame`, `load`, `advance {ticks, commands}`, `save` (manual)) / `FromWorker` (`snapshot {state, prevPositions}`, `saved {slot, tick, json}`, `error`).
+- `worker/sim.worker.ts`: holds `GameState`, runs `step()` N times per `advance` (commands on the first), posts an autosave (`saved`, slot `autosave`) whenever a step reaches `isAutosaveTick`, then the full state as a snapshot.
+- `game/autosave.ts`: pure, shared by worker and main thread: `SaveSlot`, `SAVE_SLOTS` (localStorage keys `candlemarch.save` / `candlemarch.autosave`), `isAutosaveTick` (a Dawn but tick 0), `dateLabel`, `slotDateLabel`.
 - `game/SimBridge.ts`: main-thread side: owns the clock, queues commands (`command()`), sends `advance` once per frame (max 10 ticks, one request in flight), exposes `state`, `prevPositions`, `alpha`.
 - `game/clock.ts`: `tickClock`, `tickFraction`, `SPEEDS` (0–3).
-- `game/Game.ts`: glue: `TOOLS` (toolbar, shortcuts), input → `bridge.command(...)`, `HudState` store (`subscribe`/`getHud`), selection panels (`VillagerInfo`, `BuildingInfo` (a lodge lists its `grounds`), `PatchInfo` with the "no shade" hint, `GroundInfo`, `WorkersView`), `placementWarning` (a building that fells the forest reaching a Hunting ground), save/load via localStorage.
+- `game/Game.ts`: glue: `TOOLS` (toolbar, shortcuts), input → `bridge.command(...)`, `HudState` store (`subscribe`/`getHud`), selection panels (`VillagerInfo`, `BuildingInfo` (a lodge lists its `grounds`), `PatchInfo` with the "no shade" hint, `GroundInfo`, `WorkersView`), `placementWarning` (a building that fells the forest reaching a Hunting ground), save/load via localStorage (`onSaved` writes the slot's key; `toggleLoadMenu` lists both slots with their date; `load(slot)`).
 - `render/WorldRenderer.ts`: Pixi scene. `syncStatics` (per snapshot: ground, roads, trees, buildings, sites, stockpiles, Hunting ground outlines + labels; a "fled" puff when a ground's `fled` rises between snapshots), `HEALTH_COLORS`/`HEALTH_WORDS`, `drawWalkers` (per frame, interpolated villagers + hero), `drawNight`, ghosts, hit tests. `JOB_COLORS`.
 - `render/shapes.ts`: all placeholder drawing: `drawBuilding` (generic), `drawChoppingBlock`, `drawSite`, `drawTree`, `drawBerryBush`, `drawMushroomPatch` (bare when empty or withered), `drawHuntingGround`, `drawFledPuff`, `drawVillager`, `drawVillagerStatus(g, VillagerStatus)` (Homeless, Tired "zzz", Hungry bowl, Cold snowflake, no-catch icons over the head), `drawNoFirewoodIcon` (cold Houses), `drawHero`, `PIECES` (per-resource goods art), roads, ghosts.
 - `render/iso.ts`: all iso maths (`TILE_W` 128, `gridToWorld`, `screenToTile`, `unitsToGrid`, `depthOf`...). `render/palette.ts`: `palette`, only colour source (HUD via CSS vars). `render/camera.ts`: pan/zoom input. `render/night.ts`: `nightDarkness`.
@@ -91,7 +92,7 @@ Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `m
 - Meals and Hungry: `sim/test/granary.test.ts` (a river camp with a fisher's hut, Granary and Hut; a test `Content` treats logs as a second Food).
 - Night tests (`sleep.test.ts`) start a state at Dusk with a `jump(s, tick)` helper that just sets `tick`. A state at tick T hasn't run tick T yet: to see Dawn's effects, run to `DAWN + 1`. Jumping straight to a Dawn makes everyone Tired (no sleep counted).
 - Content validation: `content/test/validate.test.ts`. Import boundaries + hidden inputs: `tooling/boundaries.test.ts`.
-- Client unit tests: `client/test/{clock,iso,night}.test.ts`. Balance: `pnpm balance meadow` (add scenarios in `tooling/balance/scenarios.ts`).
+- Client unit tests: `client/test/{autosave,clock,iso,night}.test.ts`. Balance: `pnpm balance meadow` (add scenarios in `tooling/balance/scenarios.ts`).
 
 ## Docs
 - Decisions: one line in `docs/decisions.md` (date, decision, why). ADRs: `docs/adr/`. Glossary: `CONTEXT.md` (use its terms: Workplace, Carrier, Hut...).

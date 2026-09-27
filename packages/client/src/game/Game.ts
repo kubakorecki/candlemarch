@@ -2,7 +2,6 @@
 // (speed, build mode); everything about the world comes from sim snapshots.
 import { type BuildingId, content, type ResourceId } from '@candlemarch/content';
 import {
-  type CalendarTime,
   type Command,
   calendarAt,
   canLayPath,
@@ -35,10 +34,10 @@ import { CameraInput } from '../render/camera';
 import { type CameraView, gridToWorld, screenToTile } from '../render/iso';
 import { nightDarkness } from '../render/night';
 import { HEALTH_WORDS, type PlacementGhost, WorldRenderer } from '../render/WorldRenderer';
+import { dateLabel, SAVE_SLOTS, type SaveSlot, slotDateLabel } from './autosave';
 import type { Speed } from './clock';
 import { SimBridge } from './SimBridge';
 
-const SAVE_KEY = 'candlemarch.save';
 const NEW_GAME_SEED = 1;
 
 export type ToolId = BuildingId | 'path' | 'removePath' | 'stockpile' | 'demolish';
@@ -182,6 +181,13 @@ export interface BuildingInfo {
   maxWorkers: number;
 }
 
+/** One save slot in the Load menu: its name and when it was saved, or null when it's empty. */
+export interface LoadSlotView {
+  slot: SaveSlot;
+  name: string;
+  date: string | null;
+}
+
 export interface HudState {
   ready: boolean;
   speed: Speed;
@@ -215,6 +221,8 @@ export interface HudState {
   placementWarning: string | null;
   /** The workers view, while it's open. */
   workers: WorkersView | null;
+  /** The Load menu, while it's open: each save slot, in order. */
+  loadMenu: LoadSlotView[] | null;
   /** The hero is selected, so right-click orders it. */
   heroSelected: boolean;
   /** What the hero holds, e.g. "3/5 logs", or null if this game has no hero. */
@@ -257,6 +265,7 @@ export class Game {
     ground: null,
     placementWarning: null,
     workers: null,
+    loadMenu: null,
     heroSelected: false,
     heroLoad: null,
     message: null,
@@ -268,7 +277,7 @@ export class Game {
   private constructor() {
     this.bridge = new SimBridge({
       onSnapshot: (state) => this.onSnapshot(state),
-      onSaved: (json) => this.onSaved(json),
+      onSaved: (json, slot, tick) => this.onSaved(json, slot, tick),
       onError: (message) => this.setHud({ message: `Error: ${message}` }),
     });
   }
@@ -373,15 +382,28 @@ export class Game {
     this.bridge.save();
   }
 
-  load(): void {
-    let json: string | null = null;
-    try {
-      json = localStorage.getItem(SAVE_KEY);
-    } catch {
-      json = null;
+  /** Opens or closes the Load menu, listing each slot with the date it was saved on. */
+  toggleLoadMenu(): void {
+    if (this.hud.loadMenu) {
+      this.setHud({ loadMenu: null });
+      return;
     }
+    const menu = (Object.keys(SAVE_SLOTS) as SaveSlot[]).map((slot) => {
+      const tick = savedTick(readSlot(slot));
+      return {
+        slot,
+        name: SAVE_SLOTS[slot].name,
+        date: tick === null ? null : slotDateLabel(tick, content),
+      };
+    });
+    this.setHud({ loadMenu: menu });
+  }
+
+  load(slot: SaveSlot): void {
+    const json = readSlot(slot);
+    this.setHud({ loadMenu: null });
     if (!json) {
-      this.setHud({ message: 'No save found.' });
+      this.setHud({ message: `No ${SAVE_SLOTS[slot].name.toLowerCase()} found.` });
       return;
     }
     // The save may be on another map, so centre the camera on it.
@@ -468,7 +490,7 @@ export class Game {
       hutLogs: hut && buffer ? (hut.stock[buffer.resource] ?? 0) : 0,
       hutCapacity: buffer?.capacity ?? 0,
       heroLoad: heroLoadLabel(state),
-      date: dateLabel(time),
+      date: dateLabel(time, content),
       year: time.year,
       isNight: time.isNight,
       homeless: Object.values(state.components.villager).filter((v) => v.home === null).length,
@@ -478,12 +500,13 @@ export class Game {
     });
   }
 
-  private onSaved(json: string): void {
+  private onSaved(json: string, slot: SaveSlot, tick: number): void {
     try {
-      localStorage.setItem(SAVE_KEY, json);
-      this.setHud({ message: `Saved on ${this.hud.date}, year ${this.hud.year}.` });
+      localStorage.setItem(SAVE_SLOTS[slot].key, json);
+      // Autosaves happen quietly, once a day.
+      if (slot === 'manual') this.setHud({ message: `Saved on ${slotDateLabel(tick, content)}.` });
     } catch (error) {
-      this.setHud({ message: `Save failed: ${String(error)}` });
+      this.setHud({ message: `${SAVE_SLOTS[slot].name} failed: ${String(error)}` });
     }
   }
 
@@ -1012,8 +1035,22 @@ function heroLoadLabel(state: GameState): string | null {
   return `${goods.amount}/${capacity} ${content.resources[goods.resource].name.toLowerCase()}`;
 }
 
-/** "Spring, day 3". */
-function dateLabel(time: CalendarTime): string {
-  const name = content.calendar.seasons.find((s) => s.id === time.season)?.name ?? time.season;
-  return `${name}, day ${time.dayOfSeason}`;
+/** The save in `slot`, or null when there's none or storage can't be read. */
+function readSlot(slot: SaveSlot): string | null {
+  try {
+    return localStorage.getItem(SAVE_SLOTS[slot].key);
+  } catch {
+    return null;
+  }
+}
+
+/** The tick a save was made at, or null when there's no save or it can't be read. */
+function savedTick(json: string | null): number | null {
+  if (!json) return null;
+  try {
+    const tick: unknown = (JSON.parse(json) as { tick?: unknown }).tick;
+    return typeof tick === 'number' ? tick : null;
+  } catch {
+    return null;
+  }
 }

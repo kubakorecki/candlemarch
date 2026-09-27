@@ -265,6 +265,24 @@ export function Hud({ game }: { game: Game }) {
         )}
       </div>
 
+      {hud.loadMenu && (
+        <div className="panel load-menu">
+          <div className="title">Load</div>
+          {hud.loadMenu.map((entry) => (
+            <div key={entry.slot} className="row">
+              <button
+                type="button"
+                disabled={entry.date === null}
+                onClick={() => game.load(entry.slot)}
+              >
+                {entry.name}
+              </button>
+              <span className="muted">{entry.date ?? 'Empty'}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="panel toolbar">
         {TOOLS.map((tool) => (
           <button
@@ -304,7 +322,12 @@ export function Hud({ game }: { game: Game }) {
         <button type="button" disabled={!hud.ready} onClick={() => game.save()}>
           Save
         </button>
-        <button type="button" disabled={!hud.ready} onClick={() => game.load()}>
+        <button
+          type="button"
+          className={hud.loadMenu ? 'active' : ''}
+          disabled={!hud.ready}
+          onClick={() => game.toggleLoadMenu()}
+        >
           Load
         </button>
       </div>

@@ -1,6 +1,7 @@
 // Main-thread side of the sim worker: owns the clock, queues commands, keeps the latest snapshot.
 import type { Command, EntityId, GameState, MapName, Point } from '@candlemarch/sim';
 import type { FromWorker, ToWorker } from '../protocol';
+import type { SaveSlot } from './autosave';
 import { type ClockState, type Speed, tickClock, tickFraction } from './clock';
 
 /** Most ticks sent in one request; anything beyond is dropped rather than caught up. */
@@ -8,7 +9,7 @@ const MAX_TICKS_PER_REQUEST = 10;
 
 export interface SimBridgeEvents {
   onSnapshot(state: GameState): void;
-  onSaved(json: string): void;
+  onSaved(json: string, slot: SaveSlot, tick: number): void;
   onError(message: string): void;
 }
 
@@ -96,7 +97,7 @@ export class SimBridge {
         this.events.onSnapshot(message.state);
         return;
       case 'saved':
-        this.events.onSaved(message.json);
+        this.events.onSaved(message.json, message.slot, message.tick);
         return;
       case 'error':
         this.inFlight = false;

@@ -8,6 +8,7 @@ import {
   serialize,
   step,
 } from '@candlemarch/sim';
+import { isAutosaveTick, type SaveSlot } from '../game/autosave';
 import type { FromWorker, ToWorker } from '../protocol';
 
 let state: GameState | null = null;
@@ -18,6 +19,10 @@ function send(message: FromWorker): void {
 
 function sendSnapshot(current: GameState, previous: GameState): void {
   send({ type: 'snapshot', state: current, prevPositions: previous.components.position });
+}
+
+function save(current: GameState, slot: SaveSlot): void {
+  send({ type: 'saved', slot, tick: current.tick, json: serialize(current) });
 }
 
 function handle(message: ToWorker): void {
@@ -36,12 +41,13 @@ function handle(message: ToWorker): void {
       for (let i = 0; i < message.ticks; i++) {
         previous = state;
         state = step(state, i === 0 ? message.commands : [], content);
+        if (isAutosaveTick(state.tick, content)) save(state, 'autosave');
       }
       sendSnapshot(state, previous);
       return;
     }
     case 'save':
-      if (state) send({ type: 'saved', json: serialize(state) });
+      if (state) save(state, 'manual');
       return;
   }
 }
