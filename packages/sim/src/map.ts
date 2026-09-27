@@ -10,6 +10,7 @@ import type {
 } from '@candlemarch/content';
 import { createEntity } from './entities';
 import { canPlaceBuilding, doorTile, fitsAt, isWalkableTerrain, tileCenter } from './grid';
+import { standingTrees } from './huntingGrounds';
 import { seedRng } from './rng';
 import { type EntityId, type GameState, STATE_VERSION, type Tile } from './state';
 import { canPlaceStockpile, placeStockpile } from './stockpiles';
@@ -30,6 +31,8 @@ export interface MapDef {
   villagers: { job: JobId; x: number; y: number }[];
   /** Where the hero starts, if the map has one. */
   hero?: { x: number; y: number };
+  /** Hunting grounds: named rectangles of forest, by origin tile and size, starting full of Game. */
+  huntingGrounds?: { name: string; x: number; y: number; w: number; h: number; maxGame: number }[];
 }
 
 /** The hero every map spawns, until the player picks one at game start. */
@@ -98,6 +101,8 @@ export function createEmptyState(seed: number): GameState {
       crafter: {},
       fisher: {},
       forager: {},
+      hunter: {},
+      huntingGround: {},
     },
     logistics: { hauls: {} },
   };
@@ -105,8 +110,8 @@ export function createEmptyState(seed: number): GameState {
 
 /**
  * A new game on `map`. Entities are created in this order: trees (row-major), buildings with
- * their employees (spawned at the door), sites, stockpiles, free villagers, then the hero. Throws
- * if the map is malformed or anything on it couldn't be placed there.
+ * their employees (spawned at the door), sites, stockpiles, free villagers, the hero, then
+ * Hunting grounds. Throws if the map is malformed or anything on it couldn't be placed there.
  */
 export function createInitialState(seed: number, map: MapDef, content: Content): GameState {
   const height = map.rows.length;
@@ -188,6 +193,18 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
     const id = createEntity(state);
     state.components.hero[id] = { type: DEFAULT_HERO, carrying: null, order: null };
     state.components.position[id] = tileCenter({ x, y });
+  }
+
+  for (const g of map.huntingGrounds ?? []) {
+    const { name, x, y, w, h, maxGame } = g;
+    if (x < 0 || y < 0 || w < 1 || h < 1 || x + w > width || y + h > height) {
+      throw new Error(
+        `map ${map.name}: hunting ground ${name} doesn't fit at ${x},${y} (${w}×${h})`,
+      );
+    }
+    const ground = { name, x, y, w, h, maxGame, game: maxGame, startTrees: 0, fled: 0 };
+    ground.startTrees = standingTrees(state, content, ground);
+    state.components.huntingGround[createEntity(state)] = ground;
   }
 
   return state;

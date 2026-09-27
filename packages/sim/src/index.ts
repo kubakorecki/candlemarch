@@ -16,6 +16,14 @@ export { isForagePatch, isWithered } from './forage';
 export { foodIds, villageFood } from './granary';
 export { canPlaceBuilding, doorTile, footprint, tileCenter, tileOfPoint } from './grid';
 export { type HeroOrder, heroOf, heroOrderAt } from './hero';
+export {
+  type GroundHealth,
+  groundCeiling,
+  groundHealth,
+  groundsInReach,
+  groundsNear,
+  huntChancePermille,
+} from './huntingGrounds';
 export type { Haul, LogisticsState } from './logistics/jobDispatch';
 export { createInitialState, type MapDef } from './map';
 export { DEFAULT_MAP, type MapName, maps } from './maps';

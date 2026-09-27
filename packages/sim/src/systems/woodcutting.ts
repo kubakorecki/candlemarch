@@ -1,9 +1,10 @@
 // Woodcutters: walk to the nearest tree, chop, carry the logs to their hut's output buffer, repeat.
 import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
-import { destroyEntity, idsOf } from '../entities';
+import { idsOf } from '../entities';
 import { gatherTargets, outputRoom, walkToNearest } from '../gathering';
 import { doorTile } from '../grid';
+import { fellTree } from '../huntingGrounds';
 import { workTicks } from '../speed';
 import type { EntityId, GameState } from '../state';
 import { isAt, walkTo } from './movement';
@@ -68,7 +69,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
         const amount = Math.min(def.yieldPerGather, tree.amount, job.carryCapacity);
         tree.amount -= amount;
         v.carrying = { resource: def.resource, amount };
-        if (tree.amount === 0) destroyEntity(state, task.tree);
+        if (tree.amount === 0) fellTree(state, content, task.tree);
         tasks[id] = { kind: 'toHut' };
         walkTo(state, content, id, [door]);
         break;

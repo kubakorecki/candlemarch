@@ -8,6 +8,7 @@ import { constructionSystem } from './systems/construction';
 import { fishingSystem } from './systems/fishing';
 import { foragingSystem } from './systems/foraging';
 import { haulingSystem } from './systems/hauling';
+import { huntingSystem } from './systems/hunting';
 import { movementSystem } from './systems/movement';
 import { patchesSystem } from './systems/patches';
 import { productionSystem } from './systems/production';
@@ -34,10 +35,11 @@ function cloneState(state: GameState): GameState {
  * 8. woodcutting
  * 9. fishing
  * 10. foraging
- * 11. production: workshop crafters take inputs, work, and fill output buffers
- * 12. hauling (job dispatch)
- * 13. construction, by day only
- * 14. staffing: workplaces below their worker limit draft idle carriers
+ * 11. hunting: hunters roll for a catch with the PRNG
+ * 12. production: workshop crafters take inputs, work, and fill output buffers
+ * 13. hauling (job dispatch)
+ * 14. construction, by day only
+ * 15. staffing: workplaces below their worker limit draft idle carriers
  * then `tick` increments.
  */
 export function step(state: GameState, commands: readonly Command[], content: Content): GameState {
@@ -52,6 +54,7 @@ export function step(state: GameState, commands: readonly Command[], content: Co
   woodcuttingSystem(next, content);
   fishingSystem(next, content);
   foragingSystem(next, content);
+  huntingSystem(next, content);
   productionSystem(next, content);
   haulingSystem(next, content);
   constructionSystem(next, content);

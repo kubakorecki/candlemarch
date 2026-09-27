@@ -76,6 +76,22 @@ body,
   color: var(--hud-invalid);
 }
 
+.health-thriving {
+  color: var(--thriving);
+}
+
+.health-thinning {
+  color: var(--thinning);
+}
+
+.health-scarce {
+  color: var(--scarce);
+}
+
+.health-empty {
+  color: var(--empty);
+}
+
 .message {
   top: 16px;
   left: 50%;

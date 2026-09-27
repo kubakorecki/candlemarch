@@ -257,6 +257,32 @@ describe('content validation', () => {
     }
   });
 
+  it('a hunting building has a radius and a buffer that holds a catch', () => {
+    for (const b of Object.values(buildings)) {
+      if (b.hunts === undefined) continue;
+      expectPositiveInt(b.hunts.huntTicks, `${b.id}.hunts.huntTicks`);
+      expect(b.workRadius, `${b.id}.workRadius`).toBeDefined();
+      expect(b.employs.length, `${b.id} employs someone`).toBeGreaterThan(0);
+      expect(b.hunts.catch.length, `${b.id} catches something`).toBeGreaterThan(0);
+      for (const c of b.hunts.catch) {
+        expect(resources, `${b.id}.hunts.catch`).toHaveProperty(c.resource);
+        expectPositiveInt(c.amount, `${b.id}.hunts.catch.${c.resource}`);
+        const slot = b.outputBuffer?.find((s) => s.resource === c.resource);
+        expect(slot?.capacity ?? 0, `${b.id} holds ${c.resource}`).toBeGreaterThanOrEqual(c.amount);
+      }
+    }
+  });
+
+  it('hunting grounds are made of a map object and use sane percents', () => {
+    const { forest, maxCatchPermille, thrivingPercent, scarcePercent } = content.hunting;
+    expect(mapObjects).toHaveProperty(forest);
+    expectPositiveInt(maxCatchPermille, 'hunting.maxCatchPermille');
+    expect(maxCatchPermille <= 1000, 'hunting.maxCatchPermille <= 1000').toBe(true);
+    expectPositiveInt(scarcePercent, 'hunting.scarcePercent');
+    expect(scarcePercent < thrivingPercent, 'scarce below thriving').toBe(true);
+    expect(thrivingPercent <= 100, 'hunting.thrivingPercent <= 100').toBe(true);
+  });
+
   it('every resource has a known store', () => {
     for (const r of Object.values(resources)) {
       expect(['stockpile', 'granary'], `${r.id}.storage`).toContain(r.storage);

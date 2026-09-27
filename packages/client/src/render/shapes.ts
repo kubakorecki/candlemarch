@@ -267,6 +267,43 @@ function drawFish(g: Graphics, x: number, y: number, s: number): void {
   g.circle(x + 7 * s, y - 1 * s, 1 * s).fill(palette.ink);
 }
 
+/** One haunch of meat lying on its side, centred on (x, y), bone to the right. */
+function drawMeat(g: Graphics, x: number, y: number, s: number): void {
+  g.roundRect(x + 3 * s, y - 1.5 * s, 8 * s, 3 * s, 1.5 * s)
+    .fill(palette.bone)
+    .stroke({ ...THIN_INK, width: 1.5 });
+  g.circle(x + 11 * s, y, 2.5 * s)
+    .fill(palette.bone)
+    .stroke({ ...THIN_INK, width: 1.5 });
+  g.ellipse(x - 3 * s, y, 8 * s, 5 * s)
+    .fill(palette.meat)
+    .stroke(THIN_INK);
+  g.ellipse(x - 4 * s, y - 1.5 * s, 4 * s, 1.5 * s).fill(palette.meatFat);
+}
+
+/** One folded hide, centred on (x, y): a rough, flat pelt with a darker fold. */
+function drawHide(g: Graphics, x: number, y: number, s: number): void {
+  g.poly([
+    x - 10 * s,
+    y - 2 * s,
+    x - 6 * s,
+    y - 4.5 * s,
+    x + 6 * s,
+    y - 4 * s,
+    x + 10 * s,
+    y - 1 * s,
+    x + 8 * s,
+    y + 3.5 * s,
+    x - 8 * s,
+    y + 3.5 * s,
+  ])
+    .fill(palette.hide)
+    .stroke(THIN_INK);
+  g.moveTo(x - 7 * s, y + 0.5 * s)
+    .lineTo(x + 7 * s, y + 0.5 * s)
+    .stroke({ width: 1.5 * s, color: palette.hideDark, cap: 'round' });
+}
+
 /** How each resource is drawn as one piece, and the spacing of its pieces in a pile. */
 const PIECES: Record<
   ResourceId,
@@ -277,6 +314,8 @@ const PIECES: Record<
   fish: { draw: drawFish, w: 20, h: 7 },
   berries: { draw: drawBerries, w: 14, h: 8 },
   mushrooms: { draw: (g, x, y, s) => drawMushroom(g, x, y + 4 * s, s), w: 14, h: 9 },
+  meat: { draw: drawMeat, w: 20, h: 9 },
+  hides: { draw: drawHide, w: 20, h: 7 },
 };
 
 /** A pyramid of `count` pieces of `resource` whose bottom row is centred on (x, y). */
@@ -641,20 +680,30 @@ export function drawMissingIcon(g: Graphics, x: number, y: number): void {
     .stroke({ width: 3 * s, color: palette.invalid, cap: 'round' });
 }
 
+/** What a villager's status icons show. */
+export interface VillagerStatus {
+  homeless: boolean;
+  tired: boolean;
+  hungry: boolean;
+  /** A hunter walking back from a hunt empty-handed. */
+  noCatch: boolean;
+}
+
 /**
  * Status icons over a villager's head, drawn relative to its feet: a House struck through when
- * it's Homeless, "zzz" when it's Tired, an empty bowl when it's Hungry. Every icon that applies
- * shows, side by side.
+ * it's Homeless, "zzz" when it's Tired, an empty bowl when it's Hungry, a haunch struck through
+ * when a hunter comes back with no catch. Every icon that applies shows, side by side.
  */
-export function drawVillagerStatus(
-  g: Graphics,
-  homeless: boolean,
-  tired: boolean,
-  hungry: boolean,
-): void {
+export function drawVillagerStatus(g: Graphics, status: VillagerStatus): void {
   g.clear();
   const s = TILE_H / 64;
-  const icons = [homeless && 'homeless', tired && 'tired', hungry && 'hungry'].filter(Boolean);
+  const { homeless, tired, hungry, noCatch } = status;
+  const icons = [
+    homeless && 'homeless',
+    tired && 'tired',
+    hungry && 'hungry',
+    noCatch && 'noCatch',
+  ].filter(Boolean);
   const r = 9 * s;
   icons.forEach((icon, i) => {
     const x = (i - (icons.length - 1) / 2) * (2 * r + 3 * s);
@@ -685,6 +734,11 @@ export function drawVillagerStatus(
       g.moveTo(x - 7 * s, y - 1.5 * s)
         .lineTo(x + 7 * s, y - 1.5 * s)
         .stroke({ width: 1.5 * s, color: palette.ink, cap: 'round' });
+    } else if (icon === 'noCatch') {
+      drawMeat(g, x - 1 * s, y, s * 0.55);
+      g.moveTo(x - r * 0.7, y - r * 0.7)
+        .lineTo(x + r * 0.7, y + r * 0.7)
+        .stroke({ width: 2.5 * s, color: palette.invalid, cap: 'round' });
     } else {
       // Three Zs, growing up and to the right.
       for (const [dx, dy, size] of [
@@ -717,5 +771,39 @@ export function drawTileGhost(
     g.poly(flat(diamond(t.x, t.y)))
       .fill({ color, alpha: 0.4 })
       .stroke({ width: 2, color, alpha: 0.9 });
+  }
+}
+
+/**
+ * A Hunting ground's rectangle of tiles outlined on the ground in its health `color`, with a
+ * faint wash inside.
+ */
+export function drawHuntingGround(
+  g: Graphics,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: number,
+): void {
+  g.poly(flat(diamond(x, y, w, h)))
+    .fill({ color, alpha: 0.1 })
+    .stroke({ width: 4, color: palette.ink, alpha: 0.5, join: 'round' });
+  g.poly(flat(diamond(x, y, w, h))).stroke({ width: 2.5, color, alpha: 0.9, join: 'round' });
+}
+
+/**
+ * Game fleeing a ground, around (x, y): a ring of dust puffs spreading and fading as `t` goes
+ * from 0 to 1.
+ */
+export function drawFledPuff(g: Graphics, x: number, y: number, t: number): void {
+  const s = TILE_H / 64;
+  const spread = (10 + 40 * t) * s;
+  const alpha = 0.8 * (1 - t);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2;
+    g.circle(x + Math.cos(a) * spread, y + Math.sin(a) * spread * 0.5 - 20 * t * s, (8 + 6 * t) * s)
+      .fill({ color: palette.puff, alpha })
+      .stroke({ width: 2 * s, color: palette.ink, alpha: alpha * 0.6 });
   }
 }

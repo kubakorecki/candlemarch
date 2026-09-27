@@ -29,6 +29,13 @@ export const jobs: Record<JobId, JobDef> = {
     carryCapacity: 1,
     idleRetryTicks: 20,
   },
+  hunter: {
+    id: 'hunter',
+    name: 'Hunter',
+    walkSpeed: 75,
+    carryCapacity: 1,
+    idleRetryTicks: 20,
+  },
   carrier: {
     id: 'carrier',
     name: 'Carrier',

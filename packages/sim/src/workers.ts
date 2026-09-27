@@ -51,9 +51,9 @@ export function reassignTargets(state: GameState, content: Content, id: EntityId
 
 /**
  * Makes villager `id` a Carrier with no Workplace, from where it stands (it stops at the next
- * tile). Nothing in hand is lost: goods go to its Workplace's output buffer, even if that
- * overfills it, and a batch under way puts its inputs back in the input buffer. A chop or catch
- * under way is abandoned. A Carrier drops its haul (see `abandonHaul`). Leaves worker limits alone.
+ * tile). Nothing in hand is lost: goods, and a hunter's bag, go to its Workplace's output buffer,
+ * even if that overfills it, and a batch under way puts its inputs back in the input buffer. A
+ * chop, catch or hunt under way is abandoned. A Carrier drops its haul (see `abandonHaul`). Leaves worker limits alone.
  */
 function release(state: GameState, content: Content, id: EntityId): void {
   const v = state.components.villager[id];
@@ -65,6 +65,11 @@ function release(state: GameState, content: Content, id: EntityId): void {
     for (const i of content.recipes[batch.recipe].inputs) {
       workplace.input[i.resource] = (workplace.input[i.resource] ?? 0) + i.amount;
     }
+  }
+  const hunt = state.components.hunter[id];
+  if (workplace && hunt?.kind === 'toLodge') {
+    for (const c of hunt.bag)
+      workplace.stock[c.resource] = (workplace.stock[c.resource] ?? 0) + c.amount;
   }
   if (workplace && v.carrying) {
     const { resource, amount } = v.carrying;

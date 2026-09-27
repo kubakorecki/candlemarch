@@ -5,6 +5,8 @@ import {
   type EntityId,
   foodIds,
   type GameState,
+  type GroundHealth,
+  groundHealth,
   heroOf,
   idsOf,
   isRiverFrozen,
@@ -33,10 +35,12 @@ import {
   drawBuilding,
   drawCarriedGoods,
   drawChoppingBlock,
+  drawFledPuff,
   drawGoodsStack,
   drawGround,
   drawHero,
   drawHeroLoad,
+  drawHuntingGround,
   drawMissingIcon,
   drawMushroomPatch,
   drawPileGround,
@@ -67,7 +71,35 @@ const JOB_COLORS: Record<JobId, number> = {
   woodsplitter: palette.woodsplitter,
   fisher: palette.fisher,
   forager: palette.forager,
+  hunter: palette.hunter,
 };
+
+/** Outline and word colour for each Hunting ground health. */
+export const HEALTH_COLORS: Record<GroundHealth, number> = {
+  thriving: palette.thriving,
+  thinning: palette.thinning,
+  scarce: palette.scarce,
+  empty: palette.empty,
+};
+
+/** Health words as the player reads them. */
+export const HEALTH_WORDS: Record<GroundHealth, string> = {
+  thriving: 'Thriving',
+  thinning: 'Thinning',
+  scarce: 'Scarce',
+  empty: 'Empty',
+};
+
+/** How long a "fled" puff lasts, in ms. */
+const PUFF_MS = 1400;
+
+/** Game fleeing a ground: where, its "N fled" label, and when it started (null until drawn). */
+interface Puff {
+  x: number;
+  y: number;
+  startMs: number | null;
+  label: Text;
+}
 
 interface VillagerView {
   node: Container;
@@ -166,6 +198,14 @@ export class WorldRenderer {
   private readonly ground = new Graphics();
   private readonly roads = new Graphics();
   private readonly pileGround = new Graphics();
+  /** Hunting ground outlines on the ground; their names and health words float above the trees. */
+  private readonly grounds = new Graphics();
+  private readonly groundLabels = new Container();
+  private groundsKey = '';
+  /** "Fled" puffs over grounds, drawn each frame until they fade. */
+  private readonly puffs = new Graphics();
+  private readonly puffLabels = new Container();
+  private activePuffs: Puff[] = [];
   /** The hero's aura radius (while selected) and the Workplaces it boosts, on the ground. */
   private readonly aura = new Graphics();
   private readonly objects = new Container({ sortableChildren: true });
@@ -198,8 +238,12 @@ export class WorldRenderer {
       this.ground,
       this.roads,
       this.pileGround,
+      this.grounds,
       this.aura,
       this.objects,
+      this.groundLabels,
+      this.puffs,
+      this.puffLabels,
       this.ghost,
     );
     this.app.stage.addChild(this.world, this.night);
@@ -315,6 +359,7 @@ export class WorldRenderer {
     }
 
     this.syncStockpiles(state, seen);
+    this.syncGrounds(state);
 
     for (const [key, view] of this.statics) {
       if (!seen.has(key)) {
@@ -336,6 +381,7 @@ export class WorldRenderer {
   ): void {
     this.drawVillagers(state, prevPositions, alpha, timeMs);
     this.drawHero(state, prevPositions, alpha, timeMs);
+    this.drawPuffs(timeMs);
   }
 
   /** Tints the screen for night: `darkness` 0 is day, 1 full night. */
@@ -445,7 +491,7 @@ export class WorldRenderer {
     alpha: number,
     timeMs: number,
   ): void {
-    const { villager, position, woodcutter, crafter } = state.components;
+    const { villager, position, woodcutter, crafter, hunter } = state.components;
     const seen = new Set<EntityId>();
     for (const id of idsOf(villager)) {
       const v = villager[id];
@@ -461,7 +507,10 @@ export class WorldRenderer {
       view.node.position.set(w.x, w.y - bob);
       view.ring.position.set(0, bob); // stays on the ground while the figure bobs
       view.node.zIndex = depthOf(g.x, g.y) + 0.01;
-      const carried = v.carrying?.resource ?? null;
+      // A hunter walking back carries its catch (shown by its first part), or nothing.
+      const hunt = hunter[id];
+      const bag = hunt?.kind === 'toLodge' ? hunt.bag : null;
+      const carried = v.carrying?.resource ?? bag?.[0]?.resource ?? null;
       if (carried && carried !== view.loadDrawn) {
         drawCarriedGoods(view.load, carried);
         view.loadDrawn = carried;
@@ -469,9 +518,10 @@ export class WorldRenderer {
       view.load.visible = carried !== null;
       const homeless = v.home === null;
       const hungry = v.missedMeals > 0;
-      const status = `${homeless}:${v.tired}:${hungry}`;
+      const noCatch = bag !== null && bag.length === 0;
+      const status = `${homeless}:${v.tired}:${hungry}:${noCatch}`;
       if (status !== view.statusDrawn) {
-        drawVillagerStatus(view.status, homeless, v.tired, hungry);
+        drawVillagerStatus(view.status, { homeless, tired: v.tired, hungry, noCatch });
         view.statusDrawn = status;
       }
       // Its goods take the icons' place while it carries something.
@@ -502,6 +552,83 @@ export class WorldRenderer {
     } else if (ghost) {
       drawTileGhost(this.ghost, ghost.tiles, ghost.valid);
     }
+  }
+
+  /**
+   * Outlines every Hunting ground in its health colour, with its name and health word, and starts
+   * a "fled" puff over any ground that lost Game to logging since the last snapshot.
+   */
+  private syncGrounds(state: GameState): void {
+    const { huntingGround } = state.components;
+    const ids = idsOf(huntingGround);
+    const key = ids
+      .map((id) => {
+        const g = huntingGround[id];
+        return g ? `${id}:${g.x},${g.y},${g.w},${g.h}:${groundHealth(g, this.content)}` : '';
+      })
+      .join('|');
+    if (key !== this.groundsKey) {
+      this.grounds.clear();
+      for (const child of this.groundLabels.removeChildren()) child.destroy();
+      for (const id of ids) {
+        const g = huntingGround[id];
+        if (!g) continue;
+        const health = groundHealth(g, this.content);
+        drawHuntingGround(this.grounds, g.x, g.y, g.w, g.h, HEALTH_COLORS[health]);
+        const label = this.groundText(`${g.name} · ${HEALTH_WORDS[health]}`, HEALTH_COLORS[health]);
+        const top = gridToWorld(g.x + g.w / 2, g.y + g.h / 2);
+        label.position.set(top.x, top.y - TILE_H * 1.5);
+        this.groundLabels.addChild(label);
+      }
+      this.groundsKey = key;
+    }
+
+    // Only between snapshots of one running game: a new game or a load isn't logging.
+    const last = this.lastState;
+    const running = last !== null && state.tick > last.tick && state.tick - last.tick <= 60;
+    for (const id of running ? ids : []) {
+      const g = huntingGround[id];
+      const before = last?.components.huntingGround[id];
+      if (!g || !before || g.fled <= before.fled) continue;
+      const c = gridToWorld(g.x + g.w / 2, g.y + g.h / 2);
+      const label = this.groundText(`${g.fled - before.fled} fled`, palette.hudText);
+      label.position.set(c.x, c.y - TILE_H * 0.6);
+      this.puffLabels.addChild(label);
+      this.activePuffs.push({ x: c.x, y: c.y, startMs: null, label });
+    }
+  }
+
+  /** Draws the "fled" puffs at `timeMs`, dropping those that have faded. */
+  private drawPuffs(timeMs: number): void {
+    this.puffs.clear();
+    this.activePuffs = this.activePuffs.filter((p) => {
+      p.startMs ??= timeMs;
+      const t = (timeMs - p.startMs) / PUFF_MS;
+      if (t >= 1) {
+        p.label.destroy();
+        return false;
+      }
+      drawFledPuff(this.puffs, p.x, p.y, t);
+      p.label.alpha = 1 - t;
+      p.label.position.set(p.x, p.y - TILE_H * (0.6 + 0.5 * t)); // drifts up as it fades
+      return true;
+    });
+  }
+
+  /** A label over a Hunting ground, anchored at its bottom centre. */
+  private groundText(text: string, color: number): Text {
+    const label = new Text({
+      text,
+      style: {
+        fontFamily: 'Georgia, "Times New Roman", serif',
+        fontSize: 22,
+        fontWeight: 'bold',
+        fill: color,
+        stroke: { color: palette.ink, width: 5 },
+      },
+    });
+    label.anchor.set(0.5, 1);
+    return label;
   }
 
   private syncRoads(state: GameState): void {

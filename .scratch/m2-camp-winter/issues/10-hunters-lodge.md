@@ -1,6 +1,6 @@
 # Hunter's lodge and hunting grounds
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 07, m1-roads-logistics/06
 
@@ -21,3 +21,7 @@ Spec: World and map, "Before full ecology (M2)".
 
 - Headless tests: catch chance follows game; catches reduce game; felling lowers the ceiling and makes game flee; an empty ground yields nothing; results are deterministic per seed; save/load mid-hunt.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-27: Done. Hunting grounds (map rectangles, `huntingGround` store), `fellTree` for the ceiling and fleeing, meat and hides, the hunter's lodge and hunter (`systems/hunting.ts`), health words, and the client outlines, panels, fled puff, no-catch icon and woodcutter's-hut warning. Differs from the issue: the woodcutter's hut gained a `workRadius` (8) so its warning has a radius to check; no playable map has a ground yet (ticket 20). Details in `docs/decisions.md`.

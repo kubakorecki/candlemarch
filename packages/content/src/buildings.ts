@@ -9,6 +9,8 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     placeable: true,
     employs: [{ job: 'woodcutter', count: 1 }],
     gathers: ['tree'],
+    // A radius so the placement preview can warn when it reaches into a Hunting ground.
+    workRadius: 8,
     outputBuffer: [{ resource: 'logs', capacity: 4 }],
     construction: {
       cost: [{ resource: 'logs', amount: 6 }],
@@ -46,6 +48,30 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     ],
     construction: {
       cost: [{ resource: 'logs', amount: 6 }],
+      buildTicks: 200, // 10 s
+    },
+  },
+  hunters_lodge: {
+    id: 'hunters_lodge',
+    name: "Hunter's lodge",
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [{ job: 'hunter', count: 1 }],
+    workRadius: 10,
+    hunts: {
+      huntTicks: 400, // 20 s a hunt
+      catch: [
+        { resource: 'meat', amount: 4 },
+        { resource: 'hides', amount: 1 },
+      ],
+    },
+    outputBuffer: [
+      { resource: 'meat', capacity: 8 },
+      { resource: 'hides', capacity: 4 },
+    ],
+    construction: {
+      cost: [{ resource: 'logs', amount: 8 }],
       buildTicks: 200, // 10 s
     },
   },

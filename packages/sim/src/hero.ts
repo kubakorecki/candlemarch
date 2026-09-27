@@ -1,7 +1,7 @@
 // The hero: one per game, not a villager, acts only on the player's orders. It walks, chops trees
 // and carries goods by hand to kickstart the village (spec, logistics stage 1).
 import type { Content, ResourceId } from '@candlemarch/content';
-import { destroyEntity, idsOf } from './entities';
+import { idsOf } from './entities';
 import { isForagePatch } from './forage';
 import {
   blockedGrid,
@@ -13,6 +13,7 @@ import {
   tileAt,
   tileIndex,
 } from './grid';
+import { fellTree } from './huntingGrounds';
 import {
   freeRoomOnTile,
   haulsIncoming,
@@ -312,7 +313,7 @@ export function heroSystem(state: GameState, content: Content): void {
       }
       tree.amount -= amount;
       hero.carrying = { resource: def.resource, amount: (hero.carrying?.amount ?? 0) + amount };
-      if (tree.amount === 0) destroyEntity(state, order.tree);
+      if (tree.amount === 0) fellTree(state, content, order.tree);
       if (tree.amount === 0 || roomFor(content, hero, def.resource) <= 0) hero.order = null;
       else order.ticksLeft = def.gatherTicks;
       return;

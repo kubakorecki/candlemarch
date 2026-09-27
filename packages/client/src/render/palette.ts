@@ -49,11 +49,24 @@ export const palette = {
   firewoodEnd: 0xd8b98a,
   fish: 0x7d8a8c,
   fishBelly: 0xb9b8a4,
+  meat: 0x8e4b3f,
+  meatFat: 0xcf9f86,
+  bone: 0xe0d3b4,
+  hide: 0x8a6a48,
+  hideDark: 0x6c5137,
+
+  // Hunting ground health, outline and word.
+  thriving: 0x8fae62,
+  thinning: 0xc9a25a,
+  scarce: 0xc4744a,
+  empty: 0x8a8378,
+  puff: 0xd8d0bf,
 
   woodcutter: 0x7e5436,
   woodsplitter: 0x6f5a3a,
   fisher: 0x4f6a6e,
   forager: 0x66683c,
+  hunter: 0x5b4a3a,
   carrier: 0x5a6570,
   skin: 0xd6b48e,
   axeHead: 0x9aa0a3,
@@ -91,4 +104,8 @@ export function applyPaletteToCss(root: HTMLElement): void {
   root.style.setProperty('--hud-muted', hex(palette.hudMuted));
   root.style.setProperty('--hud-accent', hex(palette.hudAccent));
   root.style.setProperty('--hud-invalid', hex(palette.invalid));
+  root.style.setProperty('--thriving', hex(palette.thriving));
+  root.style.setProperty('--thinning', hex(palette.thinning));
+  root.style.setProperty('--scarce', hex(palette.scarce));
+  root.style.setProperty('--empty', hex(palette.empty));
 }

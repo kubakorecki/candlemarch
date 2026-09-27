@@ -2,7 +2,7 @@ import { content, type ResourceId } from '@candlemarch/content';
 import { isStockpileGood, STOCKPILE_PRIORITIES, type StockpilePriority } from '@candlemarch/sim';
 import { useSyncExternalStore } from 'react';
 import { SPEEDS, type Speed } from '../game/clock';
-import { type Game, TOOLS } from '../game/Game';
+import { type Game, type GroundInfo, TOOLS } from '../game/Game';
 
 const PRIORITY_LABELS: Record<StockpilePriority, string> = {
   high: 'High',
@@ -16,12 +16,30 @@ const STOCKPILE_RESOURCES = (Object.keys(content.resources) as ResourceId[]).fil
 
 const SPEED_LABELS: Record<Speed, string> = { 0: '⏸', 1: '1×', 2: '2×', 3: '3×' };
 
+/** One Hunting ground's lines: its health word in its colour, then its Game. */
+function GroundRows({ ground }: { ground: GroundInfo }) {
+  return (
+    <>
+      <div className="row">
+        <span>{ground.name}</span>
+        <span className={`health-${ground.health}`}>{ground.word}</span>
+      </div>
+      <div className="row muted">{ground.summary}</div>
+    </>
+  );
+}
+
 export function Hud({ game }: { game: Game }) {
   const hud = useSyncExternalStore(game.subscribe, game.getHud);
 
   return (
     <div className="hud">
-      {hud.message && <div className="panel message">{hud.message}</div>}
+      {(hud.message || hud.placementWarning) && (
+        <div className="panel message">
+          {hud.message}
+          {hud.placementWarning && <div className="warn">{hud.placementWarning}</div>}
+        </div>
+      )}
 
       <div className="side">
         <div className="panel readout">
@@ -120,6 +138,9 @@ export function Hud({ game }: { game: Game }) {
                 </button>
               </div>
             ))}
+            {hud.building.grounds.map((ground) => (
+              <GroundRows key={ground.id} ground={ground} />
+            ))}
             <div className="row">
               <span className="muted">
                 {hud.building.workerLimit} / {hud.building.maxWorkers} workers wanted
@@ -158,6 +179,13 @@ export function Hud({ game }: { game: Game }) {
                 <span className="warn">{hud.patch.noShade}</span>
               </div>
             )}
+          </div>
+        )}
+
+        {hud.ground && (
+          <div className="panel ground">
+            <div className="title">Hunting ground</div>
+            <GroundRows ground={hud.ground} />
           </div>
         )}
 

@@ -172,6 +172,33 @@ export type ForagerTask =
   | { kind: 'gathering'; patch: EntityId; ticksLeft: number }
   | { kind: 'toHut' };
 
+/** A hunter: walks into a Hunting ground in its lodge's radius, hunts, and brings back its bag. */
+export type HunterTask =
+  | { kind: 'idle'; retryAt: number }
+  | { kind: 'toGround'; ground: EntityId }
+  | { kind: 'hunting'; ground: EntityId; ticksLeft: number }
+  /** Walking back to the lodge; `bag` is the catch, empty after a miss. */
+  | { kind: 'toLodge'; bag: ResourceAmount[] };
+
+/**
+ * A Hunting ground: a rectangle of forest holding Game. Its ceiling follows the forest standing in
+ * it (`groundCeiling`); Game above the ceiling flees when a tree in it is felled.
+ */
+export interface HuntingGroundComponent {
+  name: string;
+  /** The rectangle, in tiles: origin (smallest x and y) and size. */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  maxGame: number;
+  game: number;
+  /** Trees standing in it when the map started. */
+  startTrees: number;
+  /** Animals that fled because of logging, all game long. */
+  fled: number;
+}
+
 export interface Components {
   /** Anchor tile of static things: map objects, buildings, construction sites, stockpiles. */
   tile: Store<Tile>;
@@ -187,6 +214,8 @@ export interface Components {
   crafter: Store<CrafterTask>;
   fisher: Store<FisherTask>;
   forager: Store<ForagerTask>;
+  hunter: Store<HunterTask>;
+  huntingGround: Store<HuntingGroundComponent>;
 }
 
 export interface GameState {

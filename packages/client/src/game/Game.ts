@@ -12,8 +12,13 @@ import {
   type EntityId,
   footprint,
   type GameState,
+  type GroundHealth,
+  groundHealth,
+  groundsInReach,
+  groundsNear,
   heroOf,
   heroOrderAt,
+  huntChancePermille,
   idsOf,
   isForagePatch,
   isWithered,
@@ -29,7 +34,7 @@ import {
 import { CameraInput } from '../render/camera';
 import { type CameraView, gridToWorld, screenToTile } from '../render/iso';
 import { nightDarkness } from '../render/night';
-import { type PlacementGhost, WorldRenderer } from '../render/WorldRenderer';
+import { HEALTH_WORDS, type PlacementGhost, WorldRenderer } from '../render/WorldRenderer';
 import type { Speed } from './clock';
 import { SimBridge } from './SimBridge';
 
@@ -80,6 +85,13 @@ export const TOOLS: readonly {
     key: 'o',
     drag: false,
     hint: 'Click to place near berry bushes and mushroom patches. Shift-click places more.',
+  },
+  {
+    id: 'hunters_lodge',
+    label: "Hunter's lodge",
+    key: 'h',
+    drag: false,
+    hint: 'Click to place near a Hunting ground. Shift-click places more.',
   },
   {
     id: 'fishers_hut',
@@ -147,9 +159,22 @@ export interface PatchInfo {
   noShade: string | null;
 }
 
+/** What the ground panel, or a hunter's lodge's panel, shows for one Hunting ground. */
+export interface GroundInfo {
+  id: EntityId;
+  name: string;
+  /** Health: its key (for the colour) and its word. */
+  health: GroundHealth;
+  word: string;
+  /** "Game 12 / 20 · 2 fled due to logging · catch chance 30%". */
+  summary: string;
+}
+
 /** What the building panel shows for the selected Workplace. */
 export interface BuildingInfo {
   name: string;
+  /** Hunting grounds its hunters reach; empty unless it hunts. */
+  grounds: GroundInfo[];
   workers: { id: EntityId; name: string }[];
   workerLimit: number;
   maxWorkers: number;
@@ -180,6 +205,10 @@ export interface HudState {
   building: BuildingInfo | null;
   /** The forage patch selected by clicking it with no tool. */
   patch: PatchInfo | null;
+  /** The Hunting ground selected by clicking it with no tool. */
+  ground: GroundInfo | null;
+  /** A warning about the building being placed, e.g. that it would log a Hunting ground. */
+  placementWarning: string | null;
   /** The workers view, while it's open. */
   workers: WorkersView | null;
   /** The hero is selected, so right-click orders it. */
@@ -201,6 +230,7 @@ export class Game {
   private selectedVillager: EntityId | null = null;
   private selectedBuilding: EntityId | null = null;
   private selectedPatch: EntityId | null = null;
+  private selectedGround: EntityId | null = null;
   private workersOpen = false;
   private lastSpeed: Speed = 1;
   private hud: HudState = {
@@ -219,6 +249,8 @@ export class Game {
     villager: null,
     building: null,
     patch: null,
+    ground: null,
+    placementWarning: null,
     workers: null,
     heroSelected: false,
     heroLoad: null,
@@ -415,6 +447,7 @@ export class Game {
     this.refreshVillager(state);
     this.refreshBuilding(state);
     this.refreshPatch(state);
+    this.refreshGround(state);
     this.refreshWorkers(state);
     this.updateGhost();
     if (this.hud.heroSelected && heroOf(state) === null) {
@@ -507,8 +540,8 @@ export class Game {
 
   /**
    * Clicks with no tool. Left-click selects the hero if it's under the cursor, else a villager,
-   * else the stockpile there, else the Workplace there, else the forage patch there (or nothing). Right-click orders the
-   * selected hero, RTS style.
+   * else the stockpile there, else the Workplace there, else the forage patch there, else the
+   * Hunting ground there (or nothing). Right-click orders the selected hero, RTS style.
    */
   private onSelectClick(sx: number, sy: number, button: number): void {
     const state = this.bridge.state;
@@ -524,7 +557,10 @@ export class Game {
       this.selectPile(pile);
       const workplace = unit ? null : workplaceAt(state, tile);
       this.selectBuilding(workplace);
-      this.selectPatch(unit || workplace !== null ? null : patchAt(state, tile));
+      const patch = unit || workplace !== null ? null : patchAt(state, tile);
+      this.selectPatch(patch);
+      const taken = unit || workplace !== null || patch !== null;
+      this.selectGround(taken ? null : groundAt(state, tile));
     } else if (button === 2 && this.hud.heroSelected) {
       const order = heroOrderAt(state, content, this.tileAt(sx, sy));
       if (order) this.bridge.command({ type: 'orderHero', ...order });
@@ -560,11 +596,12 @@ export class Game {
     return screenToTile(sx, sy, this.camera, this.renderer.screenWidth, this.renderer.screenHeight);
   }
 
-  /** Deselects the hero, villager, stockpile, Workplace and patch, whichever is selected. */
+  /** Deselects the hero, villager, stockpile, Workplace, patch and ground, whichever is selected. */
   private clearSelection(): void {
     this.selectPile(null);
     this.selectBuilding(null);
     this.selectPatch(null);
+    this.selectGround(null);
     this.selectVillager(null);
     this.selectHero(false);
   }
@@ -626,6 +663,22 @@ export class Game {
     if (JSON.stringify(info) !== JSON.stringify(this.hud.patch)) this.setHud({ patch: info });
   }
 
+  private selectGround(id: EntityId | null): void {
+    this.selectedGround = id;
+    const state = this.bridge.state;
+    if (state) this.refreshGround(state);
+    else this.setHud({ ground: null });
+    this.updateGhost();
+  }
+
+  /** Copies the selected Hunting ground into the HUD. */
+  private refreshGround(state: GameState): void {
+    const id = this.selectedGround;
+    const info = id === null ? null : groundInfo(state, id);
+    if (id !== null && !info) this.selectedGround = null;
+    if (JSON.stringify(info) !== JSON.stringify(this.hud.ground)) this.setHud({ ground: info });
+  }
+
   /** Copies every villager into the workers view while it's open. */
   private refreshWorkers(state: GameState): void {
     const view = this.workersOpen ? workersView(state) : null;
@@ -645,12 +698,29 @@ export class Game {
     if (JSON.stringify(next) !== JSON.stringify(this.hud.pile)) this.setHud({ pile: next });
   }
 
-  /** The tool's preview under the cursor, or else the selected stockpile or Workplace highlighted. */
+  /**
+   * The tool's preview under the cursor, or else the selected stockpile, Workplace or Hunting
+   * ground highlighted.
+   */
   private updateGhost(): void {
     const state = this.bridge.state;
     const tool = this.hud.tool;
+    const warning =
+      state && tool && this.hover && isBuilding(tool)
+        ? placementWarning(state, tool, this.hover)
+        : null;
+    this.setHud({ placementWarning: warning });
     if (state && tool && this.hover) {
       this.renderer.setGhost(this.ghostFor(state, tool, this.hover));
+      return;
+    }
+    const ground =
+      this.selectedGround === null
+        ? undefined
+        : state?.components.huntingGround[this.selectedGround];
+    if (ground) {
+      const tiles = rectTiles(ground, ground.w, ground.h);
+      this.renderer.setGhost({ kind: 'tiles', tiles, valid: true });
       return;
     }
     const building = this.selectedBuilding;
@@ -790,6 +860,41 @@ function patchInfo(state: GameState, id: EntityId): PatchInfo | null {
   };
 }
 
+/** The Hunting ground covering `tile`, the first in ID order if several do. */
+function groundAt(state: GameState, tile: Tile): EntityId | null {
+  const { huntingGround } = state.components;
+  for (const id of idsOf(huntingGround)) {
+    const g = huntingGround[id];
+    if (g && covers(g, g.w, g.h, tile)) return id;
+  }
+  return null;
+}
+
+/** Hunting ground `id`'s name, health and Game for the panel, or null if it's gone. */
+function groundInfo(state: GameState, id: EntityId): GroundInfo | null {
+  const g = state.components.huntingGround[id];
+  if (!g) return null;
+  const health = groundHealth(g, content);
+  const parts = [`Game ${g.game} / ${g.maxGame}`];
+  if (g.fled > 0) parts.push(`${g.fled} fled due to logging`);
+  // Whole percent, rounded down, from the sim's permille.
+  parts.push(`catch chance ${Math.floor(huntChancePermille(g, content) / 10)}%`);
+  return { id, name: g.name, health, word: HEALTH_WORDS[health], summary: parts.join(' · ') };
+}
+
+/**
+ * What placing a `type` building at `origin` would do to Hunting grounds, if anything: one that
+ * fells the forest warns when its radius reaches into a ground.
+ */
+function placementWarning(state: GameState, type: BuildingId, origin: Tile): string | null {
+  if (!content.buildings[type].gathers?.includes(content.hunting.forest)) return null;
+  const names = groundsNear(state, content, type, origin).map(
+    (id) => state.components.huntingGround[id]?.name ?? '',
+  );
+  if (names.length === 0) return null;
+  return `Its radius reaches into ${names.join(' and ')}: felling trees there drives game away.`;
+}
+
 /**
  * Display names of every building, keyed by ID: the content name, numbered in ID order where a
  * village has several of a kind ("Woodcutter's hut 2").
@@ -815,6 +920,9 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
   const { villager } = state.components;
   return {
     name: buildingNames(state)[id] ?? content.buildings[b.type].name,
+    grounds: content.buildings[b.type].hunts
+      ? groundsInReach(state, content, id).flatMap((g) => groundInfo(state, g) ?? [])
+      : [],
     workers: workersAt(state, id).map((w) => ({ id: w, name: villager[w]?.name ?? '' })),
     workerLimit: b.workerLimit,
     maxWorkers: maxWorkers(content, b.type),

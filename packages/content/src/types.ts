@@ -1,6 +1,6 @@
 // ID unions and definition shapes. IDs are string literal unions so a typo is a type error.
 
-export type ResourceId = 'logs' | 'firewood' | 'fish' | 'berries' | 'mushrooms';
+export type ResourceId = 'logs' | 'firewood' | 'fish' | 'berries' | 'mushrooms' | 'meat' | 'hides';
 export type RecipeId = 'split_logs';
 export type TerrainId = 'grass' | 'river';
 export type MapObjectId = 'tree' | 'berry_bush' | 'mushroom_patch';
@@ -10,8 +10,9 @@ export type BuildingId =
   | 'chopping_block'
   | 'fishers_hut'
   | 'foragers_hut'
+  | 'hunters_lodge'
   | 'granary';
-export type JobId = 'woodcutter' | 'carrier' | 'woodsplitter' | 'fisher' | 'forager';
+export type JobId = 'woodcutter' | 'carrier' | 'woodsplitter' | 'fisher' | 'forager' | 'hunter';
 export type RoadId = 'dirt_path';
 export type HeroId = 'placeholder';
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
@@ -172,6 +173,20 @@ export interface NeedsDef {
   hungry: { mealUnits: number; speedPercent: number; starveAfterMissedMeals: number };
 }
 
+/** Hunting grounds: forest regions holding Game, which logging drives away. */
+export interface HuntingDef {
+  /** The map object a ground's forest is made of: felling one lowers the ground's ceiling. */
+  forest: MapObjectId;
+  /** Catch chance, in permille, from a ground at its max Game; it falls in step with the Game. */
+  maxCatchPermille: number;
+  /**
+   * Health words, by Game as a percent of max Game: Thriving at `thrivingPercent` or more,
+   * Scarce under `scarcePercent` (but not empty), Thinning between.
+   */
+  thrivingPercent: number;
+  scarcePercent: number;
+}
+
 export interface BuildingDef {
   id: BuildingId;
   name: string;
@@ -195,6 +210,11 @@ export interface BuildingDef {
    * fishing stops while the river is frozen.
    */
   fishes?: { catchTicks: number; yieldPerCatch: number };
+  /**
+   * Its workers hunt in Hunting grounds within its work radius: each hunt takes `huntTicks` and,
+   * if the roll succeeds, brings `catch` back to the output buffer.
+   */
+  hunts?: { huntTicks: number; catch: ResourceAmount[] };
   /** Its door must be on a riverbank tile. */
   doorOnRiverbank?: boolean;
   /** Where its workers drop what they produce, if anything: a capacity per resource. */
@@ -228,6 +248,7 @@ export interface Content {
   logistics: LogisticsDef;
   calendar: CalendarDef;
   needs: NeedsDef;
+  hunting: HuntingDef;
   /** First names new villagers are drawn from. */
   villagerNames: readonly string[];
 }
