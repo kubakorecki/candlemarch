@@ -22,10 +22,27 @@ export interface ResourceAmount {
  */
 export type ResourceStorage = 'stockpile' | 'granary';
 
-export interface ResourceDef {
+/** A resource. Food (stored in a Granary) spoils; other goods keep. */
+export type ResourceDef = GoodsDef | FoodDef;
+
+interface ResourceBase {
   id: ResourceId;
   name: string;
-  storage: ResourceStorage;
+}
+
+/** Bulk goods, kept on Stockpiles. */
+export interface GoodsDef extends ResourceBase {
+  storage: 'stockpile';
+}
+
+/** Food, kept in a Granary and eaten as Meals. */
+export interface FoodDef extends ResourceBase {
+  storage: 'granary';
+  /**
+   * Share of each stack lost at every Dawn, as a percent, rounded up per stack (ADR-0002). The
+   * season scales it (`SeasonDef.spoilPercent`).
+   */
+  spoilPercent: number;
 }
 
 export interface TerrainDef {
@@ -109,6 +126,8 @@ export interface SeasonDef {
   nightTicks: number;
   /** The river is frozen all season: no fishing. */
   riverFrozen: boolean;
+  /** Every Food's spoil rate this season, as a percent of its own: winter's cold keeps food. */
+  spoilPercent: number;
 }
 
 /** Days, nights and seasons. A day runs from Dawn to Dawn; night is its last `nightTicks`. */

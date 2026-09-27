@@ -5,7 +5,7 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 ## content (`packages/content/src`): typed data, no logic
 - `types.ts`: every ID union (`ResourceId`, `BuildingId`, `JobId`, `RecipeId`, `TerrainId`, `MapObjectId`, `RoadId`, `HeroId`, `SeasonId`) and def shape (`BuildingDef`, `RecipeDef`, `JobDef`, `CalendarDef`, `NeedsDef`...), plus the `Content` aggregate.
 - `index.ts`: assembles and exports `content: Content`; re-exports all types.
-- `resources.ts` (`storage`: stockpile | granary), `recipes.ts`, `buildings.ts` (size, door, employs, buffers, recipes, `residents` (makes it a House), `foodCapacity` (makes it a Granary), construction cost), `jobs.ts` (walk speed, carry, idle retry), `mapObjects.ts` (tree), `terrain.ts`, `roads.ts`, `heroes.ts` (aura), `logistics.ts` (stockpile tile capacity), `calendar.ts` (dayTicks 3600, seasons, night length, riverFrozen), `needs.ts` (Tired: min sleep %, speed %; Hungry: meal units, speed %, starve after; Cold goes here too), `villagerNames.ts`.
+- `resources.ts` (`GoodsDef` on stockpiles | `FoodDef` in a Granary with `spoilPercent`), `recipes.ts`, `buildings.ts` (size, door, employs, buffers, recipes, `residents` (makes it a House), `foodCapacity` (makes it a Granary), construction cost), `jobs.ts` (walk speed, carry, idle retry), `mapObjects.ts` (tree), `terrain.ts`, `roads.ts`, `heroes.ts` (aura), `logistics.ts` (stockpile tile capacity), `calendar.ts` (dayTicks 3600, seasons, night length, riverFrozen, spoilPercent), `needs.ts` (Tired: min sleep %, speed %; Hungry: meal units, speed %, starve after; Cold goes here too), `villagerNames.ts`.
 
 ## sim (`packages/sim/src`): pure, deterministic
 - `index.ts`: public API; the client and tooling import only from here. Export new helpers here.
@@ -25,13 +25,14 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 - `hero.ts`: `HeroOrder`, `heroOf`, `orderHero`, `heroOrderAt` (what a right-click means), `heroSystem`.
 - `aura.ts`: hero production aura: `workSpeedPercent`, `boostedWorkplaces`.
 - `speed.ts`: the shared slowdown helper. `speedPercent(state, content, villager, workplace?)` = worst slowdown (Tired, Hungry; add Cold here) × aura at `workplace`; `workTicks(state, content, worker, workplace, ticks)` (apply to any work timer). Movement scales walking by `speedPercent` without a workplace.
-- `granary.ts`: Granaries (Food in `building.stock`): `isFood`, `foodIds`, `isGranary`, `foodIn`, `granaryRoom`, `villageFood`, `eatingOrder`, `hasMeal`, `takeMeal`, `nearestGranaryWithMeal`.
+- `granary.ts`: Granaries (Food in `building.stock`): `isFood`, `foodIds`, `isGranary`, `foodIn`, `granaryRoom`, `villageFood`, `baseSpoilPercent`, `eatingOrder` (fastest-spoiling first), `hasMeal`, `takeMeal`, `nearestGranaryWithMeal`.
 - `homes.ts`: `homesSystem` (clears Homes that are gone, gives Homeless villagers a free place), `housePlaces`, `residentsOf`.
 - `save.ts`: `serialize`, `deserialize` → `normalizeLoadedState` (backfills fields added since the save).
 - `logistics/jobDispatch.ts`: carriers: `Haul`, `LogisticsState`, `updateHauls`, `abandonHaul`, `isCarrierIdle`, reservations. ADR 0001.
 - `logistics/supplyDemand.ts`: `listSupplies`, `listDemands` (sites, workshop inputs, Granaries, stockpiles), `inputRoom`.
 - `systems/movement.ts`: `movementSystem`, `walkTo`, `rerouteTo`, `stopAtNextTile`, `isAt`, `villagerTile`, `walkGrid`.
 - `systems/woodcutting.ts`, `fishing.ts`, `production.ts` (workshops; `isPaused`, `villageStock`), `hauling.ts` (calls `updateHauls`), `construction.ts`, `staffing.ts` (`openPositions`). Work systems and dispatch skip villagers whose `routine` isn't `work`.
+- `systems/spoilage.ts`: `spoilageSystem` (each Dawn but the first, Food in every building's `stock`/`input` loses `ceil(amount × rate%)`), `spoilPercentAt` (Food rate × season rate); `storeSpoilPercent` is where M6's root cellar lowers it.
 - `systems/routine.ts`: `routineSystem`, the Dusk/Dawn routine on `villager.routine` (`work` → `toGranary` → `goingHome` → `asleep`): `finishWork` (what's dropped or finished at Dusk), `seekMeal` (nearest Granary with a Meal, eat, or go home Hungry), `goHome`, sleep counting, Tired set at Dawn and cleared at Dusk, a Meal missed at Dawn.
 
 ## client (`packages/client/src`)
@@ -51,7 +52,7 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 - `balance/harness.ts` (`Scenario`, `runScenario`, `formatTable`), `balance/scenarios.ts` (named scenarios), `balance/cli.ts` (`pnpm balance <name>`), `balance/harness.test.ts`.
 
 ## The tick: `sim/src/step.ts` `step(state, commands, content)`
-Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `movementSystem` → 3 `homesSystem` (`homes.ts`) → 4 `routineSystem` → 5 `heroSystem` (`hero.ts`) → 6 `woodcuttingSystem` → 7 `fishingSystem` → 8 `productionSystem` → 9 `haulingSystem` → 10 `constructionSystem` (skips at night) → 11 `staffingSystem` → `tick += 1`. Systems mutate the clone.
+Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `movementSystem` → 3 `homesSystem` (`homes.ts`) → 4 `spoilageSystem` (Dawn only) → 5 `routineSystem` → 6 `heroSystem` (`hero.ts`) → 7 `woodcuttingSystem` → 8 `fishingSystem` → 9 `productionSystem` → 10 `haulingSystem` → 11 `constructionSystem` (skips at night) → 12 `staffingSystem` → `tick += 1`. Systems mutate the clone.
 
 ## State (`sim/src/state.ts`)
 - `GameState`: `version`, `tick`, `rng` (PRNG uint32), `nextId`, `map` (`width`, `height`, `terrain[]` row-major, `roads` by tile index), `components`, `logistics.hauls` (by carrier ID).
@@ -62,7 +63,7 @@ Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `m
 - Time: `calendarAt(state.tick, content)` → `{day, season, dayOfSeason, year, timeOfDay, isNight}`.
 
 ## How to add…
-- **Resource**: `ResourceId` in `content/src/types.ts`; entry in `resources.ts`; `PIECES` in `client/src/render/shapes.ts` (type error until you do). Goods on stockpiles unless `storage: 'granary'`.
+- **Resource**: `ResourceId` in `content/src/types.ts`; entry in `resources.ts`; `PIECES` in `client/src/render/shapes.ts` (type error until you do). Goods on stockpiles unless `storage: 'granary'` (Food), which needs `spoilPercent` and goes to Granaries and Meals automatically.
 - **Building**: `BuildingId` + def in `content/src/buildings.ts` (new fields go in `BuildingDef`, `types.ts`; check `content/test/validate.test.ts`). Placement is generic (`grid.ts` `canPlaceBuilding`); special rules go there. Rendering: generic `drawBuilding` unless special-cased in `WorldRenderer.syncStatics` (like `chopping_block`). Toolbar: `TOOLS` in `client/src/game/Game.ts`.
 - **Command**: add to `Command` union + case in `applyCommand` (`sim/src/commands.ts`), logic in its module; test in `sim/test/commands.test.ts` or the feature's test; client sends it with `this.bridge.command({...})` from a `Game` method, wired to a button in `ui/Hud.tsx`.
 - **System**: `sim/src/systems/<name>.ts` exporting `<name>System(state, content)`; call it in `step.ts` and update the order comment; loop with `idsOf`; use `workTicks` (aura) for work timers.
@@ -73,6 +74,7 @@ Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `m
 - `sim/test/helpers.ts`: `run(state, ticks, commandsAt)`, `runUntil(state, done, max, commandsAt)`, `totalLogs`, `woodcuttersHutStock`, re-exported `content`.
 - Small maps: inline `MapDef` constants in each test file (e.g. `yard` in `construction.test.ts`, `riverMap()` in `river.test.ts`), built with `createInitialState(seed, map, content)`.
 - Determinism: `sim/test/milestone.test.ts` ("is deterministic"). Save/load continuation: `sim/test/scenarios.test.ts` (branching network), `hero.test.ts` (mid-walk) and `sleep.test.ts` (mid-night); format/backfill in `save.test.ts`.
+- Spoilage: `sim/test/spoilage.test.ts` (`dawnWith(day, stock)` runs one Dawn with 1 tick; a test `Content` makes logs a Food at 50%).
 - Meals and Hungry: `sim/test/granary.test.ts` (a river camp with a fisher's hut, Granary and Hut; a test `Content` treats logs as a second Food).
 - Night tests (`sleep.test.ts`) start a state at Dusk with a `jump(s, tick)` helper that just sets `tick`. A state at tick T hasn't run tick T yet: to see Dawn's effects, run to `DAWN + 1`. Jumping straight to a Dawn makes everyone Tired (no sleep counted).
 - Content validation: `content/test/validate.test.ts`. Import boundaries + hidden inputs: `tooling/boundaries.test.ts`.

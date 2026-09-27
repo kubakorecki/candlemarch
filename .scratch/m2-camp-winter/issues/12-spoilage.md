@@ -1,6 +1,6 @@
 # Food spoilage
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 02, 11
 
@@ -18,3 +18,8 @@ Model: [ADR-0002](../../../docs/adr/0002-spoilage-daily-share.md).
 
 - Headless tests: food spoils at Dawn by the formula; different foods differ; a stack of 1 goes; winter is slower; hands don't spoil; determinism, save/load.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-27 — Done: Food's `spoilPercent` in content (fish 25; `ResourceDef` is now `GoodsDef | FoodDef`, so every Food must have one), `spoilageSystem` at each Dawn after the first over every building's `stock` and `input` in ID order, `ceil` per stack in integers, and eating order by rate then ID. Differs: the winter multiplier is a per-season `spoilPercent` in the calendar (winter 20, others 100) rather than one `winterSpoilPercent`, like `riverFrozen`, so the sim never asks "is it winter"; the formula is the same. Berries, mushrooms and meat get their rates when tickets 08 and 10 add them. The root cellar's place is `storeSpoilPercent` in `sim/src/systems/spoilage.ts`. Details in `docs/decisions.md`.
+

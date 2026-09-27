@@ -51,9 +51,21 @@ export function villageFood(state: GameState, content: Content): number {
   return total;
 }
 
-/** Foods in the order villagers eat them: by resource ID. */
+/** A Food's own spoil rate, percent a day; 0 for anything that isn't Food. */
+export function baseSpoilPercent(content: Content, resource: ResourceId): number {
+  const def = content.resources[resource];
+  return def?.storage === 'granary' ? def.spoilPercent : 0;
+}
+
+/**
+ * Foods in the order villagers eat them: fastest-spoiling first by their own rates (a season scales
+ * them all alike), ties by resource ID.
+ */
 export function eatingOrder(content: Content): ResourceId[] {
-  return foodIds(content).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return foodIds(content).sort(
+    (a, b) =>
+      baseSpoilPercent(content, b) - baseSpoilPercent(content, a) || (a < b ? -1 : a > b ? 1 : 0),
+  );
 }
 
 /** Whether Granary `granary` holds at least one Meal. */

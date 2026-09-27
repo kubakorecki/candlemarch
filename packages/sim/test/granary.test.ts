@@ -148,10 +148,13 @@ describe('a Meal at Dusk', () => {
   });
 
   it('eats Food in resource ID order when spoilage rates tie', () => {
-    // Treat logs as Food, so the Granary holds two Foods.
+    // Treat logs as Food spoiling as fast as fish, so the Granary holds two Foods that tie.
     const twoFoods: Content = {
       ...content,
-      resources: { ...content.resources, logs: { ...content.resources.logs, storage: 'granary' } },
+      resources: {
+        ...content.resources,
+        logs: { id: 'logs', name: 'Logs', storage: 'granary', spoilPercent: 25 },
+      },
     };
     const s = duskWith(0, { ...camp, villagers: [] }); // the fisher eats alone
     const granary = s.components.building[GRANARY];

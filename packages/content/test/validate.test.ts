@@ -102,6 +102,20 @@ describe('content validation', () => {
     expect(food.length).toBeGreaterThan(0);
   });
 
+  it('Food and seasons spoil at whole percents from 0 to 100', () => {
+    const percents = [
+      ...Object.values(resources).flatMap((r) =>
+        r.storage === 'granary' ? [[`${r.id}.spoilPercent`, r.spoilPercent] as const] : [],
+      ),
+      ...content.calendar.seasons.map((s) => [`${s.id}.spoilPercent`, s.spoilPercent] as const),
+    ];
+    for (const [label, value] of percents) {
+      expect(Number.isInteger(value) && value >= 0 && value <= 100, `${label} = ${value}`).toBe(
+        true,
+      );
+    }
+  });
+
   it('has at least 60 distinct, non-empty villager names', () => {
     const names = content.villagerNames;
     expect(names.length).toBeGreaterThanOrEqual(60);

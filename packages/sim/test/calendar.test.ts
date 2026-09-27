@@ -102,8 +102,20 @@ describe('calendar', () => {
         dayTicks: 100,
         daysPerSeason: 2,
         seasons: [
-          { id: 'winter' as const, name: 'Winter', nightTicks: 60, riverFrozen: false },
-          { id: 'summer' as const, name: 'Summer', nightTicks: 20, riverFrozen: true },
+          {
+            id: 'winter' as const,
+            name: 'Winter',
+            nightTicks: 60,
+            riverFrozen: false,
+            spoilPercent: 20,
+          },
+          {
+            id: 'summer' as const,
+            name: 'Summer',
+            nightTicks: 20,
+            riverFrozen: true,
+            spoilPercent: 100,
+          },
         ],
       },
     };
