@@ -6,6 +6,7 @@ import {
   blockedGrid,
   entityDoor,
   footprint,
+  isWalkableTerrain,
   standingTiles,
   stockpileTileIndices,
   tileAt,
@@ -210,7 +211,9 @@ export function heroOrderAt(state: GameState, content: Content, tile: Tile): Her
   const hero = id === null ? undefined : state.components.hero[id];
   if (!hero) return null;
   const thing = thingAt(state, content, tile);
-  if (thing === null) return { order: 'move', x: tile.x, y: tile.y };
+  if (thing === null) {
+    return isWalkableTerrain(state, content, tile) ? { order: 'move', x: tile.x, y: tile.y } : null;
+  }
   const tree = state.components.mapObject[thing];
   if (tree) {
     const resource = content.mapObjects[tree.type].resource;

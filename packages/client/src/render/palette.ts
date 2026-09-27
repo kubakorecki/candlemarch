@@ -9,6 +9,8 @@ export const palette = {
   grassAlt: 0x677049,
   grassLine: 0x4f5638,
 
+  river: 0x4d6670,
+
   trunk: 0x5c4431,
   canopy: 0x4b5a37,
   canopyLight: 0x5a6a41,

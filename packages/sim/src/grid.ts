@@ -1,5 +1,5 @@
 // Tile maths, footprints, walkability and building placement.
-import type { BuildingDef, BuildingId, Content } from '@candlemarch/content';
+import type { BuildingDef, BuildingId, Content, TerrainId } from '@candlemarch/content';
 import { idsOf } from './entities';
 import {
   type EntityId,
@@ -46,6 +46,31 @@ export function rectTiles(origin: Tile, w: number, h: number): Tile[] {
     }
   }
   return tiles;
+}
+
+/** The terrain of `tile`, or undefined off the map. */
+export function terrainAt(map: MapState, tile: Tile): TerrainId | undefined {
+  return inBounds(map, tile.x, tile.y) ? map.terrain[tileIndex(map, tile.x, tile.y)] : undefined;
+}
+
+/** Whether `tile` is on the map and its terrain can be walked on, whatever stands there. */
+export function isWalkableTerrain(state: GameState, content: Content, tile: Tile): boolean {
+  const terrain = terrainAt(state.map, tile);
+  return terrain !== undefined && content.terrain[terrain].walkable;
+}
+
+/**
+ * Whether `tile` is riverbank: walkable terrain orthogonally next to a river tile. Trees or
+ * buildings standing on it don't change that.
+ */
+export function isRiverbank(state: GameState, content: Content, tile: Tile): boolean {
+  if (!isWalkableTerrain(state, content, tile)) return false;
+  return [
+    { x: tile.x, y: tile.y - 1 },
+    { x: tile.x + 1, y: tile.y },
+    { x: tile.x, y: tile.y + 1 },
+    { x: tile.x - 1, y: tile.y },
+  ].some((n) => terrainAt(state.map, n) === 'river');
 }
 
 /** Tiles covered by a building placed with its origin at `origin`. */

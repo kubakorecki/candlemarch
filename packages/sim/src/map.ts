@@ -9,7 +9,7 @@ import type {
   TerrainId,
 } from '@candlemarch/content';
 import { createEntity } from './entities';
-import { canPlaceBuilding, doorTile, fitsAt, inBounds, tileCenter } from './grid';
+import { canPlaceBuilding, doorTile, fitsAt, isWalkableTerrain, tileCenter } from './grid';
 import { seedRng } from './rng';
 import { type EntityId, type GameState, STATE_VERSION, type Tile } from './state';
 import { canPlaceStockpile, placeStockpile } from './stockpiles';
@@ -42,6 +42,7 @@ export const MAP_LEGEND: Record<
   '.': { terrain: 'grass' },
   T: { terrain: 'grass', object: 'tree' },
   '=': { terrain: 'grass', road: 'dirt_path' },
+  '~': { terrain: 'river' },
 };
 
 function spawnVillager(
@@ -150,16 +151,18 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
   }
 
   for (const v of map.villagers) {
-    if (!inBounds(state.map, v.x, v.y)) {
-      throw new Error(`map ${map.name}: villager out of bounds at ${v.x},${v.y}`);
+    if (!isWalkableTerrain(state, content, { x: v.x, y: v.y })) {
+      throw new Error(
+        `map ${map.name}: villager off the map or on unwalkable terrain at ${v.x},${v.y}`,
+      );
     }
     spawnVillager(state, content, v.job, { x: v.x, y: v.y }, null);
   }
 
   if (map.hero) {
     const { x, y } = map.hero;
-    if (!inBounds(state.map, x, y)) {
-      throw new Error(`map ${map.name}: hero out of bounds at ${x},${y}`);
+    if (!isWalkableTerrain(state, content, { x, y })) {
+      throw new Error(`map ${map.name}: hero off the map or on unwalkable terrain at ${x},${y}`);
     }
     const id = createEntity(state);
     state.components.hero[id] = { type: DEFAULT_HERO, carrying: null, order: null };

@@ -170,9 +170,10 @@ export class WorldRenderer {
   /** Brings trees, buildings and sites in line with a new snapshot. */
   syncStatics(state: GameState): void {
     const { map } = state;
-    const groundKey = `${map.width}x${map.height}`;
+    // Terrain is in the key: a new game or a load can bring a same-sized map with other terrain.
+    const groundKey = `${map.width}x${map.height}:${map.terrain.join()}`;
     if (groundKey !== this.groundKey) {
-      drawGround(this.ground, map.width, map.height);
+      drawGround(this.ground, map.width, map.height, map.terrain);
       this.groundKey = groundKey;
     }
 

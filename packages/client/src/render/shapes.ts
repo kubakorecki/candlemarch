@@ -1,5 +1,5 @@
 // Placeholder art drawn in code: bold ink outlines, flat earthy fills. Colours come from palette.ts.
-import type { BuildingDef } from '@candlemarch/content';
+import type { BuildingDef, TerrainId } from '@candlemarch/content';
 import type { Graphics } from 'pixi.js';
 import { gridToWorld, TILE_H, TILE_W, type Vec } from './iso';
 import { palette } from './palette';
@@ -35,8 +35,20 @@ export function diamond(x: number, y: number, w = 1, h = 1): [Vec, Vec, Vec, Vec
   ];
 }
 
-/** The whole map: checkered grass tiles, faint grid lines, and an earthen front edge. */
-export function drawGround(g: Graphics, width: number, height: number): void {
+/**
+ * The whole map: checkered grass tiles, faint grid lines, an earthen front edge, and river tiles
+ * as flat water outlined in ink where they meet land. `terrain` is row-major, as in the sim.
+ */
+export function drawGround(
+  g: Graphics,
+  width: number,
+  height: number,
+  terrain: readonly TerrainId[],
+): void {
+  const onMap = (x: number, y: number) => x >= 0 && y >= 0 && x < width && y < height;
+  const isRiver = (x: number, y: number) => onMap(x, y) && terrain[y * width + x] === 'river';
+  // Off the map is neither: the map's own edge gets its outline at the end.
+  const isLand = (x: number, y: number) => onMap(x, y) && !isRiver(x, y);
   g.clear();
   const [, right, bottom, left] = diamond(0, 0, width, height);
   // Front edges, so the map reads as a slab of land.
@@ -63,6 +75,27 @@ export function drawGround(g: Graphics, width: number, height: number): void {
     g.moveTo(a.x, a.y).lineTo(b.x, b.y);
   }
   g.stroke({ width: 1, color: palette.grassLine, alpha: 0.35 });
+
+  // Water over the grid lines, then an ink edge on every side that borders land.
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (isRiver(x, y)) g.poly(flat(diamond(x, y))).fill(palette.river);
+    }
+  }
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!isRiver(x, y)) continue;
+      const [top, right, bottom, left] = diamond(x, y);
+      const sides: [boolean, Vec, Vec][] = [
+        [isLand(x, y - 1), top, right],
+        [isLand(x + 1, y), right, bottom],
+        [isLand(x, y + 1), bottom, left],
+        [isLand(x - 1, y), left, top],
+      ];
+      for (const [shore, a, b] of sides) if (shore) g.moveTo(a.x, a.y).lineTo(b.x, b.y);
+    }
+  }
+  g.stroke(INK);
   g.poly(flat(diamond(0, 0, width, height))).stroke(INK);
 }
 

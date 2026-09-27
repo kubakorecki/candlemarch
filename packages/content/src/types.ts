@@ -1,7 +1,7 @@
 // ID unions and definition shapes. IDs are string literal unions so a typo is a type error.
 
 export type ResourceId = 'logs';
-export type TerrainId = 'grass';
+export type TerrainId = 'grass' | 'river';
 export type MapObjectId = 'tree';
 export type BuildingId = 'woodcutters_hut' | 'hut';
 export type JobId = 'woodcutter' | 'carrier';
