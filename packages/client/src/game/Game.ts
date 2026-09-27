@@ -2,7 +2,9 @@
 // (speed, build mode); everything about the world comes from sim snapshots.
 import { type BuildingId, content, type ResourceId } from '@candlemarch/content';
 import {
+  type CalendarTime,
   type Command,
+  calendarAt,
   canLayPath,
   canPlaceBuilding,
   canPlaceStockpile,
@@ -15,11 +17,11 @@ import {
   lShapeTiles,
   type MapName,
   type StockpilePriority,
-  TICKS_PER_SECOND,
   type Tile,
 } from '@candlemarch/sim';
 import { CameraInput } from '../render/camera';
 import { type CameraView, gridToWorld, screenToTile } from '../render/iso';
+import { nightDarkness } from '../render/night';
 import { type PlacementGhost, WorldRenderer } from '../render/WorldRenderer';
 import type { Speed } from './clock';
 import { SimBridge } from './SimBridge';
@@ -78,8 +80,10 @@ export interface HudState {
   /** Logs in the woodcutter's hut output buffer, and its capacity. */
   hutLogs: number;
   hutCapacity: number;
-  /** In-game time in whole seconds. */
-  seconds: number;
+  /** The date, e.g. "Spring, day 3", and the year. */
+  date: string;
+  year: number;
+  isNight: boolean;
   /** The stockpile selected by clicking it with no tool, and its settings. */
   pile: { id: EntityId; priority: StockpilePriority; refuses: ResourceId[] } | null;
   /** The hero is selected, so right-click orders it. */
@@ -105,7 +109,9 @@ export class Game {
     tool: null,
     hutLogs: 0,
     hutCapacity: 0,
-    seconds: 0,
+    date: '',
+    year: 1,
+    isNight: false,
     pile: null,
     heroSelected: false,
     heroLoad: null,
@@ -256,6 +262,7 @@ export class Game {
         this.bridge.alpha,
         performance.now(),
       );
+      this.renderer.drawNight(nightDarkness(state.tick, content));
     }
   }
 
@@ -276,19 +283,22 @@ export class Game {
     const { building } = state.components;
     const hut = Object.values(building).find((b) => b.type === 'woodcutters_hut');
     const buffer = content.buildings.woodcutters_hut.outputBuffer;
+    const time = calendarAt(state.tick, content);
     this.setHud({
       ready: true,
       hutLogs: hut && buffer ? (hut.stock[buffer.resource] ?? 0) : 0,
       hutCapacity: buffer?.capacity ?? 0,
       heroLoad: heroLoadLabel(state),
-      seconds: Math.floor(state.tick / TICKS_PER_SECOND),
+      date: dateLabel(time),
+      year: time.year,
+      isNight: time.isNight,
     });
   }
 
   private onSaved(json: string): void {
     try {
       localStorage.setItem(SAVE_KEY, json);
-      this.setHud({ message: `Saved at ${formatTime(this.hud.seconds)}.` });
+      this.setHud({ message: `Saved on ${this.hud.date}, year ${this.hud.year}.` });
     } catch (error) {
       this.setHud({ message: `Save failed: ${String(error)}` });
     }
@@ -541,8 +551,8 @@ function heroLoadLabel(state: GameState): string | null {
   return `${goods.amount}/${capacity} ${content.resources[goods.resource].name.toLowerCase()}`;
 }
 
-export function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+/** "Spring, day 3". */
+function dateLabel(time: CalendarTime): string {
+  const name = content.calendar.seasons.find((s) => s.id === time.season)?.name ?? time.season;
+  return `${name}, day ${time.dayOfSeason}`;
 }

@@ -72,6 +72,9 @@ interface HeroView {
   loadDrawn: number;
 }
 
+/** Opacity of the night tint at full dark. */
+const NIGHT_ALPHA = 0.5;
+
 /** Screen pixels around the hero's drawn shape that still count as clicking it. */
 const HERO_HIT_PADDING = 10;
 
@@ -98,6 +101,9 @@ export class WorldRenderer {
   private readonly aura = new Graphics();
   private readonly objects = new Container({ sortableChildren: true });
   private readonly ghost = new Graphics();
+  /** Darkness over the whole screen at night. */
+  private readonly night = new Graphics();
+  private nightSize = '';
   private readonly statics = new Map<string, StaticView>();
   private readonly villagers = new Map<EntityId, VillagerView>();
   private hero: HeroView | null = null;
@@ -126,7 +132,7 @@ export class WorldRenderer {
       this.objects,
       this.ghost,
     );
-    this.app.stage.addChild(this.world);
+    this.app.stage.addChild(this.world, this.night);
   }
 
   get canvas(): HTMLCanvasElement {
@@ -246,6 +252,17 @@ export class WorldRenderer {
   ): void {
     this.drawVillagers(state, prevPositions, alpha, timeMs);
     this.drawHero(state, prevPositions, alpha, timeMs);
+  }
+
+  /** Tints the screen for night: `darkness` 0 is day, 1 full night. */
+  drawNight(darkness: number): void {
+    const size = `${this.screenWidth}x${this.screenHeight}`;
+    if (size !== this.nightSize) {
+      this.night.clear().rect(0, 0, this.screenWidth, this.screenHeight).fill(palette.night);
+      this.nightSize = size;
+    }
+    this.night.alpha = darkness * NIGHT_ALPHA;
+    this.night.visible = darkness > 0;
   }
 
   setHeroSelected(selected: boolean): void {

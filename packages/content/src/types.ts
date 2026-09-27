@@ -7,6 +7,7 @@ export type BuildingId = 'woodcutters_hut' | 'hut';
 export type JobId = 'woodcutter' | 'carrier';
 export type RoadId = 'dirt_path';
 export type HeroId = 'placeholder';
+export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
 
 /** A number of units of one resource. */
 export interface ResourceAmount {
@@ -81,6 +82,22 @@ export interface LogisticsDef {
   stockpileTileCapacity: number;
 }
 
+export interface SeasonDef {
+  id: SeasonId;
+  name: string;
+  /** Ticks of night at the end of each of its days, from Dusk to the next Dawn. */
+  nightTicks: number;
+}
+
+/** Days, nights and seasons. A day runs from Dawn to Dawn; night is its last `nightTicks`. */
+export interface CalendarDef {
+  /** Ticks from one Dawn to the next. */
+  dayTicks: number;
+  daysPerSeason: number;
+  /** Seasons in the order they come in a year. A new game starts on the first one's day 1. */
+  seasons: SeasonDef[];
+}
+
 export interface BuildingDef {
   id: BuildingId;
   name: string;
@@ -109,4 +126,5 @@ export interface Content {
   heroes: Record<HeroId, HeroDef>;
   roads: Record<RoadId, RoadDef>;
   logistics: LogisticsDef;
+  calendar: CalendarDef;
 }

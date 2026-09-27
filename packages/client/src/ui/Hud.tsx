@@ -2,7 +2,7 @@ import { content, type ResourceId } from '@candlemarch/content';
 import { STOCKPILE_PRIORITIES, type StockpilePriority } from '@candlemarch/sim';
 import { useSyncExternalStore } from 'react';
 import { SPEEDS, type Speed } from '../game/clock';
-import { formatTime, type Game, TOOLS } from '../game/Game';
+import { type Game, TOOLS } from '../game/Game';
 
 const PRIORITY_LABELS: Record<StockpilePriority, string> = {
   high: 'High',
@@ -21,8 +21,12 @@ export function Hud({ game }: { game: Game }) {
       <div className="panel readout">
         <div className="title">Candlemarch</div>
         <div className="row">
+          <span>{hud.date}</span>
+          <span className="muted">Year {hud.year}</span>
+        </div>
+        <div className="row">
           <span className="muted">Time</span>
-          <span>{formatTime(hud.seconds)}</span>
+          <span>{hud.isNight ? 'Night' : 'Day'}</span>
         </div>
         <div className="row">
           <span className="muted">Woodcutter's hut</span>

@@ -1,5 +1,14 @@
 // Deterministic, headless simulation for Candlemarch. See CLAUDE.md "Simulation rules".
 export { boostedWorkplaces } from './aura';
+export {
+  type CalendarTime,
+  calendarAt,
+  dawnTick,
+  duskTick,
+  isDawn,
+  isDusk,
+  isNight,
+} from './calendar';
 export type { Command } from './commands';
 export { idsOf } from './entities';
 export { canPlaceBuilding, doorTile, footprint, tileCenter, tileOfPoint } from './grid';

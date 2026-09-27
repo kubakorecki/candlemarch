@@ -1,5 +1,6 @@
 // Typed game data for Candlemarch. No logic lives here.
 import { buildings } from './buildings';
+import { calendar } from './calendar';
 import { heroes } from './heroes';
 import { jobs } from './jobs';
 import { logistics } from './logistics';
@@ -20,4 +21,5 @@ export const content: Content = {
   heroes,
   roads,
   logistics,
+  calendar,
 };

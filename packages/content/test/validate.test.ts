@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { content } from '../src/index';
+import { content, type SeasonId } from '../src/index';
 
 const { resources, terrain, mapObjects, jobs, buildings, heroes, roads } = content;
 
@@ -50,6 +50,24 @@ describe('content validation', () => {
 
   it('logistics numbers are positive integers', () => {
     expectPositiveInt(content.logistics.stockpileTileCapacity, 'stockpileTileCapacity');
+  });
+
+  it('the calendar has whole-tick days with a night shorter than the day', () => {
+    const { dayTicks, daysPerSeason, seasons } = content.calendar;
+    expectPositiveInt(dayTicks, 'dayTicks');
+    expectPositiveInt(daysPerSeason, 'daysPerSeason');
+    // Typed as a Record so a new SeasonId must be added here too.
+    const every: Record<SeasonId, true> = {
+      spring: true,
+      summer: true,
+      autumn: true,
+      winter: true,
+    };
+    expect(seasons.map((s) => s.id).sort()).toEqual(Object.keys(every).sort());
+    for (const season of seasons) {
+      expectPositiveInt(season.nightTicks, `${season.id}.nightTicks`);
+      expect(season.nightTicks < dayTicks, `${season.id} night shorter than the day`).toBe(true);
+    }
   });
 
   it('buildings reference existing ids', () => {

@@ -43,6 +43,7 @@ export const palette = {
   selection: 0xe8cf86,
   aura: 0xd9b45b,
 
+  night: 0x141a2e,
   valid: 0x9dbf73,
   invalid: 0xc4584a,
 
