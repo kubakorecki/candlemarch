@@ -1,6 +1,6 @@
 # Dirt paths
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 02
 
@@ -21,3 +21,7 @@ The first kind of Road.
 
 - Headless tests: laying, invalid L ignored, removal, faster walking on a path, determinism.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-25 — Done in `3518be7` (sim: add dirt paths and road-aware pathfinding), with `b88fe1e` keeping building footprints off roads.

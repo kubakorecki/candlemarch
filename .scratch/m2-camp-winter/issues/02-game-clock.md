@@ -1,6 +1,6 @@
 # Game clock: days, nights and seasons
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: none
 
@@ -16,3 +16,7 @@ Blocked by: none
 - Unit tests for the helpers at boundaries (Dawn, Dusk, a winter Dusk coming earlier, season change, year change).
 - Day/night visible in the browser.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-27 — Done in `f8672e2` (content, sim, client: add the game clock with days, nights and seasons).

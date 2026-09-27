@@ -1,6 +1,6 @@
 # Balance harness
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: none
 
@@ -17,3 +17,7 @@ Headless balance runs, as the spec asks ("does a 20-person village survive winte
 
 - `pnpm balance meadow` prints a table; a small test runs the harness on a tiny scenario.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-27 — Done in `a47cb2e` (tooling: add the balance harness).

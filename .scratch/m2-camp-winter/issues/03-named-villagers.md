@@ -1,6 +1,6 @@
 # Named villagers and a villager panel
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: m1-roads-logistics/01
 
@@ -15,3 +15,7 @@ Blocked by: m1-roads-logistics/01
 
 - Headless tests: names are deterministic per seed; save/load keeps them.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-27 — Done in `ce412a5` (content, sim, client: name villagers and add a villager panel).

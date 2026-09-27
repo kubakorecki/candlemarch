@@ -1,6 +1,6 @@
 # Hero: gather and hand-carry
 
-Status: needs-info
+Status: resolved
 Type: task
 Blocked by: m1-roads-logistics/11, 01
 
@@ -22,3 +22,7 @@ The hero kickstarts the village by hand (spec logistics stage 1, "Hero hand-carr
 
 - Headless tests for each order, determinism, save/load.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-26 — Done in `4e768d0` (content, sim, client: let the hero gather and hand-carry goods), with review fixes in `9f57f65`. The logistics pick (m1-roads-logistics/11) settled its open question: job dispatch.

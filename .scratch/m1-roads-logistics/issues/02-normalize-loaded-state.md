@@ -1,6 +1,6 @@
 # Fill in missing state fields on load
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: none
 
@@ -18,3 +18,7 @@ Old saves keep loading when later features only **add** state.
 - Save/load test: serialize a state, delete a component store and a top-level field from the JSON, load it, and assert it equals the original state.
 - A version mismatch still throws.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-25 — Done in `c94314c` (sim: fill in missing state fields on load).

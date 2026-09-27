@@ -1,6 +1,6 @@
 # Flag relay logistics model
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 01, 03, 05
 
@@ -22,3 +22,7 @@ Model B behind the `LogisticsModel` seam, selectable through `state.logistics.mo
 - Headless tests: staffing, a multi-segment delivery to a site, full-flag waiting, a disconnected building gets nothing, stockpile flags, flag removal losing goods, determinism, save/load mid-relay.
 - Job dispatch tests still pass.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-25 — Done in `7eab3c1` (content, sim: add flag relay logistics model). Deleted in `df496a0` after the playtest (11) picked job dispatch; see ADR-0001.

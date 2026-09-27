@@ -104,7 +104,7 @@ These keep the game testable, saveable and replayable. Treat them as non-negotia
 
 ### Issue tracker
 
-Issues and specs live as local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+Issues and specs live as local markdown files under `.scratch/<feature>/`. Read `docs/agents/issue-tracker.md` before creating, starting or finishing an issue: it covers numbering, blockers and closing (`Status: resolved` in the finishing commit).
 
 ### Triage labels
 

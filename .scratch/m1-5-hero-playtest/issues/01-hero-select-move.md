@@ -1,6 +1,6 @@
 # Hero: spawn, select and move
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: m1-roads-logistics/04
 
@@ -15,3 +15,7 @@ Blocked by: m1-roads-logistics/04
 - Headless tests: spawn from map, move order arrives, a new order replaces the old one, determinism, save/load.
 - Works in the browser.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-26 — Done in `16b713a` (content, sim, client: add a selectable, movable hero).

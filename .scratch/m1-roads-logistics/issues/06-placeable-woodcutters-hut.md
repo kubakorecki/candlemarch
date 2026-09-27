@@ -1,6 +1,6 @@
 # Placeable woodcutter's hut and drafting workers
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 01
 
@@ -16,3 +16,7 @@ Blocked by: 01
 
 - Headless tests: a placed hut gets built from delivered logs, drafts a carrier, and starts producing logs; with no idle carrier, it waits and then drafts one once a carrier frees up.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-25 — Done in `8c5e034` (content, sim: make the woodcutter's hut placeable and draft workers).

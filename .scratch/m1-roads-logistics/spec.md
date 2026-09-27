@@ -1,6 +1,6 @@
 # M1: Roads + logistics pick
 
-Status: open
+Status: resolved
 Created: 2026-09-25
 Roadmap: `.scratch/v1/map.md`
 

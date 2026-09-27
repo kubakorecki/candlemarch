@@ -1,6 +1,6 @@
 # Road-aware A*
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 03
 
@@ -18,3 +18,7 @@ Job-dispatch carriers prefer roads when they're faster.
 - Test: on a small map with a path that's longer in tiles but faster, the carrier takes the path; without the path it goes straight.
 - Existing pathfinding tests still pass.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-25 — Done in `3518be7` (sim: add dirt paths and road-aware pathfinding).

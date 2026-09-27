@@ -1,6 +1,6 @@
 # Render and place roads, flags and stockpiles
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 03, 05, 06, 07
 
@@ -20,3 +20,7 @@ Client side of M1. Colours from `palette.ts`, iso math from `iso.ts`.
 
 - Everything above can be placed, seen and removed in the browser under both models.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-26 — Done in `f3cdc66` (sim, client: render roads and stockpiles, add stockpile priorities). The Flag tool went with flag relay in `df496a0`.

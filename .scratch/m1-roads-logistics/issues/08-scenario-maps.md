@@ -1,6 +1,6 @@
 # Logistics scenario maps
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 04, 05, 06, 07
 
@@ -18,3 +18,7 @@ Blocked by: 04, 05, 06, 07
 
 - For each scenario and each model, a headless test runs N ticks and asserts that logs reached the stockpile (and the site, in the branching map). N is measured and logged in `docs/decisions.md`, like the milestone-0 hut test.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-25 — Done in `f45efef` (sim: add logistics scenario maps).

@@ -23,6 +23,7 @@ Vocabulary follows `CONTEXT.md`. Design follows `docs/spec.md`.
   - `ready-for-agent`: fully specified. Can be implemented once its blockers are done.
   - `needs-info`: waits on a decision (a design session, gate or playtest in `Blocked by`). Its "Open questions" section says what's missing. When that decision is made, rewrite the ticket and promote it to `ready-for-agent`.
   - `ready-for-human`: design sessions, gates and playtests. The owner drives these.
+  - `resolved`: done. Set in the commit that finishes it; numbering and closing rules are in `docs/agents/issue-tracker.md`.
 - `Type:` is `task`, `grilling`, `prototype` or `playtest`.
 - Every sim ticket also carries the standing rules: a headless test, determinism and save/load coverage, `normalizeLoadedState` for added fields or a `STATE_VERSION` bump for breaking ones, and `pnpm check`.
 

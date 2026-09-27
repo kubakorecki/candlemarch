@@ -1,6 +1,6 @@
 # Hero: production aura (stub)
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 01, m1-roads-logistics/06
 
@@ -14,3 +14,7 @@ Blocked by: 01, m1-roads-logistics/06
 
 - Headless test: a woodcutter chops faster with the hero nearby than without.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-26 — Done in `2dda483` (content, sim, client: add the hero's production aura (stub)), with review fixes in `ac7fdd6`.

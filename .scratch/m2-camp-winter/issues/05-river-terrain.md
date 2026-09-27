@@ -1,6 +1,6 @@
 # River terrain
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: none
 
@@ -15,3 +15,7 @@ Blocked by: none
 
 - Map tests: river tiles block paths and placement; riverbank helper.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-27 — Done in `5595f91` (content, sim, client: add river terrain).

@@ -1,6 +1,6 @@
 # Stockpiles (logs)
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 02
 
@@ -21,3 +21,7 @@ An open-air patch of land where goods are stored (see `CONTEXT.md`).
 - Headless tests: placement rules, per-tile capacity and one-resource rule, woodcutter → stockpile flow, stockpile → site flow, sites before stockpiles, no stockpile-to-stockpile hauling, removal.
 - Determinism and save/load tests cover a game with a stockpile.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-25 — Done in `3af23c8` (sim: add stockpiles).

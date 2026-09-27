@@ -1,6 +1,6 @@
 # Recipes, workshop buffers and the chopping block
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 07
 
@@ -21,3 +21,7 @@ The generic production system all workshops will use, and its first building.
 
 - Headless tests: a recipe runs, waits for inputs, waits on a full output, demand and supply appear; sites get logs before the chopping block, the chopping block before Stockpiles; the chopping block pauses at the target and resumes below it; determinism, save/load.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-27 — Done in `63efd85` (content, sim, client: add recipes, workshop buffers and the chopping block); the hero can feed workshops since `e8a6b22`. Went ahead of its blocker 07: Stockpiles already took any resource, one per tile, so firewood stores without 07's `storage` field, which only turns Food away (logged in `docs/decisions.md`).

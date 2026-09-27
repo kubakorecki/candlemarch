@@ -1,6 +1,6 @@
 # Dev New-game panel
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 08
 
@@ -15,3 +15,7 @@ Blocked by: 08
 
 - Starting any map with either model works in the browser (`pnpm dev`).
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-25 — Done in `0cf41ac` (client: add dev New game panel).
