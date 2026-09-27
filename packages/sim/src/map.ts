@@ -106,6 +106,7 @@ export function createEmptyState(seed: number): GameState {
       huntingGround: {},
     },
     logistics: { hauls: {} },
+    deaths: [],
   };
 }
 

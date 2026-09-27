@@ -1,9 +1,11 @@
 // The daily routine. At Dusk villagers finish what they hold, eat a Meal at the nearest Granary
 // with Food, walk Home and sleep; Homeless ones sleep where they stand. At Dawn they go back to
-// work, Tired if they slept less than half the night at Home, Hungry if they missed the Meal. The
-// hero isn't a villager: it ignores night and never eats.
+// work, Tired if they slept less than half the night at Home, Hungry if they missed the Meal. A
+// villager missing its third Meal in a row starves then. The hero isn't a villager: it ignores
+// night and never eats.
 import type { Content } from '@candlemarch/content';
 import { calendarAt, dawnTick, duskTick, isDawn, isDusk, isNight } from '../calendar';
+import { killVillager } from '../deaths';
 import { idsOf } from '../entities';
 import { nearestGranaryWithMeal, takeMeal } from '../granary';
 import { entityDoor } from '../grid';
@@ -55,7 +57,8 @@ function goHome(state: GameState, content: Content, id: EntityId): void {
 
 /**
  * Villager `id`'s Meal, on the way home after Dusk: walks to the nearest Granary with Food, eats
- * there once at its door, then goes Home. With no Granary to eat at, it goes Home Hungry.
+ * there once at its door, then goes Home. With no Granary to eat at, it goes Home Hungry, or
+ * starves if that was one Meal too many.
  */
 function seekMeal(state: GameState, content: Content, id: EntityId): void {
   const v = state.components.villager[id];
@@ -74,8 +77,21 @@ function seekMeal(state: GameState, content: Content, id: EntityId): void {
       return;
     }
   }
-  v.missedMeals += 1;
+  if (missMeal(state, content, id)) return;
   goHome(state, content, id);
+}
+
+/**
+ * Counts a Meal missed by villager `id`. Returns true if that was one too many in a row and it
+ * starved.
+ */
+function missMeal(state: GameState, content: Content, id: EntityId): boolean {
+  const v = state.components.villager[id];
+  if (!v) return false;
+  v.missedMeals += 1;
+  if (v.missedMeals < content.needs.hungry.starveAfterMissedMeals) return false;
+  killVillager(state, content, id, 'starvation');
+  return true;
 }
 
 /** Ticks of the night that ended at the Dawn of day `day`. */
@@ -100,7 +116,9 @@ export function routineSystem(state: GameState, content: Content): void {
       v.tired = v.sleptTicks * 100 < lastNightTicks(day, content) * minSleepPercent;
       v.sleptTicks = 0;
       // Still at work or on the way to a Granary: the night passed without a Meal.
-      if (v.routine === 'work' || v.routine === 'toGranary') v.missedMeals += 1;
+      if ((v.routine === 'work' || v.routine === 'toGranary') && missMeal(state, content, id)) {
+        continue;
+      }
       if (v.routine !== 'work') {
         v.routine = 'work';
         stopAtNextTile(state, id); // one still walking home turns back from the next tile

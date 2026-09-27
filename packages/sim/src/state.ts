@@ -225,6 +225,17 @@ export interface Components {
   huntingGround: Store<HuntingGroundComponent>;
 }
 
+/** How a villager died. */
+export type DeathCause = 'starvation' | 'freezing';
+
+/** A villager's death, kept for the message log and alerts. */
+export interface Death {
+  name: string;
+  cause: DeathCause;
+  /** The day it died, counting from 1. */
+  day: number;
+}
+
 export interface GameState {
   version: typeof STATE_VERSION;
   tick: number;
@@ -234,4 +245,6 @@ export interface GameState {
   map: MapState;
   components: Components;
   logistics: LogisticsState;
+  /** Every villager who has died, oldest first. */
+  deaths: Death[];
 }

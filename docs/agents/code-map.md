@@ -29,6 +29,7 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 - `forage.ts`: forage patches: `isForagePatch`, `isWithered` (no `shadedBy` tree within `shadeTiles`, Chebyshev; derived), `canForage` (stocked and shaded).
 - `gathering.ts`: shared by gatherers: `outputRoom` (room in an output slot), `inWorkRadius`, `gatherTargets` (objects a hut gathers, in radius, with buffer room), `walkToNearest` (nearest by walking distance, ties by ID).
 - `huntingGrounds.ts`: Hunting grounds (`state.components.huntingGround`, rectangles, no `tile`): `inGround`, `standingTrees`, `groundCeiling`, `huntChancePermille`, `groundHealth` (`GroundHealth`), `groundsNear(type, origin)` (reach of a building not yet placed), `groundsInReach(id)`, `groundTilesInReach`, and `fellTree` (every tree felling goes through it: destroys the tree, surplus Game flees, counted in `fled`).
+- `deaths.ts`: `killVillager(state, content, id, cause)`: records `{name, cause, day}` in `state.deaths`, drops its haul, destroys the entity (goods in hand lost; Home and Workplace position free up, staffing re-drafts).
 - `homes.ts`: `homesSystem` (clears Homes that are gone, gives Homeless villagers a free place), `housePlaces`, `residentsOf`, `homeDoor`, `isAtHome`.
 - `warmth.ts`: House fuel (firewood in `building.stock`): `isHouse`, `isStockingUp` (autumn–winter), `isColdSeason`, `fuelIn`, `houseFuelRoom` (the `house` demand), `isColdHouse` (for the client icon).
 - `save.ts`: `serialize`, `deserialize` → `normalizeLoadedState` (backfills fields added since the save).
@@ -38,8 +39,8 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 - `systems/patches.ts`: `patchesSystem`: at each season's first Dawn but the first, sets every patch's stock to the season's amount (0 if withered).
 - `systems/woodcutting.ts`, `fishing.ts`, `foraging.ts` (forager: nearest stocked, shaded patch in radius → hut buffer; patches stay when empty), `hunting.ts` (hunter: nearest ground in radius with Game → hunt → PRNG roll → bag back to the lodge; the bag lives in the task, not `carrying`), `production.ts` (workshops; `isPaused`, `villageStock` (House fuel counts for firewood)), `hauling.ts` (calls `updateHauls`), `construction.ts`, `staffing.ts` (`openPositions`). Work systems and dispatch skip villagers whose `routine` isn't `work`.
 - `systems/spoilage.ts`: `spoilageSystem` (each Dawn but the first, Food in every building's `stock`/`input` loses `ceil(amount × rate%)`), `spoilPercentAt` (Food rate × season rate); `storeSpoilPercent` is where M6's root cellar lowers it.
-- `systems/warmth.ts`: `warmthSystem`: at a winter Dusk each House with residents burns fuel or sets `building.cold`; at Dawn each villager's `coldNights` goes up after a winter night not asleep at a warm Home, else resets; flags cleared.
-- `systems/routine.ts`: `routineSystem`, the Dusk/Dawn routine on `villager.routine` (`work` → `toGranary` → `goingHome` → `asleep`): `finishWork` (what's dropped or finished at Dusk), `seekMeal` (nearest Granary with a Meal, eat, or go home Hungry), `goHome`, sleep counting, Tired set at Dawn and cleared at Dusk, a Meal missed at Dawn.
+- `systems/warmth.ts`: `warmthSystem`: at a winter Dusk each House with residents burns fuel or sets `building.cold`; at Dawn each villager's `coldNights` goes up after a winter night not asleep at a warm Home, else resets; the 2nd in a row freezes it (`killVillager`); flags cleared.
+- `systems/routine.ts`: `routineSystem`, the Dusk/Dawn routine on `villager.routine` (`work` → `toGranary` → `goingHome` → `asleep`): `finishWork` (what's dropped or finished at Dusk), `seekMeal` (nearest Granary with a Meal, eat, or go home Hungry), `goHome`, sleep counting, Tired set at Dawn and cleared at Dusk, a Meal missed at Dawn; `missMeal` starves a villager at the 3rd missed Meal in a row.
 
 ## client (`packages/client/src`)
 - `main.tsx`: React root, `applyPaletteToCss`. `ui/App.tsx`: creates `Game`, mounts `Hud` and (dev only) `NewGamePanel`.
@@ -61,7 +62,7 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `movementSystem` → 3 `homesSystem` (`homes.ts`) → 4 `spoilageSystem` (Dawn only) → 5 `patchesSystem` (season's first Dawn) → 6 `warmthSystem` (winter Dusk, Dawn) → 7 `routineSystem` → 8 `heroSystem` (`hero.ts`) → 9 `woodcuttingSystem` → 10 `fishingSystem` → 11 `foragingSystem` → 12 `huntingSystem` → 13 `productionSystem` → 14 `haulingSystem` → 15 `constructionSystem` (skips at night) → 16 `staffingSystem` → `tick += 1`. Systems mutate the clone.
 
 ## State (`sim/src/state.ts`)
-- `GameState`: `version`, `tick`, `rng` (PRNG uint32), `nextId`, `map` (`width`, `height`, `terrain[]` row-major, `roads` by tile index), `components`, `logistics.hauls` (by carrier ID).
+- `GameState`: `version`, `tick`, `rng` (PRNG uint32), `nextId`, `map` (`width`, `height`, `terrain[]` row-major, `roads` by tile index), `components`, `logistics.hauls` (by carrier ID), `deaths` (`Death[]`: `name`, `cause` (`starvation` | `freezing`), `day`).
 - `components`: `Record<EntityId, T>` stores: `tile`, `mapObject`, `building`, `site`, `stockpile`, `villager`, `hero`, `position`, `path`, `huntingGround`, and task stores `woodcutter`, `crafter`, `fisher`, `forager`, `hunter`.
 - `villager`: `name`, `job`, `workplace`, `carrying`, `home` (House ID or null = Homeless), `routine` (`work` | `toGranary` | `goingHome` | `asleep`), `sleptTicks` (at Home, this night), `tired`, `missedMeals` (Hungry when > 0), `coldNights` (Cold when > 0).
 - `building.stock`: output buffer, a Granary's Food, or a House's firewood; `building.input`: workshop input buffer; `building.cold`: a House unlit tonight (winter only).
@@ -84,6 +85,7 @@ Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `m
 - Forage patches and the forager: `sim/test/foraging.test.ts` (`dawnOf(s, day)` jumps to a Dawn and runs it).
 - Hunting grounds and the hunter: `sim/test/hunting.test.ts` (`camp` map: 8 trees in a 6×4 ground, a lodge; the catch-chance test rigs `state.rng` so the next roll is known).
 - Warmth and Cold: `sim/test/warmth.test.ts` (`camp`: a Hut, a stockpile, a Carrier; `night(s, day)` jumps to a Dusk and runs past the next Dawn; `speedWhenFed` ignores Hungry/Tired).
+- Death: `sim/test/death.test.ts` (`camp`: woodcutter's hut, Hut, Granary, 3 Carriers, one Homeless; `camped({missedMeals, coldNights})` presets the woodcutter).
 - Meals and Hungry: `sim/test/granary.test.ts` (a river camp with a fisher's hut, Granary and Hut; a test `Content` treats logs as a second Food).
 - Night tests (`sleep.test.ts`) start a state at Dusk with a `jump(s, tick)` helper that just sets `tick`. A state at tick T hasn't run tick T yet: to see Dawn's effects, run to `DAWN + 1`. Jumping straight to a Dawn makes everyone Tired (no sleep counted).
 - Content validation: `content/test/validate.test.ts`. Import boundaries + hidden inputs: `tooling/boundaries.test.ts`.

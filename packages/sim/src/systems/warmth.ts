@@ -1,10 +1,11 @@
 // Warmth. At each Dusk of a cold season (winter) every House with residents burns fuel from its
 // buffer; one that can't, or has nobody living in it, is cold until Dawn. At each Dawn every
 // villager counts the night: a cold season's night not spent asleep at a warm Home (in a cold
-// House, or in the open) is a cold night; any other night resets the count. The hero isn't a
-// villager and never gets cold.
+// House, or in the open) is a cold night; any other night resets the count. The second cold
+// night in a row freezes the villager to death. The hero isn't a villager and never gets cold.
 import type { Content } from '@candlemarch/content';
 import { calendarAt, isDawn, isDusk } from '../calendar';
+import { killVillager } from '../deaths';
 import { idsOf } from '../entities';
 import { isAtHome, residentsOf } from '../homes';
 import type { EntityId, GameState } from '../state';
@@ -29,6 +30,9 @@ export function warmthSystem(state: GameState, content: Content): void {
       if (!v) continue;
       const warm = !coldNight || isAsleepInWarmHome(state, content, id);
       v.coldNights = warm ? 0 : v.coldNights + 1;
+      if (v.coldNights >= content.needs.cold.freezeAfterColdNights) {
+        killVillager(state, content, id, 'freezing');
+      }
     }
     for (const id of idsOf(building)) {
       const b = building[id];

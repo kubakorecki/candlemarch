@@ -6,6 +6,7 @@ import { canPlaceBuilding } from '../src/grid';
 import { createInitialState, type MapDef } from '../src/map';
 import { deserialize, serialize } from '../src/save';
 import type { GameState } from '../src/state';
+import { step } from '../src/step';
 import { content, run, runUntil } from './helpers';
 
 /** 8×7 with a river along row 3. A fisher's hut at (x, 1) has its door (x, 2) on the north bank. */
@@ -100,13 +101,15 @@ describe('the frozen river', () => {
 
   it('gives no fish all winter', () => {
     // The fisher is asleep through the night before the freeze, so no catch is under way then.
-    const s0 = fisheryAt(freeze - 100);
-    const winter = run(s0, thaw - s0.tick);
-    expect(winter.tick).toBe(thaw);
-    expect(hutFish(winter)).toBe(0);
-    expect(winter.components.fisher[idsOf(winter.components.fisher)[0] as number]?.kind).toBe(
-      'idle',
-    );
+    // Homeless and unfed, it dies before the thaw (see death.test.ts); until then it never fishes.
+    let s = fisheryAt(freeze - 100);
+    let fished = false;
+    while (s.tick < thaw) {
+      s = step(s, [], content);
+      if (Object.values(s.components.fisher).some((t) => t.kind === 'fishing')) fished = true;
+    }
+    expect(fished).toBe(false);
+    expect(hutFish(s)).toBe(0);
   });
 
   it('thaws in spring, and fishing starts again', () => {
