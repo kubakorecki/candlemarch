@@ -11,6 +11,7 @@ import {
   removeStockpile,
   STOCKPILE_PRIORITIES,
 } from './stockpiles';
+import { reassignWorker, setWorkerLimit, unassignWorker } from './workers';
 
 export type Command =
   | { type: 'placeBuilding'; building: BuildingId; x: number; y: number }
@@ -21,7 +22,10 @@ export type Command =
   | { type: 'removeStockpile'; id: EntityId }
   | { type: 'setStockpilePriority'; id: EntityId; priority: StockpilePriority }
   | { type: 'setStockpileAccepts'; id: EntityId; resource: ResourceId; accepts: boolean }
-  | ({ type: 'orderHero' } & HeroOrder);
+  | ({ type: 'orderHero' } & HeroOrder)
+  | { type: 'unassignWorker'; villager: EntityId }
+  | { type: 'reassignWorker'; villager: EntityId; workplace: EntityId }
+  | { type: 'setWorkerLimit'; building: EntityId; limit: number };
 
 /** Applies one command. Commands that aren't valid right now are ignored. */
 export function applyCommand(state: GameState, command: Command, content: Content): void {
@@ -75,6 +79,18 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     case 'orderHero': {
       const { type: _, ...order } = command;
       orderHero(state, content, order);
+      return;
+    }
+    case 'unassignWorker': {
+      unassignWorker(state, content, command.villager);
+      return;
+    }
+    case 'reassignWorker': {
+      reassignWorker(state, content, command.villager, command.workplace);
+      return;
+    }
+    case 'setWorkerLimit': {
+      setWorkerLimit(state, content, command.building, command.limit);
       return;
     }
   }

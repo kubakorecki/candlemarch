@@ -90,7 +90,12 @@ const bare: MapDef = { ...yard, name: 'bare', rows: Array(8).fill('............'
 function stocked(logs: number): GameState {
   const s = createInitialState(1, bare, content);
   const hut = idsOf(s.components.building)[0] as number;
-  s.components.building[hut] = { type: 'woodcutters_hut', stock: { logs }, input: {} };
+  s.components.building[hut] = {
+    type: 'woodcutters_hut',
+    stock: { logs },
+    input: {},
+    workerLimit: 1,
+  };
   return s;
 }
 
@@ -392,7 +397,12 @@ describe('what stockpiles store', () => {
   function withHero(logs: number): { s: GameState; pile: number; hero: number } {
     const s0 = createInitialState(1, { ...bare, hero: { x: 8, y: 6 } }, content);
     const hutId = idsOf(s0.components.building)[0] as number;
-    s0.components.building[hutId] = { type: 'woodcutters_hut', stock: { logs }, input: {} };
+    s0.components.building[hutId] = {
+      type: 'woodcutters_hut',
+      stock: { logs },
+      input: {},
+      workerLimit: 1,
+    };
     const s = step(s0, [{ type: 'placeStockpile', x: 4, y: 4, w: 1, h: 2 }], content);
     return {
       s,

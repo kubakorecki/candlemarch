@@ -4,6 +4,7 @@ import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
 import type { GameState } from '../state';
+import { maxWorkers } from '../workers';
 
 export function constructionSystem(state: GameState, content: Content): void {
   if (isNight(state.tick, content)) return;
@@ -19,7 +20,12 @@ export function constructionSystem(state: GameState, content: Content): void {
     site.buildProgress += 1;
     if (site.buildProgress >= construction.buildTicks) {
       delete sites[id];
-      building[id] = { type: site.type, stock: {}, input: {} };
+      building[id] = {
+        type: site.type,
+        stock: {},
+        input: {},
+        workerLimit: maxWorkers(content, site.type),
+      };
     }
   }
 }

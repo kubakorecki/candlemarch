@@ -4,6 +4,7 @@ import { idsOf } from './entities';
 import { createEmptyState } from './map';
 import { type Components, type GameState, type MapState, STATE_VERSION } from './state';
 import { fallbackVillagerName } from './villagers';
+import { maxWorkers } from './workers';
 
 /** A save of the current version, which may lack state added after it was made. */
 type LoadedState = Partial<Omit<GameState, 'components' | 'map'>> & {
@@ -42,7 +43,10 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     pile.priority ??= 'normal';
     pile.refuses ??= [];
   }
-  for (const b of Object.values(state.components.building)) b.input ??= {};
+  for (const b of Object.values(state.components.building)) {
+    b.input ??= {};
+    b.workerLimit ??= maxWorkers(content, b.type);
+  }
   const { villager } = state.components;
   for (const id of idsOf(villager)) {
     const v = villager[id];

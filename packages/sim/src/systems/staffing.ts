@@ -4,25 +4,18 @@ import { idsOf } from '../entities';
 import { isCarrierIdle } from '../logistics/jobDispatch';
 import type { EntityId, GameState } from '../state';
 import { assignJob } from '../villagers';
+import { vacantPositions, workersAt } from '../workers';
 
 /**
- * The Jobs of a building's unfilled positions, one entry per missing worker, in the order its
- * content lists them. Empty when it's fully staffed or employs no one.
+ * The Jobs of a building's positions staffing should fill: its vacant positions, in the order its
+ * content lists them, as many as its worker limit leaves room for. Empty when it's fully staffed,
+ * at its limit, or employs no one.
  */
 export function openPositions(state: GameState, content: Content, building: EntityId): JobId[] {
   const b = state.components.building[building];
   if (!b) return [];
-  const { villager } = state.components;
-  const open: JobId[] = [];
-  for (const slot of content.buildings[b.type].employs) {
-    let filled = 0;
-    for (const id of idsOf(villager)) {
-      const v = villager[id];
-      if (v?.workplace === building && v.job === slot.job) filled += 1;
-    }
-    for (let i = filled; i < slot.count; i++) open.push(slot.job);
-  }
-  return open;
+  const room = b.workerLimit - workersAt(state, building).length;
+  return room > 0 ? vacantPositions(state, content, building).slice(0, room) : [];
 }
 
 /**

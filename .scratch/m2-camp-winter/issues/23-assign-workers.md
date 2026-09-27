@@ -1,6 +1,6 @@
 # Unassign and reassign workers; a workers view
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 03, 06
 
@@ -49,3 +49,7 @@ Unassigning alone doesn't stick: staffing would draft the new Carrier straight b
   - Work in hand (a chop, carried goods, a batch) is handled as above.
   - Determinism, and save/load with a limit below the maximum.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-27 — Done: `workerLimit` on buildings, `unassignWorker` / `reassignWorker` / `setWorkerLimit` in `sim/src/workers.ts`, `reassignTargets` exported for the client, the workers view (toolbar button, `v`) and the Workplace panel. Additions beyond the ticket: a Carrier reassigned mid-Haul drops it and their goods go back to the pickup (decisions.md); a Fisher's catch under way is lost like a chop. Buildings of the same kind are numbered in the UI so reassign targets are distinguishable.

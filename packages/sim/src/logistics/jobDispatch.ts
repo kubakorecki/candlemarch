@@ -295,20 +295,38 @@ function advanceHaul(state: GameState, content: Content, id: EntityId, haul: Hau
         }
         return;
       }
-      // Returned goods go back even if that overfills: capacity limits new hauls, not returns.
-      // A stockpile tile that holds another resource by now can't take them, and they're lost.
-      const source = building[haul.from];
-      const pile = stockpile[haul.from];
-      if (carrier.carrying && source) {
-        source.stock[haul.resource] = (source.stock[haul.resource] ?? 0) + carrier.carrying.amount;
-      } else if (carrier.carrying && pile && haul.fromTile !== undefined) {
-        addToTile(pile, haul.fromTile, carrier.carrying);
-      }
-      carrier.carrying = null;
-      delete hauls[id];
+      returnGoods(state, id, haul);
       return;
     }
   }
+}
+
+/**
+ * Ends carrier `id`'s haul: goods in hand go back to where they were picked up, and the carrier
+ * clears its hands and has no haul.
+ * Returned goods go back even if that overfills: capacity limits new hauls, not returns.
+ * A stockpile tile that holds another resource by now can't take them, and they're lost.
+ */
+function returnGoods(state: GameState, id: EntityId, haul: Haul): void {
+  const carrier = state.components.villager[id];
+  const source = state.components.building[haul.from];
+  const pile = state.components.stockpile[haul.from];
+  if (carrier?.carrying && source) {
+    source.stock[haul.resource] = (source.stock[haul.resource] ?? 0) + carrier.carrying.amount;
+  } else if (carrier?.carrying && pile && haul.fromTile !== undefined) {
+    addToTile(pile, haul.fromTile, carrier.carrying);
+  }
+  if (carrier) carrier.carrying = null;
+  delete state.logistics.hauls[id];
+}
+
+/**
+ * Drops carrier `id`'s haul on the spot, when it's given another Job: goods in hand go straight
+ * back to where they were picked up. Stopping its walk is the caller's.
+ */
+export function abandonHaul(state: GameState, id: EntityId): void {
+  const haul = state.logistics.hauls[id];
+  if (haul) returnGoods(state, id, haul);
 }
 
 /** Takes up to `haul.amount` of its resource from its source. Returns how many were taken. */

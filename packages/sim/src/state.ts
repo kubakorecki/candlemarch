@@ -57,6 +57,11 @@ export interface BuildingComponent {
   stock: ResourceAmounts;
   /** Input buffer contents. Empty unless the building is a workshop. */
   input: ResourceAmounts;
+  /**
+   * Most workers staffing fills it up to, from 0 to every position it has (`maxWorkers`). The
+   * player sets it; it starts at the maximum.
+   */
+  workerLimit: number;
 }
 
 export interface SiteComponent {

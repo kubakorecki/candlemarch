@@ -105,7 +105,12 @@ describe('hauling on roads (job dispatch)', () => {
   function deliveryRoute(commands: Command[]): string {
     const s0 = createInitialState(1, lane, content);
     const hut = idsOf(s0.components.building)[0] as number;
-    s0.components.building[hut] = { type: 'woodcutters_hut', stock: { logs: 4 }, input: {} };
+    s0.components.building[hut] = {
+      type: 'woodcutters_hut',
+      stock: { logs: 4 },
+      input: {},
+      workerLimit: 1,
+    };
     const s = runUntil(s0, (st) => carrier(st).haul?.phase === 'dropoff', 100, { 0: commands });
     const path = s.components.path[carrier(s).id];
     return (path?.tiles ?? [])

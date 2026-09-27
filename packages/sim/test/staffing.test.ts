@@ -18,7 +18,12 @@ const camp: MapDef = {
 function stocked(logs: number): GameState {
   const s = createInitialState(1, camp, content);
   const hut = idsOf(s.components.building)[0] as number;
-  s.components.building[hut] = { type: 'woodcutters_hut', stock: { logs }, input: {} };
+  s.components.building[hut] = {
+    type: 'woodcutters_hut',
+    stock: { logs },
+    input: {},
+    workerLimit: 1,
+  };
   return s;
 }
 
@@ -85,7 +90,12 @@ describe('placed workplaces', () => {
     };
     const s0 = createInitialState(1, twoCarriers, content);
     const hutId = idsOf(s0.components.building)[0] as number;
-    s0.components.building[hutId] = { type: 'woodcutters_hut', stock: { logs: 6 }, input: {} };
+    s0.components.building[hutId] = {
+      type: 'woodcutters_hut',
+      stock: { logs: 6 },
+      input: {},
+      workerLimit: 1,
+    };
     const [first, second] = idsOf(s0.components.villager).filter(
       (v) => s0.components.villager[v]?.job === 'carrier',
     ) as [number, number];

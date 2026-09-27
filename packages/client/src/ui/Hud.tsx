@@ -48,6 +48,92 @@ export function Hud({ game }: { game: Game }) {
           )}
         </div>
 
+        {hud.workers && (
+          <div className="panel workers">
+            <div className="title">Workers</div>
+            <div className="row muted">
+              {hud.workers.carriers} {hud.workers.carriers === 1 ? 'Carrier' : 'Carriers'},{' '}
+              {hud.workers.workers} {hud.workers.workers === 1 ? 'worker' : 'workers'}
+            </div>
+            <div className="list">
+              {hud.workers.rows.map((row) => (
+                <div key={row.id} className="row">
+                  <button type="button" className="link" onClick={() => game.focusVillager(row.id)}>
+                    {row.name}
+                  </button>
+                  <span className="muted grow">
+                    {row.workplace === null ? 'Carrier' : `${row.job}, ${row.workplace}`}
+                  </span>
+                  <span className="choices">
+                    {row.workplace !== null && (
+                      <button type="button" onClick={() => game.unassignWorker(row.id)}>
+                        Unassign
+                      </button>
+                    )}
+                    <select
+                      value=""
+                      disabled={row.targets.length === 0}
+                      onChange={(e) => game.reassignWorker(row.id, Number(e.target.value))}
+                    >
+                      <option value="" disabled>
+                        Reassign…
+                      </option>
+                      {row.targets.map((target) => (
+                        <option key={target.id} value={target.id}>
+                          {target.name}
+                        </option>
+                      ))}
+                    </select>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {hud.building && (
+          <div className="panel building">
+            <div className="title">{hud.building.name}</div>
+            {hud.building.workers.map((worker) => (
+              <div key={worker.id} className="row">
+                <button
+                  type="button"
+                  className="link"
+                  onClick={() => game.focusVillager(worker.id)}
+                >
+                  {worker.name}
+                </button>
+                <button type="button" onClick={() => game.unassignWorker(worker.id)}>
+                  Unassign
+                </button>
+              </div>
+            ))}
+            <div className="row">
+              <span className="muted">
+                {hud.building.workerLimit} / {hud.building.maxWorkers} workers wanted
+              </span>
+              <span className="choices">
+                <button
+                  type="button"
+                  disabled={hud.building.workerLimit <= 0}
+                  onClick={() => game.changeWorkerLimit(-1)}
+                  title="Fewer workers"
+                >
+                  −
+                </button>
+                <button
+                  type="button"
+                  disabled={hud.building.workerLimit >= hud.building.maxWorkers}
+                  onClick={() => game.changeWorkerLimit(1)}
+                  title="More workers"
+                >
+                  +
+                </button>
+              </span>
+            </div>
+          </div>
+        )}
+
         {hud.pile && (
           <div className="panel pile">
             <div className="title">Stockpile</div>
@@ -109,6 +195,16 @@ export function Hud({ game }: { game: Game }) {
             {tool.label}
           </button>
         ))}
+        <span className="divider" />
+        <button
+          type="button"
+          className={hud.workers ? 'active' : ''}
+          disabled={!hud.ready}
+          onClick={() => game.toggleWorkers()}
+          title="Workers (V)"
+        >
+          Workers
+        </button>
         <span className="divider" />
         {SPEEDS.map((speed) => (
           <button

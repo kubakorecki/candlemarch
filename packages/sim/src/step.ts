@@ -26,7 +26,7 @@ function cloneState(state: GameState): GameState {
  * 6. production: workshop crafters take inputs, work, and fill output buffers
  * 7. hauling (job dispatch)
  * 8. construction, by day only
- * 9. staffing: finished or understaffed workplaces draft idle carriers
+ * 9. staffing: workplaces below their worker limit draft idle carriers
  * then `tick` increments.
  */
 export function step(state: GameState, commands: readonly Command[], content: Content): GameState {

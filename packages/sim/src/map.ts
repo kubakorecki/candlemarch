@@ -14,6 +14,7 @@ import { seedRng } from './rng';
 import { type EntityId, type GameState, STATE_VERSION, type Tile } from './state';
 import { canPlaceStockpile, placeStockpile } from './stockpiles';
 import { assignJob, drawVillagerName } from './villagers';
+import { maxWorkers } from './workers';
 
 export interface MapDef {
   name: string;
@@ -128,7 +129,12 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
     const def = content.buildings[b.type];
     const id = createEntity(state);
     state.components.tile[id] = { x: b.x, y: b.y };
-    state.components.building[id] = { type: b.type, stock: {}, input: {} };
+    state.components.building[id] = {
+      type: b.type,
+      stock: {},
+      input: {},
+      workerLimit: maxWorkers(content, b.type),
+    };
     for (const slot of def.employs) {
       for (let i = 0; i < slot.count; i++) {
         spawnVillager(state, content, slot.job, doorTile(def, { x: b.x, y: b.y }), id);
