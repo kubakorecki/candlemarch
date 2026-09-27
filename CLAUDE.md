@@ -48,6 +48,7 @@ Keep this section current whenever scripts change.
 - `pnpm typecheck` — type-check all packages
 - `pnpm lint` — Biome check
 - `pnpm format` — apply Biome formatting and safe fixes
+- `pnpm balance <scenario>` — run a headless balance scenario from `tooling/balance/scenarios.ts` and print population, deaths and stored goods per in-game day
 - `pnpm check` — typecheck + lint + test; run before calling any task done
 
 ## Simulation rules
