@@ -97,6 +97,9 @@ export interface VillagerInfo {
   job: string;
   /** The Workplace's name, or null without one. */
   workplace: string | null;
+  /** The Home's name, or null when Homeless. */
+  home: string | null;
+  tired: boolean;
 }
 
 /** A row of the workers view: one villager, as display text, and where it can be reassigned. */
@@ -135,6 +138,8 @@ export interface HudState {
   date: string;
   year: number;
   isNight: boolean;
+  /** Villagers with no Home. */
+  homeless: number;
   /** The stockpile selected by clicking it with no tool, and its settings. */
   pile: { id: EntityId; priority: StockpilePriority; refuses: ResourceId[] } | null;
   /** The villager selected by clicking it with no tool. */
@@ -172,6 +177,7 @@ export class Game {
     date: '',
     year: 1,
     isNight: false,
+    homeless: 0,
     pile: null,
     villager: null,
     building: null,
@@ -388,6 +394,7 @@ export class Game {
       date: dateLabel(time),
       year: time.year,
       isNight: time.isNight,
+      homeless: Object.values(state.components.villager).filter((v) => v.home === null).length,
     });
   }
 
@@ -764,14 +771,17 @@ function demolishCommand(state: GameState, tile: Tile): Command | null {
   return null;
 }
 
-/** Villager `id`'s name, Job and Workplace for the panel, or null if it's gone. */
+/** Villager `id`'s name, Job, Workplace, Home and Tired for the panel, or null if it's gone. */
 function villagerInfo(state: GameState, id: EntityId): VillagerInfo | null {
   const v = state.components.villager[id];
   if (!v) return null;
+  const names = buildingNames(state);
   return {
     name: v.name,
     job: content.jobs[v.job].name,
-    workplace: v.workplace === null ? null : (buildingNames(state)[v.workplace] ?? null),
+    workplace: v.workplace === null ? null : (names[v.workplace] ?? null),
+    home: v.home === null ? null : (names[v.home] ?? null),
+    tired: v.tired,
   };
 }
 

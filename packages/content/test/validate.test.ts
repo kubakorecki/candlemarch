@@ -70,6 +70,23 @@ describe('content validation', () => {
     }
   });
 
+  it('needs use percents from 1 to 100', () => {
+    const { tired } = content.needs;
+    for (const [label, value] of [
+      ['tired.minSleepPercent', tired.minSleepPercent],
+      ['tired.speedPercent', tired.speedPercent],
+    ] as const) {
+      expectPositiveInt(value, label);
+      expect(value <= 100, `${label} = ${value}`).toBe(true);
+    }
+  });
+
+  it('houses hold a positive whole number of residents', () => {
+    for (const b of Object.values(buildings)) {
+      if (b.residents !== undefined) expectPositiveInt(b.residents, `${b.id}.residents`);
+    }
+  });
+
   it('has at least 60 distinct, non-empty villager names', () => {
     const names = content.villagerNames;
     expect(names.length).toBeGreaterThanOrEqual(60);

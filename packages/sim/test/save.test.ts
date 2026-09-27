@@ -44,6 +44,19 @@ describe('serialize / deserialize', () => {
     expect(deserialize(JSON.stringify(data), content)).toEqual(s);
   });
 
+  it('gives villagers saved before Homes and sleep none: Homeless, at work and rested', () => {
+    const s = createInitialState(9, meadowMap, content);
+    const data = JSON.parse(serialize(s));
+    for (const v of Object.values(data.components.villager) as Record<string, unknown>[]) {
+      delete v.home;
+      delete v.routine;
+      delete v.sleptTicks;
+      delete v.tired;
+    }
+    expect(Object.keys(data.components.villager).length).toBeGreaterThan(0);
+    expect(deserialize(JSON.stringify(data), content)).toEqual(s);
+  });
+
   it('rejects saves from another version', () => {
     const s = createInitialState(9, meadowMap, content);
     expect(() =>

@@ -1,6 +1,7 @@
 // Job dispatch: a dispatcher hands each idle carrier one haul (pick up at A, drop at B).
 // Chosen over flag relay in docs/adr/0001-logistics-model.md.
 import type { Content, ResourceId } from '@candlemarch/content';
+import { isNight } from '../calendar';
 import { idsOf } from '../entities';
 import { entityDoor, stockpileTileIndices, tileAt, tileIndex } from '../grid';
 import { tileDistance, travelCosts } from '../pathfinding';
@@ -419,11 +420,16 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
 /** Advances every carrier's haul by one tick, and hands idle carriers new ones. */
 export function updateHauls(state: GameState, content: Content): void {
   const { hauls } = state.logistics;
+  const { villager } = state.components;
+  const night = isNight(state.tick, content);
   for (const id of carrierIds(state)) {
     const haul = hauls[id];
     if (haul) advanceHaul(state, content, id, haul);
-    // A carrier freed this tick waits until the next one; this keeps each step simple.
-    else if (!state.components.path[id]) dispatch(state, content, id);
+    // A carrier freed this tick waits until the next one; this keeps each step simple. No new
+    // Haul starts after Dusk.
+    else if (!state.components.path[id] && !night && villager[id]?.routine === 'work') {
+      dispatch(state, content, id);
+    }
   }
 }
 

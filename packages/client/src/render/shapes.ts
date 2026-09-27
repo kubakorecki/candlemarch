@@ -555,6 +555,55 @@ export function drawMissingIcon(g: Graphics, x: number, y: number): void {
     .stroke({ width: 3 * s, color: palette.invalid, cap: 'round' });
 }
 
+/**
+ * Status icons over a villager's head, drawn relative to its feet: a House struck through when
+ * it's Homeless, "zzz" when it's Tired. Every icon that applies shows, side by side.
+ */
+export function drawVillagerStatus(g: Graphics, homeless: boolean, tired: boolean): void {
+  g.clear();
+  const s = TILE_H / 64;
+  const icons = [homeless && 'homeless', tired && 'tired'].filter(Boolean);
+  const r = 9 * s;
+  icons.forEach((icon, i) => {
+    const x = (i - (icons.length - 1) / 2) * (2 * r + 3 * s);
+    const y = -66 * s;
+    g.circle(x, y, r).fill(palette.iconBg).stroke(INK);
+    if (icon === 'homeless') {
+      g.poly([
+        x - 5 * s,
+        y,
+        x,
+        y - 5 * s,
+        x + 5 * s,
+        y,
+        x + 5 * s,
+        y + 5 * s,
+        x - 5 * s,
+        y + 5 * s,
+      ]).fill(palette.ink);
+      g.moveTo(x - r * 0.7, y - r * 0.7)
+        .lineTo(x + r * 0.7, y + r * 0.7)
+        .stroke({ width: 2.5 * s, color: palette.invalid, cap: 'round' });
+    } else {
+      // Three Zs, growing up and to the right.
+      for (const [dx, dy, size] of [
+        [-4, 3, 2.5],
+        [0, -1, 3],
+        [4, -5, 3.5],
+      ] as const) {
+        const zx = x + dx * s;
+        const zy = y + dy * s;
+        const h = size * s;
+        g.moveTo(zx - h, zy - h)
+          .lineTo(zx + h, zy - h)
+          .lineTo(zx - h, zy + h)
+          .lineTo(zx + h, zy + h)
+          .stroke({ width: 1.5 * s, color: palette.ink, cap: 'round', join: 'round' });
+      }
+    }
+  });
+}
+
 /** Tool preview: a set of tiles tinted valid/invalid. */
 export function drawTileGhost(
   g: Graphics,

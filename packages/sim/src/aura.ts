@@ -37,17 +37,3 @@ export function boostedWorkplaces(state: GameState, content: Content): EntityId[
     (id) => workSpeedPercent(state, content, id) > 100,
   );
 }
-
-/**
- * Ticks a piece of work that normally takes `ticks` takes at `building` right now: scaled by
- * 100 / speed percent, truncated, and never below 1.
- */
-export function workTicks(
-  state: GameState,
-  content: Content,
-  building: EntityId,
-  ticks: number,
-): number {
-  const percent = workSpeedPercent(state, content, building);
-  return Math.max(1, Math.trunc((ticks * 100) / percent));
-}

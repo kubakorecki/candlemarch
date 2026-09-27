@@ -1,6 +1,6 @@
 # Houses, Homes, sleep and Tired
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 02, 03
 
@@ -22,3 +22,7 @@ Spec: Villagers, "Daily life and survival".
 
 - Headless tests: assignment by nearness and ID order; dusk behaviour for each case above; back to work at Dawn; turning back at Dawn; Tired from a short night and from sleeping Homeless, cleared by a full night; determinism, save/load mid-night.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-27 — Done: Hut `residents: 3`, `homesSystem` (assignment by walking cost, ID order, Homes that are gone cleared), `routineSystem` (Dusk finish-and-go-home, sleep, Dawn back to work, turning back at Dawn, Tired), shared `speedPercent`/`workTicks` in `sim/src/speed.ts`, client icons, count and panel rows. Differences: there's no demolish command yet, so a Home that stops being a House (tested by destroying it) is what makes residents Homeless; a crafter finishes a batch under way at Dusk and a fisher loses a catch (the issue doesn't say). The frozen-river tests now account for the night and a Tired, Homeless fisher. Details in `docs/decisions.md`.

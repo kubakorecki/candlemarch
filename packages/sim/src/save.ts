@@ -50,7 +50,12 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
   const { villager } = state.components;
   for (const id of idsOf(villager)) {
     const v = villager[id];
-    if (v) v.name ??= fallbackVillagerName(id, content);
+    if (!v) continue;
+    v.name ??= fallbackVillagerName(id, content);
+    v.home ??= null;
+    v.routine ??= 'work';
+    v.sleptTicks ??= 0;
+    v.tired ??= false;
   }
   for (const hero of Object.values(state.components.hero)) {
     hero.carrying ??= null;

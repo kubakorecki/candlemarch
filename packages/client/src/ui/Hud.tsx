@@ -35,6 +35,10 @@ export function Hud({ game }: { game: Game }) {
             <span>{hud.isNight ? 'Night' : 'Day'}</span>
           </div>
           <div className="row">
+            <span className="muted">Homeless</span>
+            <span className={hud.homeless > 0 ? 'warn' : ''}>{hud.homeless}</span>
+          </div>
+          <div className="row">
             <span className="muted">Woodcutter's hut</span>
             <span>
               {hud.hutLogs}/{hud.hutCapacity} logs
@@ -178,6 +182,18 @@ export function Hud({ game }: { game: Game }) {
               <span className="muted">Workplace</span>
               <span>{hud.villager.workplace ?? 'None'}</span>
             </div>
+            <div className="row">
+              <span className="muted">Home</span>
+              <span className={hud.villager.home === null ? 'warn' : ''}>
+                {hud.villager.home ?? 'Homeless'}
+              </span>
+            </div>
+            {hud.villager.tired && (
+              <div className="row">
+                <span className="muted">Tired</span>
+                <span className="warn">Half speed until Dusk</span>
+              </div>
+            )}
           </div>
         )}
       </div>

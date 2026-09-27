@@ -55,7 +55,16 @@ function spawnVillager(
 ): EntityId {
   const name = drawVillagerName(state, content);
   const id = createEntity(state);
-  state.components.villager[id] = { name, job, workplace, carrying: null };
+  state.components.villager[id] = {
+    name,
+    job,
+    workplace,
+    carrying: null,
+    home: null,
+    routine: 'work',
+    sleptTicks: 0,
+    tired: false,
+  };
   state.components.position[id] = tileCenter(tile);
   assignJob(state, content, id, job, workplace);
   return id;

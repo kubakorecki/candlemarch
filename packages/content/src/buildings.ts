@@ -38,6 +38,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     door: { x: 0, y: 1 },
     placeable: true,
     employs: [],
+    residents: 3,
     construction: {
       cost: [{ resource: 'logs', amount: 10 }],
       buildTicks: 200, // 10 s

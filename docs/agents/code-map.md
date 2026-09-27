@@ -3,9 +3,9 @@
 Orientation for agents. Read before exploring; update when a module is added, moved or renamed.
 
 ## content (`packages/content/src`): typed data, no logic
-- `types.ts`: every ID union (`ResourceId`, `BuildingId`, `JobId`, `RecipeId`, `TerrainId`, `MapObjectId`, `RoadId`, `HeroId`, `SeasonId`) and def shape (`BuildingDef`, `RecipeDef`, `JobDef`, `CalendarDef`...), plus the `Content` aggregate.
+- `types.ts`: every ID union (`ResourceId`, `BuildingId`, `JobId`, `RecipeId`, `TerrainId`, `MapObjectId`, `RoadId`, `HeroId`, `SeasonId`) and def shape (`BuildingDef`, `RecipeDef`, `JobDef`, `CalendarDef`, `NeedsDef`...), plus the `Content` aggregate.
 - `index.ts`: assembles and exports `content: Content`; re-exports all types.
-- `resources.ts` (`storage`: stockpile | granary), `recipes.ts`, `buildings.ts` (size, door, employs, buffers, recipes, construction cost), `jobs.ts` (walk speed, carry, idle retry), `mapObjects.ts` (tree), `terrain.ts`, `roads.ts`, `heroes.ts` (aura), `logistics.ts` (stockpile tile capacity), `calendar.ts` (dayTicks 3600, seasons, night length, riverFrozen), `villagerNames.ts`.
+- `resources.ts` (`storage`: stockpile | granary), `recipes.ts`, `buildings.ts` (size, door, employs, buffers, recipes, `residents` (makes it a House), construction cost), `jobs.ts` (walk speed, carry, idle retry), `mapObjects.ts` (tree), `terrain.ts`, `roads.ts`, `heroes.ts` (aura), `logistics.ts` (stockpile tile capacity), `calendar.ts` (dayTicks 3600, seasons, night length, riverFrozen), `needs.ts` (Tired: min sleep %, speed %; Hungry and Cold go here too), `villagerNames.ts`.
 
 ## sim (`packages/sim/src`): pure, deterministic
 - `index.ts`: public API; the client and tooling import only from here. Export new helpers here.
@@ -23,12 +23,15 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 - `villagers.ts`: `drawVillagerName`, `assignJob` (sets job + workplace, resets task store for the job).
 - `workers.ts`: `maxWorkers`, `workersAt`, `vacantPositions`, `reassignTargets`, `unassignWorker`, `reassignWorker`, `setWorkerLimit`.
 - `hero.ts`: `HeroOrder`, `heroOf`, `orderHero`, `heroOrderAt` (what a right-click means), `heroSystem`.
-- `aura.ts`: hero production aura: `workTicks` (apply to any work timer), `workSpeedPercent`, `boostedWorkplaces`.
+- `aura.ts`: hero production aura: `workSpeedPercent`, `boostedWorkplaces`.
+- `speed.ts`: the shared slowdown helper. `speedPercent(state, content, villager, workplace?)` = worst slowdown (Tired; add Hungry/Cold here) × aura at `workplace`; `workTicks(state, content, worker, workplace, ticks)` (apply to any work timer). Movement scales walking by `speedPercent` without a workplace.
+- `homes.ts`: `homesSystem` (clears Homes that are gone, gives Homeless villagers a free place), `housePlaces`, `residentsOf`.
 - `save.ts`: `serialize`, `deserialize` → `normalizeLoadedState` (backfills fields added since the save).
 - `logistics/jobDispatch.ts`: carriers: `Haul`, `LogisticsState`, `updateHauls`, `abandonHaul`, `isCarrierIdle`, reservations. ADR 0001.
 - `logistics/supplyDemand.ts`: `listSupplies`, `listDemands` (sites, workshop inputs, stockpiles), `inputRoom`.
 - `systems/movement.ts`: `movementSystem`, `walkTo`, `rerouteTo`, `stopAtNextTile`, `isAt`, `villagerTile`, `walkGrid`.
-- `systems/woodcutting.ts`, `fishing.ts`, `production.ts` (workshops; `isPaused`, `villageStock`), `hauling.ts` (calls `updateHauls`), `construction.ts`, `staffing.ts` (`openPositions`).
+- `systems/woodcutting.ts`, `fishing.ts`, `production.ts` (workshops; `isPaused`, `villageStock`), `hauling.ts` (calls `updateHauls`), `construction.ts`, `staffing.ts` (`openPositions`). Work systems and dispatch skip villagers whose `routine` isn't `work`.
+- `systems/routine.ts`: `routineSystem`, the Dusk/Dawn routine on `villager.routine` (`work` → `goingHome` → `asleep`): `finishWork` (what's dropped or finished at Dusk), `goHome`, sleep counting, Tired set at Dawn and cleared at Dusk. A Granary stop before home (ticket 11) slots in between `finishWork` and `goHome`.
 
 ## client (`packages/client/src`)
 - `main.tsx`: React root, `applyPaletteToCss`. `ui/App.tsx`: creates `Game`, mounts `Hud` and (dev only) `NewGamePanel`.
@@ -38,7 +41,7 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 - `game/clock.ts`: `tickClock`, `tickFraction`, `SPEEDS` (0–3).
 - `game/Game.ts`: glue: `TOOLS` (toolbar, shortcuts), input → `bridge.command(...)`, `HudState` store (`subscribe`/`getHud`), selection panels (`VillagerInfo`, `BuildingInfo`, `WorkersView`), save/load via localStorage.
 - `render/WorldRenderer.ts`: Pixi scene. `syncStatics` (per snapshot: ground, roads, trees, buildings, sites, stockpiles), `drawWalkers` (per frame, interpolated villagers + hero), `drawNight`, ghosts, hit tests. `JOB_COLORS`.
-- `render/shapes.ts`: all placeholder drawing: `drawBuilding` (generic), `drawChoppingBlock`, `drawSite`, `drawVillager`, `drawHero`, `PIECES` (per-resource goods art), roads, ghosts.
+- `render/shapes.ts`: all placeholder drawing: `drawBuilding` (generic), `drawChoppingBlock`, `drawSite`, `drawVillager`, `drawVillagerStatus` (Homeless, Tired "zzz" icons over the head; add Hungry/Cold here), `drawHero`, `PIECES` (per-resource goods art), roads, ghosts.
 - `render/iso.ts`: all iso maths (`TILE_W` 128, `gridToWorld`, `screenToTile`, `unitsToGrid`, `depthOf`...). `render/palette.ts`: `palette`, only colour source (HUD via CSS vars). `render/camera.ts`: pan/zoom input. `render/night.ts`: `nightDarkness`.
 - `ui/Hud.tsx`: all HUD panels (readout, toolbar, speed, stockpile, villager, building, workers). `ui/hud.css`. `ui/NewGamePanel.tsx`: map picker.
 
@@ -47,11 +50,12 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 - `balance/harness.ts` (`Scenario`, `runScenario`, `formatTable`), `balance/scenarios.ts` (named scenarios), `balance/cli.ts` (`pnpm balance <name>`), `balance/harness.test.ts`.
 
 ## The tick: `sim/src/step.ts` `step(state, commands, content)`
-Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `movementSystem` → 3 `heroSystem` (`hero.ts`) → 4 `woodcuttingSystem` → 5 `fishingSystem` → 6 `productionSystem` → 7 `haulingSystem` → 8 `constructionSystem` (skips at night) → 9 `staffingSystem` → `tick += 1`. Systems mutate the clone.
+Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `movementSystem` → 3 `homesSystem` (`homes.ts`) → 4 `routineSystem` → 5 `heroSystem` (`hero.ts`) → 6 `woodcuttingSystem` → 7 `fishingSystem` → 8 `productionSystem` → 9 `haulingSystem` → 10 `constructionSystem` (skips at night) → 11 `staffingSystem` → `tick += 1`. Systems mutate the clone.
 
 ## State (`sim/src/state.ts`)
 - `GameState`: `version`, `tick`, `rng` (PRNG uint32), `nextId`, `map` (`width`, `height`, `terrain[]` row-major, `roads` by tile index), `components`, `logistics.hauls` (by carrier ID).
 - `components`: `Record<EntityId, T>` stores: `tile`, `mapObject`, `building`, `site`, `stockpile`, `villager`, `hero`, `position`, `path`, and task stores `woodcutter`, `crafter`, `fisher`.
+- `villager`: `name`, `job`, `workplace`, `carrying`, `home` (House ID or null = Homeless), `routine` (`work` | `goingHome` | `asleep`), `sleptTicks` (at Home, this night), `tired`.
 - IDs: `createEntity(state)` takes `state.nextId++`. A site becomes a building with the same ID.
 - Time: `calendarAt(state.tick, content)` → `{day, season, dayOfSeason, year, timeOfDay, isNight}`.
 
@@ -66,7 +70,8 @@ Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `m
 - `pnpm vitest run packages/sim/test/hauling.test.ts` runs one file. `pnpm test` runs all projects (`vitest.config.ts`).
 - `sim/test/helpers.ts`: `run(state, ticks, commandsAt)`, `runUntil(state, done, max, commandsAt)`, `totalLogs`, `woodcuttersHutStock`, re-exported `content`.
 - Small maps: inline `MapDef` constants in each test file (e.g. `yard` in `construction.test.ts`, `riverMap()` in `river.test.ts`), built with `createInitialState(seed, map, content)`.
-- Determinism: `sim/test/milestone.test.ts` ("is deterministic"). Save/load continuation: `sim/test/scenarios.test.ts` (branching network) and `hero.test.ts` (mid-walk); format/backfill in `save.test.ts`.
+- Determinism: `sim/test/milestone.test.ts` ("is deterministic"). Save/load continuation: `sim/test/scenarios.test.ts` (branching network), `hero.test.ts` (mid-walk) and `sleep.test.ts` (mid-night); format/backfill in `save.test.ts`.
+- Night tests (`sleep.test.ts`) start a state at Dusk with a `jump(s, tick)` helper that just sets `tick`. A state at tick T hasn't run tick T yet: to see Dawn's effects, run to `DAWN + 1`. Jumping straight to a Dawn makes everyone Tired (no sleep counted).
 - Content validation: `content/test/validate.test.ts`. Import boundaries + hidden inputs: `tooling/boundaries.test.ts`.
 - Client unit tests: `client/test/{clock,iso,night}.test.ts`. Balance: `pnpm balance meadow` (add scenarios in `tooling/balance/scenarios.ts`).
 

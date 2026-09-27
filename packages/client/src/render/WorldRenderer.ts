@@ -43,6 +43,7 @@ import {
   drawTileGhost,
   drawTree,
   drawVillager,
+  drawVillagerStatus,
   type RoadTile,
 } from './shapes';
 
@@ -75,6 +76,10 @@ interface VillagerView {
   /** The resource `load` shows, so it's redrawn only when that changes. */
   loadDrawn: ResourceId | null;
   axe: Graphics;
+  /** Homeless and Tired icons over its head. */
+  status: Graphics;
+  /** The icons `status` shows, so it's redrawn only when they change. */
+  statusDrawn: string;
 }
 
 interface HeroView {
@@ -421,6 +426,14 @@ export class WorldRenderer {
         view.loadDrawn = carried;
       }
       view.load.visible = carried !== null;
+      const homeless = v.home === null;
+      const status = `${homeless}:${v.tired}`;
+      if (status !== view.statusDrawn) {
+        drawVillagerStatus(view.status, homeless, v.tired);
+        view.statusDrawn = status;
+      }
+      // Its goods take the icons' place while it carries something.
+      view.status.position.set(0, carried ? -14 * (TILE_H / 64) : 0);
       // Chopping a tree, or working a recipe (only splitting logs so far).
       const swinging = woodcutter[id]?.kind === 'chopping' || crafter[id]?.kind === 'working';
       view.axe.visible = swinging;
@@ -577,9 +590,20 @@ export class WorldRenderer {
       axe.visible = false;
       const load = new Graphics();
       load.visible = false;
-      node.addChild(ring, body, axe, load);
+      const status = new Graphics();
+      node.addChild(ring, body, axe, load, status);
       this.objects.addChild(node);
-      view = { node, ring, body, bodyJob: job, load, loadDrawn: null, axe };
+      view = {
+        node,
+        ring,
+        body,
+        bodyJob: job,
+        load,
+        loadDrawn: null,
+        axe,
+        status,
+        statusDrawn: '',
+      };
       this.villagers.set(id, view);
     }
     if (view.bodyJob !== job) {

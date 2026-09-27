@@ -4,6 +4,7 @@ import { idsOf } from '../entities';
 import { blockedGrid, inBounds, tileAt, tileCenter, tileIndex, tileOfPoint } from '../grid';
 import { findPath, type Grid } from '../pathfinding';
 import { maxSpeedPercent, speedPercentAt, speedPercentGrid } from '../roads';
+import { speedPercent } from '../speed';
 import {
   DIAGONAL_UNITS,
   type EntityId,
@@ -118,8 +119,8 @@ function walkSpeedOf(state: GameState, content: Content, id: EntityId): number |
 }
 
 /**
- * Advances every walker (villagers and the hero) by its walk speed, faster on roads. Removes the
- * walk (its `PathComponent`) on arrival.
+ * Advances every walker (villagers and the hero) by its walk speed, faster on roads and slower
+ * for a slowed villager (`speedPercent`). Removes the walk (its `PathComponent`) on arrival.
  */
 export function movementSystem(state: GameState, content: Content): void {
   const { map } = state;
@@ -130,9 +131,10 @@ export function movementSystem(state: GameState, content: Content): void {
     if (!path || speed === undefined) continue;
 
     // Speed depends on the tile being walked onto. Budget left over after reaching a tile
-    // centre is rescaled to the next segment's speed.
+    // centre is rescaled to the next segment's speed. Slowdowns such as Tired scale it all.
+    const own = speedPercent(state, content, id);
     let percent = speedPercentAt(map, content, segment(path).to);
-    let budget = Math.trunc((speed * percent) / 100);
+    let budget = Math.trunc((speed * percent * own) / 10000);
     while (budget > 0 && path.next < path.tiles.length) {
       const { from, to } = segment(path);
       const left = segmentLength(map.width, from, to) - path.progress;

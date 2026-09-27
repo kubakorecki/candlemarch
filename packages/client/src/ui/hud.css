@@ -72,6 +72,10 @@ body,
   color: var(--hud-muted);
 }
 
+.warn {
+  color: var(--hud-invalid);
+}
+
 .message {
   top: 16px;
   left: 50%;

@@ -86,6 +86,13 @@ export interface StockpileComponent {
   goods: Record<number, ResourceAmount>;
 }
 
+/**
+ * Where a villager is in its day. `work`: doing its Job (after Dusk, only finishing what it
+ * holds). `goingHome`: walking to its Home after Dusk. `asleep`: at Home, or where it stood when
+ * Homeless, until Dawn.
+ */
+export type Routine = 'work' | 'goingHome' | 'asleep';
+
 export interface VillagerComponent {
   /** First name, drawn from content's pool on arrival. Not unique once the pool runs out. */
   name: string;
@@ -93,6 +100,13 @@ export interface VillagerComponent {
   /** Building the villager works for, if any. */
   workplace: EntityId | null;
   carrying: ResourceAmount | null;
+  /** The House the villager lives in, or null when Homeless. */
+  home: EntityId | null;
+  routine: Routine;
+  /** Ticks slept at Home since the last Dusk. */
+  sleptTicks: number;
+  /** Slept too little at Home last night: slower until the next Dusk. */
+  tired: boolean;
 }
 
 /**

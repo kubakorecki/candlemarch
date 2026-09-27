@@ -98,8 +98,8 @@ describe('the frozen river', () => {
     return s;
   }
 
-  it('gives no fish all winter; a catch under way when it freezes is lost', () => {
-    // The first catch starts 100 ticks before the freeze and would end 300 ticks into winter.
+  it('gives no fish all winter', () => {
+    // The fisher is asleep through the night before the freeze, so no catch is under way then.
     const s0 = fisheryAt(freeze - 100);
     const winter = run(s0, thaw - s0.tick);
     expect(winter.tick).toBe(thaw);
@@ -111,10 +111,12 @@ describe('the frozen river', () => {
 
   it('thaws in spring, and fishing starts again', () => {
     const s0 = fisheryAt(thaw - 10);
-    // Frozen for 10 ticks, then up to one idle retry before the first catch starts.
+    // Frozen for 10 ticks, then up to one idle retry before the first catch starts. The fisher
+    // slept in the open (there's no House), so it's Tired: the catch takes twice as long.
     const idleRetry = content.jobs.fisher.idleRetryTicks;
-    expect(hutFish(run(s0, 10 + fishes.catchTicks))).toBe(0);
-    expect(hutFish(run(s0, 10 + idleRetry + fishes.catchTicks + 1))).toBe(1);
+    const catchTicks = (fishes.catchTicks * 100) / content.needs.tired.speedPercent;
+    expect(hutFish(run(s0, 10 + catchTicks))).toBe(0);
+    expect(hutFish(run(s0, 10 + idleRetry + catchTicks + 1))).toBe(1);
   });
 
   it('saved and loaded mid-catch, carries on exactly as an uninterrupted run', () => {

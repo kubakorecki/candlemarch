@@ -326,7 +326,16 @@ describe('stockpile tile capacity with returns', () => {
     const id = s1.nextId;
     const pile = id + 1;
     s1.nextId += 2;
-    s1.components.villager[id] = { name: 'Ada', job: 'carrier', workplace: null, carrying: null };
+    s1.components.villager[id] = {
+      name: 'Ada',
+      job: 'carrier',
+      workplace: null,
+      carrying: null,
+      home: null,
+      routine: 'work',
+      sleptTicks: 0,
+      tired: false,
+    };
     s1.components.position[id] = { x: 6500, y: 7500 };
     const tile = tileIndex(s1.map, 6, 6);
     s1.components.tile[pile] = { x: 6, y: 6 };

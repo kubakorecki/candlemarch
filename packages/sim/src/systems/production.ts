@@ -1,9 +1,9 @@
 // Workshops: a crafter at the door takes a recipe's inputs from the input buffer, works, and puts
 // its outputs in the output buffer. It waits while inputs are missing or the outputs won't fit.
 import type { Content, RecipeId, ResourceId } from '@candlemarch/content';
-import { workTicks } from '../aura';
 import { idsOf } from '../entities';
 import { doorTile } from '../grid';
+import { workTicks } from '../speed';
 import type { EntityId, GameState } from '../state';
 import { isAt, walkTo } from './movement';
 
@@ -77,7 +77,8 @@ export function productionSystem(state: GameState, content: Content): void {
   for (const id of idsOf(tasks)) {
     const task = tasks[id];
     const v = villager[id];
-    if (!task || !v || path[id] || v.workplace === null) continue; // still walking
+    // Still walking, or off work for the night.
+    if (!task || !v || path[id] || v.workplace === null || v.routine !== 'work') continue;
     const workshopId = v.workplace;
     const workshop = building[workshopId];
     const origin = tile[workshopId];
@@ -104,7 +105,7 @@ export function productionSystem(state: GameState, content: Content): void {
           workshop.input[i.resource] = (workshop.input[i.resource] ?? 0) - i.amount;
         }
         // A hero's aura near the workshop when the work starts speeds up the whole batch.
-        const ticksLeft = workTicks(state, content, workshopId, recipe.workTicks);
+        const ticksLeft = workTicks(state, content, id, workshopId, recipe.workTicks);
         tasks[id] = { kind: 'working', recipe: recipeId, ticksLeft };
         break;
       }

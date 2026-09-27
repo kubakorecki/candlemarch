@@ -1,9 +1,10 @@
 // Woodcutters: walk to the nearest tree, chop, carry the logs to their hut's output buffer, repeat.
 import type { Content } from '@candlemarch/content';
-import { workTicks } from '../aura';
+import { isNight } from '../calendar';
 import { destroyEntity, idsOf } from '../entities';
 import { blockedGrid, doorTile, standingTiles, tileIndex } from '../grid';
 import { tileDistance } from '../pathfinding';
+import { workTicks } from '../speed';
 import type { EntityId, GameState, Tile } from '../state';
 import { isAt, villagerTile, walkTo } from './movement';
 
@@ -39,10 +40,12 @@ function walkToNearestTree(state: GameState, content: Content, id: EntityId): En
 
 export function woodcuttingSystem(state: GameState, content: Content): void {
   const { woodcutter: tasks, villager, building, mapObject, path } = state.components;
+  const night = isNight(state.tick, content);
   for (const id of idsOf(tasks)) {
     const task = tasks[id];
     const v = villager[id];
-    if (!task || !v || path[id]) continue; // still walking
+    // Still walking, or off work for the night.
+    if (!task || !v || path[id] || v.routine !== 'work') continue;
 
     const job = content.jobs[v.job];
     const hutId = v.workplace;
@@ -74,7 +77,13 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
         const tree = mapObject[task.tree];
         if (tree && tree.amount > 0) {
           // A hero's aura near the hut when the chop starts speeds up the whole chop.
-          const ticks = workTicks(state, content, hutId, content.mapObjects[tree.type].gatherTicks);
+          const ticks = workTicks(
+            state,
+            content,
+            id,
+            hutId,
+            content.mapObjects[tree.type].gatherTicks,
+          );
           tasks[id] = { kind: 'chopping', tree: task.tree, ticksLeft: ticks };
         } else {
           tasks[id] = { kind: 'idle', retryAt: state.tick }; // someone else finished it
@@ -106,7 +115,8 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
         const carrying = v.carrying;
         if (carrying) {
           const stock = hut.stock[carrying.resource] ?? 0;
-          if (stock + carrying.amount > buffer.capacity) break; // wait at the door for room
+          // Wait at the door for room, except after Dusk: then the logs go in even if it's full.
+          if (stock + carrying.amount > buffer.capacity && !night) break;
           hut.stock[carrying.resource] = stock + carrying.amount;
           v.carrying = null;
         }

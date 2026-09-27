@@ -120,6 +120,15 @@ export interface CalendarDef {
   seasons: SeasonDef[];
 }
 
+/** What villagers need, and what missing it does to them. Each slowdown is a speed percent. */
+export interface NeedsDef {
+  /**
+   * A villager who slept less than `minSleepPercent` of the night at Home walks and works at
+   * `speedPercent` until the next Dusk.
+   */
+  tired: { minSleepPercent: number; speedPercent: number };
+}
+
 export interface BuildingDef {
   id: BuildingId;
   name: string;
@@ -151,6 +160,8 @@ export interface BuildingDef {
    * new work and asks for no inputs.
    */
   stockTarget?: ResourceAmount;
+  /** Villagers it houses: a building with residents is a House. */
+  residents?: number;
   /** Cost and time to build it from a construction site. Absent for buildings that can't be built. */
   construction?: { cost: ResourceAmount[]; buildTicks: number };
 }
@@ -166,6 +177,7 @@ export interface Content {
   roads: Record<RoadId, RoadDef>;
   logistics: LogisticsDef;
   calendar: CalendarDef;
+  needs: NeedsDef;
   /** First names new villagers are drawn from. */
   villagerNames: readonly string[];
 }
