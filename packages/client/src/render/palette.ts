@@ -86,6 +86,9 @@ export const palette = {
   hudText: 0xefe4cc,
   hudMuted: 0xb3a58b,
   hudAccent: 0xd9a55b,
+  // Alert severities in the HUD list.
+  alertRed: 0xd4614f,
+  alertAmber: 0xd9a55b,
 } as const;
 
 export type PaletteKey = keyof typeof palette;
@@ -108,4 +111,6 @@ export function applyPaletteToCss(root: HTMLElement): void {
   root.style.setProperty('--thinning', hex(palette.thinning));
   root.style.setProperty('--scarce', hex(palette.scarce));
   root.style.setProperty('--empty', hex(palette.empty));
+  root.style.setProperty('--alert-red', hex(palette.alertRed));
+  root.style.setProperty('--alert-amber', hex(palette.alertAmber));
 }

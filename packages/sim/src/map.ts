@@ -83,6 +83,7 @@ export function createEmptyState(seed: number): GameState {
     },
     logistics: { hauls: {} },
     deaths: [],
+    gameOver: null,
   };
 }
 

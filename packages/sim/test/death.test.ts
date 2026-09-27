@@ -134,3 +134,30 @@ describe('after a death', () => {
     expect(a).toEqual(b);
   });
 });
+
+describe('game over', () => {
+  /** The camp at day 1's Dusk with every villager's needs set as given. */
+  const everyone = (needs: { missedMeals?: number }) => {
+    const s = jump(camped({}), duskTick(1, content));
+    for (const v of Object.values(s.components.villager)) Object.assign(v, needs);
+    return s;
+  };
+
+  it('is not over while a villager lives', () => {
+    const s = run(jump(camped({ missedMeals: 2 }), duskTick(1, content)), 1);
+    expect(s.deaths).toHaveLength(1);
+    expect(s.gameOver).toBeNull();
+  });
+
+  it('is over, with the day and cause, when the last villager dies', () => {
+    expect(camped({}).gameOver).toBeNull();
+    const s = run(everyone({ missedMeals: 2 }), 1);
+    expect(Object.keys(s.components.villager)).toHaveLength(0);
+    expect(s.gameOver).toEqual({ day: 1, cause: 'starvation' });
+  });
+
+  it('stays over', () => {
+    const s = run(everyone({ missedMeals: 2 }), content.calendar.dayTicks);
+    expect(s.gameOver).toEqual({ day: 1, cause: 'starvation' });
+  });
+});

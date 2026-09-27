@@ -1,0 +1,51 @@
+// Words for what the sim works out: alerts, the death log and the winter countdown. Pure.
+import type { Alert, Death, DeathCause, GameOver } from '@candlemarch/sim';
+
+/** "1 day", "3 days". */
+function count(n: number, one: string, many: string): string {
+  return `${n} ${n === 1 ? one : many}`;
+}
+
+export function alertText(alert: Alert): string {
+  switch (alert.kind) {
+    case 'willStarve':
+      return `${alert.name} will starve at ${alert.at}`;
+    case 'willFreeze':
+      return `${alert.name} will freeze at dawn`;
+    case 'lowFood':
+      return `About ${count(alert.days, 'day', 'days')} of Food left`;
+    case 'winterFood':
+      return `Food for about ${count(alert.days, 'day', 'days')}, winter in ${count(alert.winterIn, 'day', 'days')}`;
+    case 'noFirewood':
+      return alert.houses === 1
+        ? '1 House has no firewood'
+        : `${alert.houses} Houses have no firewood`;
+    case 'lowFirewood':
+      return `Firewood for ${count(alert.nights, 'night', 'nights')}, winter needs ${alert.needed}`;
+    case 'hungry':
+      return `${count(alert.villagers, 'villager', 'villagers')} Hungry`;
+    case 'cold':
+      return `${count(alert.villagers, 'villager', 'villagers')} Cold`;
+    case 'homeless':
+      return `${count(alert.villagers, 'villager', 'villagers')} Homeless`;
+    case 'scarceGround':
+      return `${alert.name} is ${alert.health === 'scarce' ? 'Scarce' : 'Empty'}`;
+  }
+}
+
+const DIED: Record<DeathCause, string> = { starvation: 'starved', freezing: 'froze' };
+
+/** A message-log line: "Ada starved, day 14". */
+export function deathText(death: Death): string {
+  return `${death.name} ${DIED[death.cause]}, day ${death.day}`;
+}
+
+/** The game-over screen's line: "The last villager froze on day 17." */
+export function gameOverText(over: GameOver): string {
+  return `The last villager ${DIED[over.cause]} on day ${over.day}.`;
+}
+
+/** The autumn countdown: "Winter in 3 days". */
+export function winterText(days: number): string {
+  return `Winter in ${count(days, 'day', 'days')}`;
+}

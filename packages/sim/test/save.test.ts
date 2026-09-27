@@ -19,6 +19,7 @@ describe('serialize / deserialize', () => {
     delete data.components.stockpile;
     delete data.logistics;
     delete data.deaths;
+    delete data.gameOver;
     delete data.map.roads;
     expect(deserialize(JSON.stringify(data), content)).toEqual(s);
   });

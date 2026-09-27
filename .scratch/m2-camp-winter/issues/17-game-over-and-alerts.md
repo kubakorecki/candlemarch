@@ -1,6 +1,6 @@
 # Game over, death-spiral alerts and the message log
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 10, 14, 15
 
@@ -20,3 +20,7 @@ Spec: Failure states, "Alerts".
 
 - Headless tests: game over triggers; each alert appears and clears at its threshold.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-27 — Done: `state.gameOver` is set by `killVillager` when the last villager dies (tests in `sim/test/death.test.ts`); the client stops ticking and shows a game-over panel (day and cause) with Load and New game. `alerts(state, content)` and `winterIn` in `sim/src/alerts.ts` (tests in `sim/test/alerts.test.ts`: each alert appears and clears at its threshold); the HUD lists them top-right in red or amber, clicking one centres the camera on its target, with a "Deaths" log of the last 5 deaths below and "Winter in N days" in the readout through autumn. Also: an empty Hunting ground alerts like a Scarce one, and the dev New game panel moved to the bottom right. Thresholds and readings logged in `docs/decisions.md`. Not checked in a browser (none available to this session); the client builds.

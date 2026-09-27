@@ -56,13 +56,13 @@ export class SimBridge {
     this.queued.push(command);
   }
 
-  /** Call once per rendered frame. */
+  /** Call once per rendered frame. Once the game is over, no more ticks run. */
   frame(frameMs: number): void {
     this.dueTicks = Math.min(
       this.dueTicks + tickClock(this.clock, frameMs, this.speed),
       MAX_TICKS_PER_REQUEST,
     );
-    if (this.inFlight || this.dueTicks === 0 || !this.state) return;
+    if (this.inFlight || this.dueTicks === 0 || !this.state || this.state.gameOver) return;
     this.post({ type: 'advance', ticks: this.dueTicks, commands: this.queued });
     this.dueTicks = 0;
     this.queued = [];

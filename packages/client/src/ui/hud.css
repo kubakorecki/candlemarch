@@ -202,7 +202,7 @@ body,
 }
 
 .new-game {
-  top: 16px;
+  bottom: 90px;
   right: 16px;
   min-width: 230px;
   display: flex;
@@ -219,4 +219,60 @@ body,
   align-self: stretch;
   background: var(--ink);
   margin: 0 4px;
+}
+
+/* Alerts and the death log, stacked down the right edge. */
+.side-right {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.side-right .panel {
+  position: static;
+  min-width: 230px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.panel button.alert-red {
+  color: var(--alert-red);
+  font-weight: bold;
+}
+
+.panel button.alert-amber {
+  color: var(--alert-amber);
+}
+
+.panel button.link:disabled {
+  opacity: 1;
+}
+
+.warn-amber {
+  color: var(--alert-amber);
+}
+
+.game-over-backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  background: var(--ink);
+  opacity: 0.6;
+}
+
+.game-over {
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 28px;
 }

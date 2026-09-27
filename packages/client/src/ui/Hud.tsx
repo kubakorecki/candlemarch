@@ -1,5 +1,10 @@
 import { content, type ResourceId } from '@candlemarch/content';
-import { isStockpileGood, STOCKPILE_PRIORITIES, type StockpilePriority } from '@candlemarch/sim';
+import {
+  DEFAULT_MAP,
+  isStockpileGood,
+  STOCKPILE_PRIORITIES,
+  type StockpilePriority,
+} from '@candlemarch/sim';
 import { useSyncExternalStore } from 'react';
 import { SPEEDS, type Speed } from '../game/clock';
 import { type Game, type GroundInfo, TOOLS } from '../game/Game';
@@ -52,6 +57,11 @@ export function Hud({ game }: { game: Game }) {
             <span className="muted">Time</span>
             <span>{hud.isNight ? 'Night' : 'Day'}</span>
           </div>
+          {hud.winter && (
+            <div className="row">
+              <span className="warn-amber">{hud.winter}</span>
+            </div>
+          )}
           <div className="row">
             <span className="muted">Homeless</span>
             <span className={hud.homeless > 0 ? 'warn' : ''}>{hud.homeless}</span>
@@ -264,6 +274,59 @@ export function Hud({ game }: { game: Game }) {
           </div>
         )}
       </div>
+
+      {(hud.alerts.length > 0 || hud.deathLog.length > 0) && (
+        <div className="side-right">
+          {hud.alerts.length > 0 && (
+            <div className="panel alerts">
+              <div className="title">Alerts</div>
+              {hud.alerts.map((alert, i) => (
+                <button
+                  // Texts can repeat (villagers can share a name); the list is only replaced whole.
+                  // biome-ignore lint/suspicious/noArrayIndexKey: see above
+                  key={i}
+                  type="button"
+                  className={`link alert-${alert.severity}`}
+                  disabled={alert.target === null}
+                  onClick={() => alert.target && game.focusAlert(alert.target)}
+                >
+                  {alert.text}
+                </button>
+              ))}
+            </div>
+          )}
+          {hud.deathLog.length > 0 && (
+            <div className="panel death-log">
+              <div className="title">Deaths</div>
+              {hud.deathLog.map((line, i) => (
+                // Lines can repeat (villagers can share a name); the list is only replaced whole.
+                // biome-ignore lint/suspicious/noArrayIndexKey: see above
+                <div key={i} className="row muted">
+                  {line}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {hud.gameOver && (
+        <>
+          <div className="game-over-backdrop" />
+          <div className="panel game-over">
+            <div className="title">The village has died</div>
+            <div className="row">{hud.gameOver}</div>
+            <div className="choices">
+              <button type="button" onClick={() => game.toggleLoadMenu()}>
+                Load a save
+              </button>
+              <button type="button" onClick={() => game.newGame(DEFAULT_MAP)}>
+                New game
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {hud.loadMenu && (
         <div className="panel load-menu">

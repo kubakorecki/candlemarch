@@ -2,6 +2,8 @@
 // (speed, build mode); everything about the world comes from sim snapshots.
 import { type BuildingId, content, type ResourceId } from '@candlemarch/content';
 import {
+  type AlertSeverity,
+  alerts,
   type Command,
   calendarAt,
   canLayPath,
@@ -28,12 +30,14 @@ import {
   type StockpilePriority,
   type Tile,
   villageFood,
+  winterIn,
   workersAt,
 } from '@candlemarch/sim';
 import { CameraInput } from '../render/camera';
 import { type CameraView, gridToWorld, screenToTile } from '../render/iso';
 import { nightDarkness } from '../render/night';
 import { HEALTH_WORDS, type PlacementGhost, WorldRenderer } from '../render/WorldRenderer';
+import { alertText, deathText, gameOverText, winterText } from './alertText';
 import { dateLabel, SAVE_SLOTS, type SaveSlot, slotDateLabel } from './autosave';
 import type { Speed } from './clock';
 import { SimBridge } from './SimBridge';
@@ -188,6 +192,16 @@ export interface LoadSlotView {
   date: string | null;
 }
 
+/** One line of the alert list. Clicking it moves the camera to `target`. */
+export interface AlertView {
+  severity: AlertSeverity;
+  text: string;
+  target: Tile | null;
+}
+
+/** Deaths shown in the message log, newest first. */
+const DEATH_LOG_LENGTH = 5;
+
 export interface HudState {
   ready: boolean;
   speed: Speed;
@@ -207,6 +221,14 @@ export interface HudState {
   cold: number;
   /** Food in every Granary. */
   food: number;
+  /** "Winter in N days" through autumn, else null. */
+  winter: string | null;
+  /** The sim's alerts, red first. */
+  alerts: AlertView[];
+  /** The latest deaths, newest first, e.g. "Ada starved, day 14". */
+  deathLog: string[];
+  /** Set once the last villager has died: how and when, e.g. "The last villager froze on day 17." */
+  gameOver: string | null;
   /** The stockpile selected by clicking it with no tool, and its settings. */
   pile: { id: EntityId; priority: StockpilePriority; refuses: ResourceId[] } | null;
   /** The villager selected by clicking it with no tool. */
@@ -258,6 +280,10 @@ export class Game {
     hungry: 0,
     cold: 0,
     food: 0,
+    winter: null,
+    alerts: [],
+    deathLog: [],
+    gameOver: null,
     pile: null,
     villager: null,
     building: null,
@@ -350,6 +376,13 @@ export class Game {
     this.selectPile(null);
     this.selectBuilding(null);
     this.selectVillager(id);
+  }
+
+  /** Moves the camera to an alert's target tile. */
+  focusAlert(target: Tile): void {
+    const c = gridToWorld(target.x + 0.5, target.y + 0.5);
+    this.camera.x = c.x;
+    this.camera.y = c.y;
   }
 
   unassignWorker(villager: EntityId): void {
@@ -497,6 +530,24 @@ export class Game {
       hungry: Object.values(state.components.villager).filter((v) => v.missedMeals > 0).length,
       cold: Object.values(state.components.villager).filter((v) => v.coldNights > 0).length,
       food: villageFood(state, content),
+      gameOver: state.gameOver && gameOverText(state.gameOver),
+    });
+    this.refreshAlerts(state);
+  }
+
+  /** Alerts, the winter countdown and the death log. Lists only change when their text does. */
+  private refreshAlerts(state: GameState): void {
+    const list: AlertView[] = alerts(state, content).map((alert) => ({
+      severity: alert.severity,
+      text: alertText(alert),
+      target: alert.target,
+    }));
+    const log = state.deaths.slice(-DEATH_LOG_LENGTH).reverse().map(deathText);
+    const days = winterIn(state, content);
+    this.setHud({
+      winter: days === null ? null : winterText(days),
+      alerts: sameJson(list, this.hud.alerts) ? this.hud.alerts : list,
+      deathLog: sameJson(log, this.hud.deathLog) ? this.hud.deathLog : log,
     });
   }
 
@@ -811,6 +862,10 @@ export class Game {
     this.hud = next;
     for (const listener of this.listeners) listener();
   }
+}
+
+function sameJson(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 /** The rectangle with corners `a` and `b`, both included. */

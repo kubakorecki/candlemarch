@@ -238,6 +238,12 @@ export interface Death {
   day: number;
 }
 
+/** How the game ended: the day and cause of the last villager's death. */
+export interface GameOver {
+  day: number;
+  cause: DeathCause;
+}
+
 export interface GameState {
   version: typeof STATE_VERSION;
   tick: number;
@@ -249,4 +255,6 @@ export interface GameState {
   logistics: LogisticsState;
   /** Every villager who has died, oldest first. */
   deaths: Death[];
+  /** Set when the last villager dies (the hero alone doesn't count); null while the game runs. */
+  gameOver: GameOver | null;
 }

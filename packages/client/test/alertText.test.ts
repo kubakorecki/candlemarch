@@ -1,0 +1,54 @@
+import type { Alert } from '@candlemarch/sim';
+import { describe, expect, it } from 'vitest';
+import { alertText, deathText, gameOverText, winterText } from '../src/game/alertText';
+
+const at = { severity: 'amber', target: null } as const;
+
+describe('alert text', () => {
+  it('names who dies, and when', () => {
+    const starve: Alert = { ...at, kind: 'willStarve', villager: 3, name: 'Wynn', at: 'dusk' };
+    expect(alertText(starve)).toBe('Wynn will starve at dusk');
+    expect(alertText({ ...at, kind: 'willFreeze', villager: 4, name: 'Oda' })).toBe(
+      'Oda will freeze at dawn',
+    );
+  });
+
+  it('says "about" for Food projections', () => {
+    expect(alertText({ ...at, kind: 'lowFood', days: 2 })).toBe('About 2 days of Food left');
+    expect(alertText({ ...at, kind: 'lowFood', days: 1 })).toBe('About 1 day of Food left');
+    expect(alertText({ ...at, kind: 'winterFood', days: 8, winterIn: 3 })).toBe(
+      'Food for about 8 days, winter in 3 days',
+    );
+  });
+
+  it('counts Houses and villagers', () => {
+    expect(alertText({ ...at, kind: 'noFirewood', houses: 4 })).toBe('4 Houses have no firewood');
+    expect(alertText({ ...at, kind: 'noFirewood', houses: 1 })).toBe('1 House has no firewood');
+    expect(alertText({ ...at, kind: 'lowFirewood', nights: 3, needed: 5 })).toBe(
+      'Firewood for 3 nights, winter needs 5',
+    );
+    expect(alertText({ ...at, kind: 'hungry', villagers: 2 })).toBe('2 villagers Hungry');
+    expect(alertText({ ...at, kind: 'homeless', villagers: 1 })).toBe('1 villager Homeless');
+  });
+
+  it('names a Scarce Hunting ground', () => {
+    const scarce: Alert = { ...at, kind: 'scarceGround', name: 'Old Wood', health: 'scarce' };
+    expect(alertText(scarce)).toBe('Old Wood is Scarce');
+  });
+});
+
+describe('death and winter text', () => {
+  it('logs a death with its day', () => {
+    expect(deathText({ name: 'Ada', cause: 'starvation', day: 14 })).toBe('Ada starved, day 14');
+    expect(deathText({ name: 'Oda', cause: 'freezing', day: 17 })).toBe('Oda froze, day 17');
+  });
+
+  it('says how the game ended', () => {
+    expect(gameOverText({ cause: 'freezing', day: 17 })).toBe('The last villager froze on day 17.');
+  });
+
+  it('counts down to winter', () => {
+    expect(winterText(3)).toBe('Winter in 3 days');
+    expect(winterText(1)).toBe('Winter in 1 day');
+  });
+});

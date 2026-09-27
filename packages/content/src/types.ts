@@ -199,6 +199,12 @@ export interface ImmigrationDef {
   closedSeasons: SeasonId[];
 }
 
+/** Thresholds for the HUD's death-spiral alerts. */
+export interface AlertsDef {
+  /** "About N days of Food left" shows when the Granaries hold Meals for fewer days than this. */
+  lowFoodDays: number;
+}
+
 /** Hunting grounds: forest regions holding Game, which logging drives away. */
 export interface HuntingDef {
   /** The map object a ground's forest is made of: felling one lowers the ground's ceiling. */
@@ -276,6 +282,7 @@ export interface Content {
   needs: NeedsDef;
   hunting: HuntingDef;
   immigration: ImmigrationDef;
+  alerts: AlertsDef;
   /** First names new villagers are drawn from. */
   villagerNames: readonly string[];
 }

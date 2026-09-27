@@ -1,4 +1,5 @@
 // Typed game data for Candlemarch. No logic lives here.
+import { alerts } from './alerts';
 import { buildings } from './buildings';
 import { calendar } from './calendar';
 import { heroes } from './heroes';
@@ -31,5 +32,6 @@ export const content: Content = {
   needs,
   hunting,
   immigration,
+  alerts,
   villagerNames,
 };

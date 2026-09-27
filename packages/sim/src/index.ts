@@ -1,4 +1,5 @@
 // Deterministic, headless simulation for Candlemarch. See CLAUDE.md "Simulation rules".
+export { type Alert, type AlertData, type AlertSeverity, alerts, winterIn } from './alerts';
 export { boostedWorkplaces } from './aura';
 export {
   type CalendarTime,

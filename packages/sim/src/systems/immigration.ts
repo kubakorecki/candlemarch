@@ -20,12 +20,12 @@ export function immigrationFoodNeeded(state: GameState, content: Content): numbe
 
 /**
  * The House a Newcomer arriving now would live in: the one with a free place nearest the entry by
- * walking cost. Null when immigration is shut: no entry, no such House, too little Food, or a
- * closed season.
+ * walking cost. Null when immigration is shut: no entry, no such House, too little Food, a
+ * closed season, or the game is over (nobody comes to a dead village).
  */
 export function newcomerHome(state: GameState, content: Content): EntityId | null {
   const { entry } = state.map;
-  if (entry === null) return null;
+  if (entry === null || state.gameOver !== null) return null;
   const { season } = calendarAt(state.tick, content);
   if (content.immigration.closedSeasons.includes(season)) return null;
   if (villageFood(state, content) < immigrationFoodNeeded(state, content)) return null;
