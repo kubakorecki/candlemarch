@@ -1,8 +1,8 @@
 // The daily routine. At Dusk villagers finish what they hold, eat a Meal at the nearest Granary
 // with Food, walk Home and sleep; Homeless ones sleep where they stand. At Dawn they go back to
 // work, Tired if they slept less than half the night at Home, Hungry if they missed the Meal. A
-// villager missing its third Meal in a row starves then. The hero isn't a villager: it ignores
-// night and never eats.
+// villager missing its third Meal in a row starves then. A Newcomer walks Home by day, then works.
+// The hero isn't a villager: it ignores night and never eats.
 import type { Content } from '@candlemarch/content';
 import { calendarAt, dawnTick, duskTick, isDawn, isDusk, isNight } from '../calendar';
 import { killVillager } from '../deaths';
@@ -124,7 +124,11 @@ export function routineSystem(state: GameState, content: Content): void {
         stopAtNextTile(state, id); // one still walking home turns back from the next tile
       }
     }
-    if (!night) continue;
+    if (!night) {
+      // A Newcomer walks to its new Home by day, then starts work.
+      if (v.routine === 'goingHome' && !path[id]) v.routine = 'work';
+      continue;
+    }
 
     switch (v.routine) {
       case 'work': {

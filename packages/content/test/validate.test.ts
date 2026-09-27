@@ -124,6 +124,13 @@ describe('content validation', () => {
     for (const id of cold.coldSeasons) expect(cold.stockUpSeasons).toContain(id);
   });
 
+  it('immigration asks for a whole number of Meals and closes in real seasons', () => {
+    const { mealsPerHead, closedSeasons } = content.immigration;
+    expectPositiveInt(mealsPerHead, 'immigration.mealsPerHead');
+    const seasons = content.calendar.seasons.map((s) => s.id);
+    for (const id of closedSeasons) expect(seasons).toContain(id);
+  });
+
   it('houses hold a positive whole number of residents', () => {
     for (const b of Object.values(buildings)) {
       if (b.residents !== undefined) expectPositiveInt(b.residents, `${b.id}.residents`);

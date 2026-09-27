@@ -23,6 +23,12 @@ describe('serialize / deserialize', () => {
     expect(deserialize(JSON.stringify(data), content)).toEqual(s);
   });
 
+  it('gives maps saved before immigration no entry', () => {
+    const data = JSON.parse(serialize(createInitialState(9, meadowMap, content)));
+    delete data.map.entry;
+    expect(deserialize(JSON.stringify(data), content).map.entry).toBeNull();
+  });
+
   it('gives stockpiles saved before priorities and filters the defaults', () => {
     const s = createInitialState(9, maps.shortHaul, content);
     const data = JSON.parse(serialize(s));

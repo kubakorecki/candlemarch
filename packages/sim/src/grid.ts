@@ -196,6 +196,8 @@ export function fitsAt(
     if (blocked[i] === 1 || doors.has(i) || piles.has(i) || map.roads[i] !== undefined) {
       return false;
     }
+    // Newcomers arrive on the entry tile: keep it open.
+    if (map.entry && t.x === map.entry.x && t.y === map.entry.y) return false;
   }
 
   const door = doorTile(def, { x, y });

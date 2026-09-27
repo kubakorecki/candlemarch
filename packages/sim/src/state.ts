@@ -43,6 +43,8 @@ export interface MapState {
   terrain: TerrainId[];
   /** Road on each tile that has one, keyed by tile index. Tiles without a road are absent. */
   roads: Record<number, RoadId>;
+  /** Tile on the map's edge where Newcomers arrive, or null on a map nobody immigrates to. */
+  entry: Tile | null;
 }
 
 /** A tree or other gatherable object standing on a tile. */

@@ -1,7 +1,9 @@
-// Villagers: naming them, and giving them a Job, a Workplace and that Job's task state.
+// Villagers: spawning and naming them, and giving them a Job, a Workplace and that Job's task state.
 import type { Content, JobId } from '@candlemarch/content';
+import { createEntity } from './entities';
+import { tileCenter } from './grid';
 import { randomInt } from './rng';
-import type { EntityId, GameState } from './state';
+import type { EntityId, GameState, Tile } from './state';
 
 /**
  * Draws a name for a new villager with the state's PRNG: one no living villager has, while any
@@ -55,4 +57,31 @@ export function assignJob(
   else if (type && content.buildings[type].recipes) {
     state.components.crafter[id] = { kind: 'idle', retryAt: 0 };
   }
+}
+
+/** Adds a villager with `job` at `tile`, with no Home and nothing in hand. */
+export function spawnVillager(
+  state: GameState,
+  content: Content,
+  job: JobId,
+  tile: Tile,
+  workplace: EntityId | null,
+): EntityId {
+  const name = drawVillagerName(state, content);
+  const id = createEntity(state);
+  state.components.villager[id] = {
+    name,
+    job,
+    workplace,
+    carrying: null,
+    home: null,
+    routine: 'work',
+    sleptTicks: 0,
+    tired: false,
+    missedMeals: 0,
+    coldNights: 0,
+  };
+  state.components.position[id] = tileCenter(tile);
+  assignJob(state, content, id, job, workplace);
+  return id;
 }

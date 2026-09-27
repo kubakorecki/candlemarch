@@ -189,6 +189,16 @@ export interface NeedsDef {
   };
 }
 
+/**
+ * Immigration, checked at each Dawn: one Newcomer arrives when a House has a free place, the
+ * Granaries hold at least `mealsPerHead` Meals for each villager plus the Newcomer, and the season
+ * isn't one of `closedSeasons` (roads snowed in).
+ */
+export interface ImmigrationDef {
+  mealsPerHead: number;
+  closedSeasons: SeasonId[];
+}
+
 /** Hunting grounds: forest regions holding Game, which logging drives away. */
 export interface HuntingDef {
   /** The map object a ground's forest is made of: felling one lowers the ground's ceiling. */
@@ -265,6 +275,7 @@ export interface Content {
   calendar: CalendarDef;
   needs: NeedsDef;
   hunting: HuntingDef;
+  immigration: ImmigrationDef;
   /** First names new villagers are drawn from. */
   villagerNames: readonly string[];
 }

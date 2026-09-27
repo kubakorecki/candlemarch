@@ -9,6 +9,7 @@ import { fishingSystem } from './systems/fishing';
 import { foragingSystem } from './systems/foraging';
 import { haulingSystem } from './systems/hauling';
 import { huntingSystem } from './systems/hunting';
+import { immigrationSystem } from './systems/immigration';
 import { movementSystem } from './systems/movement';
 import { patchesSystem } from './systems/patches';
 import { productionSystem } from './systems/production';
@@ -33,16 +34,17 @@ function cloneState(state: GameState): GameState {
  * 6. warmth: at a winter Dusk, Houses burn firewood or go cold; at Dawn, villagers count the
  *    night as warm or cold
  * 7. routine: at Dusk villagers finish what they hold, eat at a Granary and go Home to sleep; at
- *    Dawn back to work
- * 8. hero: works the player's order (chop, pick up, deliver)
- * 9. woodcutting
- * 10. fishing
- * 11. foraging
- * 12. hunting: hunters roll for a catch with the PRNG
- * 13. production: workshop crafters take inputs, work, and fill output buffers
- * 14. hauling (job dispatch)
- * 15. construction, by day only
- * 16. staffing: workplaces below their worker limit draft idle carriers
+ *    Dawn back to work (or starve, a Meal too many missed)
+ * 8. immigration: at Dawn, after its deaths, maybe one Newcomer arrives at the entry tile
+ * 9. hero: works the player's order (chop, pick up, deliver)
+ * 10. woodcutting
+ * 11. fishing
+ * 12. foraging
+ * 13. hunting: hunters roll for a catch with the PRNG
+ * 14. production: workshop crafters take inputs, work, and fill output buffers
+ * 15. hauling (job dispatch)
+ * 16. construction, by day only
+ * 17. staffing: workplaces below their worker limit draft idle carriers
  * then `tick` increments.
  */
 export function step(state: GameState, commands: readonly Command[], content: Content): GameState {
@@ -54,6 +56,7 @@ export function step(state: GameState, commands: readonly Command[], content: Co
   patchesSystem(next, content);
   warmthSystem(next, content);
   routineSystem(next, content);
+  immigrationSystem(next, content);
   heroSystem(next, content);
   woodcuttingSystem(next, content);
   fishingSystem(next, content);

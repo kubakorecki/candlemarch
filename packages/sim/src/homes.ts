@@ -32,6 +32,52 @@ export function residentsOf(state: GameState, house: EntityId): EntityId[] {
   return idsOf(villager).filter((id) => villager[id]?.home === house);
 }
 
+/** Free places in each House, by House ID; full Houses included, at 0. */
+function freePlaces(state: GameState, content: Content): Record<EntityId, number> {
+  const free: Record<EntityId, number> = {};
+  for (const house of idsOf(state.components.building)) {
+    const places = housePlaces(state, content, house);
+    if (places > 0) free[house] = places - residentsOf(state, house).length;
+  }
+  return free;
+}
+
+/**
+ * The House with a free place in `free` nearest `from` by walking cost over `grid`, ties to the
+ * lowest ID, or null when none can be walked to.
+ */
+function nearestFree(
+  state: GameState,
+  content: Content,
+  grid: Grid,
+  from: Tile,
+  free: Record<EntityId, number>,
+): EntityId | null {
+  const costs = travelCosts(grid, tileIndex(state.map, from.x, from.y));
+  let best: { house: EntityId; cost: number } | null = null;
+  for (const house of idsOf(free)) {
+    if ((free[house] ?? 0) <= 0) continue;
+    const door = entityDoor(state, content, house);
+    const cost = door
+      ? (costs[tileIndex(state.map, door.x, door.y)] as number)
+      : Number.POSITIVE_INFINITY;
+    if (cost !== Number.POSITIVE_INFINITY && (!best || cost < best.cost)) best = { house, cost };
+  }
+  return best?.house ?? null;
+}
+
+/**
+ * The House with a free place nearest `from` by walking cost, ties to the lowest ID, or null when
+ * no House with room can be walked to from there.
+ */
+export function nearestHouseWithRoom(
+  state: GameState,
+  content: Content,
+  from: Tile,
+): EntityId | null {
+  return nearestFree(state, content, walkGrid(state, content), from, freePlaces(state, content));
+}
+
 /**
  * Keeps Homes up to date. Residents of a House that's gone become Homeless. Then every Homeless
  * villager, in ID order, gets a free place in the House nearest by walking cost to its
@@ -39,40 +85,25 @@ export function residentsOf(state: GameState, house: EntityId): EntityId[] {
  * House with room can be walked to stays Homeless.
  */
 export function homesSystem(state: GameState, content: Content): void {
-  const { villager, building } = state.components;
+  const { villager } = state.components;
   for (const id of idsOf(villager)) {
     const v = villager[id];
     if (v && v.home !== null && housePlaces(state, content, v.home) === 0) v.home = null;
   }
 
-  const free: Record<EntityId, number> = {};
-  for (const house of idsOf(building)) {
-    const places = housePlaces(state, content, house);
-    if (places > 0) free[house] = places - residentsOf(state, house).length;
-  }
-  const houses = idsOf(free);
-
+  const free = freePlaces(state, content);
   let grid: Grid | null = null;
   for (const id of idsOf(villager)) {
     const v = villager[id];
     if (!v || v.home !== null) continue;
-    const open = houses.filter((h) => (free[h] ?? 0) > 0);
-    if (open.length === 0) return;
+    if (!idsOf(free).some((h) => (free[h] ?? 0) > 0)) return;
     const from =
       v.workplace !== null ? entityDoor(state, content, v.workplace) : villagerTile(state, id);
     if (!from) continue;
     grid ??= walkGrid(state, content);
-    const costs = travelCosts(grid, tileIndex(state.map, from.x, from.y));
-    let best: { house: EntityId; cost: number } | null = null;
-    for (const house of open) {
-      const door = entityDoor(state, content, house);
-      const cost = door
-        ? (costs[tileIndex(state.map, door.x, door.y)] as number)
-        : Number.POSITIVE_INFINITY;
-      if (cost !== Number.POSITIVE_INFINITY && (!best || cost < best.cost)) best = { house, cost };
-    }
-    if (!best) continue;
-    v.home = best.house;
-    free[best.house] = (free[best.house] ?? 0) - 1;
+    const house = nearestFree(state, content, grid, from, free);
+    if (house === null) continue;
+    v.home = house;
+    free[house] = (free[house] ?? 0) - 1;
   }
 }

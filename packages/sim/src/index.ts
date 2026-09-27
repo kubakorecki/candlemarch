@@ -32,6 +32,7 @@ export { deserialize, serialize } from './save';
 export * from './state';
 export { step } from './step';
 export { canPlaceStockpile, isStockpileGood, STOCKPILE_PRIORITIES } from './stockpiles';
+export { immigrationFoodNeeded, newcomerHome } from './systems/immigration';
 export { openPositions } from './systems/staffing';
 export { isColdHouse } from './warmth';
 export { maxWorkers, reassignTargets, workersAt } from './workers';

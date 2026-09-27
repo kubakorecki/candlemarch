@@ -3,6 +3,7 @@ import { buildings } from './buildings';
 import { calendar } from './calendar';
 import { heroes } from './heroes';
 import { hunting } from './hunting';
+import { immigration } from './immigration';
 import { jobs } from './jobs';
 import { logistics } from './logistics';
 import { mapObjects } from './mapObjects';
@@ -29,5 +30,6 @@ export const content: Content = {
   calendar,
   needs,
   hunting,
+  immigration,
   villagerNames,
 };

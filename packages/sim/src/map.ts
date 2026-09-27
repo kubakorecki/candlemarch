@@ -12,15 +12,17 @@ import { createEntity } from './entities';
 import { canPlaceBuilding, doorTile, fitsAt, isWalkableTerrain, tileCenter } from './grid';
 import { standingTrees } from './huntingGrounds';
 import { seedRng } from './rng';
-import { type EntityId, type GameState, STATE_VERSION, type Tile } from './state';
+import { type GameState, STATE_VERSION } from './state';
 import { canPlaceStockpile, placeStockpile } from './stockpiles';
-import { assignJob, drawVillagerName } from './villagers';
+import { spawnVillager } from './villagers';
 import { maxWorkers } from './workers';
 
 export interface MapDef {
   name: string;
   /** One string per row, all the same length. See `MAP_LEGEND`. */
   rows: string[];
+  /** Tile on the map's edge where Newcomers arrive. Without one, nobody immigrates. */
+  entry?: { x: number; y: number };
   /** Buildings standing at map start, by origin tile. */
   buildings: { type: BuildingId; x: number; y: number }[];
   /** Construction sites at map start, by origin tile. */
@@ -51,32 +53,6 @@ export const MAP_LEGEND: Record<
   '~': { terrain: 'river' },
 };
 
-function spawnVillager(
-  state: GameState,
-  content: Content,
-  job: JobId,
-  tile: Tile,
-  workplace: EntityId | null,
-): EntityId {
-  const name = drawVillagerName(state, content);
-  const id = createEntity(state);
-  state.components.villager[id] = {
-    name,
-    job,
-    workplace,
-    carrying: null,
-    home: null,
-    routine: 'work',
-    sleptTicks: 0,
-    tired: false,
-    missedMeals: 0,
-    coldNights: 0,
-  };
-  state.components.position[id] = tileCenter(tile);
-  assignJob(state, content, id, job, workplace);
-  return id;
-}
-
 /**
  * A game state with an empty 0×0 map and no entities. `createInitialState` builds on it, and
  * loading fills gaps in older saves from it.
@@ -87,7 +63,7 @@ export function createEmptyState(seed: number): GameState {
     tick: 0,
     rng: seedRng(seed),
     nextId: 1,
-    map: { width: 0, height: 0, terrain: [], roads: {} },
+    map: { width: 0, height: 0, terrain: [], roads: {}, entry: null },
     components: {
       tile: {},
       mapObject: {},
@@ -121,7 +97,7 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
   if (width === 0) throw new Error(`map ${map.name}: empty`);
 
   const state = createEmptyState(seed);
-  state.map = { width, height, terrain: [], roads: {} };
+  state.map = { width, height, terrain: [], roads: {}, entry: null };
 
   map.rows.forEach((row, y) => {
     if (row.length !== width) throw new Error(`map ${map.name}: row ${y} has length ${row.length}`);
@@ -141,6 +117,15 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
       }
     });
   });
+
+  if (map.entry) {
+    const { x, y } = map.entry;
+    const onEdge = x === 0 || y === 0 || x === width - 1 || y === height - 1;
+    if (!onEdge || !isWalkableTerrain(state, content, { x, y })) {
+      throw new Error(`map ${map.name}: entry ${x},${y} isn't walkable terrain on the map's edge`);
+    }
+    state.map.entry = { x, y };
+  }
 
   for (const b of map.buildings) {
     if (!fitsAt(state, content, b.type, b.x, b.y)) {

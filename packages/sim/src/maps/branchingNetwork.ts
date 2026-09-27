@@ -5,6 +5,7 @@ import type { MapDef } from '../map';
  * and (27,6) on a road along row 6. From (16,6) a road runs south to (16,16), next to a 3×3
  * stockpile at (17,15). From (16,11) on the way, a branch runs west to the door (10,11) of a hut
  * site at (10,10). Five Carriers.
+ * Newcomers enter at (16,19).
  */
 export const branchingNetworkMap: MapDef = {
   name: 'branchingNetwork',
@@ -30,6 +31,7 @@ export const branchingNetworkMap: MapDef = {
     '................................',
     '................................',
   ],
+  entry: { x: 16, y: 19 },
   buildings: [
     { type: 'woodcutters_hut', x: 3, y: 4 },
     { type: 'woodcutters_hut', x: 26, y: 4 },

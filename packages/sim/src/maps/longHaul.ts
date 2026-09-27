@@ -3,6 +3,7 @@ import type { MapDef } from '../map';
 /**
  * Long haul, 40×14: a woodcutter's hut at (3,5) with its door (4,7) on a 30-tile path east to
  * (33,7), next to a 3×3 stockpile at (34,6). Three Carriers.
+ * Newcomers enter at (0,10).
  */
 export const longHaulMap: MapDef = {
   name: 'longHaul',
@@ -22,6 +23,7 @@ export const longHaulMap: MapDef = {
     '........................................',
     '........................................',
   ],
+  entry: { x: 0, y: 10 },
   buildings: [{ type: 'woodcutters_hut', x: 3, y: 5 }],
   stockpiles: [{ x: 34, y: 6, w: 3, h: 3 }],
   villagers: [

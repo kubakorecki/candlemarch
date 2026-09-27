@@ -97,11 +97,33 @@ describe('createInitialState with roads, stockpiles and sites', () => {
     const onHut = { ...yard, sites: [{ type: 'hut' as const, x: 1, y: 1 }] };
     expect(() => createInitialState(1, onHut, content)).toThrow(/site/);
   });
+
+  it('keeps the entry tile, which must be walkable and on the edge', () => {
+    const base: MapDef = { name: 'e', rows: ['...', '.~.', '~..'], buildings: [], villagers: [] };
+    expect(createInitialState(1, base, content).map.entry).toBeNull();
+    expect(createInitialState(1, { ...base, entry: { x: 2, y: 1 } }, content).map.entry).toEqual({
+      x: 2,
+      y: 1,
+    });
+    expect(() => createInitialState(1, { ...base, entry: { x: 1, y: 1 } }, content)).toThrow(
+      /entry/,
+    );
+    expect(() => createInitialState(1, { ...base, entry: { x: 0, y: 2 } }, content)).toThrow(
+      /entry/,
+    );
+    expect(() => createInitialState(1, { ...base, entry: { x: 3, y: 0 } }, content)).toThrow(
+      /entry/,
+    );
+  });
 });
 
 describe('maps', () => {
   it.each(Object.entries(maps))('%s is listed under its name and builds', (name, map) => {
     expect(map.name).toBe(name);
     expect(() => createInitialState(1, map, content)).not.toThrow();
+  });
+
+  it.each(Object.entries(maps))('%s has an entry for Newcomers', (_, map) => {
+    expect(createInitialState(1, map, content).map.entry).not.toBeNull();
   });
 });
