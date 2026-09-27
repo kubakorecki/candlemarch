@@ -21,7 +21,7 @@ import {
 } from './logistics/jobDispatch';
 import { inputRoom } from './logistics/supplyDemand';
 import type { EntityId, GameState, HeroComponent, HeroTask, Tile } from './state';
-import { addToTile, amountOnTile, takeFromTile } from './stockpiles';
+import { addToTile, amountOnTile, stockpileTakes, takeFromTile } from './stockpiles';
 import { isAt, rerouteTo, stopAtNextTile, villagerTile } from './systems/movement';
 
 /** An order for the hero, given by right-clicking. */
@@ -56,8 +56,8 @@ function treeStandingTiles(state: GameState, content: Content, tree: EntityId): 
  * - move: walk to the tile by the quickest route (roads included).
  * - gather: walk next to the tree and chop it until it's gone or the hero's hands are full.
  * - deliver: carry what's in hand to a site that still needs it or a workshop whose input buffer
- *   has room for it, once carriers' hauls are counted, or to a stockpile with room that doesn't
- *   refuse it. The hero promises a site or workshop what it will bring, and carriers count that
+ *   has room for it, once carriers' hauls are counted, or to a stockpile with room that takes it
+ *   (never Food). The hero promises a site or workshop what it will bring, and carriers count that
  *   as incoming.
  * - pickup: take goods no carrier has claimed from a building's output buffer or a stockpile,
  *   as many as the hero's hands still hold.
@@ -376,7 +376,7 @@ export function heroSystem(state: GameState, content: Content): void {
 
 /**
  * The tile of stockpile `pile` nearest the hero with room for `resource` once carriers' promised
- * deliveries are counted, ties to the lowest tile index; null if none or the pile refuses it.
+ * deliveries are counted, ties to the lowest tile index; null if none or the pile doesn't take it.
  */
 function pileTileWithRoom(
   state: GameState,
@@ -386,7 +386,8 @@ function pileTileWithRoom(
 ): number | null {
   const id = heroOf(state);
   const here = id === null ? null : villagerTile(state, id);
-  if (!here || state.components.stockpile[pile]?.refuses.includes(resource)) return null;
+  const stockpile = state.components.stockpile[pile];
+  if (!here || !stockpile || !stockpileTakes(content, stockpile, resource)) return null;
   const found = nearestTile(
     state.map.width,
     stockpileTileIndices(state, pile),

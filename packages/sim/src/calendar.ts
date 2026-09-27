@@ -59,6 +59,11 @@ export function duskTick(day: number, content: Content): number {
   return dawnTick(day, content) + daylightTicks(day, content);
 }
 
+/** Whether the river is frozen at `tick`: all through a season marked so, such as winter. */
+export function isRiverFrozen(tick: number, content: Content): boolean {
+  return seasonOfDay(calendarAt(tick, content).day, content).riverFrozen;
+}
+
 /** `tick` is exactly a Dawn. */
 export function isDawn(tick: number, content: Content): boolean {
   return tick % content.calendar.dayTicks === 0;

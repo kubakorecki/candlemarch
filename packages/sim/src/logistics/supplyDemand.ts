@@ -3,7 +3,7 @@ import type { Content, ResourceId } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { stockpileTileIndices } from '../grid';
 import type { EntityId, GameState } from '../state';
-import { amountOnTile, roomOnTile, STOCKPILE_PRIORITIES } from '../stockpiles';
+import { amountOnTile, roomOnTile, STOCKPILE_PRIORITIES, stockpileTakes } from '../stockpiles';
 import { isPaused } from '../systems/production';
 
 /** Goods waiting in a building's output buffer or on a stockpile. */
@@ -76,7 +76,7 @@ export function listSupplies(state: GameState, content: Content): Supply[] {
 /**
  * Missing materials of every construction site (oldest site first, costs in content order), then
  * room in the input buffer of every workshop that isn't paused (oldest first, buffer slots in
- * content order), then room on every stockpile that doesn't refuse the resource (oldest first,
+ * content order), then room on every stockpile for each resource it takes (oldest first,
  * resources in content order).
  */
 export function listDemands(state: GameState, content: Content): Demand[] {
@@ -105,7 +105,7 @@ export function listDemands(state: GameState, content: Content): Demand[] {
     const pile = state.components.stockpile[id];
     if (!pile) continue;
     for (const resource of resourceIds(content)) {
-      if (pile.refuses.includes(resource)) continue;
+      if (!stockpileTakes(content, pile, resource)) continue;
       let room = 0;
       for (const i of stockpileTileIndices(state, id))
         room += roomOnTile(pile, i, resource, capacity);

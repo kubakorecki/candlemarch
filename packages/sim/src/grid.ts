@@ -171,8 +171,8 @@ export function tilesUnderStockpiles(state: GameState): Set<number> {
 /**
  * Whether a building of this type fits with its origin at (x, y): every footprint tile is in
  * bounds, buildable, and free of trees, roads, stockpiles, other footprints and other doors; its
- * door tile is in bounds, walkable, not blocked and not on a stockpile (it may be on a road).
- * Doesn't check whether the player may place this type.
+ * door tile is in bounds, walkable, not blocked and not on a stockpile (it may be on a road), and
+ * on a riverbank if the type needs one. Doesn't check whether the player may place this type.
  */
 export function fitsAt(
   state: GameState,
@@ -201,6 +201,7 @@ export function fitsAt(
   const door = doorTile(def, { x, y });
   if (!inBounds(map, door.x, door.y)) return false;
   const doorIndex = tileIndex(map, door.x, door.y);
+  if (def.doorOnRiverbank && !isRiverbank(state, content, door)) return false;
   return blocked[doorIndex] === 0 && !piles.has(doorIndex);
 }
 

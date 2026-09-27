@@ -60,6 +60,13 @@ export const TOOLS: readonly {
     drag: false,
     hint: 'Click to place. Shift-click places more.',
   },
+  {
+    id: 'fishers_hut',
+    label: "Fisher's hut",
+    key: 'f',
+    drag: false,
+    hint: 'Click to place with its door on the riverbank. Shift-click places more.',
+  },
   { id: 'path', label: 'Path', key: 'r', drag: true, hint: 'Drag to lay an L-shaped path.' },
   { id: 'removePath', label: 'Remove path', key: 'x', drag: true, hint: 'Drag to remove path.' },
   { id: 'stockpile', label: 'Stockpile', key: 's', drag: true, hint: 'Drag a rectangle.' },

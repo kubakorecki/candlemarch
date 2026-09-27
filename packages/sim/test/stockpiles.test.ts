@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Command } from '../src/commands';
 import { idsOf } from '../src/entities';
 import { blockedGrid, canPlaceBuilding, tileAt, tileIndex } from '../src/grid';
+import { heroOrderAt } from '../src/hero';
 import { createInitialState, type MapDef } from '../src/map';
 import { canLayPath } from '../src/roads';
 import type { GameState, StockpileComponent } from '../src/state';
@@ -383,5 +384,51 @@ describe('removeStockpile', () => {
     const removed = step(carrying, [{ type: 'removeStockpile', id: pile }], content);
     const back = runUntil(removed, (s) => !carrierOf(s).haul, 500);
     expect(hutStock(back)).toBe(1);
+  });
+});
+
+describe('what stockpiles store', () => {
+  /** The bare yard with `logs` in the hut's buffer, a 1×2 stockpile at (4,4) and the hero at (8,6). */
+  function withHero(logs: number): { s: GameState; pile: number; hero: number } {
+    const s0 = createInitialState(1, { ...bare, hero: { x: 8, y: 6 } }, content);
+    const hutId = idsOf(s0.components.building)[0] as number;
+    s0.components.building[hutId] = { type: 'woodcutters_hut', stock: { logs }, input: {} };
+    const s = step(s0, [{ type: 'placeStockpile', x: 4, y: 4, w: 1, h: 2 }], content);
+    return {
+      s,
+      pile: idsOf(s.components.stockpile)[0] as number,
+      hero: idsOf(s.components.hero)[0] as number,
+    };
+  }
+
+  it('hold every stockpile resource, one resource per tile', () => {
+    const { s: s0, pile, hero } = withHero(3);
+    // Carriers bring the logs to (4,4), nearest the hut; the hero brings firewood by hand.
+    const h = s0.components.hero[hero];
+    if (h) h.carrying = { resource: 'firewood', amount: 2 };
+    const s = runUntil(s0, (st) => pileTotal(st, pile) === 5, 2000, {
+      [s0.tick + 40]: [{ type: 'orderHero', order: 'deliver', target: pile }],
+    });
+    expect(goodsOf(s, pile)).toEqual({ '4,4': 'logs 3', '4,5': 'firewood 2' });
+  });
+
+  it('refuse Food, whatever their settings', () => {
+    const { s: s0, pile, hero } = withHero(0);
+    const h = s0.components.hero[hero];
+    if (h) h.carrying = { resource: 'fish', amount: 2 };
+    expect(heroOrderAt(s0, content, { x: 4, y: 4 })).toBeNull();
+
+    const s = run(s0, 2, {
+      [s0.tick]: [{ type: 'setStockpileAccepts', id: pile, resource: 'fish', accepts: true }],
+      [s0.tick + 1]: [{ type: 'orderHero', order: 'deliver', target: pile }],
+    });
+    expect(s.components.hero[hero]?.order).toBeNull();
+    expect(s.components.stockpile[pile]?.refuses).toEqual([]);
+    const refused = step(
+      s,
+      [{ type: 'setStockpileAccepts', id: pile, resource: 'fish', accepts: false }],
+      content,
+    );
+    expect(refused.components.stockpile[pile]?.refuses).toEqual([]);
   });
 });

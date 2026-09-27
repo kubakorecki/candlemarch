@@ -67,6 +67,20 @@ export function removeStockpile(state: GameState, id: EntityId): void {
   if (state.components.stockpile[id]) destroyEntity(state, id);
 }
 
+/** Whether `resource` is stored on Stockpiles at all. Food never is. */
+export function isStockpileGood(content: Content, resource: ResourceId): boolean {
+  return content.resources[resource]?.storage === 'stockpile';
+}
+
+/** Whether a stockpile takes more of `resource`: it's a stockpile good the pile doesn't refuse. */
+export function stockpileTakes(
+  content: Content,
+  pile: StockpileComponent,
+  resource: ResourceId,
+): boolean {
+  return isStockpileGood(content, resource) && !pile.refuses.includes(resource);
+}
+
 /** Units of `resource` on stockpile tile `index`. */
 export function amountOnTile(
   pile: StockpileComponent,

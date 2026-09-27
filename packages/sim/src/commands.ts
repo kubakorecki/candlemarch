@@ -5,7 +5,12 @@ import { canPlaceBuilding } from './grid';
 import { type HeroOrder, orderHero } from './hero';
 import { layPath, removePath } from './roads';
 import type { EntityId, GameState, StockpilePriority, Tile } from './state';
-import { placeStockpile, removeStockpile, STOCKPILE_PRIORITIES } from './stockpiles';
+import {
+  isStockpileGood,
+  placeStockpile,
+  removeStockpile,
+  STOCKPILE_PRIORITIES,
+} from './stockpiles';
 
 export type Command =
   | { type: 'placeBuilding'; building: BuildingId; x: number; y: number }
@@ -58,7 +63,8 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'setStockpileAccepts': {
       const pile = state.components.stockpile[command.id];
-      if (!pile || !(command.resource in content.resources)) return;
+      // Food never goes to a Stockpile, so there's nothing to accept or refuse.
+      if (!pile || !isStockpileGood(content, command.resource)) return;
       const others = pile.refuses.filter((r) => r !== command.resource);
       // Kept in content order, so the same choices always give the same state.
       const refused = command.accepts ? others : [...others, command.resource];

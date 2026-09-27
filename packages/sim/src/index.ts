@@ -8,6 +8,7 @@ export {
   isDawn,
   isDusk,
   isNight,
+  isRiverFrozen,
 } from './calendar';
 export type { Command } from './commands';
 export { idsOf } from './entities';
@@ -20,5 +21,5 @@ export { canLayPath, lShapeTiles, roadNeighbours } from './roads';
 export { deserialize, serialize } from './save';
 export * from './state';
 export { step } from './step';
-export { canPlaceStockpile, STOCKPILE_PRIORITIES } from './stockpiles';
+export { canPlaceStockpile, isStockpileGood, STOCKPILE_PRIORITIES } from './stockpiles';
 export { openPositions } from './systems/staffing';

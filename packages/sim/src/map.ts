@@ -83,6 +83,7 @@ export function createEmptyState(seed: number): GameState {
       path: {},
       woodcutter: {},
       crafter: {},
+      fisher: {},
     },
     logistics: { hauls: {} },
   };

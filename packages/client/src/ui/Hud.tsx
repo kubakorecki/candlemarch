@@ -1,5 +1,5 @@
 import { content, type ResourceId } from '@candlemarch/content';
-import { STOCKPILE_PRIORITIES, type StockpilePriority } from '@candlemarch/sim';
+import { isStockpileGood, STOCKPILE_PRIORITIES, type StockpilePriority } from '@candlemarch/sim';
 import { useSyncExternalStore } from 'react';
 import { SPEEDS, type Speed } from '../game/clock';
 import { type Game, TOOLS } from '../game/Game';
@@ -9,7 +9,10 @@ const PRIORITY_LABELS: Record<StockpilePriority, string> = {
   normal: 'Normal',
   low: 'Low',
 };
-const RESOURCE_IDS = Object.keys(content.resources) as ResourceId[];
+/** Resources a stockpile can take or refuse; Food never goes on one. */
+const STOCKPILE_RESOURCES = (Object.keys(content.resources) as ResourceId[]).filter((r) =>
+  isStockpileGood(content, r),
+);
 
 const SPEED_LABELS: Record<Speed, string> = { 0: '⏸', 1: '1×', 2: '2×', 3: '3×' };
 
@@ -63,7 +66,7 @@ export function Hud({ game }: { game: Game }) {
                 ))}
               </span>
             </div>
-            {RESOURCE_IDS.map((resource) => (
+            {STOCKPILE_RESOURCES.map((resource) => (
               <label key={resource} className="row">
                 <span className="muted">
                   Takes {content.resources[resource].name.toLowerCase()}

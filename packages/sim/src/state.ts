@@ -63,7 +63,7 @@ export interface SiteComponent {
   /** The building this site turns into. */
   type: BuildingId;
   delivered: ResourceAmounts;
-  /** Ticks of building done so far. Advances only once every cost is delivered. */
+  /** Ticks of building done so far. Advances only by day, once every cost is delivered. */
   buildProgress: number;
 }
 
@@ -141,6 +141,9 @@ export type CrafterTask =
   | { kind: 'idle'; retryAt: number }
   | { kind: 'working'; recipe: RecipeId; ticksLeft: number };
 
+/** A fisher: waits at its Workplace's door, on the riverbank, and fishes there. */
+export type FisherTask = { kind: 'idle'; retryAt: number } | { kind: 'fishing'; ticksLeft: number };
+
 export interface Components {
   /** Anchor tile of static things: map objects, buildings, construction sites, stockpiles. */
   tile: Store<Tile>;
@@ -154,6 +157,7 @@ export interface Components {
   path: Store<PathComponent>;
   woodcutter: Store<WoodcutterTask>;
   crafter: Store<CrafterTask>;
+  fisher: Store<FisherTask>;
 }
 
 export interface GameState {

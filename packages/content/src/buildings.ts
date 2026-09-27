@@ -15,6 +15,22 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 200, // 10 s
     },
   },
+  fishers_hut: {
+    id: 'fishers_hut',
+    name: "Fisher's hut",
+    // 1×1 with the door straight ahead, so either bank of a north-south river fits it.
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    doorOnRiverbank: true,
+    employs: [{ job: 'fisher', count: 1 }],
+    fishes: { catchTicks: 400, yieldPerCatch: 1 }, // 20 s a fish
+    outputBuffer: { resource: 'fish', capacity: 4 },
+    construction: {
+      cost: [{ resource: 'logs', amount: 6 }],
+      buildTicks: 200, // 10 s
+    },
+  },
   hut: {
     id: 'hut',
     name: 'Hut',

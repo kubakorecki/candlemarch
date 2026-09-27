@@ -10,6 +10,8 @@ export const palette = {
   grassLine: 0x4f5638,
 
   river: 0x4d6670,
+  ice: 0xa9b8bc,
+  iceCrack: 0x6f8389,
 
   trunk: 0x5c4431,
   canopy: 0x4b5a37,
@@ -35,9 +37,12 @@ export const palette = {
   logEnd: 0xc9a06d,
   firewood: 0xa27a4f,
   firewoodEnd: 0xd8b98a,
+  fish: 0x7d8a8c,
+  fishBelly: 0xb9b8a4,
 
   woodcutter: 0x7e5436,
   woodsplitter: 0x6f5a3a,
+  fisher: 0x4f6a6e,
   carrier: 0x5a6570,
   skin: 0xd6b48e,
   axeHead: 0x9aa0a3,

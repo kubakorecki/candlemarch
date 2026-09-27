@@ -171,4 +171,23 @@ describe('content validation', () => {
       expect(b.outputBuffer?.resource).toBe(mapObjects[b.gathers].resource);
     }
   });
+
+  it('a fishing building fishes from a riverbank into a buffer that holds a catch', () => {
+    for (const b of Object.values(buildings)) {
+      if (b.fishes === undefined) continue;
+      expectPositiveInt(b.fishes.catchTicks, `${b.id}.fishes.catchTicks`);
+      expectPositiveInt(b.fishes.yieldPerCatch, `${b.id}.fishes.yieldPerCatch`);
+      expect(b.doorOnRiverbank, `${b.id}.doorOnRiverbank`).toBe(true);
+      expect(b.employs.length, `${b.id} employs someone`).toBeGreaterThan(0);
+      expect(b.outputBuffer?.capacity ?? 0, `${b.id} holds a catch`).toBeGreaterThanOrEqual(
+        b.fishes.yieldPerCatch,
+      );
+    }
+  });
+
+  it('every resource has a known store', () => {
+    for (const r of Object.values(resources)) {
+      expect(['stockpile', 'granary'], `${r.id}.storage`).toContain(r.storage);
+    }
+  });
 });

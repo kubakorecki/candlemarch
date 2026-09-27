@@ -1,6 +1,6 @@
 # Stockpiles for all bulk goods
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: m1-roads-logistics/05
 
@@ -14,3 +14,7 @@ Blocked by: m1-roads-logistics/05
 
 - Headless test: two resources share a stockpile on different tiles; food is refused.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-27 — Done: content resources have `storage` (`stockpile` or `granary`); `stockpileTakes` gates carrier demands and hero deliveries, so Food never goes on a Stockpile, and `setStockpileAccepts` and the HUD ignore Food. `fish` is the first Food, added here so the refusal could be tested. Tests: logs and firewood on one pile on separate tiles; Food refused by the hero, the accepts command and (in `fishing.test.ts`) carriers.

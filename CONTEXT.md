@@ -55,7 +55,7 @@ One delivery by a Carrier: pick up goods at one building and drop them at anothe
 _Avoid_: Job (a Job is what a villager does), task, delivery
 
 **Stockpile**:
-An open-air patch of land, marked as bare dirt, where goods are stored. Each tile holds a fixed amount.
+An open-air patch of land, marked as bare dirt, where bulk goods (logs, firewood, stone, clay, hides) are stored. Each tile holds a fixed amount of one resource. Food never goes on one; it goes to a Granary.
 _Avoid_: Warehouse, depot, storage zone
 
 ### People
@@ -129,6 +129,10 @@ _Avoid_: Wildlife, animals (as a count)
 **Forage patch**:
 A berry bush or mushroom patch in the forest, where foragers gather Food. It refills each season only while a standing tree is near enough to shade it.
 _Avoid_: Bush (alone), forage tree
+
+**Riverbank**:
+A land tile right next to the river (north, east, south or west). A fisher's hut must have its door on one. The river freezes in winter, and nobody fishes then.
+_Avoid_: Shore, river edge
 
 ### Resources
 

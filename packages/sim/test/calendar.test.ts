@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { calendarAt, dawnTick, duskTick, isDawn, isDusk, isNight } from '../src/calendar';
+import {
+  calendarAt,
+  dawnTick,
+  duskTick,
+  isDawn,
+  isDusk,
+  isNight,
+  isRiverFrozen,
+} from '../src/calendar';
 import { content } from './helpers';
 
 // Content numbers: a day is 3600 ticks, 5 days per season. Nights are 1200 ticks, 1800 in winter.
@@ -94,8 +102,8 @@ describe('calendar', () => {
         dayTicks: 100,
         daysPerSeason: 2,
         seasons: [
-          { id: 'winter' as const, name: 'Winter', nightTicks: 60 },
-          { id: 'summer' as const, name: 'Summer', nightTicks: 20 },
+          { id: 'winter' as const, name: 'Winter', nightTicks: 60, riverFrozen: false },
+          { id: 'summer' as const, name: 'Summer', nightTicks: 20, riverFrozen: true },
         ],
       },
     };
@@ -103,5 +111,8 @@ describe('calendar', () => {
     expect(duskTick(1, short)).toBe(40);
     expect(duskTick(3, short)).toBe(280);
     expect(calendarAt(400, short)).toMatchObject({ day: 5, year: 2, season: 'winter' });
+    // Frozen by the season's flag, whatever it's called.
+    expect(isRiverFrozen(199, short)).toBe(false);
+    expect(isRiverFrozen(200, short)).toBe(true);
   });
 });

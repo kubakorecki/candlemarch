@@ -37,13 +37,15 @@ export function diamond(x: number, y: number, w = 1, h = 1): [Vec, Vec, Vec, Vec
 
 /**
  * The whole map: checkered grass tiles, faint grid lines, an earthen front edge, and river tiles
- * as flat water outlined in ink where they meet land. `terrain` is row-major, as in the sim.
+ * as flat water outlined in ink where they meet land, or pale cracked ice when `frozen`.
+ * `terrain` is row-major, as in the sim.
  */
 export function drawGround(
   g: Graphics,
   width: number,
   height: number,
   terrain: readonly TerrainId[],
+  frozen: boolean,
 ): void {
   const onMap = (x: number, y: number) => x >= 0 && y >= 0 && x < width && y < height;
   const isRiver = (x: number, y: number) => onMap(x, y) && terrain[y * width + x] === 'river';
@@ -79,8 +81,22 @@ export function drawGround(
   // Water over the grid lines, then an ink edge on every side that borders land.
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (isRiver(x, y)) g.poly(flat(diamond(x, y))).fill(palette.river);
+      if (isRiver(x, y)) g.poly(flat(diamond(x, y))).fill(frozen ? palette.ice : palette.river);
     }
+  }
+  if (frozen) {
+    // A crack across each ice tile, bent differently tile to tile so the sheet doesn't look tiled.
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (!isRiver(x, y)) continue;
+        const bend = ((x * 7 + y * 3) % 5) / 10 + 0.3;
+        const a = gridToWorld(x + 0.2, y + bend);
+        const b = gridToWorld(x + 0.5, y + 1 - bend);
+        const c = gridToWorld(x + 0.8, y + 0.5);
+        g.moveTo(a.x, a.y).lineTo(b.x, b.y).lineTo(c.x, c.y);
+      }
+    }
+    g.stroke({ width: 1.5, color: palette.iceCrack, alpha: 0.8 });
   }
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -155,6 +171,18 @@ function drawFirewood(g: Graphics, x: number, y: number, s: number): void {
     .stroke(THIN_INK);
 }
 
+/** One fish lying on its side, centred on (x, y), head to the right. */
+function drawFish(g: Graphics, x: number, y: number, s: number): void {
+  g.poly([x - 11 * s, y - 4 * s, x - 6 * s, y, x - 11 * s, y + 4 * s])
+    .fill(palette.fish)
+    .stroke(THIN_INK);
+  g.ellipse(x + 2 * s, y, 9 * s, 4 * s)
+    .fill(palette.fish)
+    .stroke(THIN_INK);
+  g.ellipse(x + 2 * s, y + 1.5 * s, 6 * s, 1.5 * s).fill(palette.fishBelly);
+  g.circle(x + 7 * s, y - 1 * s, 1 * s).fill(palette.ink);
+}
+
 /** How each resource is drawn as one piece, and the spacing of its pieces in a pile. */
 const PIECES: Record<
   ResourceId,
@@ -162,6 +190,7 @@ const PIECES: Record<
 > = {
   logs: { draw: drawLog, w: 20, h: 8 },
   firewood: { draw: drawFirewood, w: 16, h: 7 },
+  fish: { draw: drawFish, w: 20, h: 7 },
 };
 
 /** A pyramid of `count` pieces of `resource` whose bottom row is centred on (x, y). */

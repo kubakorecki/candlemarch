@@ -6,6 +6,7 @@ import {
   type GameState,
   heroOf,
   idsOf,
+  isRiverFrozen,
   openPositions,
   type Point,
   type Tile,
@@ -59,6 +60,7 @@ const JOB_COLORS: Record<JobId, number> = {
   carrier: palette.carrier,
   woodcutter: palette.woodcutter,
   woodsplitter: palette.woodsplitter,
+  fisher: palette.fisher,
 };
 
 interface VillagerView {
@@ -186,9 +188,10 @@ export class WorldRenderer {
   syncStatics(state: GameState): void {
     const { map } = state;
     // Terrain is in the key: a new game or a load can bring a same-sized map with other terrain.
-    const groundKey = `${map.width}x${map.height}:${map.terrain.join()}`;
+    const frozen = isRiverFrozen(state.tick, this.content);
+    const groundKey = `${map.width}x${map.height}:${frozen}:${map.terrain.join()}`;
     if (groundKey !== this.groundKey) {
-      drawGround(this.ground, map.width, map.height, map.terrain);
+      drawGround(this.ground, map.width, map.height, map.terrain, frozen);
       this.groundKey = groundKey;
     }
 

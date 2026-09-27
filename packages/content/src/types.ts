@@ -1,11 +1,11 @@
 // ID unions and definition shapes. IDs are string literal unions so a typo is a type error.
 
-export type ResourceId = 'logs' | 'firewood';
+export type ResourceId = 'logs' | 'firewood' | 'fish';
 export type RecipeId = 'split_logs';
 export type TerrainId = 'grass' | 'river';
 export type MapObjectId = 'tree';
-export type BuildingId = 'woodcutters_hut' | 'hut' | 'chopping_block';
-export type JobId = 'woodcutter' | 'carrier' | 'woodsplitter';
+export type BuildingId = 'woodcutters_hut' | 'hut' | 'chopping_block' | 'fishers_hut';
+export type JobId = 'woodcutter' | 'carrier' | 'woodsplitter' | 'fisher';
 export type RoadId = 'dirt_path';
 export type HeroId = 'placeholder';
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
@@ -16,9 +16,16 @@ export interface ResourceAmount {
   amount: number;
 }
 
+/**
+ * Where the village stores a resource: on Stockpiles (bulk goods), or in a Granary (Food, which
+ * never goes to a Stockpile). More stores come later.
+ */
+export type ResourceStorage = 'stockpile' | 'granary';
+
 export interface ResourceDef {
   id: ResourceId;
   name: string;
+  storage: ResourceStorage;
 }
 
 export interface TerrainDef {
@@ -100,6 +107,8 @@ export interface SeasonDef {
   name: string;
   /** Ticks of night at the end of each of its days, from Dusk to the next Dawn. */
   nightTicks: number;
+  /** The river is frozen all season: no fishing. */
+  riverFrozen: boolean;
 }
 
 /** Days, nights and seasons. A day runs from Dawn to Dawn; night is its last `nightTicks`. */
@@ -124,6 +133,13 @@ export interface BuildingDef {
   employs: { job: JobId; count: number }[];
   /** Map object its workers gather from, if any. */
   gathers?: MapObjectId;
+  /**
+   * Its workers fish at its door, putting each catch in the output buffer. Fish never run out;
+   * fishing stops while the river is frozen.
+   */
+  fishes?: { catchTicks: number; yieldPerCatch: number };
+  /** Its door must be on a riverbank tile. */
+  doorOnRiverbank?: boolean;
   /** Where its workers drop what they produce, if anything. */
   outputBuffer?: { resource: ResourceId; capacity: number };
   /** Recipes its workers work through, in order of preference. Makes the building a workshop. */
