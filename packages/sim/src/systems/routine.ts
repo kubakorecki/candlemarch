@@ -1,9 +1,11 @@
-// The daily routine. At Dusk villagers finish what they hold, walk Home and sleep; Homeless ones
-// sleep where they stand. At Dawn they go back to work, Tired if they slept less than half the
-// night at Home. The hero isn't a villager and ignores night.
+// The daily routine. At Dusk villagers finish what they hold, eat a Meal at the nearest Granary
+// with Food, walk Home and sleep; Homeless ones sleep where they stand. At Dawn they go back to
+// work, Tired if they slept less than half the night at Home, Hungry if they missed the Meal. The
+// hero isn't a villager: it ignores night and never eats.
 import type { Content } from '@candlemarch/content';
 import { calendarAt, dawnTick, duskTick, isDawn, isDusk, isNight } from '../calendar';
 import { idsOf } from '../entities';
+import { nearestGranaryWithMeal, takeMeal } from '../granary';
 import { entityDoor } from '../grid';
 import { housePlaces } from '../homes';
 import { abandonHaul } from '../logistics/jobDispatch';
@@ -57,6 +59,31 @@ function goHome(state: GameState, content: Content, id: EntityId): void {
   v.routine = 'asleep';
 }
 
+/**
+ * Villager `id`'s Meal, on the way home after Dusk: walks to the nearest Granary with Food, eats
+ * there once at its door, then goes Home. With no Granary to eat at, it goes Home Hungry.
+ */
+function seekMeal(state: GameState, content: Content, id: EntityId): void {
+  const v = state.components.villager[id];
+  if (!v) return;
+  const granary = nearestGranaryWithMeal(state, content, id);
+  const door = granary === null ? null : entityDoor(state, content, granary);
+  if (granary !== null && door !== null) {
+    if (isAt(state, id, door)) {
+      takeMeal(state, content, granary);
+      v.missedMeals = 0;
+      goHome(state, content, id);
+      return;
+    }
+    if (rerouteTo(state, content, id, [door])) {
+      v.routine = 'toGranary';
+      return;
+    }
+  }
+  v.missedMeals += 1;
+  goHome(state, content, id);
+}
+
 /** Ticks of the night that ended at the Dawn of day `day`. */
 function lastNightTicks(day: number, content: Content): number {
   return dawnTick(day, content) - duskTick(day - 1, content);
@@ -78,6 +105,8 @@ export function routineSystem(state: GameState, content: Content): void {
     if (dawn) {
       v.tired = v.sleptTicks * 100 < lastNightTicks(day, content) * minSleepPercent;
       v.sleptTicks = 0;
+      // Still at work or on the way to a Granary: the night passed without a Meal.
+      if (v.routine === 'work' || v.routine === 'toGranary') v.missedMeals += 1;
       if (v.routine !== 'work') {
         v.routine = 'work';
         stopAtNextTile(state, id); // one still walking home turns back from the next tile
@@ -87,7 +116,12 @@ export function routineSystem(state: GameState, content: Content): void {
 
     switch (v.routine) {
       case 'work': {
-        if (!finishWork(state, id)) goHome(state, content, id);
+        if (!finishWork(state, id)) seekMeal(state, content, id);
+        break;
+      }
+      case 'toGranary': {
+        // Arrived, or the walk was cut short: eat here, or find the nearest Food again.
+        if (!path[id]) seekMeal(state, content, id);
         break;
       }
       case 'goingHome': {

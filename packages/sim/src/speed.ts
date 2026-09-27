@@ -5,8 +5,8 @@ import { workSpeedPercent } from './aura';
 import type { EntityId, GameState } from './state';
 
 /**
- * Speed of `id` as a percentage of normal. Slowdowns don't stack: only the worst applies (just
- * Tired so far; Hungry and Cold join it later). Work at `workplace` is also multiplied by the
+ * Speed of `id` as a percentage of normal. Slowdowns don't stack: only the worst applies (Tired
+ * and Hungry so far; Cold joins them later). Work at `workplace` is also multiplied by the
  * hero's aura there, truncated. 100 for anyone who isn't a villager, such as the hero.
  */
 export function speedPercent(
@@ -18,6 +18,7 @@ export function speedPercent(
   const v = state.components.villager[id];
   let percent = 100;
   if (v?.tired) percent = Math.min(percent, content.needs.tired.speedPercent);
+  if (v && v.missedMeals > 0) percent = Math.min(percent, content.needs.hungry.speedPercent);
   if (workplace === null) return percent;
   return Math.trunc((percent * workSpeedPercent(state, content, workplace)) / 100);
 }

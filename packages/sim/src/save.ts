@@ -56,6 +56,7 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     v.routine ??= 'work';
     v.sleptTicks ??= 0;
     v.tired ??= false;
+    v.missedMeals ??= 0;
   }
   for (const hero of Object.values(state.components.hero)) {
     hero.carrying ??= null;

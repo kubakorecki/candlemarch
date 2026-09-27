@@ -4,7 +4,7 @@ export type ResourceId = 'logs' | 'firewood' | 'fish';
 export type RecipeId = 'split_logs';
 export type TerrainId = 'grass' | 'river';
 export type MapObjectId = 'tree';
-export type BuildingId = 'woodcutters_hut' | 'hut' | 'chopping_block' | 'fishers_hut';
+export type BuildingId = 'woodcutters_hut' | 'hut' | 'chopping_block' | 'fishers_hut' | 'granary';
 export type JobId = 'woodcutter' | 'carrier' | 'woodsplitter' | 'fisher';
 export type RoadId = 'dirt_path';
 export type HeroId = 'placeholder';
@@ -127,6 +127,11 @@ export interface NeedsDef {
    * `speedPercent` until the next Dusk.
    */
   tired: { minSleepPercent: number; speedPercent: number };
+  /**
+   * A Meal is `mealUnits` of Food. A villager who missed their last Meal is Hungry: walks and
+   * works at `speedPercent`. After `starveAfterMissedMeals` missed Meals in a row they starve.
+   */
+  hungry: { mealUnits: number; speedPercent: number; starveAfterMissedMeals: number };
 }
 
 export interface BuildingDef {
@@ -160,6 +165,8 @@ export interface BuildingDef {
    * new work and asks for no inputs.
    */
   stockTarget?: ResourceAmount;
+  /** Units of Food it stores, all Foods together: a building with it is a Granary. */
+  foodCapacity?: number;
   /** Villagers it houses: a building with residents is a House. */
   residents?: number;
   /** Cost and time to build it from a construction site. Absent for buildings that can't be built. */

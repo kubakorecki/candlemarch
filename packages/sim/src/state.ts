@@ -53,7 +53,7 @@ export interface MapObjectComponent {
 
 export interface BuildingComponent {
   type: BuildingId;
-  /** Output buffer contents. */
+  /** Output buffer contents, or the Food a Granary holds. */
   stock: ResourceAmounts;
   /** Input buffer contents. Empty unless the building is a workshop. */
   input: ResourceAmounts;
@@ -88,10 +88,10 @@ export interface StockpileComponent {
 
 /**
  * Where a villager is in its day. `work`: doing its Job (after Dusk, only finishing what it
- * holds). `goingHome`: walking to its Home after Dusk. `asleep`: at Home, or where it stood when
- * Homeless, until Dawn.
+ * holds). `toGranary`: walking to a Granary for its Meal after Dusk. `goingHome`: walking to its
+ * Home after that. `asleep`: at Home, or where it stood when Homeless, until Dawn.
  */
-export type Routine = 'work' | 'goingHome' | 'asleep';
+export type Routine = 'work' | 'toGranary' | 'goingHome' | 'asleep';
 
 export interface VillagerComponent {
   /** First name, drawn from content's pool on arrival. Not unique once the pool runs out. */
@@ -107,6 +107,8 @@ export interface VillagerComponent {
   sleptTicks: number;
   /** Slept too little at Home last night: slower until the next Dusk. */
   tired: boolean;
+  /** Meals missed in a row. Hungry at 1 or more: slower until it eats. */
+  missedMeals: number;
 }
 
 /**

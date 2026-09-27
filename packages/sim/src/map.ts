@@ -64,6 +64,7 @@ function spawnVillager(
     routine: 'work',
     sleptTicks: 0,
     tired: false,
+    missedMeals: 0,
   };
   state.components.position[id] = tileCenter(tile);
   assignJob(state, content, id, job, workplace);

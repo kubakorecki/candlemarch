@@ -44,6 +44,19 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 200, // 10 s
     },
   },
+  granary: {
+    id: 'granary',
+    name: 'Granary',
+    size: { w: 2, h: 2 },
+    door: { x: 1, y: 2 },
+    placeable: true,
+    employs: [],
+    foodCapacity: 100,
+    construction: {
+      cost: [{ resource: 'logs', amount: 10 }],
+      buildTicks: 200, // 10 s
+    },
+  },
   chopping_block: {
     id: 'chopping_block',
     name: 'Chopping block',

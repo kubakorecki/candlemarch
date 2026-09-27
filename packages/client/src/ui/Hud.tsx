@@ -39,6 +39,14 @@ export function Hud({ game }: { game: Game }) {
             <span className={hud.homeless > 0 ? 'warn' : ''}>{hud.homeless}</span>
           </div>
           <div className="row">
+            <span className="muted">Hungry</span>
+            <span className={hud.hungry > 0 ? 'warn' : ''}>{hud.hungry}</span>
+          </div>
+          <div className="row">
+            <span className="muted">Food in Granaries</span>
+            <span>{hud.food}</span>
+          </div>
+          <div className="row">
             <span className="muted">Woodcutter's hut</span>
             <span>
               {hud.hutLogs}/{hud.hutCapacity} logs
@@ -192,6 +200,12 @@ export function Hud({ game }: { game: Game }) {
               <div className="row">
                 <span className="muted">Tired</span>
                 <span className="warn">Half speed until Dusk</span>
+              </div>
+            )}
+            {hud.villager.hunger && (
+              <div className="row">
+                <span className="muted">Hungry</span>
+                <span className="warn">{hud.villager.hunger}</span>
               </div>
             )}
           </div>

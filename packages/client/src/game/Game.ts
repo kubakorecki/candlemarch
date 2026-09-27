@@ -21,6 +21,7 @@ import {
   reassignTargets,
   type StockpilePriority,
   type Tile,
+  villageFood,
   workersAt,
 } from '@candlemarch/sim';
 import { CameraInput } from '../render/camera';
@@ -56,6 +57,13 @@ export const TOOLS: readonly {
     key: 'w',
     drag: false,
     hint: 'Click to place. Shift-click places more.',
+  },
+  {
+    id: 'granary',
+    label: 'Granary',
+    key: 'g',
+    drag: false,
+    hint: 'Click to place. Villagers eat here at Dusk. Shift-click places more.',
   },
   {
     id: 'chopping_block',
@@ -100,6 +108,8 @@ export interface VillagerInfo {
   /** The Home's name, or null when Homeless. */
   home: string | null;
   tired: boolean;
+  /** "2 days without food; dies after 3" while Hungry, otherwise null. */
+  hunger: string | null;
 }
 
 /** A row of the workers view: one villager, as display text, and where it can be reassigned. */
@@ -140,6 +150,10 @@ export interface HudState {
   isNight: boolean;
   /** Villagers with no Home. */
   homeless: number;
+  /** Villagers who missed their last Meal. */
+  hungry: number;
+  /** Food in every Granary. */
+  food: number;
   /** The stockpile selected by clicking it with no tool, and its settings. */
   pile: { id: EntityId; priority: StockpilePriority; refuses: ResourceId[] } | null;
   /** The villager selected by clicking it with no tool. */
@@ -178,6 +192,8 @@ export class Game {
     year: 1,
     isNight: false,
     homeless: 0,
+    hungry: 0,
+    food: 0,
     pile: null,
     villager: null,
     building: null,
@@ -395,6 +411,8 @@ export class Game {
       year: time.year,
       isNight: time.isNight,
       homeless: Object.values(state.components.villager).filter((v) => v.home === null).length,
+      hungry: Object.values(state.components.villager).filter((v) => v.missedMeals > 0).length,
+      food: villageFood(state, content),
     });
   }
 
@@ -771,7 +789,10 @@ function demolishCommand(state: GameState, tile: Tile): Command | null {
   return null;
 }
 
-/** Villager `id`'s name, Job, Workplace, Home and Tired for the panel, or null if it's gone. */
+/**
+ * Villager `id`'s name, Job, Workplace, Home, Tired and hunger for the panel, or null if it's
+ * gone.
+ */
 function villagerInfo(state: GameState, id: EntityId): VillagerInfo | null {
   const v = state.components.villager[id];
   if (!v) return null;
@@ -782,7 +803,14 @@ function villagerInfo(state: GameState, id: EntityId): VillagerInfo | null {
     workplace: v.workplace === null ? null : (names[v.workplace] ?? null),
     home: v.home === null ? null : (names[v.home] ?? null),
     tired: v.tired,
+    hunger: v.missedMeals > 0 ? hungerLabel(v.missedMeals) : null,
   };
+}
+
+/** "2 days without food; dies after 3". */
+function hungerLabel(missedMeals: number): string {
+  const days = missedMeals === 1 ? '1 day' : `${missedMeals} days`;
+  return `${days} without food; dies after ${content.needs.hungry.starveAfterMissedMeals}`;
 }
 
 /** What the hero holds, as "3/5 logs", or null if there's no hero. */

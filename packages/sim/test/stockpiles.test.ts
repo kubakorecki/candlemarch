@@ -335,6 +335,7 @@ describe('stockpile tile capacity with returns', () => {
       routine: 'work',
       sleptTicks: 0,
       tired: false,
+      missedMeals: 0,
     };
     s1.components.position[id] = { x: 6500, y: 7500 };
     const tile = tileIndex(s1.map, 6, 6);

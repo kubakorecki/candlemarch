@@ -557,12 +557,18 @@ export function drawMissingIcon(g: Graphics, x: number, y: number): void {
 
 /**
  * Status icons over a villager's head, drawn relative to its feet: a House struck through when
- * it's Homeless, "zzz" when it's Tired. Every icon that applies shows, side by side.
+ * it's Homeless, "zzz" when it's Tired, an empty bowl when it's Hungry. Every icon that applies
+ * shows, side by side.
  */
-export function drawVillagerStatus(g: Graphics, homeless: boolean, tired: boolean): void {
+export function drawVillagerStatus(
+  g: Graphics,
+  homeless: boolean,
+  tired: boolean,
+  hungry: boolean,
+): void {
   g.clear();
   const s = TILE_H / 64;
-  const icons = [homeless && 'homeless', tired && 'tired'].filter(Boolean);
+  const icons = [homeless && 'homeless', tired && 'tired', hungry && 'hungry'].filter(Boolean);
   const r = 9 * s;
   icons.forEach((icon, i) => {
     const x = (i - (icons.length - 1) / 2) * (2 * r + 3 * s);
@@ -584,6 +590,15 @@ export function drawVillagerStatus(g: Graphics, homeless: boolean, tired: boolea
       g.moveTo(x - r * 0.7, y - r * 0.7)
         .lineTo(x + r * 0.7, y + r * 0.7)
         .stroke({ width: 2.5 * s, color: palette.invalid, cap: 'round' });
+    } else if (icon === 'hungry') {
+      // An empty bowl: a half-disc under a rim.
+      g.moveTo(x - 6 * s, y - 1 * s)
+        .arc(x, y - 1 * s, 6 * s, 0, Math.PI)
+        .closePath()
+        .fill(palette.ink);
+      g.moveTo(x - 7 * s, y - 1.5 * s)
+        .lineTo(x + 7 * s, y - 1.5 * s)
+        .stroke({ width: 1.5 * s, color: palette.ink, cap: 'round' });
     } else {
       // Three Zs, growing up and to the right.
       for (const [dx, dy, size] of [

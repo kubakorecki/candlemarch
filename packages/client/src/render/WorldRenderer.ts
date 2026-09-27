@@ -1,8 +1,9 @@
 // Draws sim snapshots with PixiJS. Reads state only; all game rules stay in the sim.
-import type { BuildingId, Content, JobId, ResourceId } from '@candlemarch/content';
+import type { BuildingId, Content, JobId, ResourceAmount, ResourceId } from '@candlemarch/content';
 import {
   boostedWorkplaces,
   type EntityId,
+  foodIds,
   type GameState,
   heroOf,
   idsOf,
@@ -111,6 +112,22 @@ function hitsNode(node: Container, sx: number, sy: number): boolean {
     sy >= b.minY - HIT_PADDING &&
     sy <= b.maxY + HIT_PADDING
   );
+}
+
+/** Pieces drawn in front of a Granary at most, however much it holds. */
+const GRANARY_PILE_MAX = 6;
+
+/** What a Granary shows in front: a few pieces of the Food it holds most of, or null if empty. */
+function granaryPile(
+  content: Content,
+  stock: Partial<Record<ResourceId, number>>,
+): ResourceAmount | null {
+  let best: ResourceAmount | null = null;
+  for (const resource of foodIds(content)) {
+    const amount = stock[resource] ?? 0;
+    if (amount > 0 && (!best || amount > best.amount)) best = { resource, amount };
+  }
+  return best && { resource: best.resource, amount: Math.min(best.amount, GRANARY_PILE_MAX) };
 }
 
 /** A walker's position between its previous and current tick, in grid coordinates. */
@@ -228,7 +245,10 @@ export class WorldRenderer {
       const def = this.content.buildings[b.type];
       const buffered = (resource: ResourceId | undefined, amounts: typeof b.stock) =>
         resource ? { resource, amount: amounts[resource] ?? 0 } : null;
-      const output = buffered(def.outputBuffer?.resource, b.stock);
+      const output =
+        def.foodCapacity !== undefined
+          ? granaryPile(this.content, b.stock)
+          : buffered(def.outputBuffer?.resource, b.stock);
       const input = buffered(def.inputBuffer?.[0]?.resource, b.input);
       const unstaffed = openPositions(state, this.content, id).length > 0;
       const view = this.staticView(`building:${id}`, seen);
@@ -427,9 +447,10 @@ export class WorldRenderer {
       }
       view.load.visible = carried !== null;
       const homeless = v.home === null;
-      const status = `${homeless}:${v.tired}`;
+      const hungry = v.missedMeals > 0;
+      const status = `${homeless}:${v.tired}:${hungry}`;
       if (status !== view.statusDrawn) {
-        drawVillagerStatus(view.status, homeless, v.tired);
+        drawVillagerStatus(view.status, homeless, v.tired, hungry);
         view.statusDrawn = status;
       }
       // Its goods take the icons' place while it carries something.

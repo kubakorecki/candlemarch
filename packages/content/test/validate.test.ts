@@ -71,20 +71,35 @@ describe('content validation', () => {
   });
 
   it('needs use percents from 1 to 100', () => {
-    const { tired } = content.needs;
+    const { tired, hungry } = content.needs;
     for (const [label, value] of [
       ['tired.minSleepPercent', tired.minSleepPercent],
       ['tired.speedPercent', tired.speedPercent],
+      ['hungry.speedPercent', hungry.speedPercent],
     ] as const) {
       expectPositiveInt(value, label);
       expect(value <= 100, `${label} = ${value}`).toBe(true);
     }
   });
 
+  it('Meals and starving use positive integers', () => {
+    const { hungry } = content.needs;
+    expectPositiveInt(hungry.mealUnits, 'hungry.mealUnits');
+    expectPositiveInt(hungry.starveAfterMissedMeals, 'hungry.starveAfterMissedMeals');
+  });
+
   it('houses hold a positive whole number of residents', () => {
     for (const b of Object.values(buildings)) {
       if (b.residents !== undefined) expectPositiveInt(b.residents, `${b.id}.residents`);
     }
+  });
+
+  it('granaries hold a positive whole number of Food, and some Food is stored in them', () => {
+    for (const b of Object.values(buildings)) {
+      if (b.foodCapacity !== undefined) expectPositiveInt(b.foodCapacity, `${b.id}.foodCapacity`);
+    }
+    const food = Object.values(resources).filter((r) => r.storage === 'granary');
+    expect(food.length).toBeGreaterThan(0);
   });
 
   it('has at least 60 distinct, non-empty villager names', () => {

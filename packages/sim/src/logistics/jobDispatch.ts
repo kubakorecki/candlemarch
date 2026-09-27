@@ -3,6 +3,7 @@
 import type { Content, ResourceId } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
+import { foodIds, isGranary } from '../granary';
 import { entityDoor, stockpileTileIndices, tileAt, tileIndex } from '../grid';
 import { tileDistance, travelCosts } from '../pathfinding';
 import type { EntityId, GameState, Store, Tile } from '../state';
@@ -23,7 +24,7 @@ export interface Haul {
   amount: number;
   /** Building or stockpile to pick up from. */
   from: EntityId;
-  /** Construction site, workshop or stockpile to deliver to. */
+  /** Construction site, workshop, Granary or stockpile to deliver to. */
   to: EntityId;
   /** Stockpile tile (map tile index) to pick up from. Absent when `from` is a building. */
   fromTile?: number;
@@ -66,9 +67,21 @@ export function haulsIncoming(hauls: Store<Haul>, target: EntityId, resource: Re
 
 /**
  * Units of `resource` on their way to `target`: carriers' hauls, plus what the hero promised a
- * site or workshop from the moment it was ordered to deliver there.
+ * site or workshop from the moment it was ordered to deliver there. For a Granary, whose room
+ * every Food shares, hauls of any Food count.
  */
-function incoming(state: GameState, target: EntityId, resource: ResourceId): number {
+function incoming(
+  state: GameState,
+  content: Content,
+  target: EntityId,
+  resource: ResourceId,
+): number {
+  if (isGranary(state, content, target)) {
+    return foodIds(content).reduce(
+      (sum, food) => sum + haulsIncoming(state.logistics.hauls, target, food),
+      0,
+    );
+  }
   let total = haulsIncoming(state.logistics.hauls, target, resource);
   if (state.components.stockpile[target]) return total;
   for (const hero of Object.values(state.components.hero)) {
@@ -274,6 +287,8 @@ function advanceHaul(state: GameState, content: Content, id: EntityId, haul: Hau
       const pile = stockpile[haul.to];
       if (carrier.carrying && target) {
         target.delivered[haul.resource] = (target.delivered[haul.resource] ?? 0) + haul.amount;
+      } else if (carrier.carrying && workshop && isGranary(state, content, haul.to)) {
+        workshop.stock[haul.resource] = (workshop.stock[haul.resource] ?? 0) + haul.amount;
       } else if (carrier.carrying && workshop) {
         workshop.input[haul.resource] = (workshop.input[haul.resource] ?? 0) + haul.amount;
       } else if (carrier.carrying && pile && haul.toTile !== undefined) {
@@ -367,7 +382,7 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
 
   for (const group of demandGroups(state, listDemands(state, content))) {
     const open = group.flatMap((demand) => {
-      const need = demand.amount - incoming(state, demand.target, demand.resource);
+      const need = demand.amount - incoming(state, content, demand.target, demand.resource);
       return need > 0 ? [{ demand, need }] : [];
     });
     const first = open[0];

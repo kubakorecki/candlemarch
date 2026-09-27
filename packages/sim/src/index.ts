@@ -12,6 +12,7 @@ export {
 } from './calendar';
 export type { Command } from './commands';
 export { idsOf } from './entities';
+export { foodIds, villageFood } from './granary';
 export { canPlaceBuilding, doorTile, footprint, tileCenter, tileOfPoint } from './grid';
 export { type HeroOrder, heroOf, heroOrderAt } from './hero';
 export type { Haul, LogisticsState } from './logistics/jobDispatch';
