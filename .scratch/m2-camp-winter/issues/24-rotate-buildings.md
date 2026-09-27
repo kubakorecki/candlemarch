@@ -1,6 +1,6 @@
 # Rotate buildings when placing them
 
-Status: needs-triage
+Status: ready-for-agent
 Type: task
 Blocked by: none
 
@@ -10,7 +10,9 @@ Buildings can't rotate: each always has its door on the side content gives it, s
 
 The spec doesn't mention rotation, so this adds to it.
 
-### Rule *(Proposed)*
+All views for each orientation for existing buildings should be implemented in this issue.
+
+### Rule
 
 - Four orientations: the content layout (door where content puts it), then quarter turns clockwise. Stored as `rotation: 0 | 1 | 2 | 3` on buildings and construction sites.
 - Content still defines `size` and `door` for rotation 0. One sim function turns a type, an origin and a rotation into the footprint and door tile. `footprint`, `doorTile`, `entityDoor`, `fitsAt`, `blockedGrid` and everything else that reads `def.size` or `def.door` for a placed building go through it. A quarter turn swaps `w` and `h`. The origin stays the footprint's smallest x and y.
@@ -31,5 +33,6 @@ The spec doesn't mention rotation, so this adds to it.
   - Walkers path around the rotated footprint, and carriers deliver to the rotated door of a site.
   - Omitted rotation means 0; invalid values are ignored like any bad command.
   - Determinism, save/load with rotated buildings, and an old save without `rotation` loads.
+  - every existing building has 4 rotation options. It differs visually in all 4 rotations.
 - The rotation rule is added to `docs/spec.md` and logged in `docs/decisions.md`.
 - `pnpm check` passes.
