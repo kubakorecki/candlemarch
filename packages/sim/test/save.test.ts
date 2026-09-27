@@ -9,7 +9,7 @@ import { content } from './helpers';
 describe('serialize / deserialize', () => {
   it('round-trips a state', () => {
     const s = createInitialState(9, meadowMap, content);
-    expect(deserialize(serialize(s))).toEqual(s);
+    expect(deserialize(serialize(s), content)).toEqual(s);
   });
 
   it('fills in state added after the save was made', () => {
@@ -19,7 +19,7 @@ describe('serialize / deserialize', () => {
     delete data.components.stockpile;
     delete data.logistics;
     delete data.map.roads;
-    expect(deserialize(JSON.stringify(data))).toEqual(s);
+    expect(deserialize(JSON.stringify(data), content)).toEqual(s);
   });
 
   it('gives stockpiles saved before priorities and filters the defaults', () => {
@@ -30,14 +30,14 @@ describe('serialize / deserialize', () => {
       delete pile.refuses;
     }
     expect(Object.keys(data.components.stockpile).length).toBeGreaterThan(0);
-    expect(deserialize(JSON.stringify(data))).toEqual(s);
+    expect(deserialize(JSON.stringify(data), content)).toEqual(s);
   });
 
   it('rejects saves from another version', () => {
     const s = createInitialState(9, meadowMap, content);
-    expect(() => deserialize(serialize({ ...s, version: 99 as typeof STATE_VERSION }))).toThrow(
-      /version/,
-    );
-    expect(() => deserialize('null')).toThrow(/version/);
+    expect(() =>
+      deserialize(serialize({ ...s, version: 99 as typeof STATE_VERSION }), content),
+    ).toThrow(/version/);
+    expect(() => deserialize('null', content)).toThrow(/version/);
   });
 });

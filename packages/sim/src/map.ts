@@ -13,7 +13,7 @@ import { canPlaceBuilding, doorTile, fitsAt, inBounds, tileCenter } from './grid
 import { seedRng } from './rng';
 import { type EntityId, type GameState, STATE_VERSION, type Tile } from './state';
 import { canPlaceStockpile, placeStockpile } from './stockpiles';
-import { assignJob } from './villagers';
+import { assignJob, drawVillagerName } from './villagers';
 
 export interface MapDef {
   name: string;
@@ -46,12 +46,14 @@ export const MAP_LEGEND: Record<
 
 function spawnVillager(
   state: GameState,
+  content: Content,
   job: JobId,
   tile: Tile,
   workplace: EntityId | null,
 ): EntityId {
+  const name = drawVillagerName(state, content);
   const id = createEntity(state);
-  state.components.villager[id] = { job, workplace, carrying: null };
+  state.components.villager[id] = { name, job, workplace, carrying: null };
   state.components.position[id] = tileCenter(tile);
   assignJob(state, id, job, workplace);
   return id;
@@ -126,7 +128,7 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
     state.components.building[id] = { type: b.type, stock: {} };
     for (const slot of def.employs) {
       for (let i = 0; i < slot.count; i++) {
-        spawnVillager(state, slot.job, doorTile(def, { x: b.x, y: b.y }), id);
+        spawnVillager(state, content, slot.job, doorTile(def, { x: b.x, y: b.y }), id);
       }
     }
   }
@@ -151,7 +153,7 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
     if (!inBounds(state.map, v.x, v.y)) {
       throw new Error(`map ${map.name}: villager out of bounds at ${v.x},${v.y}`);
     }
-    spawnVillager(state, v.job, { x: v.x, y: v.y }, null);
+    spawnVillager(state, content, v.job, { x: v.x, y: v.y }, null);
   }
 
   if (map.hero) {

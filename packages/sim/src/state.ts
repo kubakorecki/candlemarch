@@ -79,6 +79,8 @@ export interface StockpileComponent {
 }
 
 export interface VillagerComponent {
+  /** First name, drawn from content's pool on arrival. Not unique once the pool runs out. */
+  name: string;
   job: JobId;
   /** Building the villager works for, if any. */
   workplace: EntityId | null;

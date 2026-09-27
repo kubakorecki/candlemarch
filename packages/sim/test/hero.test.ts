@@ -100,7 +100,7 @@ describe('hero', () => {
     const s0 = createInitialState(4, field, content);
     const straight = run(s0, 150, orders);
     const saved = serialize(run(s0, 55, orders));
-    const resumed = run(deserialize(saved), 95, orders);
+    const resumed = run(deserialize(saved, content), 95, orders);
     expect(resumed).toEqual(straight);
   });
 
@@ -108,7 +108,7 @@ describe('hero', () => {
     const s = createInitialState(1, fieldWithoutHero, content);
     const data = JSON.parse(serialize(s));
     delete data.components.hero;
-    expect(deserialize(JSON.stringify(data))).toEqual(s);
+    expect(deserialize(JSON.stringify(data), content)).toEqual(s);
   });
 
   it('loads a save made before the hero could carry', () => {
@@ -117,6 +117,6 @@ describe('hero', () => {
     const hero = data.components.hero[heroId(s)];
     delete hero.carrying;
     delete hero.order;
-    expect(deserialize(JSON.stringify(data))).toEqual(s);
+    expect(deserialize(JSON.stringify(data), content)).toEqual(s);
   });
 });

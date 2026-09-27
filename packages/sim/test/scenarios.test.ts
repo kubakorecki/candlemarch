@@ -51,6 +51,6 @@ describe('branching network', () => {
     const fresh = () => createInitialState(1, maps.branchingNetwork, content);
     const uninterrupted = run(fresh(), 2500);
     const midway = run(fresh(), 1200);
-    expect(run(deserialize(serialize(midway)), 1300)).toEqual(uninterrupted);
+    expect(run(deserialize(serialize(midway), content), 1300)).toEqual(uninterrupted);
   });
 });

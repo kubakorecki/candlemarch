@@ -27,7 +27,7 @@ function handle(message: ToWorker): void {
       sendSnapshot(state, state);
       return;
     case 'load':
-      state = deserialize(message.json);
+      state = deserialize(message.json, content);
       sendSnapshot(state, state);
       return;
     case 'advance': {

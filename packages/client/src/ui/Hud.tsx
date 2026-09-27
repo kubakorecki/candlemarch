@@ -18,62 +18,80 @@ export function Hud({ game }: { game: Game }) {
 
   return (
     <div className="hud">
-      <div className="panel readout">
-        <div className="title">Candlemarch</div>
-        <div className="row">
-          <span>{hud.date}</span>
-          <span className="muted">Year {hud.year}</span>
-        </div>
-        <div className="row">
-          <span className="muted">Time</span>
-          <span>{hud.isNight ? 'Night' : 'Day'}</span>
-        </div>
-        <div className="row">
-          <span className="muted">Woodcutter's hut</span>
-          <span>
-            {hud.hutLogs}/{hud.hutCapacity} logs
-          </span>
-        </div>
-        {hud.heroLoad && (
+      {hud.message && <div className="panel message">{hud.message}</div>}
+
+      <div className="side">
+        <div className="panel readout">
+          <div className="title">Candlemarch</div>
           <div className="row">
-            <span className="muted">Hero carries</span>
-            <span>{hud.heroLoad}</span>
+            <span>{hud.date}</span>
+            <span className="muted">Year {hud.year}</span>
+          </div>
+          <div className="row">
+            <span className="muted">Time</span>
+            <span>{hud.isNight ? 'Night' : 'Day'}</span>
+          </div>
+          <div className="row">
+            <span className="muted">Woodcutter's hut</span>
+            <span>
+              {hud.hutLogs}/{hud.hutCapacity} logs
+            </span>
+          </div>
+          {hud.heroLoad && (
+            <div className="row">
+              <span className="muted">Hero carries</span>
+              <span>{hud.heroLoad}</span>
+            </div>
+          )}
+        </div>
+
+        {hud.pile && (
+          <div className="panel pile">
+            <div className="title">Stockpile</div>
+            <div className="row">
+              <span className="muted">Priority</span>
+              <span className="choices">
+                {STOCKPILE_PRIORITIES.map((priority) => (
+                  <button
+                    key={priority}
+                    type="button"
+                    className={hud.pile?.priority === priority ? 'active' : ''}
+                    onClick={() => game.setPilePriority(priority)}
+                  >
+                    {PRIORITY_LABELS[priority]}
+                  </button>
+                ))}
+              </span>
+            </div>
+            {RESOURCE_IDS.map((resource) => (
+              <label key={resource} className="row">
+                <span className="muted">
+                  Takes {content.resources[resource].name.toLowerCase()}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={!hud.pile?.refuses.includes(resource)}
+                  onChange={(e) => game.setPileAccepts(resource, e.target.checked)}
+                />
+              </label>
+            ))}
+          </div>
+        )}
+
+        {hud.villager && (
+          <div className="panel villager">
+            <div className="title">{hud.villager.name}</div>
+            <div className="row">
+              <span className="muted">Job</span>
+              <span>{hud.villager.job}</span>
+            </div>
+            <div className="row">
+              <span className="muted">Workplace</span>
+              <span>{hud.villager.workplace ?? 'None'}</span>
+            </div>
           </div>
         )}
       </div>
-
-      {hud.message && <div className="panel message">{hud.message}</div>}
-
-      {hud.pile && (
-        <div className="panel pile">
-          <div className="title">Stockpile</div>
-          <div className="row">
-            <span className="muted">Priority</span>
-            <span className="choices">
-              {STOCKPILE_PRIORITIES.map((priority) => (
-                <button
-                  key={priority}
-                  type="button"
-                  className={hud.pile?.priority === priority ? 'active' : ''}
-                  onClick={() => game.setPilePriority(priority)}
-                >
-                  {PRIORITY_LABELS[priority]}
-                </button>
-              ))}
-            </span>
-          </div>
-          {RESOURCE_IDS.map((resource) => (
-            <label key={resource} className="row">
-              <span className="muted">Takes {content.resources[resource].name.toLowerCase()}</span>
-              <input
-                type="checkbox"
-                checked={!hud.pile?.refuses.includes(resource)}
-                onChange={(e) => game.setPileAccepts(resource, e.target.checked)}
-              />
-            </label>
-          ))}
-        </div>
-      )}
 
       <div className="panel toolbar">
         {TOOLS.map((tool) => (

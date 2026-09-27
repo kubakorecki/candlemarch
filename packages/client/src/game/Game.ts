@@ -73,6 +73,14 @@ function isBuilding(id: ToolId): id is BuildingId {
   return id in content.buildings;
 }
 
+/** What the villager panel shows, as display text. */
+export interface VillagerInfo {
+  name: string;
+  job: string;
+  /** The Workplace's name, or null without one. */
+  workplace: string | null;
+}
+
 export interface HudState {
   ready: boolean;
   speed: Speed;
@@ -86,6 +94,8 @@ export interface HudState {
   isNight: boolean;
   /** The stockpile selected by clicking it with no tool, and its settings. */
   pile: { id: EntityId; priority: StockpilePriority; refuses: ResourceId[] } | null;
+  /** The villager selected by clicking it with no tool. */
+  villager: VillagerInfo | null;
   /** The hero is selected, so right-click orders it. */
   heroSelected: boolean;
   /** What the hero holds, e.g. "3/5 logs", or null if this game has no hero. */
@@ -102,6 +112,7 @@ export class Game {
   /** Tile a tool drag started on, while one is in progress. */
   private dragStart: Tile | null = null;
   private selectedPile: EntityId | null = null;
+  private selectedVillager: EntityId | null = null;
   private lastSpeed: Speed = 1;
   private hud: HudState = {
     ready: false,
@@ -113,6 +124,7 @@ export class Game {
     year: 1,
     isNight: false,
     pile: null,
+    villager: null,
     heroSelected: false,
     heroLoad: null,
     message: null,
@@ -159,8 +171,7 @@ export class Game {
 
   selectTool(tool: ToolId): void {
     this.dragStart = null;
-    this.selectPile(null);
-    this.selectHero(false);
+    this.clearSelection();
     const hint = toolDef(tool)?.hint ?? '';
     this.setHud({ tool, message: `${hint} Esc or right-click cancels.` });
     this.updateGhost();
@@ -169,8 +180,7 @@ export class Game {
   /** Leaves the current tool and clears any selection. */
   cancelTool(): void {
     this.dragStart = null;
-    this.selectPile(null);
-    this.selectHero(false);
+    this.clearSelection();
     this.setHud({ tool: null, message: null });
     this.updateGhost();
   }
@@ -190,7 +200,7 @@ export class Game {
     this.cameraCentred = false;
     this.bridge.newGame(NEW_GAME_SEED, map);
     this.dragStart = null;
-    this.selectedPile = null;
+    this.clearSelection();
     this.setHud({ tool: null, pile: null, message: null });
     this.updateGhost();
   }
@@ -214,7 +224,7 @@ export class Game {
     this.cameraCentred = false;
     this.bridge.load(json);
     this.dragStart = null;
-    this.selectedPile = null;
+    this.clearSelection();
     this.setHud({ tool: null, pile: null, message: 'Loaded.' });
   }
 
@@ -275,6 +285,7 @@ export class Game {
     }
     this.renderer.syncStatics(state);
     this.refreshPile(state);
+    this.refreshVillager(state);
     this.updateGhost();
     if (this.hud.heroSelected && heroOf(state) === null) {
       this.selectHero(false); // a new game or a load without a hero
@@ -362,16 +373,18 @@ export class Game {
   }
 
   /**
-   * Clicks with no tool. Left-click selects the hero if it's under the cursor, else the stockpile
-   * there (or nothing). Right-click orders the selected hero, RTS style.
+   * Clicks with no tool. Left-click selects the hero if it's under the cursor, else a villager,
+   * else the stockpile there (or nothing). Right-click orders the selected hero, RTS style.
    */
   private onSelectClick(sx: number, sy: number, button: number): void {
     const state = this.bridge.state;
     if (!state) return;
     if (button === 0) {
       const hero = this.renderer.hitHero(sx, sy);
+      const villager = hero ? null : this.renderer.hitVillager(sx, sy);
       this.selectHero(hero);
-      this.selectPile(hero ? null : stockpileAt(state, this.tileAt(sx, sy)));
+      this.selectVillager(villager);
+      this.selectPile(hero || villager !== null ? null : stockpileAt(state, this.tileAt(sx, sy)));
     } else if (button === 2 && this.hud.heroSelected) {
       const order = heroOrderAt(state, content, this.tileAt(sx, sy));
       if (order) this.bridge.command({ type: 'orderHero', ...order });
@@ -406,11 +419,37 @@ export class Game {
     return screenToTile(sx, sy, this.camera, this.renderer.screenWidth, this.renderer.screenHeight);
   }
 
+  /** Deselects the hero, villager and stockpile, whichever is selected. */
+  private clearSelection(): void {
+    this.selectPile(null);
+    this.selectVillager(null);
+    this.selectHero(false);
+  }
+
   private selectPile(id: EntityId | null): void {
     this.selectedPile = id;
     const state = this.bridge.state;
     if (state) this.refreshPile(state);
     this.updateGhost();
+  }
+
+  private selectVillager(id: EntityId | null): void {
+    this.selectedVillager = id;
+    this.renderer.setSelectedVillager(id);
+    const state = this.bridge.state;
+    if (state) this.refreshVillager(state);
+    else this.setHud({ villager: null });
+  }
+
+  /** Copies the selected villager into the HUD, or deselects it once it's gone. */
+  private refreshVillager(state: GameState): void {
+    const id = this.selectedVillager;
+    const info = id === null ? null : villagerInfo(state, id);
+    if (id !== null && !info) {
+      this.selectedVillager = null;
+      this.renderer.setSelectedVillager(null);
+    }
+    if (JSON.stringify(info) !== JSON.stringify(this.hud.villager)) this.setHud({ villager: info });
   }
 
   /** Copies the selected stockpile's settings into the HUD, or deselects it once it's gone. */
@@ -538,6 +577,18 @@ function demolishCommand(state: GameState, tile: Tile): Command | null {
     }
   }
   return null;
+}
+
+/** Villager `id`'s name, Job and Workplace for the panel, or null if it's gone. */
+function villagerInfo(state: GameState, id: EntityId): VillagerInfo | null {
+  const v = state.components.villager[id];
+  if (!v) return null;
+  const workplace = v.workplace === null ? undefined : state.components.building[v.workplace];
+  return {
+    name: v.name,
+    job: content.jobs[v.job].name,
+    workplace: workplace ? content.buildings[workplace.type].name : null,
+  };
 }
 
 /** What the hero holds, as "3/5 logs", or null if there's no hero. */

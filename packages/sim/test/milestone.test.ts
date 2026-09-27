@@ -92,7 +92,7 @@ describe('milestone 0', () => {
       const uninterrupted = run(fresh(3), 3000, script);
 
       const midway = run(fresh(3), at, script);
-      const loaded = deserialize(serialize(midway));
+      const loaded = deserialize(serialize(midway), content);
       const resumed = run(loaded, 3000 - at, script);
 
       expect(resumed).toEqual(uninterrupted);

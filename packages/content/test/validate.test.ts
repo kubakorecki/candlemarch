@@ -70,6 +70,14 @@ describe('content validation', () => {
     }
   });
 
+  it('has at least 60 distinct, non-empty villager names', () => {
+    const names = content.villagerNames;
+    expect(names.length).toBeGreaterThanOrEqual(60);
+    expect(new Set(names).size).toBe(names.length);
+    for (const name of names) expect(name.trim()).toBe(name);
+    for (const name of names) expect(name).not.toBe('');
+  });
+
   it('buildings reference existing ids', () => {
     for (const b of Object.values(buildings)) {
       for (const slot of b.employs) {

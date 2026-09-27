@@ -127,4 +127,6 @@ export interface Content {
   roads: Record<RoadId, RoadDef>;
   logistics: LogisticsDef;
   calendar: CalendarDef;
+  /** First names new villagers are drawn from. */
+  villagerNames: readonly string[];
 }

@@ -1,6 +1,9 @@
 // Save files are the serialized game state.
+import type { Content } from '@candlemarch/content';
+import { idsOf } from './entities';
 import { createEmptyState } from './map';
 import { type Components, type GameState, type MapState, STATE_VERSION } from './state';
+import { fallbackVillagerName } from './villagers';
 
 /** A save of the current version, which may lack state added after it was made. */
 type LoadedState = Partial<Omit<GameState, 'components' | 'map'>> & {
@@ -12,13 +15,13 @@ export function serialize(state: GameState): string {
   return JSON.stringify(state);
 }
 
-export function deserialize(json: string): GameState {
+export function deserialize(json: string, content: Content): GameState {
   const data: unknown = JSON.parse(json);
   const version = (data as { version?: unknown } | null)?.version;
   if (version !== STATE_VERSION) {
     throw new Error(`Unsupported save version ${String(version)}; expected ${STATE_VERSION}`);
   }
-  return normalizeLoadedState(data as LoadedState);
+  return normalizeLoadedState(data as LoadedState, content);
 }
 
 /**
@@ -27,7 +30,7 @@ export function deserialize(json: string): GameState {
  * component gets its own line here.
  * Breaking changes (renames, removals, changed meanings) bump `STATE_VERSION` instead.
  */
-function normalizeLoadedState(loaded: LoadedState): GameState {
+function normalizeLoadedState(loaded: LoadedState, content: Content): GameState {
   const empty = createEmptyState(0);
   const state: GameState = {
     ...empty,
@@ -38,6 +41,11 @@ function normalizeLoadedState(loaded: LoadedState): GameState {
   for (const pile of Object.values(state.components.stockpile)) {
     pile.priority ??= 'normal';
     pile.refuses ??= [];
+  }
+  const { villager } = state.components;
+  for (const id of idsOf(villager)) {
+    const v = villager[id];
+    if (v) v.name ??= fallbackVillagerName(id, content);
   }
   for (const hero of Object.values(state.components.hero)) {
     hero.carrying ??= null;

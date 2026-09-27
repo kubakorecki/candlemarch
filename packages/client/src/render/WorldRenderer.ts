@@ -55,6 +55,8 @@ interface StaticView {
 
 interface VillagerView {
   node: Container;
+  /** Selection ring on the ground under the feet. */
+  ring: Graphics;
   log: Graphics;
   axe: Graphics;
 }
@@ -75,8 +77,19 @@ interface HeroView {
 /** Opacity of the night tint at full dark. */
 const NIGHT_ALPHA = 0.5;
 
-/** Screen pixels around the hero's drawn shape that still count as clicking it. */
-const HERO_HIT_PADDING = 10;
+/** Screen pixels around a walker's drawn shape that still count as clicking it. */
+const HIT_PADDING = 10;
+
+/** Whether screen point (sx, sy) is on `node` as last drawn, give or take `HIT_PADDING`. */
+function hitsNode(node: Container, sx: number, sy: number): boolean {
+  const b = node.getBounds();
+  return (
+    sx >= b.minX - HIT_PADDING &&
+    sx <= b.maxX + HIT_PADDING &&
+    sy >= b.minY - HIT_PADDING &&
+    sy <= b.maxY + HIT_PADDING
+  );
+}
 
 /** A walker's position between its previous and current tick, in grid coordinates. */
 function interpolate(from: Point, to: Point, alpha: number): { x: number; y: number } {
@@ -108,6 +121,7 @@ export class WorldRenderer {
   private readonly villagers = new Map<EntityId, VillagerView>();
   private hero: HeroView | null = null;
   private heroSelected = false;
+  private selectedVillager: EntityId | null = null;
   private lastState: GameState | null = null;
   private groundKey = '';
   private roadsKey = '';
@@ -273,14 +287,26 @@ export class WorldRenderer {
 
   /** Whether screen point (sx, sy) is on the hero as last drawn. */
   hitHero(sx: number, sy: number): boolean {
-    if (!this.hero) return false;
-    const b = this.hero.node.getBounds();
-    return (
-      sx >= b.minX - HERO_HIT_PADDING &&
-      sx <= b.maxX + HERO_HIT_PADDING &&
-      sy >= b.minY - HERO_HIT_PADDING &&
-      sy <= b.maxY + HERO_HIT_PADDING
-    );
+    return this.hero !== null && hitsNode(this.hero.node, sx, sy);
+  }
+
+  /** Rings villager `id`, or no villager when null. */
+  setSelectedVillager(id: EntityId | null): void {
+    this.selectedVillager = id;
+    for (const [viewId, view] of this.villagers) view.ring.visible = viewId === id;
+  }
+
+  /** The villager drawn at screen point (sx, sy), the frontmost if several overlap. */
+  hitVillager(sx: number, sy: number): EntityId | null {
+    let hit: EntityId | null = null;
+    let front = -Infinity;
+    for (const [id, view] of this.villagers) {
+      if (view.node.zIndex > front && hitsNode(view.node, sx, sy)) {
+        hit = id;
+        front = view.node.zIndex;
+      }
+    }
+    return hit;
   }
 
   /**
@@ -362,6 +388,7 @@ export class WorldRenderer {
       const walking = from.x !== to.x || from.y !== to.y;
       const bob = walking ? Math.abs(Math.sin(timeMs / 90)) * 3 : 0;
       view.node.position.set(w.x, w.y - bob);
+      view.ring.position.set(0, bob); // stays on the ground while the figure bobs
       view.node.zIndex = depthOf(g.x, g.y) + 0.01;
       view.log.visible = v.carrying !== null;
       const chopping = woodcutter[id]?.kind === 'chopping';
@@ -508,6 +535,9 @@ export class WorldRenderer {
     let view = this.villagers.get(id);
     if (!view) {
       const node = new Container();
+      const ring = new Graphics();
+      drawSelectionRing(ring);
+      ring.visible = id === this.selectedVillager;
       const body = new Graphics();
       drawVillager(body, woodcutter ? palette.woodcutter : palette.carrier);
       const axe = new Graphics();
@@ -517,9 +547,9 @@ export class WorldRenderer {
       const log = new Graphics();
       drawCarriedLog(log);
       log.visible = false;
-      node.addChild(body, axe, log);
+      node.addChild(ring, body, axe, log);
       this.objects.addChild(node);
-      view = { node, log, axe };
+      view = { node, ring, log, axe };
       this.villagers.set(id, view);
     }
     return view;

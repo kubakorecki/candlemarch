@@ -295,7 +295,7 @@ describe('hero hand-carry over a whole run', () => {
     'save and load at tick %i continues exactly as an uninterrupted run',
     (at) => {
       const straight = run(s0, 700, script);
-      const resumed = run(deserialize(serialize(run(s0, at, script))), 700 - at, script);
+      const resumed = run(deserialize(serialize(run(s0, at, script)), content), 700 - at, script);
       expect(resumed).toEqual(straight);
     },
   );
