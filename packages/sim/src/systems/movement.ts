@@ -13,6 +13,7 @@ import {
   TILE_UNITS,
   type Tile,
 } from '../state';
+import { countStep } from '../traffic';
 
 /** Tile the villager is standing on (or walking through). */
 export function villagerTile(state: GameState, id: EntityId): Tile | null {
@@ -121,6 +122,7 @@ function walkSpeedOf(state: GameState, content: Content, id: EntityId): number |
 /**
  * Advances every walker (villagers and the hero) by its walk speed, faster on roads and slower
  * for a slowed villager (`speedPercent`). Removes the walk (its `PathComponent`) on arrival.
+ * Counts each Carrier step onto a Road tile (`countStep`) for road traffic.
  */
 export function movementSystem(state: GameState, content: Content): void {
   const { map } = state;
@@ -140,6 +142,7 @@ export function movementSystem(state: GameState, content: Content): void {
       const left = segmentLength(map.width, from, to) - path.progress;
       if (budget >= left) {
         budget -= left;
+        countStep(state, content, id, to);
         path.progress = 0;
         path.next += 1;
         if (path.next < path.tiles.length) {

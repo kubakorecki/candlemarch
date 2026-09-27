@@ -12,10 +12,12 @@ import {
   isColdHouse,
   isRiverFrozen,
   isWithered,
-  openPositions,
   type Point,
+  roadTraffic,
   type Tile,
   tileOfPoint,
+  type WorkplaceStatus,
+  workplaceStatus,
 } from '@candlemarch/sim';
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import {
@@ -39,12 +41,14 @@ import {
   drawFledPuff,
   drawGoodsStack,
   drawGround,
+  drawHeatMap,
   drawHero,
   drawHeroLoad,
   drawHuntingGround,
   drawMissingIcon,
   drawMushroomPatch,
   drawNoFirewoodIcon,
+  drawOutputFullIcon,
   drawPileGround,
   drawPlacementGhost,
   drawRoads,
@@ -54,6 +58,9 @@ import {
   drawTree,
   drawVillager,
   drawVillagerStatus,
+  drawWaitingIcon,
+  HEAT_LEVELS,
+  type HeatTile,
   type RoadTile,
 } from './shapes';
 
@@ -181,6 +188,14 @@ function outputPile(
   return best;
 }
 
+/** Draws the icon for why a Workplace is idle, centred on (x, y). */
+function drawStatusIcon(g: Graphics, status: WorkplaceStatus, x: number, y: number): void {
+  if (status.kind === 'noWorker') drawMissingIcon(g, x, y);
+  else if (status.resources[0] === undefined) return;
+  else if (status.kind === 'waitingFor') drawWaitingIcon(g, x, y, status.resources[0]);
+  else drawOutputFullIcon(g, x, y, status.resources[0]);
+}
+
 /** A walker's position between its previous and current tick, in grid coordinates. */
 function interpolate(from: Point, to: Point, alpha: number): { x: number; y: number } {
   return unitsToGrid({
@@ -199,6 +214,10 @@ export class WorldRenderer {
   private readonly world = new Container();
   private readonly ground = new Graphics();
   private readonly roads = new Graphics();
+  /** The road heat-map overlay, while it's on. */
+  private readonly heat = new Graphics();
+  private heatOn = false;
+  private heatKey = '';
   private readonly pileGround = new Graphics();
   /** Hunting ground outlines on the ground; their names and health words float above the trees. */
   private readonly grounds = new Graphics();
@@ -239,6 +258,7 @@ export class WorldRenderer {
     this.world.addChild(
       this.ground,
       this.roads,
+      this.heat,
       this.pileGround,
       this.grounds,
       this.aura,
@@ -281,6 +301,7 @@ export class WorldRenderer {
     }
 
     this.syncRoads(state);
+    this.syncHeat(state);
 
     const seen = new Set<string>();
     const { tile, mapObject, building, site } = state.components;
@@ -317,17 +338,17 @@ export class WorldRenderer {
           ? granaryPile(this.content, b.stock)
           : outputPile(def.outputBuffer, b.stock);
       const input = buffered(def.inputBuffer?.[0]?.resource, b.input);
-      const unstaffed = openPositions(state, this.content, id).length > 0;
+      const status = workplaceStatus(state, this.content, id);
       const cold = isColdHouse(state, this.content, id);
       const view = this.staticView(`building:${id}`, seen);
-      const key = `${b.type}@${at.x},${at.y}:${input?.amount}:${output?.resource}${output?.amount}:${unstaffed}:${cold}`;
+      const key = `${b.type}@${at.x},${at.y}:${input?.amount}:${output?.resource}${output?.amount}:${JSON.stringify(status)}:${cold}`;
       if (view.key !== key) {
         if (b.type === 'chopping_block')
           drawChoppingBlock(view.graphics, at.x, at.y, input, output);
         else drawBuilding(view.graphics, def, at.x, at.y, output);
-        if (unstaffed) {
+        if (status) {
           const c = gridToWorld(at.x + def.size.w / 2, at.y + def.size.h / 2);
-          drawMissingIcon(view.graphics, c.x, c.y - TILE_H * 2.4);
+          drawStatusIcon(view.graphics, status, c.x, c.y - TILE_H * 2.4);
         }
         if (cold) {
           const c = gridToWorld(at.x + def.size.w / 2, at.y + def.size.h / 2);
@@ -637,6 +658,31 @@ export class WorldRenderer {
     });
     label.anchor.set(0.5, 1);
     return label;
+  }
+
+  /** Shows or hides the road heat-map. */
+  setHeatMap(on: boolean): void {
+    this.heatOn = on;
+    this.heat.visible = on;
+    if (this.lastState) this.syncHeat(this.lastState);
+  }
+
+  /** Tints each Road tile by its Carrier traffic over the last day, relative to the busiest. */
+  private syncHeat(state: GameState): void {
+    if (!this.heatOn) return;
+    const { map } = state;
+    const traffic = roadTraffic(state, this.content);
+    const busiest = Math.max(0, ...Object.values(traffic));
+    const tiles: HeatTile[] = Object.keys(map.roads).map((k) => {
+      const i = Number(k);
+      const steps = traffic[i] ?? 0;
+      const level = steps === 0 ? 0 : Math.ceil((steps / busiest) * HEAT_LEVELS);
+      return { x: i % map.width, y: Math.floor(i / map.width), level };
+    });
+    const key = JSON.stringify(tiles);
+    if (key === this.heatKey) return;
+    this.heatKey = key;
+    drawHeatMap(this.heat, tiles);
   }
 
   private syncRoads(state: GameState): void {

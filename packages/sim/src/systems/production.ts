@@ -51,6 +51,33 @@ function outputInProgress(
   return total;
 }
 
+/** What stops `recipe` starting at workshop `building` now: inputs it lacks, outputs with no room. */
+export function recipeBlockers(
+  state: GameState,
+  content: Content,
+  building: EntityId,
+  recipe: RecipeId,
+): { missing: ResourceId[]; noRoom: ResourceId[] } {
+  const b = state.components.building[building];
+  if (!b) return { missing: [], noRoom: [] };
+  const def = content.buildings[b.type];
+  const capacity = (resource: ResourceId) =>
+    def.outputBuffer?.find((s) => s.resource === resource)?.capacity ?? 0;
+  const { inputs, outputs } = content.recipes[recipe];
+  return {
+    missing: inputs.filter((i) => (b.input[i.resource] ?? 0) < i.amount).map((i) => i.resource),
+    noRoom: outputs
+      .filter(
+        (o) =>
+          (b.stock[o.resource] ?? 0) +
+            outputInProgress(state, content, building, o.resource) +
+            o.amount >
+          capacity(o.resource),
+      )
+      .map((o) => o.resource),
+  };
+}
+
 /**
  * The first of the workshop's recipes that can start now: it isn't paused, every input is in the
  * input buffer, and every output fits in the output buffer alongside work already under way.
@@ -59,20 +86,9 @@ function outputInProgress(
 function startableRecipe(state: GameState, content: Content, building: EntityId): RecipeId | null {
   const b = state.components.building[building];
   if (!b || isPaused(state, content, building)) return null;
-  const def = content.buildings[b.type];
-  const capacity = (resource: ResourceId) =>
-    def.outputBuffer?.find((s) => s.resource === resource)?.capacity ?? 0;
-  for (const id of def.recipes ?? []) {
-    const recipe = content.recipes[id];
-    const hasInputs = recipe.inputs.every((i) => (b.input[i.resource] ?? 0) >= i.amount);
-    const outputsFit = recipe.outputs.every(
-      (o) =>
-        (b.stock[o.resource] ?? 0) +
-          outputInProgress(state, content, building, o.resource) +
-          o.amount <=
-        capacity(o.resource),
-    );
-    if (hasInputs && outputsFit) return id;
+  for (const id of content.buildings[b.type].recipes ?? []) {
+    const { missing, noRoom } = recipeBlockers(state, content, building, id);
+    if (missing.length === 0 && noRoom.length === 0) return id;
   }
   return null;
 }

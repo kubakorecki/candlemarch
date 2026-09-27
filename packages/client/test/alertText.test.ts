@@ -1,6 +1,13 @@
 import type { Alert } from '@candlemarch/sim';
 import { describe, expect, it } from 'vitest';
-import { alertText, deathText, gameOverText, winterText } from '../src/game/alertText';
+import {
+  alertText,
+  deathText,
+  gameOverText,
+  utilizationText,
+  winterText,
+  workplaceStatusText,
+} from '../src/game/alertText';
 
 const at = { severity: 'amber', target: null } as const;
 
@@ -50,5 +57,27 @@ describe('death and winter text', () => {
   it('counts down to winter', () => {
     expect(winterText(3)).toBe('Winter in 3 days');
     expect(winterText(1)).toBe('Winter in 1 day');
+  });
+});
+
+describe('workplace status text', () => {
+  it('says why a Workplace is idle', () => {
+    expect(workplaceStatusText({ kind: 'noWorker' })).toBe('No worker');
+    expect(workplaceStatusText({ kind: 'waitingFor', resources: ['logs'] })).toBe(
+      'Waiting for logs',
+    );
+    expect(workplaceStatusText({ kind: 'waitingFor', resources: ['logs', 'hides'] })).toBe(
+      'Waiting for logs and hides',
+    );
+    expect(workplaceStatusText({ kind: 'outputFull', resources: ['firewood'] })).toBe(
+      'Output full: no room for firewood',
+    );
+  });
+});
+
+describe('carrier utilization text', () => {
+  it('reads as a percent, or a dash before any Carrier has worked', () => {
+    expect(utilizationText(64)).toBe('64%');
+    expect(utilizationText(null)).toBe('–');
   });
 });

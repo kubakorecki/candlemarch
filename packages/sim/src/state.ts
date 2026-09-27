@@ -238,6 +238,21 @@ export interface Death {
   day: number;
 }
 
+/**
+ * Counts for one slice of the last in-game day (`traffic.ts`): Carrier utilization and road
+ * traffic are summed over the slices in the window.
+ */
+export interface TrafficSlice {
+  /** Which slice of time it counts: `floor(tick / slice length)`. */
+  slice: number;
+  /** Ticks Carriers spent at work (routine `work`), one per Carrier per tick. */
+  carrierTicks: number;
+  /** Of those, ticks spent holding a Haul. */
+  haulTicks: number;
+  /** Carrier steps onto each Road tile, by tile index. Tiles nobody stepped onto are absent. */
+  roadSteps: Record<number, number>;
+}
+
 /** How the game ended: the day and cause of the last villager's death. */
 export interface GameOver {
   day: number;
@@ -257,4 +272,6 @@ export interface GameState {
   deaths: Death[];
   /** Set when the last villager dies (the hero alone doesn't count); null while the game runs. */
   gameOver: GameOver | null;
+  /** Carrier and road counts over the last in-game day, oldest slice first. */
+  traffic: TrafficSlice[];
 }

@@ -78,6 +78,10 @@ export function Hud({ game }: { game: Game }) {
             <span className="muted">Food in Granaries</span>
             <span>{hud.food}</span>
           </div>
+          <div className="row" title="Share of Carriers holding a Haul over the last day">
+            <span className="muted">Carriers busy</span>
+            <span>{hud.carriersBusy}</span>
+          </div>
           <div className="row">
             <span className="muted">Woodcutter's hut</span>
             <span>
@@ -138,6 +142,11 @@ export function Hud({ game }: { game: Game }) {
         {hud.building && (
           <div className="panel building">
             <div className="title">{hud.building.name}</div>
+            {hud.building.status && (
+              <div className="row">
+                <span className="warn-amber">{hud.building.status}</span>
+              </div>
+            )}
             {hud.building.workers.map((worker) => (
               <div key={worker.id} className="row">
                 <button
@@ -368,6 +377,15 @@ export function Hud({ game }: { game: Game }) {
           title="Workers (V)"
         >
           Workers
+        </button>
+        <button
+          type="button"
+          className={hud.heatMap ? 'active' : ''}
+          disabled={!hud.ready}
+          onClick={() => game.toggleHeatMap()}
+          title="Road traffic: Carrier steps on each Road tile over the last day (T)"
+        >
+          Traffic
         </button>
         <span className="divider" />
         {SPEEDS.map((speed) => (

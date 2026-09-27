@@ -89,6 +89,12 @@ export const palette = {
   // Alert severities in the HUD list.
   alertRed: 0xd4614f,
   alertAmber: 0xd9a55b,
+  // Road heat-map: unused, then from light to heavy Carrier traffic.
+  heatNone: 0x8a8378,
+  heat1: 0xd6c47e,
+  heat2: 0xd9a55b,
+  heat3: 0xc4744a,
+  heat4: 0xa8423a,
 } as const;
 
 export type PaletteKey = keyof typeof palette;

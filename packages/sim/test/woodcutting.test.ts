@@ -23,6 +23,7 @@ function woodcutter(s: GameState) {
 function settled(s: GameState): unknown {
   const copy = JSON.parse(JSON.stringify(s)) as GameState;
   copy.tick = 0;
+  copy.traffic = []; // counts time passing, like `tick`
   for (const task of Object.values(copy.components.woodcutter)) {
     if (task.kind === 'idle') task.retryAt = 0;
   }

@@ -16,6 +16,7 @@ import { productionSystem } from './systems/production';
 import { routineSystem } from './systems/routine';
 import { spoilageSystem } from './systems/spoilage';
 import { staffingSystem } from './systems/staffing';
+import { trafficSystem } from './systems/traffic';
 import { warmthSystem } from './systems/warmth';
 import { woodcuttingSystem } from './systems/woodcutting';
 
@@ -45,6 +46,7 @@ function cloneState(state: GameState): GameState {
  * 15. hauling (job dispatch)
  * 16. construction, by day only
  * 17. staffing: workplaces below their worker limit draft idle carriers
+ * 18. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
  * then `tick` increments.
  */
 export function step(state: GameState, commands: readonly Command[], content: Content): GameState {
@@ -66,6 +68,7 @@ export function step(state: GameState, commands: readonly Command[], content: Co
   haulingSystem(next, content);
   constructionSystem(next, content);
   staffingSystem(next, content);
+  trafficSystem(next, content);
   next.tick += 1;
   return next;
 }

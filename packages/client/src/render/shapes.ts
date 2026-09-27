@@ -655,6 +655,25 @@ export function drawRoads(g: Graphics, tiles: RoadTile[]): void {
   }
 }
 
+/** A Road tile on the heat-map, and how busy it is: 0 unused, 1 to `HEAT_LEVELS` busiest. */
+export interface HeatTile {
+  x: number;
+  y: number;
+  level: number;
+}
+
+const HEAT_COLORS = [palette.heatNone, palette.heat1, palette.heat2, palette.heat3, palette.heat4];
+export const HEAT_LEVELS = HEAT_COLORS.length - 1;
+
+/** The road heat-map: each Road tile tinted by its traffic level. */
+export function drawHeatMap(g: Graphics, tiles: HeatTile[]): void {
+  g.clear();
+  for (const t of tiles) {
+    const color = HEAT_COLORS[Math.min(t.level, HEAT_LEVELS)] ?? palette.heatNone;
+    g.poly(flat(diamond(t.x + 0.1, t.y + 0.1, 0.8, 0.8))).fill({ color, alpha: 0.8 });
+  }
+}
+
 /** Bare dirt under a stockpile rectangle. */
 export function drawPileGround(g: Graphics, x: number, y: number, w: number, h: number): void {
   g.poly(flat(diamond(x, y, w, h)))
@@ -677,6 +696,30 @@ export function drawMissingIcon(g: Graphics, x: number, y: number): void {
   g.roundRect(x - 5 * s, y + 1 * s, 10 * s, 8 * s, 3 * s).fill(palette.ink);
   g.moveTo(x - r * 0.7, y - r * 0.7)
     .lineTo(x + r * 0.7, y + r * 0.7)
+    .stroke({ width: 3 * s, color: palette.invalid, cap: 'round' });
+}
+
+/** A bubble centred on (x, y) over a workshop waiting for `resource`: a piece of it, and "...". */
+export function drawWaitingIcon(g: Graphics, x: number, y: number, resource: ResourceId): void {
+  const s = TILE_H / 64;
+  const r = 13 * s;
+  g.circle(x, y, r).fill(palette.iconBg).stroke(INK);
+  PIECES[resource].draw(g, x, y - 2 * s, s * 0.8);
+  for (const dx of [-4, 0, 4]) g.circle(x + dx * s, y + 7 * s, 1.4 * s).fill(palette.ink);
+}
+
+/** A bubble centred on (x, y) over a workshop whose output buffer is full: a pile up to a brim. */
+export function drawOutputFullIcon(g: Graphics, x: number, y: number, resource: ResourceId): void {
+  const s = TILE_H / 64;
+  const r = 13 * s;
+  g.circle(x, y, r).fill(palette.iconBg).stroke(INK);
+  const piece = PIECES[resource];
+  const ps = s * 0.55;
+  piece.draw(g, x - (piece.w / 2) * ps, y + 5 * s, ps);
+  piece.draw(g, x + (piece.w / 2) * ps, y + 5 * s, ps);
+  piece.draw(g, x, y + 5 * s - piece.h * ps, ps);
+  g.moveTo(x - r * 0.7, y - 7 * s)
+    .lineTo(x + r * 0.7, y - 7 * s)
     .stroke({ width: 3 * s, color: palette.invalid, cap: 'round' });
 }
 

@@ -1,5 +1,7 @@
-// Words for what the sim works out: alerts, the death log and the winter countdown. Pure.
-import type { Alert, Death, DeathCause, GameOver } from '@candlemarch/sim';
+// Words for what the sim works out: alerts, the death log, the winter countdown, why a
+// Workplace is idle and Carrier utilization. Pure.
+import { content, type ResourceId } from '@candlemarch/content';
+import type { Alert, Death, DeathCause, GameOver, WorkplaceStatus } from '@candlemarch/sim';
 
 /** "1 day", "3 days". */
 function count(n: number, one: string, many: string): string {
@@ -48,4 +50,28 @@ export function gameOverText(over: GameOver): string {
 /** The autumn countdown: "Winter in 3 days". */
 export function winterText(days: number): string {
   return `Winter in ${count(days, 'day', 'days')}`;
+}
+
+/** "logs", "logs and hides", "logs, fish and hides". */
+function resourceList(resources: readonly ResourceId[]): string {
+  const names = resources.map((r) => content.resources[r].name.toLowerCase());
+  const last = names.pop();
+  return names.length === 0 ? (last ?? '') : `${names.join(', ')} and ${last}`;
+}
+
+/** Why a Workplace is idle, for its panel: "Waiting for logs". */
+export function workplaceStatusText(status: WorkplaceStatus): string {
+  switch (status.kind) {
+    case 'noWorker':
+      return 'No worker';
+    case 'waitingFor':
+      return `Waiting for ${resourceList(status.resources)}`;
+    case 'outputFull':
+      return `Output full: no room for ${resourceList(status.resources)}`;
+  }
+}
+
+/** Carrier utilization for the readout: "64%", or a dash when no Carrier has worked lately. */
+export function utilizationText(percent: number | null): string {
+  return percent === null ? '–' : `${percent}%`;
 }

@@ -1,6 +1,7 @@
 // Deterministic, headless simulation for Candlemarch. See CLAUDE.md "Simulation rules".
 export { type Alert, type AlertData, type AlertSeverity, alerts, winterIn } from './alerts';
 export { boostedWorkplaces } from './aura';
+export { type WorkplaceStatus, workplaceStatus } from './bottlenecks';
 export {
   type CalendarTime,
   calendarAt,
@@ -35,5 +36,6 @@ export { step } from './step';
 export { canPlaceStockpile, isStockpileGood, STOCKPILE_PRIORITIES } from './stockpiles';
 export { immigrationFoodNeeded, newcomerHome } from './systems/immigration';
 export { openPositions } from './systems/staffing';
+export { carrierUtilization, roadTraffic } from './traffic';
 export { isColdHouse } from './warmth';
 export { maxWorkers, reassignTargets, workersAt } from './workers';

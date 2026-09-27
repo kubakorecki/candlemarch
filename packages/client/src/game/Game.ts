@@ -9,6 +9,7 @@ import {
   canLayPath,
   canPlaceBuilding,
   canPlaceStockpile,
+  carrierUtilization,
   DEFAULT_MAP,
   type EntityId,
   footprint,
@@ -32,12 +33,20 @@ import {
   villageFood,
   winterIn,
   workersAt,
+  workplaceStatus,
 } from '@candlemarch/sim';
 import { CameraInput } from '../render/camera';
 import { type CameraView, gridToWorld, screenToTile } from '../render/iso';
 import { nightDarkness } from '../render/night';
 import { HEALTH_WORDS, type PlacementGhost, WorldRenderer } from '../render/WorldRenderer';
-import { alertText, deathText, gameOverText, winterText } from './alertText';
+import {
+  alertText,
+  deathText,
+  gameOverText,
+  utilizationText,
+  winterText,
+  workplaceStatusText,
+} from './alertText';
 import { dateLabel, SAVE_SLOTS, type SaveSlot, slotDateLabel } from './autosave';
 import type { Speed } from './clock';
 import { SimBridge } from './SimBridge';
@@ -183,6 +192,8 @@ export interface BuildingInfo {
   workers: { id: EntityId; name: string }[];
   workerLimit: number;
   maxWorkers: number;
+  /** Why it's idle, e.g. "Waiting for logs", or null while it works. */
+  status: string | null;
 }
 
 /** One save slot in the Load menu: its name and when it was saved, or null when it's empty. */
@@ -221,6 +232,10 @@ export interface HudState {
   cold: number;
   /** Food in every Granary. */
   food: number;
+  /** Carrier utilization over the last day, e.g. "64%". */
+  carriersBusy: string;
+  /** The road heat-map is showing. */
+  heatMap: boolean;
   /** "Winter in N days" through autumn, else null. */
   winter: string | null;
   /** The sim's alerts, red first. */
@@ -280,6 +295,8 @@ export class Game {
     hungry: 0,
     cold: 0,
     food: 0,
+    carriersBusy: utilizationText(null),
+    heatMap: false,
     winter: null,
     alerts: [],
     deathLog: [],
@@ -368,6 +385,13 @@ export class Game {
     const state = this.bridge.state;
     if (state) this.refreshWorkers(state);
     else this.setHud({ workers: null });
+  }
+
+  /** Shows or hides the road heat-map. */
+  toggleHeatMap(): void {
+    const on = !this.hud.heatMap;
+    this.renderer.setHeatMap(on);
+    this.setHud({ heatMap: on });
   }
 
   /** Selects villager `id`, as clicking it would. */
@@ -530,6 +554,7 @@ export class Game {
       hungry: Object.values(state.components.villager).filter((v) => v.missedMeals > 0).length,
       cold: Object.values(state.components.villager).filter((v) => v.coldNights > 0).length,
       food: villageFood(state, content),
+      carriersBusy: utilizationText(carrierUtilization(state, content)),
       gameOver: state.gameOver && gameOverText(state.gameOver),
     });
     this.refreshAlerts(state);
@@ -666,6 +691,7 @@ export class Game {
     } else if (e.key === '1' || e.key === '2' || e.key === '3')
       this.setSpeed(Number(e.key) as Speed);
     else if (e.key.toLowerCase() === 'v') this.toggleWorkers();
+    else if (e.key.toLowerCase() === 't') this.toggleHeatMap();
     else {
       const tool = TOOLS.find((t) => t.key === e.key.toLowerCase());
       if (tool) this.selectTool(tool.id);
@@ -1002,6 +1028,7 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
   const b = state.components.building[id];
   if (!b) return null;
   const { villager } = state.components;
+  const status = workplaceStatus(state, content, id);
   return {
     name: buildingNames(state)[id] ?? content.buildings[b.type].name,
     grounds: content.buildings[b.type].hunts
@@ -1010,6 +1037,7 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
     workers: workersAt(state, id).map((w) => ({ id: w, name: villager[w]?.name ?? '' })),
     workerLimit: b.workerLimit,
     maxWorkers: maxWorkers(content, b.type),
+    status: status && workplaceStatusText(status),
   };
 }
 
