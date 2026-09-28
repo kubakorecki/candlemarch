@@ -48,6 +48,7 @@ import {
   drawBoostedMark,
   drawBrokenWall,
   drawBuilding,
+  drawCache,
   drawCarriedGoods,
   drawChoppingBlock,
   drawDarkRing,
@@ -371,7 +372,7 @@ export class WorldRenderer {
     this.syncHeat(state);
 
     const seen = new Set<string>();
-    const { tile, mapObject, building, site, den } = state.components;
+    const { tile, mapObject, building, site, den, cache } = state.components;
 
     for (const id of idsOf(den)) {
       const at = tile[id];
@@ -380,6 +381,25 @@ export class WorldRenderer {
       const key = `den@${at.x},${at.y}`;
       if (view.key !== key) {
         drawDen(view.graphics);
+        view.key = key;
+        const c = tileCenterWorld(at.x, at.y);
+        view.node.position.set(c.x, c.y);
+        view.node.zIndex = depthOf(at.x + 0.5, at.y + 0.5);
+      }
+    }
+
+    for (const id of idsOf(cache)) {
+      const at = tile[id];
+      const stock = cache[id]?.stock;
+      if (!at || !stock) continue;
+      const goods = (Object.keys(this.content.resources) as ResourceId[]).flatMap((resource) => {
+        const amount = stock[resource] ?? 0;
+        return amount > 0 ? [{ resource, amount }] : [];
+      });
+      const view = this.staticView(`cache:${id}`, seen);
+      const key = `cache@${at.x},${at.y}:${JSON.stringify(goods)}`;
+      if (view.key !== key) {
+        drawCache(view.graphics, goods);
         view.key = key;
         const c = tileCenterWorld(at.x, at.y);
         view.node.position.set(c.x, c.y);

@@ -1434,6 +1434,22 @@ export function drawDen(g: Graphics): void {
     .stroke({ width: 3 * s, color: palette.bone, cap: 'round' });
 }
 
+/**
+ * A cleared Den's cache, drawn around (0, 0) = the centre of its tile: churned earth where the
+ * mound stood, and a small pile of each resource left, back to front.
+ */
+export function drawCache(g: Graphics, goods: readonly ResourceAmount[]): void {
+  g.clear();
+  const s = TILE_H / 64;
+  g.ellipse(0, 4 * s, 30 * s, 13 * s)
+    .fill(palette.denEarth)
+    .stroke(THIN_INK);
+  goods.forEach(({ resource, amount }, i) => {
+    const side = goods.length === 1 ? 0 : i === 0 ? -1 : 1;
+    drawGoodsPile(g, resource, side * 12 * s, (2 + i * 8) * s, amount);
+  });
+}
+
 /** Where a Gloamling's eyes sit, relative to its feet, in art units (× TILE_H / 64). */
 const GLOAMLING_EYES: Vec[] = [
   { x: -6, y: -18 },

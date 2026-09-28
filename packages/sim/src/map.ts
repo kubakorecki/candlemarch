@@ -10,7 +10,7 @@ import type {
   RoadId,
   TerrainId,
 } from '@candlemarch/content';
-import { isMonsterRate } from './dens';
+import { isMonsterRate, newDen } from './dens';
 import { createEntity } from './entities';
 import { isFood } from './granary';
 import {
@@ -141,12 +141,14 @@ export function createEmptyState(seed: number): GameState {
       huntingGround: {},
       den: {},
       gloamling: {},
+      cache: {},
     },
     logistics: { hauls: {} },
     deaths: [],
     gameOver: null,
     traffic: [],
     monsterRate: DEFAULT_MONSTER_RATE,
+    calms: [],
   };
 }
 
@@ -190,7 +192,7 @@ export function createInitialState(
       if (cell.den) {
         const id = createEntity(state);
         state.components.tile[id] = { x, y };
-        state.components.den[id] = {};
+        state.components.den[id] = newDen(content);
       }
     });
   });

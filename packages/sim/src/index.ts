@@ -14,7 +14,7 @@ export {
 } from './calendar';
 export { type HealthBar, healthBars, isKnockedOut } from './combat';
 export type { Command } from './commands';
-export { darkRingTiles } from './dens';
+export { darkRingTiles, denAt } from './dens';
 export { idsOf } from './entities';
 export { isForagePatch, isWithered } from './forage';
 export { foodIds, villageFood } from './granary';

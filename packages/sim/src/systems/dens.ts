@@ -1,10 +1,11 @@
 // Monster Dens at work. At each Dusk every Den spawns its season's Gloamlings on its tile, scaled
 // by the Monster rate (`trunc(n × rate ÷ 100)`). At each Dawn every Gloamling still out vanishes,
 // and at the first Dawn of each season but the first, every Den buds: a new Den closer to the
-// village (see `budDens`). At Monster rate 0 nothing spawns or buds, and Gloamlings out vanish at
-// once.
+// village (see `budDens`), never inside a cleared Den's calm area; calm areas that have ended are
+// dropped first. At Monster rate 0 nothing spawns or buds, and Gloamlings out vanish at once.
 import type { Content } from '@candlemarch/content';
 import { calendarAt, isDawn, isDusk } from '../calendar';
+import { inCalmArea, newDen } from '../dens';
 import { createEntity, destroyEntity, idsOf } from '../entities';
 import {
   blockedGrid,
@@ -12,6 +13,7 @@ import {
   inBounds,
   tileCenter,
   tileIndex,
+  tilesUnderCaches,
   tilesUnderStockpiles,
 } from '../grid';
 import { lightReachGrid } from '../lights';
@@ -22,6 +24,7 @@ export function densSystem(state: GameState, content: Content): void {
   if (state.monsterRate === 0) clearGloamlings(state);
   if (isDawn(state.tick, content)) {
     clearGloamlings(state);
+    state.calms = state.calms.filter((c) => state.tick < c.until);
     const { day, dayOfSeason } = calendarAt(state.tick, content);
     // The game starts at a season's first Dawn, before any Den has stood through a season.
     if (day > 1 && dayOfSeason === 1 && state.monsterRate > 0) budDens(state, content);
@@ -94,17 +97,24 @@ function distanceToBuildings(state: GameState, content: Content): Int32Array | n
 
 /**
  * Tiles a Den could stand on, by tile index: dark (out of every light's reach, fuelled or not),
- * walkable, and free of map objects, buildings, sites, roads, stockpiles, Dens and the entry tile.
+ * walkable, out of every calm area, and free of map objects, buildings, sites, roads, stockpiles,
+ * caches, Dens and the entry tile.
  */
 function openTiles(state: GameState, content: Content): boolean[] {
   const { map } = state;
   const blocked = blockedGrid(state, content);
   const piles = tilesUnderStockpiles(state);
+  const caches = tilesUnderCaches(state);
   const lightReach = lightReachGrid(state, content);
   const open = Array.from(
     { length: map.width * map.height },
     (_, i) =>
-      blocked[i] === 0 && lightReach[i] === 0 && map.roads[i] === undefined && !piles.has(i),
+      blocked[i] === 0 &&
+      lightReach[i] === 0 &&
+      map.roads[i] === undefined &&
+      !piles.has(i) &&
+      !caches.has(i) &&
+      !inCalmArea(state, content, { x: i % map.width, y: Math.floor(i / map.width) }),
   );
   if (map.entry) open[tileIndex(map, map.entry.x, map.entry.y)] = false;
   for (const id of idsOf(state.components.den)) {
@@ -152,6 +162,6 @@ function budDens(state: GameState, content: Content): void {
     open[pick] = false;
     const id = createEntity(state);
     state.components.tile[id] = { x: pick % map.width, y: Math.floor(pick / map.width) };
-    den[id] = {};
+    den[id] = newDen(content);
   }
 }

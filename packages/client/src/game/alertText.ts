@@ -46,6 +46,7 @@ const DIED: Record<DeathCause, string> = {
   starvation: 'starved',
   freezing: 'froze',
   gloamling: 'was killed by a Gloamling',
+  den: 'was stung to death by a Den',
 };
 
 /** A message-log line: "Ada starved, day 14". */

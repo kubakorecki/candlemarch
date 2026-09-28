@@ -14,6 +14,8 @@ export const combat: CombatDef = {
   villager: { hp: 20, damage: 3, cooldownTicks: 20, reachTiles: 1 },
   // Two hits kill a Gloamling; it takes 25 Gloamling hits to knock out.
   hero: { hp: 100, damage: 10, cooldownTicks: 20, reachTiles: 1, knockoutTicks: 400 },
+  // Eight Hero hits clear a Den; it stings back about as many times (40 of the Hero's 100 HP).
+  den: { hp: 80, damage: 5, cooldownTicks: 20, reachTiles: 1 },
   // 15 Gloamling hits, 300 ticks for one Gloamling alone.
   houseDoorHp: 60,
 };

@@ -254,10 +254,20 @@ export function tilesUnderStockpiles(state: GameState): Set<number> {
   return tiles;
 }
 
+/** Tile indices under a cleared Den's cache. Nothing is built, piled or budded on them. */
+export function tilesUnderCaches(state: GameState): Set<number> {
+  const tiles = new Set<number>();
+  for (const id of idsOf(state.components.cache)) {
+    const t = state.components.tile[id];
+    if (t) tiles.add(tileIndex(state.map, t.x, t.y));
+  }
+  return tiles;
+}
+
 /**
  * Whether a building of this type, turned `rotation`, fits with its origin at (x, y): every
  * footprint tile is in bounds, buildable, outside every Den's dark ring, and free of trees, roads
- * (a Gate may stand on one), stockpiles, other footprints and other doors (a wall's door is its own
+ * (a Gate may stand on one), stockpiles, caches, other footprints and other doors (a wall's door is its own
  * tile, so nothing goes on a wall or its site either); its door tile is in bounds, walkable, not blocked
  * and not on a stockpile (it may be on a road), and on a riverbank if the type needs one. Doesn't check whether the player may place this type.
  */
@@ -276,13 +286,14 @@ export function fitsAt(
   const blocked = blockedGrid(state, content);
   const doors = doorTiles(state, content);
   const piles = tilesUnderStockpiles(state);
+  const caches = tilesUnderCaches(state);
 
   for (const t of layout.tiles) {
     if (!inBounds(map, t.x, t.y)) return false;
     const i = tileIndex(map, t.x, t.y);
     const terrain = map.terrain[i];
     if (terrain === undefined || !content.terrain[terrain].buildable) return false;
-    if (blocked[i] === 1 || doors.has(i) || piles.has(i)) return false;
+    if (blocked[i] === 1 || doors.has(i) || piles.has(i) || caches.has(i)) return false;
     if (map.roads[i] !== undefined && !def.wall?.gate) return false;
     // Newcomers arrive on the entry tile: keep it open.
     if (map.entry && t.x === map.entry.x && t.y === map.entry.y) return false;
@@ -293,7 +304,7 @@ export function fitsAt(
   if (!inBounds(map, door.x, door.y)) return false;
   const doorIndex = tileIndex(map, door.x, door.y);
   if (def.doorOnRiverbank && !isRiverbank(state, content, door)) return false;
-  return blocked[doorIndex] === 0 && !piles.has(doorIndex);
+  return blocked[doorIndex] === 0 && !piles.has(doorIndex) && !caches.has(doorIndex);
 }
 
 /** Whether the village has a `type` building, built or under construction. */

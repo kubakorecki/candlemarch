@@ -52,6 +52,9 @@ describe('death and winter text', () => {
     expect(deathText({ name: 'Wynn', cause: 'gloamling', day: 3 })).toBe(
       'Wynn was killed by a Gloamling, day 3',
     );
+    expect(deathText({ name: 'Wynn', cause: 'den', day: 3 })).toBe(
+      'Wynn was stung to death by a Den, day 3',
+    );
   });
 
   it('says how the game ended', () => {

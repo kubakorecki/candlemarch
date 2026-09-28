@@ -121,8 +121,12 @@ v1's one monster: small, shadowy, many-eyed, comes in packs. Spawns at a Den at 
 _Avoid_: Monster (except as the category), creature, enemy
 
 **Den**:
-A Gloamling lair in the wilds. It spawns Gloamlings at every Dusk and slowly buds new Dens closer to the village.
+A Gloamling lair in the wilds. It spawns Gloamlings at every Dusk and slowly buds new Dens closer to the village. The Hero can clear one: it stings whoever stands next to it, and at 0 HP it leaves a Cache and a calm area where no Den buds for a while.
 _Avoid_: Nest, lair, spawner
+
+**Cache**:
+The loose goods a cleared Den leaves on its tile. Carriers and the Hero pick them up; it's gone once empty.
+_Avoid_: Loot, drop, stash
 
 **Light**:
 The tiles a torch or brazier lights at night. Gloamlings never step onto them. House windows give none.

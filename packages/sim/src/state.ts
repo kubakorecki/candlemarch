@@ -198,10 +198,15 @@ export type HeroTask =
    * same goods; for a stockpile it's what the hero set out with, and nothing is reserved.
    */
   | { kind: 'deliver'; target: EntityId; resource: ResourceId; tile: number; amount: number }
-  /** Take goods carriers haven't claimed from a building's output buffer or a stockpile tile. */
+  /**
+   * Take goods carriers haven't claimed from a building's output buffer, a stockpile tile or a
+   * cache.
+   */
   | { kind: 'pickup'; source: EntityId; resource: ResourceId; tile: number }
   /** Go after `gloamling`, following it as it moves, and hit it first while it's in reach. */
-  | { kind: 'attack'; gloamling: EntityId };
+  | { kind: 'attack'; gloamling: EntityId }
+  /** Walk up to `den` and hit it until it's cleared. */
+  | { kind: 'attackDen'; den: EntityId };
 
 /** A walk in progress along tile centres. Removed on arrival. */
 export interface PathComponent {
@@ -266,8 +271,28 @@ export interface HuntingGroundComponent {
 /**
  * A monster Den, standing on its `tile`. It spawns Gloamlings at Dusk and buds new Dens (see
  * `systems/dens.ts`). It isn't a `mapObject`: nobody gathers it, and it doesn't block walking.
+ * The Hero can attack it; it stings back, and at 0 HP it's cleared (`dens.ts` `clearDen`).
  */
-export type DenComponent = Record<string, never>;
+export interface DenComponent {
+  /** Hit points, whole. It never heals. */
+  hp: number;
+  /** First tick it can sting again. */
+  readyAt: number;
+}
+
+/**
+ * The goods a cleared Den leaves, loose on its `tile`: Carriers and the Hero pick them up like a
+ * building's output. Gone once empty.
+ */
+export interface CacheComponent {
+  stock: ResourceAmounts;
+}
+
+/** Around a cleared Den: no Den buds within `calmTiles` of `tile` until tick `until`. */
+export interface CalmArea {
+  tile: Tile;
+  until: number;
+}
 
 /** A Gloamling, the night monster: out from Dusk until Dawn, at its `position`. */
 export interface GloamlingComponent {
@@ -303,10 +328,11 @@ export interface Components {
   huntingGround: Store<HuntingGroundComponent>;
   den: Store<DenComponent>;
   gloamling: Store<GloamlingComponent>;
+  cache: Store<CacheComponent>;
 }
 
 /** How a villager died. */
-export type DeathCause = 'starvation' | 'freezing' | 'gloamling';
+export type DeathCause = 'starvation' | 'freezing' | 'gloamling' | 'den';
 
 /** A villager's death, kept for the message log and alerts. */
 export interface Death {
@@ -357,4 +383,6 @@ export interface GameState {
    * off: no spawns, no budding, and Gloamlings out vanish at once.
    */
   monsterRate: number;
+  /** One per Den cleared in the last `calmDays` days, oldest first; dropped at the Dawn it ends. */
+  calms: CalmArea[];
 }

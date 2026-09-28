@@ -340,11 +340,18 @@ describe('content validation', () => {
     // A bud must keep its own dark ring clear of buildings.
     expect(budding.minBuildingTiles > darkRingTiles, 'buds keep their ring clear').toBe(true);
     expectPositiveInt(budding.maxDens, 'dens.budding.maxDens');
+    const { cleared } = content.dens;
+    for (const { resource, amount } of cleared.cache) {
+      expect(resources, 'dens.cleared.cache').toHaveProperty(resource);
+      expectPositiveInt(amount, `dens.cleared.cache ${resource}`);
+    }
+    expectPositiveInt(cleared.calmTiles, 'dens.cleared.calmTiles');
+    expectPositiveInt(cleared.calmDays, 'dens.cleared.calmDays');
   });
 
   it('fighters use positive whole numbers', () => {
-    const { gloamling, villager } = content.combat;
-    for (const [name, f] of Object.entries({ gloamling, villager })) {
+    const { gloamling, villager, hero, den } = content.combat;
+    for (const [name, f] of Object.entries({ gloamling, villager, hero, den })) {
       for (const key of ['hp', 'damage', 'cooldownTicks', 'reachTiles'] as const) {
         expectPositiveInt(f[key], `combat.${name}.${key}`);
       }

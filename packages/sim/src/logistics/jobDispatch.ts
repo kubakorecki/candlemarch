@@ -2,6 +2,7 @@
 // Chosen over flag relay in docs/adr/0001-logistics-model.md.
 import type { Content, ResourceId } from '@candlemarch/content';
 import { isNight } from '../calendar';
+import { takeFromCache } from '../dens';
 import { idsOf } from '../entities';
 import { foodIds, isGranary } from '../granary';
 import { entityDoor, stockpileTileIndices, tileAt, tileIndex } from '../grid';
@@ -25,11 +26,11 @@ export interface Haul {
   resource: ResourceId;
   /** Units this haul moves. Counts as reserved at `from` until picked up, and incoming at `to` until delivered. */
   amount: number;
-  /** Building or stockpile to pick up from. */
+  /** Building, stockpile or cache to pick up from. */
   from: EntityId;
   /** Construction site, workshop, Granary or stockpile to deliver to. */
   to: EntityId;
-  /** Stockpile tile (map tile index) to pick up from. Absent when `from` is a building. */
+  /** Stockpile or cache tile (map tile index) to pick up from. Absent when `from` is a building. */
   fromTile?: number;
   /** Stockpile tile (map tile index) to deliver to. Absent when `to` is a site or workshop. */
   toTile?: number;
@@ -155,14 +156,14 @@ export function nearestTile(
 /** Where a haul picks up, and how many units are free to take there. */
 interface Pickup {
   tile: number;
-  /** The tile is a stockpile tile, not a door. */
+  /** The tile is a stockpile or cache tile, not a door. */
   onStockpile: boolean;
   available: number;
 }
 
 /**
- * Where to pick up from `supply`: the building's door, or the stockpile tile nearest to tile
- * `near` holding unreserved goods. Null if nothing is free to take.
+ * Where to pick up from `supply`: the building's door, the cache's tile, or the stockpile tile
+ * nearest to tile `near` holding unreserved goods. Null if nothing is free to take.
  */
 function pickupFor(
   state: GameState,
@@ -177,6 +178,13 @@ function pickupFor(
     const available = supply.amount - reserved(hauls, supply.source, supply.resource);
     if (!door || available <= 0) return null;
     return { tile: tileIndex(map, door.x, door.y), onStockpile: false, available };
+  }
+  if (supply.kind === 'cache') {
+    const at = state.components.tile[supply.source];
+    const available = supply.amount - reserved(hauls, supply.source, supply.resource);
+    if (!at || available <= 0) return null;
+    // Picked up on its tile, like a stockpile tile.
+    return { tile: tileIndex(map, at.x, at.y), onStockpile: true, available };
   }
   const pile = state.components.stockpile[supply.source];
   if (!pile) return null;
@@ -235,7 +243,7 @@ function endTile(
 /** Advances one carrier's haul by one tick. */
 function advanceHaul(state: GameState, content: Content, id: EntityId, haul: Haul): void {
   const { hauls } = state.logistics;
-  const { building, site, stockpile, villager, path } = state.components;
+  const { building, site, stockpile, cache, villager, path } = state.components;
   const carrier = villager[id];
   if (!carrier) {
     delete hauls[id];
@@ -250,7 +258,12 @@ function advanceHaul(state: GameState, content: Content, id: EntityId, haul: Hau
     return;
   }
   // The source is gone: there's nothing to pick up, and nowhere to return goods to.
-  if (!building[haul.from] && !stockpile[haul.from] && haul.phase !== 'dropoff') {
+  if (
+    !building[haul.from] &&
+    !stockpile[haul.from] &&
+    !cache[haul.from] &&
+    haul.phase !== 'dropoff'
+  ) {
     stopAtNextTile(state, id);
     carrier.carrying = null;
     delete hauls[id];
@@ -336,8 +349,9 @@ function returnGoods(state: GameState, id: EntityId, haul: Haul): void {
   const carrier = state.components.villager[id];
   const source = state.components.building[haul.from];
   const pile = state.components.stockpile[haul.from];
-  if (carrier?.carrying && source) {
-    source.stock[haul.resource] = (source.stock[haul.resource] ?? 0) + carrier.carrying.amount;
+  const stock = (source ?? state.components.cache[haul.from])?.stock;
+  if (carrier?.carrying && stock) {
+    stock[haul.resource] = (stock[haul.resource] ?? 0) + carrier.carrying.amount;
   } else if (carrier?.carrying && pile && haul.fromTile !== undefined) {
     addToTile(pile, haul.fromTile, carrier.carrying);
   }
@@ -363,6 +377,9 @@ function take(state: GameState, haul: Haul): number {
     if (amount <= 0) return 0;
     source.stock[haul.resource] = available - amount;
     return amount;
+  }
+  if (state.components.cache[haul.from]) {
+    return takeFromCache(state, haul.from, haul.resource, haul.amount);
   }
   const pile = state.components.stockpile[haul.from];
   if (!pile || haul.fromTile === undefined) return 0;

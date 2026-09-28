@@ -1,6 +1,6 @@
 # Clearing Dens by day
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 04, 05
 
@@ -21,3 +21,5 @@ Rules in `docs/spec.md`, "Nights in v1 (M3)" (Clearing a Den). Numbers Proposed,
 ## Comments
 
 2026-09-28 — Design session 01: Hero only, so no longer blocked by 07.
+
+2026-09-28 — Done. The Hero's `attackDen` order (right-click a Den), Den HP 80 and a 5-every-20-ticks sting on everyone in reach (villagers too, death cause `den`), a `cache` entity with 4 hides and 6 firewood on the cleared Den's tile (its own store rather than a Stockpile; Carriers and the Hero pick it up; gone once empty), and `state.calms` records that keep buds 16+ tiles away for 10 days. Den HP never heals. Choices logged in `docs/decisions.md`. Tests: `sim/test/clearDens.test.ts`.

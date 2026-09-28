@@ -1,7 +1,8 @@
 // The hero: one per game, not a villager, acts only on the player's orders. It walks, chops trees
 // and carries goods by hand to kickstart the village (spec, logistics stage 1).
 import type { Content, ResourceId } from '@candlemarch/content';
-import { inReach, isKnockedOut } from './combat';
+import { chebyshev, inReach, isKnockedOut } from './combat';
+import { cacheAt, denAt, takeFromCache } from './dens';
 import { idsOf } from './entities';
 import { isForagePatch } from './forage';
 import {
@@ -33,7 +34,8 @@ export type HeroOrder =
   | { order: 'gather'; tree: EntityId }
   | { order: 'deliver'; target: EntityId }
   | { order: 'pickup'; source: EntityId }
-  | { order: 'attack'; gloamling: EntityId };
+  | { order: 'attack'; gloamling: EntityId }
+  | { order: 'attackDen'; den: EntityId };
 
 /** The hero's entity ID, or null if this game has none. */
 export function heroOf(state: GameState): EntityId | null {
@@ -63,10 +65,11 @@ function treeStandingTiles(state: GameState, content: Content, tree: EntityId): 
  *   has room for it, once carriers' hauls are counted, or to a stockpile with room that takes it
  *   (never Food). The hero promises a site or workshop what it will bring, and carriers count that
  *   as incoming.
- * - pickup: take goods no carrier has claimed from a building's output buffer or a stockpile,
- *   as many as the hero's hands still hold.
+ * - pickup: take goods no carrier has claimed from a building's output buffer, a stockpile or a
+ *   cleared Den's cache, as many as the hero's hands still hold.
  * - attack: go after a Gloamling, following it as it moves, and hit it first once it's in reach
  *   (the hero hits any Gloamling in reach on its own anyway).
+ * - attackDen: walk up to a Den and hit it until it's cleared (Gloamlings in reach come first).
  * A Knocked-out hero takes no orders.
  */
 export function orderHero(state: GameState, content: Content, order: HeroOrder): void {
@@ -111,15 +114,37 @@ export function orderHero(state: GameState, content: Content, order: HeroOrder):
       hero.order = { kind: 'attack', gloamling: order.gloamling };
       return;
     }
+    case 'attackDen': {
+      if (!state.components.den[order.den] || !walkToDen(state, content, id, order.den)) return;
+      hero.order = { kind: 'attackDen', den: order.den };
+      return;
+    }
   }
+}
+
+/**
+ * Walks hero `id` to Den `den` (its tile), or stands once the Den is in its reach. False when it
+ * can't get there.
+ */
+function walkToDen(state: GameState, content: Content, id: EntityId, den: EntityId): boolean {
+  const at = state.components.tile[den];
+  const here = villagerTile(state, id);
+  if (!at || !here) return false;
+  if (chebyshev(here, at) <= content.combat.hero.reachTiles) {
+    stopAtNextTile(state, id);
+    return true;
+  }
+  const path = state.components.path[id];
+  if (path && path.tiles[path.tiles.length - 1] === tileIndex(state.map, at.x, at.y)) return true;
+  return rerouteTo(state, content, id, [at]);
 }
 
 type PickupTask = Extract<HeroTask, { kind: 'pickup' }>;
 
 /**
  * A pickup from `source`: its door if it's a building (its first output with unclaimed goods the
- * hero has room for), or the stockpile tile nearest the hero with unclaimed goods it has room for
- * (resources in content order). Null if there's nothing to take.
+ * hero has room for), the stockpile tile nearest the hero with unclaimed goods it has room for, or
+ * a cache's tile (resources in content order). Null if there's nothing to take.
  */
 function pickupTask(
   state: GameState,
@@ -138,8 +163,18 @@ function pickupTask(
     const tile = tileIndex(state.map, door.x, door.y);
     return { kind: 'pickup', source, resource: slot.resource, tile };
   }
+  const cacheTile = state.components.cache[source] ? state.components.tile[source] : undefined;
   for (const resource of Object.keys(content.resources) as ResourceId[]) {
     if (roomFor(content, hero, resource) <= 0) continue;
+    if (cacheTile) {
+      if (unclaimedAt(state, source, resource, null) <= 0) continue;
+      return {
+        kind: 'pickup',
+        source,
+        resource,
+        tile: tileIndex(state.map, cacheTile.x, cacheTile.y),
+      };
+    }
     const tile = pileTileWithGoods(state, source, resource);
     if (tile !== null) return { kind: 'pickup', source, resource, tile };
   }
@@ -147,8 +182,8 @@ function pickupTask(
 }
 
 /**
- * Units of `resource` at `source` no carrier has claimed: in a building's output buffer, or on
- * stockpile tile `tile`.
+ * Units of `resource` at `source` no carrier has claimed: in a building's output buffer or a
+ * cache, or on stockpile tile `tile`.
  */
 function unclaimedAt(
   state: GameState,
@@ -158,7 +193,8 @@ function unclaimedAt(
 ): number {
   const { hauls } = state.logistics;
   const building = state.components.building[source];
-  if (building) return (building.stock[resource] ?? 0) - reserved(hauls, source, resource);
+  const stock = (building ?? state.components.cache[source])?.stock;
+  if (stock) return (stock[resource] ?? 0) - reserved(hauls, source, resource);
   const pile = state.components.stockpile[source];
   if (!pile || tile === null) return 0;
   return amountOnTile(pile, tile, resource) - reservedOnTile(hauls, tile);
@@ -222,8 +258,10 @@ function deliverTask(
   return { kind: 'deliver', target, resource, tile, amount };
 }
 
-/** The tree, building, site or stockpile covering `tile`, if any. */
+/** The tree, building, site, stockpile or cache covering `tile`, if any. */
 function thingAt(state: GameState, content: Content, tile: Tile): EntityId | null {
+  const cache = cacheAt(state, tile);
+  if (cache !== null) return cache;
   const { mapObject, building, site, stockpile } = state.components;
   const same = (t: Tile) => t.x === tile.x && t.y === tile.y;
   for (const id of idsOf(state.components.tile)) {
@@ -251,11 +289,11 @@ function gloamlingAt(state: GameState, tile: Tile): EntityId | null {
 }
 
 /**
- * What right-clicking `tile` orders the hero to do: attack a Gloamling there; chop a tree;
- * deliver what it holds to a site, workshop or stockpile that wants it, or else pick up from a
- * building or stockpile with goods; walk onto open ground. Null when there's something on the tile but nothing to do with it, or
- * the hero is Knocked out. The client uses this so the rules stay in the sim; the command is still
- * checked when it's applied.
+ * What right-clicking `tile` orders the hero to do: attack a Gloamling there, or else a Den; chop
+ * a tree; deliver what it holds to a site, workshop or stockpile that wants it, or else pick up
+ * from a building, stockpile or cache with goods; walk onto open ground. Null when there's
+ * something on the tile but nothing to do with it, or the hero is Knocked out. The client uses
+ * this so the rules stay in the sim; the command is still checked when it's applied.
  */
 export function heroOrderAt(state: GameState, content: Content, tile: Tile): HeroOrder | null {
   const id = heroOf(state);
@@ -263,6 +301,8 @@ export function heroOrderAt(state: GameState, content: Content, tile: Tile): Her
   if (id === null || !hero || isKnockedOut(state, id)) return null;
   const gloamling = gloamlingAt(state, tile);
   if (gloamling !== null) return { order: 'attack', gloamling };
+  const den = denAt(state, tile);
+  if (den !== null) return { order: 'attackDen', den };
   const thing = thingAt(state, content, tile);
   if (thing === null) {
     return isWalkableTerrain(state, content, tile) ? { order: 'move', x: tile.x, y: tile.y } : null;
@@ -283,9 +323,9 @@ function touches(a: Tile, b: Tile): boolean {
   return Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1;
 }
 
-/** Whether the tree, site, stockpile, building or Gloamling an order is for still exists. */
+/** Whether the tree, site, stockpile, building, cache, Gloamling or Den an order is for still exists. */
 function orderTargetExists(state: GameState, order: HeroTask): boolean {
-  const { mapObject, site, stockpile, building } = state.components;
+  const { mapObject, site, stockpile, building, cache } = state.components;
   switch (order.kind) {
     case 'gather':
       return (mapObject[order.tree]?.amount ?? 0) > 0;
@@ -296,9 +336,15 @@ function orderTargetExists(state: GameState, order: HeroTask): boolean {
         stockpile[order.target] !== undefined
       );
     case 'pickup':
-      return building[order.source] !== undefined || stockpile[order.source] !== undefined;
+      return (
+        building[order.source] !== undefined ||
+        stockpile[order.source] !== undefined ||
+        cache[order.source] !== undefined
+      );
     case 'attack':
       return state.components.gloamling[order.gloamling] !== undefined;
+    case 'attackDen':
+      return state.components.den[order.den] !== undefined;
   }
 }
 
@@ -342,6 +388,14 @@ export function heroSystem(state: GameState, content: Content): void {
   }
   if (order.kind === 'attack') {
     chaseGloamling(state, content, id, order.gloamling);
+    return;
+  }
+  if (order.kind === 'attackDen') {
+    // The hits are `systems/combat.ts`; the order ends when the Den is cleared.
+    if (!walkToDen(state, content, id, order.den)) {
+      hero.order = null;
+      stopAtNextTile(state, id);
+    }
     return;
   }
   if (state.components.path[id]) return;
@@ -419,6 +473,7 @@ export function heroSystem(state: GameState, content: Content): void {
     case 'pickup': {
       const building = state.components.building[order.source];
       const pile = state.components.stockpile[order.source];
+      const cache = state.components.cache[order.source];
       const at = tileAt(state.map, order.tile);
       if (!isAt(state, id, at)) {
         if (!rerouteTo(state, content, id, [at])) hero.order = null;
@@ -432,6 +487,7 @@ export function heroSystem(state: GameState, content: Content): void {
         if (building)
           building.stock[order.resource] = (building.stock[order.resource] ?? 0) - amount;
         else if (pile) takeFromTile(pile, order.tile, order.resource, amount);
+        else if (cache) takeFromCache(state, order.source, order.resource, amount);
         hero.carrying = {
           resource: order.resource,
           amount: (hero.carrying?.amount ?? 0) + amount,

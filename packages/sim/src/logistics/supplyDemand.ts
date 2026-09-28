@@ -9,10 +9,10 @@ import { amountOnTile, roomOnTile, STOCKPILE_PRIORITIES, stockpileTakes } from '
 import { isPaused } from '../systems/production';
 import { houseFuelRoom } from '../warmth';
 
-/** Goods waiting in a building's output buffer or on a stockpile. */
+/** Goods waiting in a building's output buffer, on a stockpile, or in a cleared Den's cache. */
 export interface Supply {
   source: EntityId;
-  kind: 'building' | 'stockpile';
+  kind: 'building' | 'stockpile' | 'cache';
   resource: ResourceId;
   amount: number;
 }
@@ -52,7 +52,8 @@ function resourceIds(content: Content): ResourceId[] {
 
 /**
  * Output buffer contents of every building in building ID order (buffer slots in content order),
- * then the goods on every stockpile in stockpile ID order (resources in content order).
+ * then the goods on every stockpile in stockpile ID order, then every cache in ID order
+ * (resources in content order).
  */
 export function listSupplies(state: GameState, content: Content): Supply[] {
   const result: Supply[] = [];
@@ -71,6 +72,14 @@ export function listSupplies(state: GameState, content: Content): Supply[] {
       let amount = 0;
       for (const i of stockpileTileIndices(state, id)) amount += amountOnTile(pile, i, resource);
       if (amount > 0) result.push({ source: id, kind: 'stockpile', resource, amount });
+    }
+  }
+  for (const id of idsOf(state.components.cache)) {
+    const cache = state.components.cache[id];
+    if (!cache) continue;
+    for (const resource of resourceIds(content)) {
+      const amount = cache.stock[resource] ?? 0;
+      if (amount > 0) result.push({ source: id, kind: 'cache', resource, amount });
     }
   }
   return result;

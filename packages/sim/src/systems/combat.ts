@@ -2,7 +2,8 @@
 // there; a villager a Gloamling reaches drops its work and hits back; then everyone in reach and
 // off cooldown hits, in entity-ID order, so the same fight always ends the same way. Gloamlings
 // batter House doors and the walls in their way. Villagers, the Hero, doors and walls are back to
-// full HP at Dawn; a Knocked-out Hero gets up at full HP once its time is up.
+// full HP at Dawn; a Knocked-out Hero gets up at full HP once its time is up. By day or night the
+// Hero hits a Den it's ordered to attack, and every Den stings whoever stands next to it.
 import type { Content } from '@candlemarch/content';
 import { isDawn } from '../calendar';
 import {
@@ -14,16 +15,18 @@ import {
   isEngaged,
   isLivedInHouse,
   isOutInTheOpen,
+  stungBy,
   targetTile,
   villagerFoe,
 } from '../combat';
 import { killVillager } from '../deaths';
+import { clearDen } from '../dens';
 import { destroyEntity, idsOf } from '../entities';
 import { entityDoor, inBounds, tileIndex } from '../grid';
 import { isAtHome, residentsOf } from '../homes';
 import { litGrid } from '../lights';
 import { findPath, type Grid, travelCosts } from '../pathfinding';
-import type { EntityId, GameState, Tile } from '../state';
+import type { DeathCause, EntityId, GameState, Tile } from '../state';
 import { fullHp, isWall, isWallType } from '../walls';
 import { isOnWatch, towerFoe, watchOf } from '../watchtowers';
 import { dropWork } from '../workers';
@@ -60,6 +63,8 @@ export function combatSystem(state: GameState, content: Content): void {
       const v = villager[id];
       if (v) v.fighting = false;
     }
+    // By day only the Hero and Dens fight.
+    if (idsOf(state.components.den).length > 0) resolveHits(state, content);
     return;
   }
 
@@ -288,19 +293,30 @@ function engage(state: GameState, content: Content): void {
 /**
  * Everyone in reach of its foe and off cooldown hits once, in entity-ID order: a Gloamling its
  * target, a villager fighting or in the militia its foe (`villagerFoe`), a Watchman in its tower
- * the tower's foe (`towerFoe`, timed by the Watchman's `readyAt`), the Hero its foe (`heroFoe`).
- * Whoever drops to 0 HP is gone (or Knocked out) before its turn comes.
+ * the tower's foe (`towerFoe`, timed by the Watchman's `readyAt`), the Hero its foe (`heroFoe`),
+ * a Den everyone it stings (`stungBy`). Whoever drops to 0 HP is gone (or Knocked out) before its
+ * turn comes.
  */
 function resolveHits(state: GameState, content: Content): void {
-  const { villager, gloamling, hero } = state.components;
+  const { villager, gloamling, hero, den } = state.components;
   const fighters = [
     ...idsOf(villager).filter(
       (id) => villager[id]?.fighting || villager[id]?.militia || isOnWatch(state, content, id),
     ),
     ...idsOf(hero),
     ...idsOf(gloamling),
+    ...idsOf(den),
   ].sort((a, b) => a - b);
   for (const id of fighters) {
+    const d = den[id];
+    if (d) {
+      if (state.tick < d.readyAt) continue;
+      const stung = stungBy(state, content, id);
+      if (stung.length === 0) continue;
+      d.readyAt = state.tick + content.combat.den.cooldownTicks;
+      for (const victim of stung) hurt(state, content, victim, content.combat.den.damage, 'den');
+      continue;
+    }
     const h = hero[id];
     if (h) {
       if (state.tick < h.readyAt) continue;
@@ -345,10 +361,16 @@ function resolveHits(state: GameState, content: Content): void {
 }
 
 /**
- * Takes `damage` off `id`: a villager at 0 HP dies of it, the Hero is Knocked out, a Gloamling is
- * gone.
+ * Takes `damage` off `id`: a villager at 0 HP dies of `cause`, the Hero is Knocked out, a
+ * Gloamling is gone, a Den is cleared.
  */
-function hurt(state: GameState, content: Content, id: EntityId, damage: number): void {
+function hurt(
+  state: GameState,
+  content: Content,
+  id: EntityId,
+  damage: number,
+  cause: DeathCause = 'gloamling',
+): void {
   const h = state.components.hero[id];
   if (h) {
     h.hp = Math.max(0, h.hp - damage);
@@ -358,13 +380,19 @@ function hurt(state: GameState, content: Content, id: EntityId, damage: number):
   const v = state.components.villager[id];
   if (v) {
     v.hp -= damage;
-    if (v.hp <= 0) killVillager(state, content, id, 'gloamling');
+    if (v.hp <= 0) killVillager(state, content, id, cause);
     return;
   }
   const g = state.components.gloamling[id];
   if (g) {
     g.hp -= damage;
     if (g.hp <= 0) destroyEntity(state, id);
+    return;
+  }
+  const d = state.components.den[id];
+  if (d) {
+    d.hp = Math.max(0, d.hp - damage);
+    if (d.hp === 0) clearDen(state, content, id);
   }
 }
 

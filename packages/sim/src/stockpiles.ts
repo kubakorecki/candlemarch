@@ -7,6 +7,7 @@ import {
   inBounds,
   rectTiles,
   tileIndex,
+  tilesUnderCaches,
   tilesUnderStockpiles,
 } from './grid';
 import type { EntityId, GameState, StockpileComponent, StockpilePriority } from './state';
@@ -16,8 +17,8 @@ export const STOCKPILE_PRIORITIES: readonly StockpilePriority[] = ['high', 'norm
 
 /**
  * Whether a stockpile can be placed on the w×h rectangle with its origin at (x, y): every tile
- * is on the map, buildable, and free of trees, building or site footprints, doors, roads and
- * other stockpiles.
+ * is on the map, buildable, and free of trees, building or site footprints, doors, roads,
+ * caches and other stockpiles.
  */
 export function canPlaceStockpile(
   state: GameState,
@@ -33,6 +34,7 @@ export function canPlaceStockpile(
   const blocked = blockedGrid(state, content);
   const doors = doorTiles(state, content);
   const piles = tilesUnderStockpiles(state);
+  const caches = tilesUnderCaches(state);
   return rectTiles({ x, y }, w, h).every((t) => {
     const i = tileIndex(map, t.x, t.y);
     const terrain = map.terrain[i];
@@ -42,7 +44,8 @@ export function canPlaceStockpile(
       blocked[i] === 0 &&
       !doors.has(i) &&
       map.roads[i] === undefined &&
-      !piles.has(i)
+      !piles.has(i) &&
+      !caches.has(i)
     );
   });
 }

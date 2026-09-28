@@ -104,10 +104,34 @@ export function isKnockedOut(state: GameState, id: EntityId): boolean {
   return (state.components.hero[id]?.knockedOutUntil ?? null) !== null;
 }
 
+/** Whether Den `den` is within `reachTiles` of `id` (Chebyshev, from the tile `id` stands on). */
+export function denInReach(
+  state: GameState,
+  id: EntityId,
+  den: EntityId,
+  reachTiles: number,
+): boolean {
+  const at = villagerTile(state, id);
+  const denTile = state.components.den[den] ? state.components.tile[den] : undefined;
+  return at !== null && denTile !== undefined && chebyshev(at, denTile) <= reachTiles;
+}
+
 /**
- * The Gloamling Hero `id` hits: the one it's ordered to attack when that's in reach, else the
- * nearest in its reach (tile distance), ties to the lowest ID. Null while it's Knocked out or
- * none is in reach.
+ * Who Den `den` stings: every villager out in the open and the Hero (unless Knocked out) within
+ * its reach, in ID order. Never Gloamlings.
+ */
+export function stungBy(state: GameState, content: Content, den: EntityId): EntityId[] {
+  const { villager, hero } = state.components;
+  const { reachTiles } = content.combat.den;
+  return [...idsOf(villager), ...idsOf(hero)]
+    .sort((a, b) => a - b)
+    .filter((id) => isOutInTheOpen(state, content, id) && denInReach(state, id, den, reachTiles));
+}
+
+/**
+ * What Hero `id` hits: the Gloamling it's ordered to attack when that's in reach, else the
+ * nearest Gloamling in its reach (tile distance), ties to the lowest ID, else the Den it's
+ * ordered to attack when that's in reach. Null while it's Knocked out or none is in reach.
  */
 export function heroFoe(state: GameState, content: Content, id: EntityId): EntityId | null {
   const hero = state.components.hero[id];
@@ -124,7 +148,10 @@ export function heroFoe(state: GameState, content: Content, id: EntityId): Entit
   const inReachOf = idsOf(state.components.gloamling).filter((g) =>
     inReach(state, id, g, reachTiles),
   );
-  return nearestTo(state, id, inReachOf);
+  const gloamling = nearestTo(state, id, inReachOf);
+  if (gloamling !== null) return gloamling;
+  const den = hero.order?.kind === 'attackDen' ? hero.order.den : null;
+  return den !== null && denInReach(state, id, den, reachTiles) ? den : null;
 }
 
 /** Of `ids` (ascending), the one nearest `id` by tile distance, ties to the lowest ID. */
@@ -160,14 +187,17 @@ export interface HealthBar {
   id: EntityId;
   hp: number;
   maxHp: number;
-  /** A battered building's: the tile it's battered at (a House's door, a wall's own tile). */
+  /**
+   * A battered building's: the tile it's battered at (a House's door, a wall's own tile); a Den's
+   * own tile.
+   */
   tile?: Tile;
 }
 
 /**
  * Health of everyone in a fight right now: villagers fighting back or with a Gloamling to hit in
- * the militia, the Hero with a Gloamling in reach, Gloamlings engaged or in a manned watchtower's
- * sights, and each House door or wall segment being battered.
+ * the militia, the Hero with a Gloamling or its Den in reach, Gloamlings engaged or in a manned
+ * watchtower's sights, each House door or wall segment being battered, and each Den the Hero hits.
  */
 export function healthBars(state: GameState, content: Content): HealthBar[] {
   const { villager, gloamling, hero } = state.components;
@@ -177,11 +207,19 @@ export function healthBars(state: GameState, content: Content): HealthBar[] {
     if (v && (v.fighting || villagerFoe(state, content, id) !== null))
       bars.push({ id, hp: v.hp, maxHp: content.combat.villager.hp });
   }
+  const dens = new Set<EntityId>();
   for (const id of idsOf(hero)) {
     const h = hero[id];
-    if (h && heroFoe(state, content, id) !== null) {
+    const foe = h ? heroFoe(state, content, id) : null;
+    if (h && foe !== null) {
       bars.push({ id, hp: h.hp, maxHp: content.combat.hero.hp });
+      if (state.components.den[foe]) dens.add(foe);
     }
+  }
+  for (const id of [...dens].sort((a, b) => a - b)) {
+    const d = state.components.den[id];
+    const tile = state.components.tile[id];
+    if (d && tile) bars.push({ id, hp: d.hp, maxHp: content.combat.den.hp, tile });
   }
   const shot = new Set(idsOf(villager).map((id) => towerFoe(state, content, id)));
   for (const id of idsOf(gloamling)) {

@@ -15,6 +15,7 @@ import {
   DEFAULT_MAP,
   DEFAULT_MONSTER_RATE,
   darkRingTiles,
+  denAt,
   type EntityId,
   entityLayout,
   type GameState,
@@ -608,8 +609,8 @@ export class Game {
   }
 
   /**
-   * Shows the attack cursor while the hero, selected and up, has a Gloamling under the mouse.
-   * Checked every frame, as Gloamlings move under a still mouse.
+   * Shows the attack cursor while the hero, selected and up, has a Gloamling or a Den under the
+   * mouse. Checked every frame, as Gloamlings move under a still mouse.
    */
   private updateCursor(): void {
     const state = this.bridge.state;
@@ -621,7 +622,8 @@ export class Game {
       this.hud.tool === null &&
       this.pointer !== null &&
       !isKnockedOut(state, hero) &&
-      this.renderer.hitGloamling(this.pointer.sx, this.pointer.sy) !== null;
+      (this.renderer.hitGloamling(this.pointer.sx, this.pointer.sy) !== null ||
+        denAt(state, this.tileAt(this.pointer.sx, this.pointer.sy)) !== null);
     if (attack === this.attackCursor) return;
     this.attackCursor = attack;
     this.renderer.canvas.style.cursor = attack ? 'crosshair' : '';
@@ -805,7 +807,7 @@ export class Game {
     this.setHud({
       heroSelected: selected,
       message: selected
-        ? 'Hero selected. Right-click to walk, chop a tree, carry goods, or attack a Gloamling. Esc deselects.'
+        ? 'Hero selected. Right-click to walk, chop a tree, carry goods, or attack a Gloamling or a Den. Esc deselects.'
         : null,
     });
   }

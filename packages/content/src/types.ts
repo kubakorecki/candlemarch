@@ -238,6 +238,15 @@ export interface DensDef {
     /** No Den buds while the map holds this many. */
     maxDens: number;
   };
+  /**
+   * A Den the Hero clears (0 HP) leaves `cache` on its tile, and no Den buds within `calmTiles`
+   * of it (Chebyshev) for `calmDays` days.
+   */
+  cleared: {
+    cache: ResourceAmount[];
+    calmTiles: number;
+    calmDays: number;
+  };
 }
 
 /**
@@ -262,6 +271,11 @@ export interface CombatDef {
    * Back to full HP at Dawn.
    */
   hero: FighterDef & { knockoutTicks: number };
+  /**
+   * A Den the Hero attacks. It stings everyone in its reach (never Gloamlings) and never heals;
+   * at 0 HP it's cleared (`DensDef.cleared`).
+   */
+  den: FighterDef;
   /**
    * HP of every House's door, which Gloamlings batter; a broken door costs one resident. Back to
    * full at Dawn.
