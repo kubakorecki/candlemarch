@@ -13,6 +13,7 @@ import {
   isColdHouse,
   isRiverFrozen,
   isWithered,
+  lightSources,
   type Point,
   type Rotation,
   roadTraffic,
@@ -31,6 +32,7 @@ import {
   unitsToGrid,
   worldOriginOnScreen,
 } from './iso';
+import type { NightLook } from './night';
 import { palette } from './palette';
 import {
   drawAuraRadius,
@@ -61,6 +63,7 @@ import {
   drawVillager,
   drawVillagerStatus,
   drawWaitingIcon,
+  drawWindowLight,
   HEAT_LEVELS,
   type HeatTile,
   type RoadTile,
@@ -143,9 +146,6 @@ interface HeroView {
   /** What `load` shows, as `resource:amount`, so it's redrawn only when that changes. */
   loadDrawn: string;
 }
-
-/** Opacity of the night tint at full dark. */
-const NIGHT_ALPHA = 0.5;
 
 /** Screen pixels around a walker's drawn shape that still count as clicking it. */
 const HIT_PADDING = 10;
@@ -240,9 +240,15 @@ export class WorldRenderer {
   private readonly aura = new Graphics();
   private readonly objects = new Container({ sortableChildren: true });
   private readonly ghost = new Graphics();
-  /** Darkness over the whole screen at night. */
-  private readonly night = new Graphics();
+  /** Darkness over the whole screen: white, tinted by the night look and multiplied in. */
+  private readonly night = new Graphics({ blendMode: 'multiply' });
   private nightSize = '';
+  /**
+   * Glows of the sim's light sources, added over the darkness so they shine through it. Follows
+   * the camera like `world`; faded in and out with the dark.
+   */
+  private readonly lights = new Graphics({ blendMode: 'add' });
+  private lightsKey = '';
   private readonly statics = new Map<string, StaticView>();
   private readonly villagers = new Map<EntityId, VillagerView>();
   private hero: HeroView | null = null;
@@ -277,7 +283,7 @@ export class WorldRenderer {
       this.puffLabels,
       this.ghost,
     );
-    this.app.stage.addChild(this.world, this.night);
+    this.app.stage.addChild(this.world, this.night, this.lights);
   }
 
   get canvas(): HTMLCanvasElement {
@@ -296,6 +302,8 @@ export class WorldRenderer {
     const origin = worldOriginOnScreen(camera, this.screenWidth, this.screenHeight);
     this.world.position.set(origin.x, origin.y);
     this.world.scale.set(camera.zoom);
+    this.lights.position.set(origin.x, origin.y);
+    this.lights.scale.set(camera.zoom);
   }
 
   /** Brings trees, buildings and sites in line with a new snapshot. */
@@ -355,7 +363,7 @@ export class WorldRenderer {
       const key = `${b.type}@${at.x},${at.y}r${b.rotation}:${input?.amount}:${output?.resource}${output?.amount}:${JSON.stringify(status)}:${cold}`;
       if (view.key !== key) {
         if (b.type === 'chopping_block') drawChoppingBlock(view.graphics, layout, input, output);
-        else drawBuilding(view.graphics, layout, output);
+        else drawBuilding(view.graphics, layout, output, def.residents !== undefined);
         if (status) {
           const c = gridToWorld(at.x + size.w / 2, at.y + size.h / 2);
           drawStatusIcon(view.graphics, status, c.x, c.y - TILE_H * 2.4);
@@ -399,6 +407,7 @@ export class WorldRenderer {
 
     this.syncStockpiles(state, seen);
     this.syncGrounds(state);
+    this.syncLights(state);
 
     for (const [key, view] of this.statics) {
       if (!seen.has(key)) {
@@ -423,15 +432,32 @@ export class WorldRenderer {
     this.drawPuffs(timeMs);
   }
 
-  /** Tints the screen for night: `darkness` 0 is day, 1 full night. */
-  drawNight(darkness: number): void {
+  /** Darkens the screen and fades light sources in by `look` (from `nightLook`). */
+  drawNight(look: NightLook): void {
     const size = `${this.screenWidth}x${this.screenHeight}`;
     if (size !== this.nightSize) {
-      this.night.clear().rect(0, 0, this.screenWidth, this.screenHeight).fill(palette.night);
+      this.night.clear().rect(0, 0, this.screenWidth, this.screenHeight).fill(0xffffff);
       this.nightSize = size;
     }
-    this.night.alpha = darkness * NIGHT_ALPHA;
-    this.night.visible = darkness > 0;
+    this.night.tint = look.tint;
+    this.night.visible = look.tint !== 0xffffff;
+    this.lights.alpha = look.glow;
+    this.lights.visible = look.glow > 0;
+  }
+
+  /** Redraws the glows when the sim's light sources change. */
+  private syncLights(state: GameState): void {
+    const sources = lightSources(state, this.content);
+    const layouts = sources.flatMap((light) => {
+      const b = state.components.building[light.id];
+      const at = state.components.tile[light.id];
+      return b && at ? [buildingLayout(this.content.buildings[b.type], at, b.rotation)] : [];
+    });
+    const key = JSON.stringify(layouts);
+    if (key === this.lightsKey) return;
+    this.lights.clear();
+    for (const layout of layouts) drawWindowLight(this.lights, layout);
+    this.lightsKey = key;
   }
 
   setHeroSelected(selected: boolean): void {

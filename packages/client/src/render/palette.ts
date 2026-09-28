@@ -77,7 +77,13 @@ export const palette = {
   selection: 0xe8cf86,
   aura: 0xd9b45b,
 
-  night: 0x141a2e,
+  // Night: the world is multiplied by `dusk` at Dusk and `night` at full dark; light sources
+  // shine through it in `glow` (their halo) and `windowLit` (a lit pane).
+  dusk: 0xd49a7c,
+  night: 0x6c78a4,
+  glow: 0xe8973f,
+  windowLit: 0xffd27a,
+  window: 0x4a3a2b,
   valid: 0x9dbf73,
   invalid: 0xc4584a,
 

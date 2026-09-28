@@ -408,15 +408,45 @@ function drawDoorstep(g: Graphics, door: Vec, face: DoorFace): void {
     .stroke(THIN_INK);
 }
 
+/** Wall height of a building `size` tiles across: bigger buildings stand a little taller. */
+function wallHeight(size: { w: number; h: number }): number {
+  return WALL_H * (0.8 + 0.2 * Math.max(size.w, size.h));
+}
+
+/**
+ * World corners of a House's window: mid-wall on the front-right (east) wall, or on the front-left
+ * (south) wall when the door is on the east one.
+ */
+export function houseWindow(layout: BuildingLayout): [Vec, Vec, Vec, Vec] {
+  const { origin, size } = layout;
+  const wallH = wallHeight(size);
+  const half = 0.16;
+  let a: Vec;
+  let b: Vec;
+  if (doorFace(layout) === 'east') {
+    const mid = origin.x + size.w / 2;
+    a = gridToWorld(mid - half, origin.y + size.h);
+    b = gridToWorld(mid + half, origin.y + size.h);
+  } else {
+    const mid = origin.y + size.h / 2;
+    a = gridToWorld(origin.x + size.w, mid + half);
+    b = gridToWorld(origin.x + size.w, mid - half);
+  }
+  const sill = wallH * 0.3;
+  const lintel = wallH * 0.68;
+  return [up(a, sill), up(b, sill), up(b, lintel), up(a, lintel)];
+}
+
 /**
  * A finished building in world coordinates: an iso box with a pyramid roof and a door on the wall
  * it faces, or a doorstep on the ground when that wall is at the back. `stock` draws a pile beside
- * the door (the output buffer).
+ * the door (the output buffer); `window` adds a House's window (`houseWindow`), unlit.
  */
 export function drawBuilding(
   g: Graphics,
   layout: BuildingLayout,
   stock: ResourceAmount | null,
+  window = false,
 ): void {
   g.clear();
   const { origin, size } = layout;
@@ -434,7 +464,7 @@ export function drawBuilding(
   const [top, right, bottom, left] = diamond(origin.x, origin.y, size.w, size.h);
   const centre = lerp(top, bottom, 0.5);
   const span = Math.max(size.w, size.h);
-  const wallH = WALL_H * (0.8 + 0.2 * span);
+  const wallH = wallHeight(size);
   const roofH = ROOF_H * (0.7 + 0.3 * span);
   const apex = up(centre, wallH + roofH);
 
@@ -446,6 +476,11 @@ export function drawBuilding(
     .fill(palette.wallDark)
     .stroke(INK);
   drawDoor(g, layout, face);
+  if (window) {
+    g.poly(flat(houseWindow(layout)))
+      .fill(palette.window)
+      .stroke(THIN_INK);
+  }
 
   // Roof, with a little overhang: back faces first, then the two visible ones.
   const eave = (p: Vec) => up(lerp(centre, p, 1.12), wallH - 4);
@@ -682,6 +717,29 @@ export function drawAuraRadius(g: Graphics, gx: number, gy: number, radiusTiles:
   g.ellipse(c.x, c.y, rx, ry)
     .fill({ color: palette.aura, alpha: 0.08 })
     .stroke({ width: 3, color: palette.aura, alpha: 0.7 });
+}
+
+/**
+ * A soft round glow of `radius` world pixels centred on (x, y): rings fading outwards in
+ * `palette.glow`. Meant for a layer blended additively over the dark; any light source can use it.
+ */
+export function drawGlow(g: Graphics, x: number, y: number, radius: number): void {
+  const RINGS = 5;
+  for (let i = RINGS; i >= 1; i--) {
+    g.circle(x, y, (radius * i) / RINGS).fill({ color: palette.glow, alpha: 0.12 });
+  }
+}
+
+/**
+ * A lit House window: the pane in `palette.windowLit` and a small glow around it, with no lit
+ * ground, so it never reads as the pool of Light a torch casts.
+ */
+export function drawWindowLight(g: Graphics, layout: BuildingLayout): void {
+  const pane = houseWindow(layout);
+  const [a, , c] = pane;
+  const centre = lerp(a, c, 0.5);
+  drawGlow(g, centre.x, centre.y, TILE_H * 0.45);
+  g.poly(flat(pane)).fill(palette.windowLit);
 }
 
 /** Ground marking under a Workplace the hero's aura is boosting. */

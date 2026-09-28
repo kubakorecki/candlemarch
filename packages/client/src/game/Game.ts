@@ -38,7 +38,7 @@ import {
 } from '@candlemarch/sim';
 import { CameraInput } from '../render/camera';
 import { type CameraView, gridToWorld, screenToTile } from '../render/iso';
-import { nightDarkness } from '../render/night';
+import { nightLook } from '../render/night';
 import { HEALTH_WORDS, type PlacementGhost, WorldRenderer } from '../render/WorldRenderer';
 import {
   alertText,
@@ -519,7 +519,7 @@ export class Game {
         this.bridge.alpha,
         performance.now(),
       );
-      this.renderer.drawNight(nightDarkness(state.tick, content));
+      this.renderer.drawNight(nightLook(state.tick, content));
     }
   }
 
