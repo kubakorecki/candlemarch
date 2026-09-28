@@ -14,6 +14,7 @@ import {
   tileIndex,
   tilesUnderStockpiles,
 } from '../grid';
+import { lightReachGrid } from '../lights';
 import { randomInt } from '../rng';
 import type { GameState } from '../state';
 
@@ -92,16 +93,18 @@ function distanceToBuildings(state: GameState, content: Content): Int32Array | n
 }
 
 /**
- * Tiles a Den could stand on, by tile index: walkable, and free of map objects, buildings, sites,
- * roads, stockpiles, Dens and the entry tile.
+ * Tiles a Den could stand on, by tile index: dark (out of every light's reach, fuelled or not),
+ * walkable, and free of map objects, buildings, sites, roads, stockpiles, Dens and the entry tile.
  */
 function openTiles(state: GameState, content: Content): boolean[] {
   const { map } = state;
   const blocked = blockedGrid(state, content);
   const piles = tilesUnderStockpiles(state);
+  const lightReach = lightReachGrid(state, content);
   const open = Array.from(
     { length: map.width * map.height },
-    (_, i) => blocked[i] === 0 && map.roads[i] === undefined && !piles.has(i),
+    (_, i) =>
+      blocked[i] === 0 && lightReach[i] === 0 && map.roads[i] === undefined && !piles.has(i),
   );
   if (map.entry) open[tileIndex(map, map.entry.x, map.entry.y)] = false;
   for (const id of idsOf(state.components.den)) {

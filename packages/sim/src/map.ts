@@ -70,7 +70,7 @@ export interface MapDef {
 
 /**
  * Whether a `type` building can start holding `stock`: Food up to a Granary's capacity, fuel up
- * to a House's buffer, or goods up to a Workplace's output slots.
+ * to a House's buffer or what a light holds, or goods up to a Workplace's output slots.
  */
 function holdsAtStart(
   content: Content,
@@ -87,6 +87,8 @@ function holdsAtStart(
     const { fuel, houseBuffer } = content.needs.cold;
     return entries.every(([r, amount]) => r === fuel && amount <= houseBuffer);
   }
+  const { light } = def;
+  if (light) return entries.every(([r, amount]) => r === light.fuel && amount <= light.holds);
   return entries.every(([r, amount]) =>
     (def.outputBuffer ?? []).some((slot) => slot.resource === r && amount <= slot.capacity),
   );
@@ -223,6 +225,7 @@ export function createInitialState(
       input: {},
       workerLimit: maxWorkers(content, b.type),
       cold: false,
+      lit: false,
     };
     for (const slot of def.employs) {
       for (let i = 0; i < slot.count; i++) {

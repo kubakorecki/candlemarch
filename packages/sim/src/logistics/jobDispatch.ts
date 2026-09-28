@@ -5,6 +5,7 @@ import { isNight } from '../calendar';
 import { idsOf } from '../entities';
 import { foodIds, isGranary } from '../granary';
 import { entityDoor, stockpileTileIndices, tileAt, tileIndex } from '../grid';
+import { lightDef } from '../lights';
 import { tileDistance, travelCosts } from '../pathfinding';
 import type { EntityId, GameState, Store, Tile } from '../state';
 import { addToTile, amountOnTile, roomOnTile, takeFromTile } from '../stockpiles';
@@ -292,7 +293,9 @@ function advanceHaul(state: GameState, content: Content, id: EntityId, haul: Hau
       } else if (
         carrier.carrying &&
         workshop &&
-        (isGranary(state, content, haul.to) || isHouse(state, content, haul.to))
+        (isGranary(state, content, haul.to) ||
+          isHouse(state, content, haul.to) ||
+          lightDef(state, content, haul.to))
       ) {
         workshop.stock[haul.resource] = (workshop.stock[haul.resource] ?? 0) + haul.amount;
       } else if (carrier.carrying && workshop) {

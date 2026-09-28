@@ -778,6 +778,114 @@ export function drawWindowLight(g: Graphics, layout: BuildingLayout): void {
   g.poly(flat(pane)).fill(palette.windowLit);
 }
 
+/** A torch or brazier: what `drawLight` draws and where its flame burns. */
+export type LightKind = 'torch' | 'brazier';
+
+/** Height of a light's flame above its tile centre, in world pixels. */
+function flameHeight(kind: LightKind): number {
+  const s = TILE_H / 64;
+  return (kind === 'torch' ? 46 : 22) * s;
+}
+
+/**
+ * A torch (a pole with a pitch-wrapped head) or a brazier (an iron bowl on three legs, firewood
+ * showing in it while it holds some), unlit: the flame and the pool of Light are
+ * `drawLightPool`'s, on the lights layer.
+ */
+export function drawLight(
+  g: Graphics,
+  layout: BuildingLayout,
+  kind: LightKind,
+  fuel: number,
+): void {
+  g.clear();
+  const s = TILE_H / 64;
+  const { origin } = layout;
+  const c = gridToWorld(origin.x + 0.5, origin.y + 0.5);
+  g.ellipse(c.x, c.y, 14 * s, 6 * s).fill({ color: palette.shadow, alpha: 0.3 });
+  const top = flameHeight(kind);
+  if (kind === 'torch') {
+    g.rect(c.x - 3 * s, c.y - top, 6 * s, top)
+      .fill(palette.torchPole)
+      .stroke(THIN_INK);
+    g.roundRect(c.x - 6 * s, c.y - top - 4 * s, 12 * s, 14 * s, 4 * s)
+      .fill(fuel > 0 ? palette.firewood : palette.torchHead)
+      .stroke(INK);
+    return;
+  }
+  const rx = 17 * s;
+  const ry = 7 * s;
+  for (const dx of [-11, 0, 11]) {
+    g.moveTo(c.x + dx * s * 0.6, c.y - top + ry)
+      .lineTo(c.x + dx * s, c.y + (dx === 0 ? 3 : 0) * s)
+      .stroke({ ...INK, width: 4, color: palette.iron });
+  }
+  g.moveTo(c.x - rx, c.y - top)
+    .arc(c.x, c.y - top, rx, Math.PI, 0, true)
+    .closePath()
+    .fill(palette.iron)
+    .stroke(INK);
+  g.ellipse(c.x, c.y - top, rx, ry)
+    .fill(palette.ironLight)
+    .stroke(INK);
+  if (fuel > 0) {
+    for (const dx of [-7, 0, 7]) {
+      g.moveTo(c.x + dx * s - 4 * s, c.y - top + 2 * s)
+        .lineTo(c.x + dx * s + 4 * s, c.y - top - 3 * s)
+        .stroke({ width: 4 * s, color: palette.firewood, cap: 'round' });
+    }
+  }
+}
+
+/**
+ * A lit torch or brazier on the additive lights layer: the pool of Light over every tile it
+ * lights (`radiusTiles` around its footprint, so the edge Gloamlings won't cross reads at a
+ * glance), brightest at the middle, and its flame.
+ */
+export function drawLightPool(
+  g: Graphics,
+  layout: BuildingLayout,
+  kind: LightKind,
+  radiusTiles: number,
+): void {
+  const { origin, size } = layout;
+  const cx = origin.x + size.w / 2;
+  const cy = origin.y + size.h / 2;
+  const around = (reach: number) =>
+    diamond(
+      cx - size.w / 2 - reach,
+      cy - size.h / 2 - reach,
+      size.w + 2 * reach,
+      size.h + 2 * reach,
+    );
+  const RINGS = 4;
+  for (let i = RINGS; i >= 1; i--) {
+    g.poly(flat(around((radiusTiles * i) / RINGS))).fill({ color: palette.glow, alpha: 0.1 });
+  }
+  g.poly(flat(around(radiusTiles))).stroke({
+    width: 2,
+    color: palette.glow,
+    alpha: 0.35,
+    join: 'round',
+  });
+
+  const s = TILE_H / 64;
+  const c = gridToWorld(cx, cy);
+  const base = { x: c.x, y: c.y - flameHeight(kind) };
+  const w = (kind === 'torch' ? 7 : 12) * s;
+  const h = (kind === 'torch' ? 20 : 26) * s;
+  drawGlow(g, base.x, base.y - h / 2, TILE_H * 0.7);
+  const flame = (fw: number, fh: number, color: number) =>
+    g
+      .moveTo(base.x - fw, base.y)
+      .quadraticCurveTo(base.x - fw, base.y - fh * 0.6, base.x, base.y - fh)
+      .quadraticCurveTo(base.x + fw, base.y - fh * 0.6, base.x + fw, base.y)
+      .closePath()
+      .fill(color);
+  flame(w, h, palette.glow);
+  flame(w * 0.55, h * 0.6, palette.windowLit);
+}
+
 /** Ground marking under a Workplace the hero's aura is boosting. */
 export function drawBoostedMark(g: Graphics, layout: BuildingLayout): void {
   const { origin, size } = layout;

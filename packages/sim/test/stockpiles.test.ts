@@ -97,6 +97,7 @@ function stocked(logs: number): GameState {
     input: {},
     workerLimit: 1,
     cold: false,
+    lit: false,
   };
   return s;
 }
@@ -420,6 +421,7 @@ describe('what stockpiles store', () => {
       input: {},
       workerLimit: 1,
       cold: false,
+      lit: false,
     };
     const s = step(s0, [{ type: 'placeStockpile', x: 4, y: 4, w: 1, h: 2 }], content);
     return {

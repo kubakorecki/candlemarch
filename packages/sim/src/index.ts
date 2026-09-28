@@ -37,7 +37,7 @@ export {
   groundsNear,
   huntChancePermille,
 } from './huntingGrounds';
-export { type LightSource, lightSources } from './lights';
+export { isDarkLight, type LightSource, lightSources } from './lights';
 export type { Haul, LogisticsState } from './logistics/jobDispatch';
 export { createInitialState, type MapDef } from './map';
 export { DEFAULT_MAP, type MapName, maps } from './maps';

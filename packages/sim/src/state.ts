@@ -71,7 +71,7 @@ export interface BuildingComponent {
   type: BuildingId;
   /** Quarter turns from the content layout. */
   rotation: Rotation;
-  /** Output buffer contents, the Food a Granary holds, or a House's fuel. */
+  /** Output buffer contents, the Food a Granary holds, or a House's or a light's fuel. */
   stock: ResourceAmounts;
   /** Input buffer contents. Empty unless the building is a workshop. */
   input: ResourceAmounts;
@@ -85,6 +85,8 @@ export interface BuildingComponent {
    * Dawn. Always false otherwise.
    */
   cold: boolean;
+  /** A light (torch, brazier) that burned its fuel at tonight's Dusk: lit until Dawn. */
+  lit: boolean;
 }
 
 export interface SiteComponent {

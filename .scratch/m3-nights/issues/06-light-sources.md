@@ -1,6 +1,6 @@
 # Torches and braziers
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 01, 03, 04, m2-camp-winter/06
 
@@ -19,3 +19,7 @@ Rules in `docs/spec.md`, "Nights in v1 (M3)" (Light) and `docs/adr/0003-light-is
 
 - Headless tests: firewood burned at Dusk only, and only in the seasons' nights; an unfuelled light stays dark; a Gloamling never enters a lit tile and retargets when its target is lit; Houses are filled before lights; budding skips lit tiles.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-28: Done. Content `light` (`LightDef`) on `torch` and `brazier`; `building.lit` set by the new `lightsSystem` (7th in the tick) at every Dusk, cleared at Dawn; `light` demands after Houses, before Stockpiles; light fuel counts in `villageStock`. Gloamlings path over `gloamlingGrid` (lit tiles blocked) and drop or skip targets on lit tiles. Read "only in the seasons' nights" as every season's night, Dusk only (lights burn all year, since Gloamlings come out every night). Budding skips every tile a light could reach, fuelled or not: it runs at Dawn, after lights go out; with today's numbers the 12-tile building gap already covers it. Client: torch/brazier art, a pool of Light over exactly the lit tiles, no-firewood icon on a dark light, toolbar `l`/`z`. See `docs/decisions.md`.

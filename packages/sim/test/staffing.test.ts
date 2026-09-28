@@ -25,6 +25,7 @@ function stocked(logs: number): GameState {
     input: {},
     workerLimit: 1,
     cold: false,
+    lit: false,
   };
   return s;
 }
@@ -99,6 +100,7 @@ describe('placed workplaces', () => {
       input: {},
       workerLimit: 1,
       cold: false,
+      lit: false,
     };
     const [first, second] = idsOf(s0.components.villager).filter(
       (v) => s0.components.villager[v]?.job === 'carrier',

@@ -4,17 +4,21 @@
 import type { Content, RecipeId, ResourceId } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { doorTile } from '../grid';
+import { lightDef, lightFuelIn } from '../lights';
 import { workTicks } from '../speed';
 import type { EntityId, GameState } from '../state';
 import { isAtWork } from '../villagers';
 import { fuelIn } from '../warmth';
 import { isAt, walkTo } from './movement';
 
-/** Units of `resource` the village holds: on Stockpiles, and for fuel in Houses too. */
+/**
+ * Units of `resource` the village holds: on Stockpiles, and for fuel in Houses and lights too.
+ */
 export function villageStock(state: GameState, content: Content, resource: ResourceId): number {
   let total = 0;
-  if (resource === content.needs.cold.fuel) {
-    for (const id of idsOf(state.components.building)) total += fuelIn(state, content, id);
+  for (const id of idsOf(state.components.building)) {
+    if (resource === content.needs.cold.fuel) total += fuelIn(state, content, id);
+    if (lightDef(state, content, id)?.fuel === resource) total += lightFuelIn(state, content, id);
   }
   for (const pile of Object.values(state.components.stockpile)) {
     for (const goods of Object.values(pile.goods)) {

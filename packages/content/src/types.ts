@@ -11,7 +11,9 @@ export type BuildingId =
   | 'fishers_hut'
   | 'foragers_hut'
   | 'hunters_lodge'
-  | 'granary';
+  | 'granary'
+  | 'torch'
+  | 'brazier';
 export type JobId = 'woodcutter' | 'carrier' | 'woodsplitter' | 'fisher' | 'forager' | 'hunter';
 export type RoadId = 'dirt_path';
 export type HeroId = 'placeholder';
@@ -265,6 +267,19 @@ export interface HuntingDef {
   scarcePercent: number;
 }
 
+/**
+ * A light (torch, brazier). It keeps up to `holds` of `fuel` in its stock, which Carriers fill
+ * every season. At each Dusk it burns `burnPerNight`; one that can't stays dark all night. Lit, it
+ * casts Light on every tile within `radiusTiles` of its footprint (Chebyshev distance), and
+ * Gloamlings never step onto a lit tile (ADR-0003).
+ */
+export interface LightDef {
+  radiusTiles: number;
+  fuel: ResourceId;
+  burnPerNight: number;
+  holds: number;
+}
+
 export interface BuildingDef {
   id: BuildingId;
   name: string;
@@ -310,6 +325,8 @@ export interface BuildingDef {
   foodCapacity?: number;
   /** Villagers it houses: a building with residents is a House. */
   residents?: number;
+  /** Makes it a light (M3): a building that burns fuel each night to cast Light. */
+  light?: LightDef;
   /** Cost and time to build it from a construction site. Absent for buildings that can't be built. */
   construction?: { cost: ResourceAmount[]; buildTicks: number };
 }

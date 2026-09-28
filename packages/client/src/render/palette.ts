@@ -84,6 +84,12 @@ export const palette = {
   glow: 0xe8973f,
   windowLit: 0xffd27a,
   window: 0x4a3a2b,
+  // Torches and braziers: a pole with a pitch-wrapped head, an iron bowl; their flame and pool
+  // of Light go on the lights layer in `glow` and `windowLit`.
+  torchPole: 0x5c4431,
+  torchHead: 0x3a2a1e,
+  iron: 0x4f4c4a,
+  ironLight: 0x6d6964,
 
   // Monsters: Dens, Gloamlings (pale eyes that shine through the dark) and the dark ring around a
   // Den where nothing can be built.

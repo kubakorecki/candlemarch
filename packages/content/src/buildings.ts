@@ -118,4 +118,31 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 100, // 5 s
     },
   },
+  // Lights (spec, Nights in v1): Gloamlings never step onto a lit tile (ADR-0003).
+  torch: {
+    id: 'torch',
+    name: 'Torch',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [],
+    light: { radiusTiles: 2, fuel: 'firewood', burnPerNight: 1, holds: 3 },
+    construction: {
+      cost: [{ resource: 'logs', amount: 1 }],
+      buildTicks: 60, // 3 s
+    },
+  },
+  brazier: {
+    id: 'brazier',
+    name: 'Brazier',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [],
+    light: { radiusTiles: 4, fuel: 'firewood', burnPerNight: 2, holds: 6 },
+    construction: {
+      cost: [{ resource: 'logs', amount: 4 }],
+      buildTicks: 100, // 5 s
+    },
+  },
 };

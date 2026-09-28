@@ -13,6 +13,7 @@ import {
   heroOf,
   idsOf,
   isColdHouse,
+  isDarkLight,
   isKnockedOut,
   isRiverFrozen,
   isWithered,
@@ -59,6 +60,8 @@ import {
   drawHeroFallen,
   drawHeroLoad,
   drawHuntingGround,
+  drawLight,
+  drawLightPool,
   drawMissingIcon,
   drawMushroomPatch,
   drawNoFirewoodIcon,
@@ -403,19 +406,22 @@ export class WorldRenderer {
           : outputPile(def.outputBuffer, b.stock);
       const input = buffered(def.inputBuffer?.[0]?.resource, b.input);
       const status = workplaceStatus(state, this.content, id);
-      const cold = isColdHouse(state, this.content, id);
+      const cold = isColdHouse(state, this.content, id) || isDarkLight(state, this.content, id);
+      const fuel = def.light ? (b.stock[def.light.fuel] ?? 0) : 0;
       const view = this.staticView(`building:${id}`, seen);
-      const key = `${b.type}@${at.x},${at.y}r${b.rotation}:${input?.amount}:${output?.resource}${output?.amount}:${JSON.stringify(status)}:${cold}`;
+      const key = `${b.type}@${at.x},${at.y}r${b.rotation}:${input?.amount}:${output?.resource}${output?.amount}:${JSON.stringify(status)}:${cold}:${fuel}`;
       if (view.key !== key) {
         if (b.type === 'chopping_block') drawChoppingBlock(view.graphics, layout, input, output);
-        else drawBuilding(view.graphics, layout, output, def.residents !== undefined);
+        else if (b.type === 'torch' || b.type === 'brazier') {
+          drawLight(view.graphics, layout, b.type, fuel);
+        } else drawBuilding(view.graphics, layout, output, def.residents !== undefined);
         if (status) {
           const c = gridToWorld(at.x + size.w / 2, at.y + size.h / 2);
           drawStatusIcon(view.graphics, status, c.x, c.y - TILE_H * 2.4);
         }
         if (cold) {
           const c = gridToWorld(at.x + size.w / 2, at.y + size.h / 2);
-          drawNoFirewoodIcon(view.graphics, c.x, c.y - TILE_H * 2.4);
+          drawNoFirewoodIcon(view.graphics, c.x, c.y - TILE_H * (def.light ? 1.7 : 2.4));
         }
         view.key = key;
         view.node.zIndex = depthOf(at.x + size.w - 0.5, at.y + size.h - 0.5);
@@ -562,18 +568,31 @@ export class WorldRenderer {
     this.eyes.visible = look.glow > 0;
   }
 
-  /** Redraws the glows when the sim's light sources change. */
+  /**
+   * Redraws the glows when the sim's light sources change: a lit House's window, or a torch's or
+   * brazier's flame and pool of Light.
+   */
   private syncLights(state: GameState): void {
-    const sources = lightSources(state, this.content);
-    const layouts = sources.flatMap((light) => {
+    const glows = lightSources(state, this.content).flatMap((light) => {
       const b = state.components.building[light.id];
       const at = state.components.tile[light.id];
-      return b && at ? [buildingLayout(this.content.buildings[b.type], at, b.rotation)] : [];
+      if (!b || !at) return [];
+      const layout = buildingLayout(this.content.buildings[b.type], at, b.rotation);
+      return [{ light, type: b.type, layout }];
     });
-    const key = JSON.stringify(layouts);
+    const key = JSON.stringify(glows);
     if (key === this.lightsKey) return;
     this.lights.clear();
-    for (const layout of layouts) drawWindowLight(this.lights, layout);
+    for (const { light, type, layout } of glows) {
+      if (light.kind === 'window') drawWindowLight(this.lights, layout);
+      else
+        drawLightPool(
+          this.lights,
+          layout,
+          type === 'torch' ? 'torch' : 'brazier',
+          light.radiusTiles,
+        );
+    }
     this.lightsKey = key;
   }
 

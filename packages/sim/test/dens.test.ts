@@ -1,5 +1,7 @@
 // Monster Dens: Gloamlings out from Dusk to Dawn, Dens budding toward the village once a season,
 // the dark ring nothing can be built in, and the Monster rate.
+
+import type { Content, LightDef } from '@candlemarch/content';
 import { describe, expect, it } from 'vitest';
 import { dawnTick, duskTick } from '../src/calendar';
 import { idsOf } from '../src/entities';
@@ -7,6 +9,7 @@ import { canPlaceBuilding, tileCenter } from '../src/grid';
 import { createInitialState, type MapDef } from '../src/map';
 import { deserialize, serialize } from '../src/save';
 import type { GameState, Tile } from '../src/state';
+import { step } from '../src/step';
 import { content, run } from './helpers';
 
 const WIDTH = 40;
@@ -178,6 +181,29 @@ describe('Den budding', () => {
     // 16 tiles out: 6 closer would put the bud 10 tiles from the Hut.
     const near = [{ x: 17, y: 6 }];
     expect(denTiles(run(wildsAt(dawnTick(SUMMER, content), near), 1))).toEqual(near);
+  });
+
+  it('only picks tiles no light reaches, lit tonight or not', () => {
+    // A brazier reaching 29 tiles leaves x 31–32 of the fitting x 28–32 dark.
+    const brazier = content.buildings.brazier;
+    const farLight: Content = {
+      ...content,
+      buildings: {
+        ...content.buildings,
+        brazier: { ...brazier, light: { ...(brazier.light as LightDef), radiusTiles: 29 } },
+      },
+    };
+    const map: MapDef = {
+      ...wilds(),
+      buildings: [...wilds().buildings, { type: 'brazier', x: 1, y: 2 }],
+    };
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const s = createInitialState(seed, map, farLight);
+      s.tick = dawnTick(SUMMER, farLight);
+      const bud = denTiles(step(s, [], farLight))[1];
+      expect(bud, `seed ${seed}`).toBeDefined();
+      expect(bud?.x, `seed ${seed}`).toBeGreaterThanOrEqual(31);
+    }
   });
 
   it('stops at Monster rate 0', () => {

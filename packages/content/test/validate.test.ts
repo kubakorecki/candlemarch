@@ -137,6 +137,19 @@ describe('content validation', () => {
     }
   });
 
+  it('lights burn an existing, non-Food fuel they can hold, over a whole-tile radius', () => {
+    for (const b of Object.values(buildings)) {
+      if (!b.light) continue;
+      const { radiusTiles, fuel, burnPerNight, holds } = b.light;
+      expect(resources, `${b.id}.light.fuel`).toHaveProperty(fuel);
+      expect(resources[fuel].storage, `${b.id} burns Food`).not.toBe('granary');
+      expectPositiveInt(radiusTiles, `${b.id}.light.radiusTiles`);
+      expectPositiveInt(burnPerNight, `${b.id}.light.burnPerNight`);
+      expectPositiveInt(holds, `${b.id}.light.holds`);
+      expect(holds, `${b.id} holds a night's fuel`).toBeGreaterThanOrEqual(burnPerNight);
+    }
+  });
+
   it('granaries hold a positive whole number of Food, and some Food is stored in them', () => {
     for (const b of Object.values(buildings)) {
       if (b.foodCapacity !== undefined) expectPositiveInt(b.foodCapacity, `${b.id}.foodCapacity`);

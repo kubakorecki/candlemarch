@@ -3,6 +3,7 @@ import type { Content, ResourceId } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { foodIds, granaryRoom } from '../granary';
 import { stockpileTileIndices } from '../grid';
+import { lightDef, lightFuelRoom } from '../lights';
 import type { EntityId, GameState } from '../state';
 import { amountOnTile, roomOnTile, STOCKPILE_PRIORITIES, stockpileTakes } from '../stockpiles';
 import { isPaused } from '../systems/production';
@@ -18,12 +19,12 @@ export interface Supply {
 
 /**
  * Goods a construction site still lacks, or room a workshop's input buffer, a Granary, a House's
- * fuel buffer or a stockpile still has (not counting anything already on its way). A Granary's
- * room is shared by every Food: it has one demand per Food, each for all of it.
+ * fuel buffer, a light's fuel or a stockpile still has (not counting anything already on its
+ * way). A Granary's room is shared by every Food: it has one demand per Food, each for all of it.
  */
 export interface Demand {
   target: EntityId;
-  kind: 'site' | 'workshop' | 'granary' | 'house' | 'stockpile';
+  kind: 'site' | 'workshop' | 'granary' | 'house' | 'light' | 'stockpile';
   resource: ResourceId;
   amount: number;
 }
@@ -80,8 +81,8 @@ export function listSupplies(state: GameState, content: Content): Supply[] {
  * room in the input buffer of every workshop that isn't paused (oldest first, buffer slots in
  * content order), then room in every Granary for each Food (oldest first, Foods in content
  * order), then room in every House's fuel buffer while Houses stock up (oldest first), then room
- * on every stockpile for each resource it takes (oldest first, resources in
- * content order).
+ * for fuel in every torch and brazier (oldest first), then room on every stockpile for each
+ * resource it takes (oldest first, resources in content order).
  */
 export function listDemands(state: GameState, content: Content): Demand[] {
   const result: Demand[] = [];
@@ -116,6 +117,12 @@ export function listDemands(state: GameState, content: Content): Demand[] {
     if (room > 0)
       result.push({ target: id, kind: 'house', resource: content.needs.cold.fuel, amount: room });
   }
+  for (const id of idsOf(state.components.building)) {
+    const light = lightDef(state, content, id);
+    const room = lightFuelRoom(state, content, id);
+    if (light && room > 0)
+      result.push({ target: id, kind: 'light', resource: light.fuel, amount: room });
+  }
   const capacity = content.logistics.stockpileTileCapacity;
   for (const id of idsOf(state.components.stockpile)) {
     const pile = state.components.stockpile[id];
@@ -134,9 +141,10 @@ export function listDemands(state: GameState, content: Content): Demand[] {
 /**
  * Demands in the order they're served: each site on its own, oldest first, then each workshop
  * input buffer on its own, oldest first, then Granaries, those wanting one Food as one group
- * (Foods in content order), then every House's fuel buffer as one group, then stockpiles, highest priority first, those of one priority wanting
- * one resource (resources in content order) as one group. Within a group, goods go to whichever
- * demand is nearest, ties to the older one.
+ * (Foods in content order), then every House's fuel buffer as one group, then every light's
+ * fuel, those wanting one fuel as one group, then stockpiles, highest priority first, those of one
+ * priority wanting one resource (resources in content order) as one group. Within a group, goods
+ * go to whichever demand is nearest, ties to the older one.
  */
 export function demandGroups(state: GameState, demands: readonly Demand[]): Demand[][] {
   const groups: Demand[][] = [
@@ -149,6 +157,10 @@ export function demandGroups(state: GameState, demands: readonly Demand[]): Dema
   }
   const houses = demands.filter((d) => d.kind === 'house');
   if (houses.length > 0) groups.push(houses);
+  const lights = demands.filter((d) => d.kind === 'light');
+  for (const resource of new Set(lights.map((d) => d.resource))) {
+    groups.push(lights.filter((d) => d.resource === resource));
+  }
   const piles = demands.filter((d) => d.kind === 'stockpile');
   const resources = [...new Set(piles.map((d) => d.resource))];
   for (const priority of STOCKPILE_PRIORITIES) {

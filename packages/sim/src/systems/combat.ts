@@ -19,10 +19,11 @@ import {
 import { killVillager } from '../deaths';
 import { destroyEntity, idsOf } from '../entities';
 import { entityDoor, tileIndex } from '../grid';
+import { litGrid } from '../lights';
 import { type Grid, travelCosts } from '../pathfinding';
 import type { EntityId, GameState, Tile } from '../state';
 import { dropWork } from '../workers';
-import { isAt, rerouteTo, stopAtNextTile, villagerTile, walkGrid } from './movement';
+import { gloamlingGrid, isAt, rerouteTo, stopAtNextTile, villagerTile } from './movement';
 
 /** Walking costs from a tile to every tile, worked out at most once a tick per tile. */
 type CostsFrom = (tile: Tile) => Float64Array;
@@ -53,39 +54,59 @@ export function combatSystem(state: GameState, content: Content): void {
   }
 
   let grid: Grid | null = null;
+  const lit = litGrid(state, content);
   const cache = new Map<number, Float64Array>();
   const costsFrom: CostsFrom = (tile) => {
     const i = tileIndex(state.map, tile.x, tile.y);
     let costs = cache.get(i);
     if (!costs) {
-      grid ??= walkGrid(state, content);
+      grid ??= gloamlingGrid(state, content);
       costs = travelCosts(grid, i);
       cache.set(i, costs);
     }
     return costs;
   };
-  for (const id of gloamlings) pickTarget(state, content, id, costsFrom);
+  for (const id of gloamlings) pickTarget(state, content, id, lit, costsFrom);
   for (const id of gloamlings) chase(state, content, id);
   engage(state, content);
   resolveHits(state, content);
 }
 
-/** Whether Gloamling `target` is still worth going for. */
-function stillTarget(state: GameState, content: Content, target: EntityId): boolean {
+/** Whether `target`'s tile (a House's door) is lit tonight, by `lit` (`litGrid`). */
+function inLight(state: GameState, content: Content, lit: Uint8Array, target: EntityId): boolean {
+  const t = targetTile(state, content, target);
+  return t !== null && lit[tileIndex(state.map, t.x, t.y)] === 1;
+}
+
+/** Whether Gloamling `target` is still worth going for: there, and not in Light. */
+function stillTarget(
+  state: GameState,
+  content: Content,
+  lit: Uint8Array,
+  target: EntityId,
+): boolean {
+  if (inLight(state, content, lit, target)) return false;
   if (state.components.building[target]) return isLivedInHouse(state, content, target);
   return isOutInTheOpen(state, content, target);
 }
 
 /**
- * Gloamling `id` keeps its villager or Hero until it's gone or safe asleep at Home. Otherwise it
- * goes for the nearest (walking cost) villager out in the open or Hero within its sight, ties to
- * the lowest ID; with none in sight, for the nearest lived-in House it can walk to.
+ * Gloamling `id` keeps its villager or Hero until it's gone, safe asleep at Home or in Light.
+ * Otherwise it goes for the nearest (walking cost) villager out in the open or Hero within its
+ * sight and out of Light, ties to the lowest ID; with none in sight, for the nearest lived-in
+ * House whose door is dark and it can walk to.
  */
-function pickTarget(state: GameState, content: Content, id: EntityId, costsFrom: CostsFrom): void {
+function pickTarget(
+  state: GameState,
+  content: Content,
+  id: EntityId,
+  lit: Uint8Array,
+  costsFrom: CostsFrom,
+): void {
   const g = state.components.gloamling[id];
   const here = villagerTile(state, id);
   if (!g || !here) return;
-  if (g.target !== null && !stillTarget(state, content, g.target)) g.target = null;
+  if (g.target !== null && !stillTarget(state, content, lit, g.target)) g.target = null;
   if (g.target !== null && !state.components.building[g.target]) return;
 
   const { villager, hero } = state.components;
@@ -94,7 +115,7 @@ function pickTarget(state: GameState, content: Content, id: EntityId, costsFrom:
     .sort((a, b) => a - b)
     .filter((c) => {
       const t = villagerTile(state, c);
-      return t !== null && chebyshev(t, here) <= sight && isOutInTheOpen(state, content, c);
+      return t !== null && chebyshev(t, here) <= sight && stillTarget(state, content, lit, c);
     });
   if (inSight.length > 0) {
     const nearest = nearestBy(inSight, costsFrom(here), (c) => villagerTile(state, c), state);
@@ -104,7 +125,9 @@ function pickTarget(state: GameState, content: Content, id: EntityId, costsFrom:
     }
   }
   if (g.target !== null) return; // keeps heading for its House
-  const houses = idsOf(state.components.building).filter((b) => isLivedInHouse(state, content, b));
+  const houses = idsOf(state.components.building).filter((b) =>
+    stillTarget(state, content, lit, b),
+  );
   g.target = nearestBy(houses, costsFrom(here), (b) => entityDoor(state, content, b), state);
 }
 

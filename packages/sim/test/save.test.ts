@@ -77,6 +77,15 @@ describe('serialize / deserialize', () => {
     expect(deserialize(JSON.stringify(data), content)).toEqual(s);
   });
 
+  it('gives buildings saved before lights no Light', () => {
+    const s = createInitialState(9, meadowMap, content);
+    const data = JSON.parse(serialize(s));
+    for (const b of Object.values(data.components.building) as Record<string, unknown>[]) {
+      delete b.lit;
+    }
+    expect(deserialize(JSON.stringify(data), content)).toEqual(s);
+  });
+
   it('rejects saves from another version', () => {
     const s = createInitialState(9, meadowMap, content);
     expect(() =>

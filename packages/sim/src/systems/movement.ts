@@ -2,6 +2,7 @@
 import type { Content } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { blockedGrid, inBounds, tileAt, tileCenter, tileIndex, tileOfPoint } from '../grid';
+import { litGrid } from '../lights';
 import { findPath, type Grid } from '../pathfinding';
 import { maxSpeedPercent, speedPercentAt, speedPercentGrid } from '../roads';
 import { speedPercent } from '../speed';
@@ -28,8 +29,14 @@ export function isAt(state: GameState, id: EntityId, tile: Tile): boolean {
   return t !== null && t.x === tile.x && t.y === tile.y;
 }
 
-/** The grid walkers path over: what blocks walking, and how fast each tile is. */
-export function walkGrid(state: GameState, content: Content): Grid {
+/**
+ * The grid walkers path over: what blocks walking, and how fast each tile is. A Gloamling
+ * (`walker`) gets `gloamlingGrid`.
+ */
+export function walkGrid(state: GameState, content: Content, walker?: EntityId): Grid {
+  if (walker !== undefined && state.components.gloamling[walker]) {
+    return gloamlingGrid(state, content);
+  }
   const { map } = state;
   return {
     width: map.width,
@@ -38,6 +45,18 @@ export function walkGrid(state: GameState, content: Content): Grid {
     speedPercent: speedPercentGrid(map, content),
     maxSpeedPercent: maxSpeedPercent(content),
   };
+}
+
+/**
+ * The grid Gloamlings path over: tonight's lit tiles block walking too (Light is a wall,
+ * ADR-0003).
+ */
+export function gloamlingGrid(state: GameState, content: Content): Grid {
+  const grid = walkGrid(state, content);
+  litGrid(state, content).forEach((lit, i) => {
+    if (lit) grid.blocked[i] = 1;
+  });
+  return grid;
 }
 
 /**
@@ -57,7 +76,7 @@ export function walkTo(
     .filter((g) => inBounds(map, g.x, g.y))
     .map((g) => tileIndex(map, g.x, g.y));
   const start = tileIndex(map, here.x, here.y);
-  const tiles = findPath(walkGrid(state, content), start, goalIndices);
+  const tiles = findPath(walkGrid(state, content, id), start, goalIndices);
   if (tiles === null) return false;
   delete state.components.path[id];
   if (tiles.length > 0) state.components.path[id] = { start, tiles, next: 0, progress: 0 };
@@ -81,7 +100,7 @@ export function rerouteTo(
   const goalIndices = goals
     .filter((g) => inBounds(map, g.x, g.y))
     .map((g) => tileIndex(map, g.x, g.y));
-  const rest = findPath(walkGrid(state, content), to, goalIndices);
+  const rest = findPath(walkGrid(state, content, id), to, goalIndices);
   if (rest === null) return false;
   state.components.path[id] = {
     start: from,

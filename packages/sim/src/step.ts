@@ -12,6 +12,7 @@ import { foragingSystem } from './systems/foraging';
 import { haulingSystem } from './systems/hauling';
 import { huntingSystem } from './systems/hunting';
 import { immigrationSystem } from './systems/immigration';
+import { lightsSystem } from './systems/lights';
 import { movementSystem } from './systems/movement';
 import { patchesSystem } from './systems/patches';
 import { productionSystem } from './systems/production';
@@ -44,23 +45,26 @@ export function step(state: GameState, commands: readonly Command[], content: Co
  * 5. patches: at a season's first Dawn, forage patches refill if shaded
  * 6. warmth: at a winter Dusk, Houses burn firewood or go cold; at Dawn, villagers count the
  *    night as warm or cold
- * 7. routine: at Dusk villagers finish what they hold, eat at a Granary and go Home to sleep; at
+ * 7. lights: at every Dusk torches and braziers burn their night's firewood and are lit, or
+ *    stay dark; at Dawn they go out
+ * 8. routine: at Dusk villagers finish what they hold, eat at a Granary and go Home to sleep; at
  *    Dawn back to work (or starve, a Meal too many missed)
- * 8. immigration: at Dawn, after its deaths, maybe one Newcomer arrives at the entry tile
- * 9. dens: at Dawn Gloamlings vanish and, at a season's first Dawn, Dens bud (PRNG); at Dusk Dens
+ * 9. immigration: at Dawn, after its deaths, maybe one Newcomer arrives at the entry tile
+ * 10. dens: at Dawn Gloamlings vanish and, at a season's first Dawn, Dens bud (PRNG); at Dusk Dens
  *    spawn Gloamlings; at Monster rate 0 Gloamlings vanish at once
- * 10. combat: Gloamlings pick targets and walk after them; villagers they reach drop their work
- *    and fight back; hits in entity-ID order; villagers back to full HP at Dawn
- * 11. hero: works the player's order (chop, pick up, deliver)
- * 12. woodcutting
- * 13. fishing
- * 14. foraging
- * 15. hunting: hunters roll for a catch with the PRNG
- * 16. production: workshop crafters take inputs, work, and fill output buffers
- * 17. hauling (job dispatch)
- * 18. construction, by day only
- * 19. staffing: workplaces below their worker limit draft idle carriers
- * 20. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
+ * 11. combat: Gloamlings pick targets out of Light and walk after them, around lit tiles;
+ *    villagers they reach drop their work and fight back; hits in entity-ID order; villagers
+ *    back to full HP at Dawn
+ * 12. hero: works the player's order (chop, pick up, deliver)
+ * 13. woodcutting
+ * 14. fishing
+ * 15. foraging
+ * 16. hunting: hunters roll for a catch with the PRNG
+ * 17. production: workshop crafters take inputs, work, and fill output buffers
+ * 18. hauling (job dispatch)
+ * 19. construction, by day only
+ * 20. staffing: workplaces below their worker limit draft idle carriers
+ * 21. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
  * then `tick` increments.
  */
 export function stepInPlace(next: GameState, commands: readonly Command[], content: Content): void {
@@ -70,6 +74,7 @@ export function stepInPlace(next: GameState, commands: readonly Command[], conte
   spoilageSystem(next, content);
   patchesSystem(next, content);
   warmthSystem(next, content);
+  lightsSystem(next, content);
   routineSystem(next, content);
   immigrationSystem(next, content);
   densSystem(next, content);

@@ -363,3 +363,76 @@ describe('the Hero', () => {
     expect(healthBars(fight, content)).toContainEqual({ id: 2, hp: 96, maxHp: 100 });
   });
 });
+
+describe('Light', () => {
+  /**
+   * The field at Dusk with a fuelled torch at (13,4) (ID 2) lighting x 11–15, y 2–6 once it burns
+   * on the first tick. Carriers get IDs 3, 4...
+   */
+  function torchField(villagers: Tile[]): GameState {
+    return fieldAtDusk(villagers, {
+      buildings: [{ type: 'torch', x: 13, y: 4, stock: [{ resource: 'firewood', amount: 3 }] }],
+    });
+  }
+  const lit = (t: Tile) => t.x >= 11 && t.x <= 15 && t.y >= 2 && t.y <= 6;
+
+  it('is a wall Gloamlings walk around, never onto', () => {
+    // The Carrier stands just west of the lit square, straight across it from the Den.
+    let s = torchField([{ x: 9, y: 4 }]);
+    for (let i = 0; i < 800 && !s.components.villager[3]?.fighting; i++) {
+      s = run(s, 1);
+      const at = s.components.position[theGloamling(s)];
+      expect(at && lit(tileOfPoint(at)), `tick ${s.tick}`).toBe(false);
+    }
+    expect(s.components.villager[3]?.fighting).toBe(true);
+  });
+
+  it('turns a Gloamling away from a target that steps into it', () => {
+    // Carrier 3 at (15,8) is nearest; Carrier 4 at (12,0) is further, also in the dark.
+    let s = run(
+      torchField([
+        { x: 15, y: 8 },
+        { x: 12, y: 0 },
+      ]),
+      1,
+    );
+    expect(targetOf(s)).toBe(3);
+    walkTo(s, content, 3, [{ x: 15, y: 6 }]);
+    s = runUntil(s, (x) => x.components.path[3] === undefined, 200);
+    s = run(s, 1);
+    expect(targetOf(s)).toBe(4);
+  });
+
+  it('keeps a Gloamling off a villager standing in it', () => {
+    // Carrier 3 at (14,5) is lit and nearer than Carrier 4 at (12,0).
+    const s = run(
+      torchField([
+        { x: 14, y: 5 },
+        { x: 12, y: 0 },
+      ]),
+      1,
+    );
+    expect(targetOf(s)).toBe(4);
+  });
+
+  it('carries on from a save made mid-night, still lit', () => {
+    const s = run(torchField([{ x: 9, y: 4 }]), 60);
+    expect(s.components.building[2]?.lit).toBe(true);
+    const loaded = deserialize(serialize(s), content);
+    expect(run(loaded, 200)).toEqual(run(s, 200));
+  });
+
+  it('lets a Gloamling through where an unfuelled torch stands dark', () => {
+    const s = run(
+      fieldAtDusk(
+        [
+          { x: 14, y: 5 },
+          { x: 12, y: 0 },
+        ],
+        { buildings: [{ type: 'torch', x: 13, y: 4 }] },
+      ),
+      1,
+    );
+    expect(targetOf(s)).toBe(3);
+  });
+});
