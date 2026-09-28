@@ -25,6 +25,7 @@ import { litGrid } from '../lights';
 import { findPath, type Grid, travelCosts } from '../pathfinding';
 import type { EntityId, GameState, Tile } from '../state';
 import { fullHp, isWall, isWallType } from '../walls';
+import { isOnWatch, towerFoe, watchOf } from '../watchtowers';
 import { dropWork } from '../workers';
 import { gloamlingGrid, isAt, rerouteTo, stopAtNextTile, villagerTile } from './movement';
 
@@ -286,13 +287,16 @@ function engage(state: GameState, content: Content): void {
 
 /**
  * Everyone in reach of its foe and off cooldown hits once, in entity-ID order: a Gloamling its
- * target, a villager fighting or in the militia its foe (`villagerFoe`), the Hero its foe
- * (`heroFoe`). Whoever drops to 0 HP is gone (or Knocked out) before its turn comes.
+ * target, a villager fighting or in the militia its foe (`villagerFoe`), a Watchman in its tower
+ * the tower's foe (`towerFoe`, timed by the Watchman's `readyAt`), the Hero its foe (`heroFoe`).
+ * Whoever drops to 0 HP is gone (or Knocked out) before its turn comes.
  */
 function resolveHits(state: GameState, content: Content): void {
   const { villager, gloamling, hero } = state.components;
   const fighters = [
-    ...idsOf(villager).filter((id) => villager[id]?.fighting || villager[id]?.militia),
+    ...idsOf(villager).filter(
+      (id) => villager[id]?.fighting || villager[id]?.militia || isOnWatch(state, content, id),
+    ),
     ...idsOf(hero),
     ...idsOf(gloamling),
   ].sort((a, b) => a - b);
@@ -324,7 +328,15 @@ function resolveHits(state: GameState, content: Content): void {
       continue;
     }
     const v = villager[id];
-    if (!(v?.fighting || v?.militia) || state.tick < v.readyAt) continue;
+    if (!v || state.tick < v.readyAt) continue;
+    const watch = watchOf(state, content, id);
+    const shot = watch === null ? null : towerFoe(state, content, id);
+    if (watch && shot !== null) {
+      v.readyAt = state.tick + watch.cooldownTicks;
+      hurt(state, content, shot, watch.damage);
+      continue;
+    }
+    if (!(v.fighting || v.militia)) continue;
     const foe = villagerFoe(state, content, id);
     if (foe === null || !inReach(state, id, foe, content.combat.villager.reachTiles)) continue;
     v.readyAt = state.tick + content.combat.villager.cooldownTicks;

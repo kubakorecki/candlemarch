@@ -67,6 +67,7 @@ export const palette = {
   fisher: 0x4f6a6e,
   forager: 0x66683c,
   hunter: 0x5b4a3a,
+  watchman: 0x4a4f63,
   carrier: 0x5a6570,
   skin: 0xd6b48e,
   axeHead: 0x9aa0a3,

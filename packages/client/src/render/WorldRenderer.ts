@@ -83,6 +83,7 @@ import {
   drawVillagerStatus,
   drawWaitingIcon,
   drawWallSite,
+  drawWatchtower,
   drawWindowLight,
   HEAT_LEVELS,
   type HeatTile,
@@ -107,6 +108,7 @@ const JOB_COLORS: Record<JobId, number> = {
   fisher: palette.fisher,
   forager: palette.forager,
   hunter: palette.hunter,
+  watchman: palette.watchman,
 };
 
 /** Outline and word colour for each Hunting ground health. */
@@ -446,6 +448,7 @@ export class WorldRenderer {
         else if (b.type === 'torch' || b.type === 'brazier') {
           drawLight(view.graphics, layout, b.type, fuel);
         } else if (def.bell) drawBell(view.graphics, layout, ringing);
+        else if (def.watch) drawWatchtower(view.graphics, layout);
         else drawBuilding(view.graphics, layout, output, def.residents !== undefined);
         if (status) {
           const c = gridToWorld(at.x + size.w / 2, at.y + size.h / 2);

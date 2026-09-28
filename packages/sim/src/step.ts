@@ -49,7 +49,8 @@ export function step(state: GameState, commands: readonly Command[], content: Co
  * 7. lights: at every Dusk torches and braziers burn their night's firewood and are lit, or
  *    stay dark; at Dawn they go out
  * 8. routine: at Dusk villagers finish what they hold, eat at a Granary and go Home to sleep; at
- *    Dawn back to work (or starve, a Meal too many missed)
+ *    Dawn back to work (or starve, a Meal too many missed). Watchmen go to their towers after
+ *    the Meal and sleep at Home by day
  * 9. immigration: at Dawn, after its deaths, maybe one Newcomer arrives at the entry tile
  * 10. dens: at Dawn Gloamlings vanish and, at a season's first Dawn, Dens bud (PRNG); at Dusk Dens
  *    spawn Gloamlings; at Monster rate 0 Gloamlings vanish at once
@@ -57,7 +58,8 @@ export function step(state: GameState, commands: readonly Command[], content: Co
  *    to it; at Dawn they stand down
  * 12. combat: Gloamlings pick targets out of Light and walk after them, around lit tiles;
  *    villagers they reach drop their work and fight back, the militia hits Gloamlings near the
- *    bell; hits in entity-ID order; villagers back to full HP at Dawn
+ *    bell, a watchtower with its Watchman in it shoots the nearest in range; hits in entity-ID
+ *    order; villagers back to full HP at Dawn
  * 13. hero: works the player's order (chop, pick up, deliver)
  * 14. woodcutting
  * 15. fishing

@@ -10,16 +10,18 @@ import { tileDistance } from './pathfinding';
 import type { EntityId, GameState, Tile } from './state';
 import { villagerTile } from './systems/movement';
 import { fullHp } from './walls';
+import { isOnWatch, towerFoe } from './watchtowers';
 
 /**
- * Whether `id` is a villager out in the open (not asleep at Home) or the Hero, unless it's
- * Knocked out.
+ * Whether `id` is a villager out in the open (not asleep at Home, nor a Watchman in its tower) or
+ * the Hero, unless it's Knocked out.
  */
 export function isOutInTheOpen(state: GameState, content: Content, id: EntityId): boolean {
   if (state.components.hero[id]) return !isKnockedOut(state, id);
   const v = state.components.villager[id];
   if (!v) return false;
   if (v.militia) return true;
+  if (isOnWatch(state, content, id)) return false;
   return !(v.routine === 'asleep' && isAtHome(state, content, id));
 }
 
@@ -164,8 +166,8 @@ export interface HealthBar {
 
 /**
  * Health of everyone in a fight right now: villagers fighting back or with a Gloamling to hit in
- * the militia, the Hero with a Gloamling in reach, Gloamlings engaged, and each House door or wall
- * segment being battered.
+ * the militia, the Hero with a Gloamling in reach, Gloamlings engaged or in a manned watchtower's
+ * sights, and each House door or wall segment being battered.
  */
 export function healthBars(state: GameState, content: Content): HealthBar[] {
   const { villager, gloamling, hero } = state.components;
@@ -181,9 +183,10 @@ export function healthBars(state: GameState, content: Content): HealthBar[] {
       bars.push({ id, hp: h.hp, maxHp: content.combat.hero.hp });
     }
   }
+  const shot = new Set(idsOf(villager).map((id) => towerFoe(state, content, id)));
   for (const id of idsOf(gloamling)) {
     const g = gloamling[id];
-    if (g && isEngaged(state, content, id)) {
+    if (g && (isEngaged(state, content, id) || shot.has(id))) {
       bars.push({ id, hp: g.hp, maxHp: content.combat.gloamling.hp });
     }
   }

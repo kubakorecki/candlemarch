@@ -143,6 +143,13 @@ export const TOOLS: readonly {
     hint: 'Click to place. One per village; ring it to call every villager to arms.',
   },
   {
+    id: 'watchtower',
+    label: 'Watchtower',
+    key: 'y',
+    drag: false,
+    hint: 'Click to place. Its Watchman stands in it all night and shoots Gloamlings in range.',
+  },
+  {
     id: 'palisade',
     label: 'Palisade',
     key: 'p',

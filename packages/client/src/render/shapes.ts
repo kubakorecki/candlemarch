@@ -973,6 +973,67 @@ export function drawLight(
 }
 
 /**
+ * A watchtower: four leaning stilts with a cross brace, a railed lookout platform and a peaked
+ * roof, all in timber.
+ */
+export function drawWatchtower(g: Graphics, layout: BuildingLayout): void {
+  g.clear();
+  const s = TILE_H / 64;
+  const { origin } = layout;
+  const c = gridToWorld(origin.x + 0.5, origin.y + 0.5);
+  g.ellipse(c.x, c.y, 26 * s, 11 * s).fill({ color: palette.shadow, alpha: 0.3 });
+  const deck = c.y - 78 * s;
+  // Stilts: feet spread on the tile, tops drawn in under the platform.
+  const feet = [
+    { x: -22, y: 0 },
+    { x: 0, y: -10 },
+    { x: 22, y: 0 },
+    { x: 0, y: 10 },
+  ];
+  for (const f of feet) {
+    g.moveTo(c.x + f.x * s, c.y + f.y * s)
+      .lineTo(c.x + f.x * 0.6 * s, deck + f.y * 0.6 * s)
+      .stroke({ ...INK, width: 6 * s, color: palette.torchPole });
+  }
+  g.moveTo(c.x - 20 * s, c.y - 6 * s)
+    .lineTo(c.x + 14 * s, deck + 20 * s)
+    .moveTo(c.x + 20 * s, c.y - 6 * s)
+    .lineTo(c.x - 14 * s, deck + 20 * s)
+    .stroke({ width: 3 * s, color: palette.stake, cap: 'round' });
+  // Platform: a flat diamond with a rail round it.
+  const w = 20 * s;
+  const h = 9 * s;
+  g.poly([c.x - w, deck, c.x, deck - h, c.x + w, deck, c.x, deck + h])
+    .fill(palette.wallLight)
+    .stroke(INK);
+  g.rect(c.x - w, deck, 2 * w, 5 * s)
+    .fill(palette.wallDark)
+    .stroke(THIN_INK);
+  for (const dx of [-w, 0, w]) {
+    g.moveTo(c.x + dx, deck + (dx === 0 ? h : 0))
+      .lineTo(c.x + dx, deck + (dx === 0 ? h : 0) - 14 * s)
+      .stroke({ ...THIN_INK, width: 3 * s, color: palette.torchPole });
+  }
+  g.moveTo(c.x - w, deck - 14 * s)
+    .lineTo(c.x, deck + h - 14 * s)
+    .lineTo(c.x + w, deck - 14 * s)
+    .stroke({ ...THIN_INK, width: 3 * s, color: palette.torchPole });
+  // Roof on two back posts.
+  const eaves = deck - 30 * s;
+  for (const dx of [-w + 3 * s, w - 3 * s]) {
+    g.moveTo(c.x + dx, deck)
+      .lineTo(c.x + dx, eaves)
+      .stroke({ ...THIN_INK, width: 3 * s });
+  }
+  g.poly([c.x - w - 6 * s, eaves, c.x, eaves - 24 * s, c.x + w + 6 * s, eaves, c.x, eaves + 8 * s])
+    .fill(palette.roof)
+    .stroke(INK);
+  g.moveTo(c.x, eaves - 24 * s)
+    .lineTo(c.x, eaves + 8 * s)
+    .stroke({ width: 2 * s, color: palette.roofDark });
+}
+
+/**
  * The Militia bell: a bronze bell hanging from a timber frame. While it rings it swings, with
  * strokes of sound either side.
  */

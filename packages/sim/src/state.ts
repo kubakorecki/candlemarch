@@ -121,9 +121,11 @@ export interface StockpileComponent {
 /**
  * Where a villager is in its day. `work`: doing its Job (after Dusk, only finishing what it
  * holds). `toGranary`: walking to a Granary for its Meal after Dusk. `goingHome`: walking to its
- * Home after that. `asleep`: at Home, or where it stood when Homeless, until Dawn.
+ * Home after that. `asleep`: at Home, or where it stood when Homeless, until Dawn. A Watchman
+ * (`watchtowers.ts`) works nights: after its Meal it's `toTower`, walking to its watchtower, then
+ * `onWatch` in it until Dawn; by day it's `goingHome`, then `asleep` at Home until Dusk.
  */
-export type Routine = 'work' | 'toGranary' | 'goingHome' | 'asleep';
+export type Routine = 'work' | 'toGranary' | 'goingHome' | 'asleep' | 'toTower' | 'onWatch';
 
 export interface VillagerComponent {
   /** First name, drawn from content's pool on arrival. Not unique once the pool runs out. */
@@ -135,9 +137,12 @@ export interface VillagerComponent {
   /** The House the villager lives in, or null when Homeless. */
   home: EntityId | null;
   routine: Routine;
-  /** Ticks slept at Home since the last Dusk. */
+  /** Ticks slept at Home since the last Dusk (a Watchman's: since the last Dawn). */
   sleptTicks: number;
-  /** Slept too little at Home last night: slower until the next Dusk. */
+  /**
+   * Slept too little at Home last night: slower until the next Dusk. A Watchman: slept too little
+   * at Home by day, slower until the next Dawn.
+   */
   tired: boolean;
   /** Meals missed in a row. Hungry at 1 or more: slower until it eats. */
   missedMeals: number;

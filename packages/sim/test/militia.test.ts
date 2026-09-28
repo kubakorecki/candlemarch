@@ -86,6 +86,34 @@ describe('ringing the bell', () => {
     expect(working.components.woodcutter[WOODCUTTER]?.kind).not.toBe('idle');
   });
 
+  it('leaves Watchmen out: they sleep by day and stay in their towers by night', () => {
+    // The bell (ID 1), a watchtower (ID 2, door (6,1)) with its Watchman (ID 3), a Carrier (ID 4).
+    const s = createInitialState(
+      1,
+      {
+        name: 'post',
+        rows: Array.from({ length: 6 }, () => '..........'),
+        buildings: [
+          { type: 'bell', x: 2, y: 0 },
+          { type: 'watchtower', x: 6, y: 0 },
+        ],
+        villagers: [{ job: 'carrier', x: 4, y: 4 }],
+      },
+      content,
+    );
+    const byDay = run(s, 401, { 400: RING });
+    expect(byDay.components.villager[4]?.militia).toBe(true);
+    expect(byDay.components.villager[3]?.militia).toBe(false);
+
+    const dusk = duskTick(1, content);
+    const onWatch = run(s, dusk + 50);
+    expect(onWatch.components.villager[3]?.routine).toBe('onWatch');
+    const rung = run(onWatch, 100, { [onWatch.tick]: RING });
+    expect(rung.components.villager[4]?.militia).toBe(true);
+    expect(rung.components.villager[3]).toMatchObject({ militia: false, routine: 'onWatch' });
+    expect(tileOf(rung, 3)).toEqual({ x: 6, y: 1 });
+  });
+
   it('does nothing without a bell', () => {
     const s = createInitialState(
       1,

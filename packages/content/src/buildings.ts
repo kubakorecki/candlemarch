@@ -160,6 +160,20 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 100, // 5 s
     },
   },
+  // Watchtower (spec, Nights in v1): its Watchman stands in it by night and it shoots Gloamlings.
+  watchtower: {
+    id: 'watchtower',
+    name: 'Watchtower',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [{ job: 'watchman', count: 1 }],
+    watch: { rangeTiles: 6, damage: 5, cooldownTicks: 30 }, // 4 shots kill a Gloamling
+    construction: {
+      cost: [{ resource: 'logs', amount: 12 }],
+      buildTicks: 200, // 10 s
+    },
+  },
   // Palisades (spec, Nights in v1): wall segments laid by dragging. The door is the segment's own
   // tile: villagers stand on the site to deliver, and a built wall is never visited.
   palisade: {

@@ -3,11 +3,12 @@
 // (`systems/militia.ts`, `systems/combat.ts`). Ringing it again, or Dawn, stands them down: back
 // to their Jobs by day, Home by night. Nothing else is stored: the bell rings while anyone is
 // called.
-// Watchmen (M3-09) will be left at their towers.
+// Watchmen aren't called: they sleep by day and stay in their watchtowers by night.
 import type { Content } from '@candlemarch/content';
 import { idsOf } from './entities';
 import type { EntityId, GameState } from './state';
 import { stopAtNextTile, villagerTile } from './systems/movement';
+import { isWatchman } from './watchtowers';
 import { dropWork } from './workers';
 
 /** The village's Militia bell, or null while it has none built. */
@@ -27,8 +28,8 @@ export function isBellRung(state: GameState): boolean {
 }
 
 /**
- * Rings the bell: calls every villager to arms, or stands them down if it's already ringing.
- * Ignored while the village has no bell.
+ * Rings the bell: calls every villager but Watchmen to arms, or stands them down if it's already
+ * ringing. Ignored while the village has no bell.
  */
 export function ringBell(state: GameState, content: Content): void {
   if (bellOf(state, content) === null) return;
@@ -39,7 +40,7 @@ export function ringBell(state: GameState, content: Content): void {
   const { villager } = state.components;
   for (const id of idsOf(villager)) {
     const v = villager[id];
-    if (!v) continue;
+    if (!v || isWatchman(v)) continue;
     dropWork(state, content, id);
     v.militia = true;
   }

@@ -36,6 +36,14 @@ export const jobs: Record<JobId, JobDef> = {
     carryCapacity: 1,
     idleRetryTicks: 20,
   },
+  // Works the night shift in a watchtower and sleeps at Home by day.
+  watchman: {
+    id: 'watchman',
+    name: 'Watchman',
+    walkSpeed: 75,
+    carryCapacity: 1,
+    idleRetryTicks: 20,
+  },
   carrier: {
     id: 'carrier',
     name: 'Carrier',

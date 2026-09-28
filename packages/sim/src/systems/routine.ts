@@ -2,7 +2,9 @@
 // with Food, walk Home and sleep; Homeless ones sleep where they stand. At Dawn they go back to
 // work, Tired if they slept less than half the night at Home, Hungry if they missed the Meal. A
 // villager missing its third Meal in a row starves then. A Newcomer walks Home by day, then works.
-// The hero isn't a villager: it ignores night and never eats.
+// A Watchman works the night shift instead: after its Meal it walks to its watchtower and stands in
+// it until Dawn, then walks Home and sleeps there by day; it's Tired at Dusk if it slept less than
+// half the day at Home. The hero isn't a villager: it ignores night and never eats.
 import type { Content } from '@candlemarch/content';
 import { calendarAt, dawnTick, duskTick, isDawn, isDusk, isNight } from '../calendar';
 import { killVillager } from '../deaths';
@@ -12,6 +14,7 @@ import { entityDoor } from '../grid';
 import { homeDoor, isAtHome } from '../homes';
 import { abandonHaul } from '../logistics/jobDispatch';
 import type { EntityId, GameState } from '../state';
+import { isOnWatch, isWatchman, towerDoor } from '../watchtowers';
 import { isAt, rerouteTo, stopAtNextTile } from './movement';
 
 /**
@@ -56,6 +59,21 @@ function goHome(state: GameState, content: Content, id: EntityId): void {
 }
 
 /**
+ * After its Meal: a Watchman walks to its watchtower and stands in it (`onWatch`); anyone else,
+ * or a Watchman that can't get to its tower, goes Home.
+ */
+function afterMeal(state: GameState, content: Content, id: EntityId): void {
+  const v = state.components.villager[id];
+  if (!v) return;
+  const door = isWatchman(v) ? towerDoor(state, content, id) : null;
+  if (door !== null && rerouteTo(state, content, id, [door])) {
+    v.routine = state.components.path[id] ? 'toTower' : 'onWatch';
+    return;
+  }
+  goHome(state, content, id);
+}
+
+/**
  * Villager `id`'s Meal, on the way home after Dusk: walks to the nearest Granary with Food, eats
  * there once at its door, then goes Home. With no Granary to eat at, it goes Home Hungry, or
  * starves if that was one Meal too many.
@@ -69,7 +87,7 @@ function seekMeal(state: GameState, content: Content, id: EntityId): void {
     if (isAt(state, id, door)) {
       takeMeal(state, content, granary);
       v.missedMeals = 0;
-      goHome(state, content, id);
+      afterMeal(state, content, id);
       return;
     }
     if (rerouteTo(state, content, id, [door])) {
@@ -78,7 +96,7 @@ function seekMeal(state: GameState, content: Content, id: EntityId): void {
     }
   }
   if (missMeal(state, content, id)) return;
-  goHome(state, content, id);
+  afterMeal(state, content, id);
 }
 
 /**
@@ -99,6 +117,34 @@ function lastNightTicks(day: number, content: Content): number {
   return dawnTick(day, content) - duskTick(day - 1, content);
 }
 
+/** Ticks of daylight on day `day`, from its Dawn to its Dusk. */
+function dayTicks(day: number, content: Content): number {
+  return duskTick(day, content) - dawnTick(day, content);
+}
+
+/**
+ * Watchman `id` by day: walks Home and sleeps there until Dusk, counting its sleep, or sleeps
+ * where it stands when it's Homeless or can't get there.
+ */
+function sleepByDay(state: GameState, content: Content, id: EntityId): void {
+  const v = state.components.villager[id];
+  if (!v) return;
+  switch (v.routine) {
+    case 'goingHome': {
+      if (state.components.path[id]) break;
+      if (isAtHome(state, content, id)) v.routine = 'asleep';
+      else goHome(state, content, id); // the walk was cut short, or the Home is gone
+      break;
+    }
+    case 'asleep': {
+      if (isAtHome(state, content, id)) v.sleptTicks += 1;
+      break;
+    }
+    default:
+      goHome(state, content, id);
+  }
+}
+
 export function routineSystem(state: GameState, content: Content): void {
   const { villager, path } = state.components;
   const { day } = calendarAt(state.tick, content);
@@ -111,9 +157,19 @@ export function routineSystem(state: GameState, content: Content): void {
   for (const id of idsOf(villager)) {
     const v = villager[id];
     if (!v) continue;
-    if (dusk) v.tired = false;
+    const watchman = isWatchman(v);
+    if (dusk && watchman) {
+      // Wakes for its shift, Tired if it slept too little at Home by day.
+      v.tired = v.sleptTicks * 100 < dayTicks(day, content) * minSleepPercent;
+      v.sleptTicks = 0;
+      v.routine = 'work';
+    } else if (dusk) {
+      v.tired = false;
+    }
     if (dawn) {
-      v.tired = v.sleptTicks * 100 < lastNightTicks(day, content) * minSleepPercent;
+      v.tired = watchman
+        ? false
+        : v.sleptTicks * 100 < lastNightTicks(day, content) * minSleepPercent;
       v.sleptTicks = 0;
       // Still at work or on the way to a Granary: the night passed without a Meal.
       if ((v.routine === 'work' || v.routine === 'toGranary') && missMeal(state, content, id)) {
@@ -125,8 +181,10 @@ export function routineSystem(state: GameState, content: Content): void {
       }
     }
     if (!night) {
-      // A Newcomer walks to its new Home by day, then starts work.
-      if (v.routine === 'goingHome' && !path[id]) v.routine = 'work';
+      if (watchman) sleepByDay(state, content, id);
+      // A Newcomer walks to its new Home by day, then starts work. One that stopped being a
+      // Watchman gets up and starts work.
+      else if (v.routine === 'goingHome' ? !path[id] : v.routine !== 'work') v.routine = 'work';
       continue;
     }
 
@@ -151,6 +209,19 @@ export function routineSystem(state: GameState, content: Content): void {
       }
       case 'asleep': {
         if (isAtHome(state, content, id)) v.sleptTicks += 1;
+        break;
+      }
+      case 'toTower': {
+        // Arrived, or the walk was cut short: stand in, or head there again.
+        if (path[id]) break;
+        const door = towerDoor(state, content, id);
+        if (door !== null && isAt(state, id, door)) v.routine = 'onWatch';
+        else afterMeal(state, content, id);
+        break;
+      }
+      case 'onWatch': {
+        // The tower is gone, or it's no longer a Watchman: back Home.
+        if (!isOnWatch(state, content, id)) afterMeal(state, content, id);
         break;
       }
     }

@@ -1,6 +1,6 @@
 # Watchtowers and the Watchman's night shift
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 01, 04
 
@@ -18,3 +18,7 @@ Rules in `docs/spec.md`, "Nights in v1 (M3)" (Watchtowers). Numbers Proposed, al
 
 - Headless tests: the Watchman's routine across a whole day; Tired from day sleep; the tower shoots in range and ignores Gloamlings outside it; an unstaffed tower does nothing; save/load mid-shift.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-28: Done in one go (not split). Watchtower building and Watchman Job in content; the night shift is two new routine values (`toTower`, `onWatch`), the tower's shots use the Watchman's `readyAt` in the combat hit loop, a Watchman on watch isn't out in the open or Cold, and `ringBell` leaves Watchmen out (M3-07's leftover). Build time 200 ticks (not in the issue). Tower shots aren't slowed by Tired. Client: tower art, toolbar `y`. See docs/decisions.md.

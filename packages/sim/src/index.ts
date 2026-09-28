@@ -52,4 +52,5 @@ export { openPositions } from './systems/staffing';
 export { carrierUtilization, roadTraffic } from './traffic';
 export { canLayWall, fullHp, isBrokenWall, isWall, isWallType } from './walls';
 export { isColdHouse } from './warmth';
+export { isOnWatch, isWatchman, towerFoe, towerOf } from './watchtowers';
 export { maxWorkers, reassignTargets, workersAt } from './workers';

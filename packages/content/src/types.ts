@@ -15,9 +15,17 @@ export type BuildingId =
   | 'torch'
   | 'brazier'
   | 'bell'
+  | 'watchtower'
   | 'palisade'
   | 'gate';
-export type JobId = 'woodcutter' | 'carrier' | 'woodsplitter' | 'fisher' | 'forager' | 'hunter';
+export type JobId =
+  | 'woodcutter'
+  | 'carrier'
+  | 'woodsplitter'
+  | 'fisher'
+  | 'forager'
+  | 'hunter'
+  | 'watchman';
 export type RoadId = 'dirt_path';
 export type HeroId = 'placeholder';
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
@@ -298,6 +306,17 @@ export interface BellDef {
 }
 
 /**
+ * A watchtower (M3). While its Watchman stands in it (the night shift), it shoots the nearest
+ * Gloamling within `rangeTiles` of its tile (Chebyshev distance, ties to the lowest ID) for
+ * `damage`, once every `cooldownTicks`. Gloamlings can't attack it.
+ */
+export interface WatchDef {
+  rangeTiles: number;
+  damage: number;
+  cooldownTicks: number;
+}
+
+/**
  * A wall segment (M3): a 1×1 building laid by dragging like a Road. A palisade blocks villagers
  * and Gloamlings alike; a Gate lets villagers and the Hero through, but not Gloamlings. Its site
  * doesn't block anyone until it's built. `hp` is what Gloamlings batter; it heals at Dawn.
@@ -360,6 +379,8 @@ export interface BuildingDef {
   light?: LightDef;
   /** Makes it the Militia bell (M3). */
   bell?: BellDef;
+  /** Makes it a watchtower (M3): its worker, a Watchman, works the night shift in it. */
+  watch?: WatchDef;
   /** Makes it a wall segment (M3): a palisade or a Gate. */
   wall?: WallDef;
   /** A village has at most one, built or under construction. */
