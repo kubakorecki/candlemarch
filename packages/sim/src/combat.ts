@@ -5,6 +5,7 @@ import type { Content } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { entityDoor, tileIndex } from './grid';
 import { housePlaces, isAtHome, residentsOf } from './homes';
+import { gloamlingsNearBell } from './militia';
 import { tileDistance } from './pathfinding';
 import type { EntityId, GameState, Tile } from './state';
 import { villagerTile } from './systems/movement';
@@ -17,6 +18,7 @@ export function isOutInTheOpen(state: GameState, content: Content, id: EntityId)
   if (state.components.hero[id]) return !isKnockedOut(state, id);
   const v = state.components.villager[id];
   if (!v) return false;
+  if (v.militia) return true;
   return !(v.routine === 'asleep' && isAtHome(state, content, id));
 }
 
@@ -57,6 +59,27 @@ export function attackersOf(state: GameState, content: Content, id: EntityId): E
  */
 export function opponentOf(state: GameState, content: Content, id: EntityId): EntityId | null {
   return nearestTo(state, id, attackersOf(state, content, id));
+}
+
+/**
+ * The Gloamling villager `id` goes for while the Militia bell has called it: the nearest (tile
+ * distance) within the bell's range, ties to the lowest ID. Null when it isn't called or none is.
+ */
+export function militiaTarget(state: GameState, content: Content, id: EntityId): EntityId | null {
+  if (!state.components.villager[id]?.militia) return null;
+  return nearestTo(state, id, gloamlingsNearBell(state, content));
+}
+
+/**
+ * The Gloamling villager `id` hits: one attacking it (`opponentOf`), else, while the Militia bell
+ * has called it, the nearest in its reach within the bell's range. Null when there's none.
+ */
+export function villagerFoe(state: GameState, content: Content, id: EntityId): EntityId | null {
+  const attacker = opponentOf(state, content, id);
+  if (attacker !== null || !state.components.villager[id]?.militia) return attacker;
+  const { reachTiles } = content.combat.villager;
+  const near = gloamlingsNearBell(state, content).filter((g) => inReach(state, id, g, reachTiles));
+  return nearestTo(state, id, near);
 }
 
 /** Whether Hero `id` is Knocked out. */
@@ -123,15 +146,16 @@ export interface HealthBar {
 }
 
 /**
- * Health of everyone in a fight right now: villagers fighting back, the Hero with a Gloamling in
- * reach, Gloamlings engaged.
+ * Health of everyone in a fight right now: villagers fighting back or with a Gloamling to hit in
+ * the militia, the Hero with a Gloamling in reach, Gloamlings engaged.
  */
 export function healthBars(state: GameState, content: Content): HealthBar[] {
   const { villager, gloamling, hero } = state.components;
   const bars: HealthBar[] = [];
   for (const id of idsOf(villager)) {
     const v = villager[id];
-    if (v?.fighting) bars.push({ id, hp: v.hp, maxHp: content.combat.villager.hp });
+    if (v && (v.fighting || villagerFoe(state, content, id) !== null))
+      bars.push({ id, hp: v.hp, maxHp: content.combat.villager.hp });
   }
   for (const id of idsOf(hero)) {
     const h = hero[id];

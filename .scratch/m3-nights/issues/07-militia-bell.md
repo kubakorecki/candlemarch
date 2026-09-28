@@ -1,6 +1,6 @@
 # Militia bell
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 01, 04
 
@@ -17,3 +17,7 @@ Rules in `docs/spec.md`, "Nights in v1 (M3)" (Militia bell). Numbers Proposed, a
 
 - Headless tests: ringing pulls every villager off work, they fight near the bell and return to their Jobs when stood down; Dawn stands them down; ringing at night leaves them Tired; save/load while rung.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-28: Done. Content `bell` (`BellDef` range 10, `onePerVillage`); command `ringBell` toggles; per-villager `militia` flag (the bell rings while anyone has it); `militiaSystem` (11th, before combat) walks the militia after Gloamlings within 10 tiles of the bell or to its door, and stands them down at Dawn; militia villagers hit Gloamlings near the bell in the combat hit loop. Watchmen don't exist yet, so everyone is called (M3-09 excludes them). Militia pick Gloamlings by tile distance, not walking cost. Build time 100 ticks (spec silent). Client: bell art, toolbar `k`, Ring/Stand down on the HUD and the bell's panel. See `docs/decisions.md`.

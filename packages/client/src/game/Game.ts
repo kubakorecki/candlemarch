@@ -4,6 +4,7 @@ import { type BuildingId, content, type ResourceId } from '@candlemarch/content'
 import {
   type AlertSeverity,
   alerts,
+  bellOf,
   type Command,
   calendarAt,
   canLayPath,
@@ -25,6 +26,7 @@ import {
   heroOrderAt,
   huntChancePermille,
   idsOf,
+  isBellRung,
   isForagePatch,
   isKnockedOut,
   isWithered,
@@ -132,6 +134,13 @@ export const TOOLS: readonly {
     drag: false,
     hint: 'Click to place. More Light than a torch, for more firewood each night.',
   },
+  {
+    id: 'bell',
+    label: 'Militia bell',
+    key: 'k',
+    drag: false,
+    hint: 'Click to place. One per village; ring it to call every villager to arms.',
+  },
   { id: 'path', label: 'Path', key: 'r', drag: true, hint: 'Drag to lay an L-shaped path.' },
   { id: 'removePath', label: 'Remove path', key: 'x', drag: true, hint: 'Drag to remove path.' },
   { id: 'stockpile', label: 'Stockpile', key: 's', drag: true, hint: 'Drag a rectangle.' },
@@ -214,6 +223,8 @@ export interface BuildingInfo {
   maxWorkers: number;
   /** Why it's idle, e.g. "Waiting for logs", or null while it works. */
   status: string | null;
+  /** It's the Militia bell, so the panel can ring it. */
+  bell: boolean;
 }
 
 /** One save slot in the Load menu: its name and when it was saved, or null when it's empty. */
@@ -288,6 +299,8 @@ export interface HudState {
   heroLoad: string | null;
   /** "Knocked out, up in 14 s" while the hero is Knocked out, else null. */
   heroKnockout: string | null;
+  /** The Militia bell: whether it's ringing, or null while the village has none built. */
+  bell: { ringing: boolean } | null;
   message: string | null;
 }
 
@@ -343,6 +356,7 @@ export class Game {
     monsterRate: DEFAULT_MONSTER_RATE,
     heroLoad: null,
     heroKnockout: null,
+    bell: null,
     message: null,
   };
   private readonly listeners = new Set<() => void>();
@@ -470,6 +484,11 @@ export class Game {
 
   save(): void {
     this.bridge.save();
+  }
+
+  /** Rings the Militia bell: calls every villager to arms, or stands them down. */
+  ringBell(): void {
+    this.bridge.command({ type: 'ringBell' });
   }
 
   /** Dev: sets this game's Monster rate (0 turns nights off). */
@@ -620,6 +639,8 @@ export class Game {
       gameOver: state.gameOver && gameOverText(state.gameOver),
       monsterRate: state.monsterRate,
     });
+    const bell = bellOf(state, content) === null ? null : { ringing: isBellRung(state) };
+    if (JSON.stringify(bell) !== JSON.stringify(this.hud.bell)) this.setHud({ bell });
     this.refreshAlerts(state);
   }
 
@@ -1128,6 +1149,7 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
     workerLimit: b.workerLimit,
     maxWorkers: maxWorkers(content, b.type),
     status: status && workplaceStatusText(status),
+    bell: content.buildings[b.type].bell !== undefined,
   };
 }
 

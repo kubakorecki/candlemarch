@@ -13,8 +13,8 @@ import {
   isEngaged,
   isLivedInHouse,
   isOutInTheOpen,
-  opponentOf,
   targetTile,
+  villagerFoe,
 } from '../combat';
 import { killVillager } from '../deaths';
 import { destroyEntity, idsOf } from '../entities';
@@ -196,13 +196,13 @@ function engage(state: GameState, content: Content): void {
 
 /**
  * Everyone in reach of its foe and off cooldown hits once, in entity-ID order: a Gloamling its
- * target, a fighting villager its opponent, the Hero its foe (`heroFoe`). Whoever drops to 0 HP is
- * gone (or Knocked out) before its turn comes.
+ * target, a villager fighting or in the militia its foe (`villagerFoe`), the Hero its foe
+ * (`heroFoe`). Whoever drops to 0 HP is gone (or Knocked out) before its turn comes.
  */
 function resolveHits(state: GameState, content: Content): void {
   const { villager, gloamling, hero } = state.components;
   const fighters = [
-    ...idsOf(villager).filter((id) => villager[id]?.fighting),
+    ...idsOf(villager).filter((id) => villager[id]?.fighting || villager[id]?.militia),
     ...idsOf(hero),
     ...idsOf(gloamling),
   ].sort((a, b) => a - b);
@@ -228,8 +228,8 @@ function resolveHits(state: GameState, content: Content): void {
       continue;
     }
     const v = villager[id];
-    if (!v?.fighting || state.tick < v.readyAt) continue;
-    const foe = opponentOf(state, content, id);
+    if (!(v?.fighting || v?.militia) || state.tick < v.readyAt) continue;
+    const foe = villagerFoe(state, content, id);
     if (foe === null || !inReach(state, id, foe, content.combat.villager.reachTiles)) continue;
     v.readyAt = state.tick + content.combat.villager.cooldownTicks;
     hurt(state, content, foe, content.combat.villager.damage);

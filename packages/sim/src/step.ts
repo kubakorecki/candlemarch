@@ -13,6 +13,7 @@ import { haulingSystem } from './systems/hauling';
 import { huntingSystem } from './systems/hunting';
 import { immigrationSystem } from './systems/immigration';
 import { lightsSystem } from './systems/lights';
+import { militiaSystem } from './systems/militia';
 import { movementSystem } from './systems/movement';
 import { patchesSystem } from './systems/patches';
 import { productionSystem } from './systems/production';
@@ -52,19 +53,21 @@ export function step(state: GameState, commands: readonly Command[], content: Co
  * 9. immigration: at Dawn, after its deaths, maybe one Newcomer arrives at the entry tile
  * 10. dens: at Dawn Gloamlings vanish and, at a season's first Dawn, Dens bud (PRNG); at Dusk Dens
  *    spawn Gloamlings; at Monster rate 0 Gloamlings vanish at once
- * 11. combat: Gloamlings pick targets out of Light and walk after them, around lit tiles;
- *    villagers they reach drop their work and fight back; hits in entity-ID order; villagers
- *    back to full HP at Dawn
- * 12. hero: works the player's order (chop, pick up, deliver)
- * 13. woodcutting
- * 14. fishing
- * 15. foraging
- * 16. hunting: hunters roll for a catch with the PRNG
- * 17. production: workshop crafters take inputs, work, and fill output buffers
- * 18. hauling (job dispatch)
- * 19. construction, by day only
- * 20. staffing: workplaces below their worker limit draft idle carriers
- * 21. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
+ * 11. militia: while the bell rings, the villagers it called walk after Gloamlings near it, or
+ *    to it; at Dawn they stand down
+ * 12. combat: Gloamlings pick targets out of Light and walk after them, around lit tiles;
+ *    villagers they reach drop their work and fight back, the militia hits Gloamlings near the
+ *    bell; hits in entity-ID order; villagers back to full HP at Dawn
+ * 13. hero: works the player's order (chop, pick up, deliver)
+ * 14. woodcutting
+ * 15. fishing
+ * 16. foraging
+ * 17. hunting: hunters roll for a catch with the PRNG
+ * 18. production: workshop crafters take inputs, work, and fill output buffers
+ * 19. hauling (job dispatch)
+ * 20. construction, by day only
+ * 21. staffing: workplaces below their worker limit draft idle carriers
+ * 22. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
  * then `tick` increments.
  */
 export function stepInPlace(next: GameState, commands: readonly Command[], content: Content): void {
@@ -78,6 +81,7 @@ export function stepInPlace(next: GameState, commands: readonly Command[], conte
   routineSystem(next, content);
   immigrationSystem(next, content);
   densSystem(next, content);
+  militiaSystem(next, content);
   combatSystem(next, content);
   heroSystem(next, content);
   woodcuttingSystem(next, content);

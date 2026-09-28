@@ -838,6 +838,57 @@ export function drawLight(
 }
 
 /**
+ * The Militia bell: a bronze bell hanging from a timber frame. While it rings it swings, with
+ * strokes of sound either side.
+ */
+export function drawBell(g: Graphics, layout: BuildingLayout, ringing: boolean): void {
+  g.clear();
+  const s = TILE_H / 64;
+  const { origin } = layout;
+  const c = gridToWorld(origin.x + 0.5, origin.y + 0.5);
+  g.ellipse(c.x, c.y, 20 * s, 8 * s).fill({ color: palette.shadow, alpha: 0.3 });
+  const top = c.y - 58 * s;
+  for (const dx of [-16, 16]) {
+    g.rect(c.x + dx * s - 3 * s, top, 6 * s, 58 * s)
+      .fill(palette.torchPole)
+      .stroke(THIN_INK);
+  }
+  g.rect(c.x - 22 * s, top - 6 * s, 44 * s, 7 * s)
+    .fill(palette.torchPole)
+    .stroke(THIN_INK);
+  const tilt = ringing ? 5 * s : 0;
+  const hang = top + 2 * s;
+  const mouth = hang + 26 * s;
+  g.moveTo(c.x - 4 * s, hang)
+    .quadraticCurveTo(c.x - 10 * s, hang + 4 * s, c.x - 11 * s + tilt, mouth - 6 * s)
+    .lineTo(c.x - 14 * s + tilt, mouth)
+    .lineTo(c.x + 14 * s + tilt, mouth)
+    .lineTo(c.x + 11 * s + tilt, mouth - 6 * s)
+    .quadraticCurveTo(c.x + 10 * s, hang + 4 * s, c.x + 4 * s, hang)
+    .closePath()
+    .fill(palette.bell)
+    .stroke(INK);
+  g.moveTo(c.x - 4 * s + tilt, hang + 8 * s)
+    .lineTo(c.x - 7 * s + tilt, mouth - 4 * s)
+    .stroke({ width: 3 * s, color: palette.bellLight, cap: 'round' });
+  g.circle(c.x + tilt * 1.6, mouth + 3 * s, 3 * s)
+    .fill(palette.iron)
+    .stroke(THIN_INK);
+  if (!ringing) return;
+  for (const side of [-1, 1]) {
+    for (const r of [28, 36]) {
+      g.arc(
+        c.x,
+        mouth - 12 * s,
+        r * s,
+        side < 0 ? Math.PI * 0.8 : -Math.PI * 0.2,
+        side < 0 ? Math.PI * 1.2 : Math.PI * 0.2,
+      ).stroke({ width: 3 * s, color: palette.bellLight, cap: 'round' });
+    }
+  }
+}
+
+/**
  * A lit torch or brazier on the additive lights layer: the pool of Light over every tile it
  * lights (`radiusTiles` around its footprint, so the edge Gloamlings won't cross reads at a
  * glance), brightest at the middle, and its flame.

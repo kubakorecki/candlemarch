@@ -13,7 +13,8 @@ export type BuildingId =
   | 'hunters_lodge'
   | 'granary'
   | 'torch'
-  | 'brazier';
+  | 'brazier'
+  | 'bell';
 export type JobId = 'woodcutter' | 'carrier' | 'woodsplitter' | 'fisher' | 'forager' | 'hunter';
 export type RoadId = 'dirt_path';
 export type HeroId = 'placeholder';
@@ -280,6 +281,15 @@ export interface LightDef {
   holds: number;
 }
 
+/**
+ * The Militia bell. Ringing it calls every villager but Watchmen to arms: they drop their work,
+ * walk to the bell and fight Gloamlings within `rangeTiles` of it (Chebyshev distance), until it's
+ * rung again or Dawn comes.
+ */
+export interface BellDef {
+  rangeTiles: number;
+}
+
 export interface BuildingDef {
   id: BuildingId;
   name: string;
@@ -327,6 +337,10 @@ export interface BuildingDef {
   residents?: number;
   /** Makes it a light (M3): a building that burns fuel each night to cast Light. */
   light?: LightDef;
+  /** Makes it the Militia bell (M3). */
+  bell?: BellDef;
+  /** A village has at most one, built or under construction. */
+  onePerVillage?: boolean;
   /** Cost and time to build it from a construction site. Absent for buildings that can't be built. */
   construction?: { cost: ResourceAmount[]; buildTicks: number };
 }

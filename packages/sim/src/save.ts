@@ -65,6 +65,7 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     v.hp ??= content.combat.villager.hp;
     v.readyAt ??= 0;
     v.fighting ??= false;
+    v.militia ??= false;
   }
   for (const g of Object.values(state.components.gloamling)) {
     g.hp ??= content.combat.gloamling.hp;

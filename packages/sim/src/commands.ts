@@ -4,6 +4,7 @@ import { isMonsterRate } from './dens';
 import { createEntity, destroyEntity } from './entities';
 import { canPlaceBuilding } from './grid';
 import { type HeroOrder, orderHero } from './hero';
+import { ringBell } from './militia';
 import { layPath, removePath } from './roads';
 import {
   type EntityId,
@@ -41,6 +42,8 @@ export type Command =
   | { type: 'unassignWorker'; villager: EntityId }
   | { type: 'reassignWorker'; villager: EntityId; workplace: EntityId }
   | { type: 'setWorkerLimit'; building: EntityId; limit: number }
+  /** Rings the Militia bell: calls the village to arms, or stands it down if it's ringing. */
+  | { type: 'ringBell' }
   /** Dev: set the Monster rate (0–100). 0 turns nights off; Gloamlings out vanish at once. */
   | { type: 'setMonsterRate'; rate: number };
 
@@ -110,6 +113,10 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'setWorkerLimit': {
       setWorkerLimit(state, content, command.building, command.limit);
+      return;
+    }
+    case 'ringBell': {
+      ringBell(state, content);
       return;
     }
     case 'setMonsterRate': {

@@ -130,8 +130,9 @@ export function routineSystem(state: GameState, content: Content): void {
       continue;
     }
 
-    // Standing its ground against a Gloamling (`systems/combat.ts`): its routine waits.
-    if (v.fighting) continue;
+    // Standing its ground against a Gloamling (`systems/combat.ts`), or called to arms by the
+    // Militia bell (`militia.ts`): its routine waits.
+    if (v.fighting || v.militia) continue;
     switch (v.routine) {
       case 'work': {
         if (!finishWork(state, id)) seekMeal(state, content, id);

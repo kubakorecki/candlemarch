@@ -255,6 +255,15 @@ export function fitsAt(
   return blocked[doorIndex] === 0 && !piles.has(doorIndex);
 }
 
+/** Whether the village has a `type` building, built or under construction. */
+function hasOne(state: GameState, type: BuildingId): boolean {
+  const { building, site } = state.components;
+  return (
+    Object.values(building).some((b) => b.type === type) ||
+    Object.values(site).some((s) => s.type === type)
+  );
+}
+
 /** Whether the player may place a building of this type, turned `rotation`, at (x, y) now. */
 export function canPlaceBuilding(
   state: GameState,
@@ -266,5 +275,6 @@ export function canPlaceBuilding(
 ): boolean {
   const def = content.buildings[type];
   if (!def?.placeable || !def.construction) return false;
+  if (def.onePerVillage && hasOne(state, type)) return false;
   return fitsAt(state, content, type, x, y, rotation);
 }

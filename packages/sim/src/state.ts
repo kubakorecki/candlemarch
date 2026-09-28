@@ -147,6 +147,11 @@ export interface VillagerComponent {
    * back, until none is. Its `routine` carries on from there afterwards.
    */
   fighting: boolean;
+  /**
+   * Called to arms by the Militia bell (`militia.ts`): it has dropped its work and walks to the
+   * bell or fights Gloamlings near it, until the bell is rung again or Dawn. Its `routine` waits.
+   */
+  militia: boolean;
 }
 
 /**

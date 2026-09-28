@@ -167,6 +167,14 @@ export function Hud({ game }: { game: Game }) {
                 </button>
               </div>
             ))}
+            {hud.building.bell && hud.bell && (
+              <div className="row">
+                <span className="muted">{hud.bell.ringing ? 'The militia is out' : 'Quiet'}</span>
+                <button type="button" onClick={() => game.ringBell()}>
+                  {hud.bell.ringing ? 'Stand down' : 'Ring'}
+                </button>
+              </div>
+            )}
             {hud.building.grounds.map((ground) => (
               <GroundRows key={ground.id} ground={ground} />
             ))}
@@ -393,6 +401,20 @@ export function Hud({ game }: { game: Game }) {
         >
           Traffic
         </button>
+        {hud.bell && (
+          <button
+            type="button"
+            className={hud.bell.ringing ? 'active' : ''}
+            onClick={() => game.ringBell()}
+            title={
+              hud.bell.ringing
+                ? 'Stand the militia down: back to work, or Home at night'
+                : 'Ring the Militia bell: every villager drops their work to fight near it'
+            }
+          >
+            {hud.bell.ringing ? 'Stand down' : 'Ring bell'}
+          </button>
+        )}
         <span className="divider" />
         {SPEEDS.map((speed) => (
           <button

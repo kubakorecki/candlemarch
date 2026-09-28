@@ -90,6 +90,9 @@ export const palette = {
   torchHead: 0x3a2a1e,
   iron: 0x4f4c4a,
   ironLight: 0x6d6964,
+  // The Militia bell: a bronze bell under a timber frame (`torchPole`).
+  bell: 0x8c6d3f,
+  bellLight: 0xae8c55,
 
   // Monsters: Dens, Gloamlings (pale eyes that shine through the dark) and the dark ring around a
   // Den where nothing can be built.

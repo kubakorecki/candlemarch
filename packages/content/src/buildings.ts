@@ -145,4 +145,19 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 100, // 5 s
     },
   },
+  // Militia bell (spec, Nights in v1): calls every villager to arms.
+  bell: {
+    id: 'bell',
+    name: 'Militia bell',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [],
+    bell: { rangeTiles: 10 },
+    onePerVillage: true,
+    construction: {
+      cost: [{ resource: 'logs', amount: 5 }],
+      buildTicks: 100, // 5 s
+    },
+  },
 };

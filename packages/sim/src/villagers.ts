@@ -28,9 +28,12 @@ export function fallbackVillagerName(id: EntityId, content: Content): string {
   return name;
 }
 
-/** Whether villager `v` is at its Job: its routine is `work` and it isn't fighting. */
+/**
+ * Whether villager `v` is at its Job: its routine is `work`, it isn't fighting and the Militia
+ * bell hasn't called it.
+ */
 export function isAtWork(v: VillagerComponent): boolean {
-  return v.routine === 'work' && !v.fighting;
+  return v.routine === 'work' && !v.fighting && !v.militia;
 }
 
 /**
@@ -88,6 +91,7 @@ export function spawnVillager(
     hp: content.combat.villager.hp,
     readyAt: 0,
     fighting: false,
+    militia: false,
   };
   state.components.position[id] = tileCenter(tile);
   assignJob(state, content, id, job, workplace);

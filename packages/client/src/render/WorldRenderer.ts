@@ -12,6 +12,7 @@ import {
   healthBars,
   heroOf,
   idsOf,
+  isBellRung,
   isColdHouse,
   isDarkLight,
   isKnockedOut,
@@ -41,6 +42,7 @@ import { palette } from './palette';
 import {
   drawAuraRadius,
   drawAxe,
+  drawBell,
   drawBerryBush,
   drawBoostedMark,
   drawBuilding,
@@ -408,13 +410,15 @@ export class WorldRenderer {
       const status = workplaceStatus(state, this.content, id);
       const cold = isColdHouse(state, this.content, id) || isDarkLight(state, this.content, id);
       const fuel = def.light ? (b.stock[def.light.fuel] ?? 0) : 0;
+      const ringing = def.bell !== undefined && isBellRung(state);
       const view = this.staticView(`building:${id}`, seen);
-      const key = `${b.type}@${at.x},${at.y}r${b.rotation}:${input?.amount}:${output?.resource}${output?.amount}:${JSON.stringify(status)}:${cold}:${fuel}`;
+      const key = `${b.type}@${at.x},${at.y}r${b.rotation}:${input?.amount}:${output?.resource}${output?.amount}:${JSON.stringify(status)}:${cold}:${fuel}:${ringing}`;
       if (view.key !== key) {
         if (b.type === 'chopping_block') drawChoppingBlock(view.graphics, layout, input, output);
         else if (b.type === 'torch' || b.type === 'brazier') {
           drawLight(view.graphics, layout, b.type, fuel);
-        } else drawBuilding(view.graphics, layout, output, def.residents !== undefined);
+        } else if (def.bell) drawBell(view.graphics, layout, ringing);
+        else drawBuilding(view.graphics, layout, output, def.residents !== undefined);
         if (status) {
           const c = gridToWorld(at.x + size.w / 2, at.y + size.h / 2);
           drawStatusIcon(view.graphics, status, c.x, c.y - TILE_H * 2.4);
