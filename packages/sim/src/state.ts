@@ -18,6 +18,8 @@ export const TICKS_PER_SECOND = 20;
 export const TILE_UNITS = 1000;
 /** Length of a diagonal step between tile centres, in sub-tile units (1000 × √2, rounded). */
 export const DIAGONAL_UNITS = 1414;
+/** The Monster rate a new game gets unless it's given one, and that saves made before it load as. */
+export const DEFAULT_MONSTER_RATE = 100;
 
 export type EntityId = number;
 /** A component store: component data keyed by entity ID. */
@@ -224,8 +226,20 @@ export interface HuntingGroundComponent {
   fled: number;
 }
 
+/**
+ * A monster Den, standing on its `tile`. It spawns Gloamlings at Dusk and buds new Dens (see
+ * `systems/dens.ts`). It isn't a `mapObject`: nobody gathers it, and it doesn't block walking.
+ */
+export type DenComponent = Record<string, never>;
+
+/** A Gloamling, the night monster: out from Dusk until Dawn, at its `position`. */
+export interface GloamlingComponent {
+  /** The Den it came out of. */
+  den: EntityId;
+}
+
 export interface Components {
-  /** Anchor tile of static things: map objects, buildings, construction sites, stockpiles. */
+  /** Anchor tile of static things: map objects, Dens, buildings, construction sites, stockpiles. */
   tile: Store<Tile>;
   mapObject: Store<MapObjectComponent>;
   building: Store<BuildingComponent>;
@@ -241,6 +255,8 @@ export interface Components {
   forager: Store<ForagerTask>;
   hunter: Store<HunterTask>;
   huntingGround: Store<HuntingGroundComponent>;
+  den: Store<DenComponent>;
+  gloamling: Store<GloamlingComponent>;
 }
 
 /** How a villager died. */
@@ -290,4 +306,9 @@ export interface GameState {
   gameOver: GameOver | null;
   /** Carrier and road counts over the last in-game day, oldest slice first. */
   traffic: TrafficSlice[];
+  /**
+   * How many monsters come out, as a percent (0–100) of the Dens' full spawns. 0 turns nights
+   * off: no spawns, no budding, and Gloamlings out vanish at once.
+   */
+  monsterRate: number;
 }

@@ -28,7 +28,7 @@ function save(current: GameState, slot: SaveSlot): void {
 function handle(message: ToWorker): void {
   switch (message.type) {
     case 'newGame':
-      state = createInitialState(message.seed, maps[message.map], content);
+      state = createInitialState(message.seed, maps[message.map], content, message.monsterRate);
       sendSnapshot(state, state);
       return;
     case 'load':

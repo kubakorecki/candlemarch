@@ -10,6 +10,7 @@ import type {
   RoadId,
   TerrainId,
 } from '@candlemarch/content';
+import { isMonsterRate } from './dens';
 import { createEntity } from './entities';
 import { isFood } from './granary';
 import {
@@ -23,7 +24,7 @@ import {
 } from './grid';
 import { standingTrees } from './huntingGrounds';
 import { seedRng } from './rng';
-import { type GameState, type Rotation, STATE_VERSION } from './state';
+import { DEFAULT_MONSTER_RATE, type GameState, type Rotation, STATE_VERSION } from './state';
 import {
   addToTile,
   canPlaceStockpile,
@@ -97,7 +98,7 @@ const DEFAULT_HERO: HeroId = 'placeholder';
 /** What each character in `MapDef.rows` stands for. */
 export const MAP_LEGEND: Record<
   string,
-  { terrain: TerrainId; object?: MapObjectId; road?: RoadId }
+  { terrain: TerrainId; object?: MapObjectId; road?: RoadId; den?: true }
 > = {
   '.': { terrain: 'grass' },
   T: { terrain: 'grass', object: 'tree' },
@@ -105,6 +106,7 @@ export const MAP_LEGEND: Record<
   m: { terrain: 'grass', object: 'mushroom_patch' },
   '=': { terrain: 'grass', road: 'dirt_path' },
   '~': { terrain: 'river' },
+  D: { terrain: 'grass', den: true },
 };
 
 /**
@@ -134,25 +136,36 @@ export function createEmptyState(seed: number): GameState {
       forager: {},
       hunter: {},
       huntingGround: {},
+      den: {},
+      gloamling: {},
     },
     logistics: { hauls: {} },
     deaths: [],
     gameOver: null,
     traffic: [],
+    monsterRate: DEFAULT_MONSTER_RATE,
   };
 }
 
 /**
- * A new game on `map`. Entities are created in this order: trees (row-major), buildings with
- * their employees (spawned at the door), sites, stockpiles, free villagers, the hero, then
- * Hunting grounds. Throws if the map is malformed or anything on it couldn't be placed there.
+ * A new game on `map` with Monster rate `monsterRate` (0–100). Entities are created in this order:
+ * map objects and Dens (row-major), buildings with their employees (spawned at the door), sites,
+ * stockpiles, free villagers, the hero, then Hunting grounds. Throws if the map is malformed or
+ * anything on it couldn't be placed there.
  */
-export function createInitialState(seed: number, map: MapDef, content: Content): GameState {
+export function createInitialState(
+  seed: number,
+  map: MapDef,
+  content: Content,
+  monsterRate: number = DEFAULT_MONSTER_RATE,
+): GameState {
   const height = map.rows.length;
   const width = map.rows[0]?.length ?? 0;
   if (width === 0) throw new Error(`map ${map.name}: empty`);
+  if (!isMonsterRate(monsterRate)) throw new Error(`Monster rate ${monsterRate} isn't 0–100`);
 
   const state = createEmptyState(seed);
+  state.monsterRate = monsterRate;
   state.map = { width, height, terrain: [], roads: {}, entry: null };
 
   map.rows.forEach((row, y) => {
@@ -170,6 +183,11 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
           type: cell.object,
           amount: content.mapObjects[cell.object].amount,
         };
+      }
+      if (cell.den) {
+        const id = createEntity(state);
+        state.components.tile[id] = { x, y };
+        state.components.den[id] = {};
       }
     });
   });

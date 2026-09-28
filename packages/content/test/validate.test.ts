@@ -305,6 +305,19 @@ describe('content validation', () => {
     expect(thrivingPercent <= 100, 'hunting.thrivingPercent <= 100').toBe(true);
   });
 
+  it('Dens use whole numbers and a budding band that can be met', () => {
+    const { spawnsPerDusk, darkRingTiles, budding } = content.dens;
+    for (const season of content.calendar.seasons) {
+      expectNonNegativeInt(spawnsPerDusk[season.id], `dens.spawnsPerDusk.${season.id}`);
+    }
+    expectPositiveInt(darkRingTiles, 'dens.darkRingTiles');
+    expectPositiveInt(budding.closerMin, 'dens.budding.closerMin');
+    expect(budding.closerMin <= budding.closerMax, 'closerMin <= closerMax').toBe(true);
+    // A bud must keep its own dark ring clear of buildings.
+    expect(budding.minBuildingTiles > darkRingTiles, 'buds keep their ring clear').toBe(true);
+    expectPositiveInt(budding.maxDens, 'dens.budding.maxDens');
+  });
+
   it('every resource has a known store', () => {
     for (const r of Object.values(resources)) {
       expect(['stockpile', 'granary'], `${r.id}.storage`).toContain(r.storage);

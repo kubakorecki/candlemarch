@@ -11,6 +11,8 @@ import {
   canPlaceStockpile,
   carrierUtilization,
   DEFAULT_MAP,
+  DEFAULT_MONSTER_RATE,
+  darkRingTiles,
   type EntityId,
   entityLayout,
   type GameState,
@@ -263,6 +265,8 @@ export interface HudState {
   loadMenu: LoadSlotView[] | null;
   /** The hero is selected, so right-click orders it. */
   heroSelected: boolean;
+  /** This game's Monster rate, 0–100. */
+  monsterRate: number;
   /** What the hero holds, e.g. "3/5 logs", or null if this game has no hero. */
   heroLoad: string | null;
   message: string | null;
@@ -313,6 +317,7 @@ export class Game {
     workers: null,
     loadMenu: null,
     heroSelected: false,
+    monsterRate: DEFAULT_MONSTER_RATE,
     heroLoad: null,
     message: null,
   };
@@ -429,10 +434,10 @@ export class Game {
     this.bridge.command({ type: 'setWorkerLimit', building: id, limit: info.workerLimit + delta });
   }
 
-  /** Starts a new game on `map`, replacing the current one. */
-  newGame(map: MapName): void {
+  /** Starts a new game on `map` with Monster rate `monsterRate`, replacing the current one. */
+  newGame(map: MapName, monsterRate: number = DEFAULT_MONSTER_RATE): void {
     this.cameraCentred = false;
-    this.bridge.newGame(NEW_GAME_SEED, map);
+    this.bridge.newGame(NEW_GAME_SEED, map, monsterRate);
     this.dragStart = null;
     this.clearSelection();
     this.setHud({ tool: null, pile: null, message: null });
@@ -441,6 +446,11 @@ export class Game {
 
   save(): void {
     this.bridge.save();
+  }
+
+  /** Dev: sets this game's Monster rate (0 turns nights off). */
+  setMonsterRate(rate: number): void {
+    this.bridge.command({ type: 'setMonsterRate', rate });
   }
 
   /** Opens or closes the Load menu, listing each slot with the date it was saved on. */
@@ -560,6 +570,7 @@ export class Game {
       food: villageFood(state, content),
       carriersBusy: utilizationText(carrierUtilization(state, content)),
       gameOver: state.gameOver && gameOverText(state.gameOver),
+      monsterRate: state.monsterRate,
     });
     this.refreshAlerts(state);
   }
@@ -871,6 +882,7 @@ export class Game {
         y,
         rotation,
         valid: canPlaceBuilding(state, content, tool, x, y, rotation),
+        darkRing: darkRingTiles(state, content),
       };
     }
     const from = this.dragStart ?? hover;

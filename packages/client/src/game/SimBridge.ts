@@ -37,9 +37,9 @@ export class SimBridge {
     });
   }
 
-  newGame(seed: number, map: MapName): void {
+  newGame(seed: number, map: MapName, monsterRate: number): void {
     this.reset();
-    this.post({ type: 'newGame', seed, map });
+    this.post({ type: 'newGame', seed, map, monsterRate });
   }
 
   load(json: string): void {

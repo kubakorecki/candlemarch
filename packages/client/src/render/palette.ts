@@ -84,6 +84,17 @@ export const palette = {
   glow: 0xe8973f,
   windowLit: 0xffd27a,
   window: 0x4a3a2b,
+
+  // Monsters: Dens, Gloamlings (pale eyes that shine through the dark) and the dark ring around a
+  // Den where nothing can be built.
+  denEarth: 0x4e4236,
+  denEarthDark: 0x3a3129,
+  denMouth: 0x120e0c,
+  gloam: 0x2d2934,
+  gloamLight: 0x433d4d,
+  gloamEye: 0xd9e3a4,
+  darkRing: 0x221c2a,
+
   valid: 0x9dbf73,
   invalid: 0xc4584a,
 

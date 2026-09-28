@@ -3,7 +3,7 @@ import type { Command, EntityId, GameState, MapName, Point } from '@candlemarch/
 import type { SaveSlot } from './game/autosave';
 
 export type ToWorker =
-  | { type: 'newGame'; seed: number; map: MapName }
+  | { type: 'newGame'; seed: number; map: MapName; monsterRate: number }
   | { type: 'load'; json: string }
   /** Run `ticks` ticks; `commands` are applied on the first of them. */
   | { type: 'advance'; ticks: number; commands: Command[] }

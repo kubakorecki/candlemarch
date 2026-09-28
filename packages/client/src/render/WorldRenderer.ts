@@ -42,7 +42,11 @@ import {
   drawBuilding,
   drawCarriedGoods,
   drawChoppingBlock,
+  drawDarkRing,
+  drawDen,
   drawFledPuff,
+  drawGloamling,
+  drawGloamlingEyes,
   drawGoodsStack,
   drawGround,
   drawHeatMap,
@@ -215,6 +219,8 @@ export type PlacementGhost =
       y: number;
       rotation: Rotation;
       valid: boolean;
+      /** Tiles in a Den's dark ring, shaded while placing. */
+      darkRing: Tile[];
     }
   | { kind: 'tiles'; tiles: Tile[]; valid: boolean };
 
@@ -238,6 +244,9 @@ export class WorldRenderer {
   private activePuffs: Puff[] = [];
   /** The hero's aura radius (while selected) and the Workplaces it boosts, on the ground. */
   private readonly aura = new Graphics();
+  /** Den dark rings on the ground, while a building is being placed. */
+  private readonly darkRing = new Graphics();
+  private darkRingKey = '';
   private readonly objects = new Container({ sortableChildren: true });
   private readonly ghost = new Graphics();
   /** Darkness over the whole screen: white, tinted by the night look and multiplied in. */
@@ -249,6 +258,9 @@ export class WorldRenderer {
    */
   private readonly lights = new Graphics({ blendMode: 'add' });
   private lightsKey = '';
+  /** Gloamlings' eyes, added over the darkness like `lights` so they shine at night. Per frame. */
+  private readonly eyes = new Graphics({ blendMode: 'add' });
+  private readonly gloamlings = new Map<EntityId, Container>();
   private readonly statics = new Map<string, StaticView>();
   private readonly villagers = new Map<EntityId, VillagerView>();
   private hero: HeroView | null = null;
@@ -277,13 +289,14 @@ export class WorldRenderer {
       this.pileGround,
       this.grounds,
       this.aura,
+      this.darkRing,
       this.objects,
       this.groundLabels,
       this.puffs,
       this.puffLabels,
       this.ghost,
     );
-    this.app.stage.addChild(this.world, this.night, this.lights);
+    this.app.stage.addChild(this.world, this.night, this.lights, this.eyes);
   }
 
   get canvas(): HTMLCanvasElement {
@@ -304,6 +317,8 @@ export class WorldRenderer {
     this.world.scale.set(camera.zoom);
     this.lights.position.set(origin.x, origin.y);
     this.lights.scale.set(camera.zoom);
+    this.eyes.position.set(origin.x, origin.y);
+    this.eyes.scale.set(camera.zoom);
   }
 
   /** Brings trees, buildings and sites in line with a new snapshot. */
@@ -321,7 +336,21 @@ export class WorldRenderer {
     this.syncHeat(state);
 
     const seen = new Set<string>();
-    const { tile, mapObject, building, site } = state.components;
+    const { tile, mapObject, building, site, den } = state.components;
+
+    for (const id of idsOf(den)) {
+      const at = tile[id];
+      if (!at) continue;
+      const view = this.staticView(`den:${id}`, seen);
+      const key = `den@${at.x},${at.y}`;
+      if (view.key !== key) {
+        drawDen(view.graphics);
+        view.key = key;
+        const c = tileCenterWorld(at.x, at.y);
+        view.node.position.set(c.x, c.y);
+        view.node.zIndex = depthOf(at.x + 0.5, at.y + 0.5);
+      }
+    }
 
     for (const id of idsOf(mapObject)) {
       const obj = mapObject[id];
@@ -429,7 +458,46 @@ export class WorldRenderer {
   ): void {
     this.drawVillagers(state, prevPositions, alpha, timeMs);
     this.drawHero(state, prevPositions, alpha, timeMs);
+    this.drawGloamlings(state, prevPositions, alpha, timeMs);
     this.drawPuffs(timeMs);
+  }
+
+  /** Gloamlings, swaying where they stand, with their eyes on the `eyes` layer too. */
+  private drawGloamlings(
+    state: GameState,
+    prevPositions: Record<EntityId, Point>,
+    alpha: number,
+    timeMs: number,
+  ): void {
+    const { gloamling, position } = state.components;
+    this.eyes.clear();
+    const seen = new Set<EntityId>();
+    for (const id of idsOf(gloamling)) {
+      const to = position[id];
+      if (!to) continue;
+      seen.add(id);
+      let node = this.gloamlings.get(id);
+      if (!node) {
+        node = new Container();
+        const body = new Graphics();
+        drawGloamling(body);
+        node.addChild(body);
+        this.objects.addChild(node);
+        this.gloamlings.set(id, node);
+      }
+      const g = interpolate(prevPositions[id] ?? to, to, alpha);
+      const w = gridToWorld(g.x, g.y);
+      const sway = Math.sin(timeMs / 300 + id) * 2 * (TILE_H / 64);
+      node.position.set(w.x + sway, w.y);
+      node.zIndex = depthOf(g.x, g.y) + 0.01;
+      drawGloamlingEyes(this.eyes, w.x + sway, w.y);
+    }
+    for (const [id, node] of this.gloamlings) {
+      if (!seen.has(id)) {
+        node.destroy({ children: true });
+        this.gloamlings.delete(id);
+      }
+    }
   }
 
   /** Darkens the screen and fades light sources in by `look` (from `nightLook`). */
@@ -443,6 +511,8 @@ export class WorldRenderer {
     this.night.visible = look.tint !== 0xffffff;
     this.lights.alpha = look.glow;
     this.lights.visible = look.glow > 0;
+    this.eyes.alpha = look.glow * 0.7;
+    this.eyes.visible = look.glow > 0;
   }
 
   /** Redraws the glows when the sim's light sources change. */
@@ -608,6 +678,12 @@ export class WorldRenderer {
 
   setGhost(ghost: PlacementGhost | null): void {
     this.ghost.visible = ghost !== null;
+    const ring = ghost?.kind === 'building' ? ghost.darkRing : [];
+    const ringKey = JSON.stringify(ring);
+    if (ringKey !== this.darkRingKey) {
+      drawDarkRing(this.darkRing, ring);
+      this.darkRingKey = ringKey;
+    }
     if (ghost?.kind === 'building') {
       const def = this.content.buildings[ghost.type];
       const layout = buildingLayout(def, { x: ghost.x, y: ghost.y }, ghost.rotation);

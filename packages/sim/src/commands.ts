@@ -1,5 +1,6 @@
 // Player commands: the only way the outside world changes the sim.
 import type { BuildingId, Content, ResourceId } from '@candlemarch/content';
+import { isMonsterRate } from './dens';
 import { createEntity, destroyEntity } from './entities';
 import { canPlaceBuilding } from './grid';
 import { type HeroOrder, orderHero } from './hero';
@@ -39,7 +40,9 @@ export type Command =
   | ({ type: 'orderHero' } & HeroOrder)
   | { type: 'unassignWorker'; villager: EntityId }
   | { type: 'reassignWorker'; villager: EntityId; workplace: EntityId }
-  | { type: 'setWorkerLimit'; building: EntityId; limit: number };
+  | { type: 'setWorkerLimit'; building: EntityId; limit: number }
+  /** Dev: set the Monster rate (0–100). 0 turns nights off; Gloamlings out vanish at once. */
+  | { type: 'setMonsterRate'; rate: number };
 
 /** Applies one command. Commands that aren't valid right now are ignored. */
 export function applyCommand(state: GameState, command: Command, content: Content): void {
@@ -107,6 +110,10 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'setWorkerLimit': {
       setWorkerLimit(state, content, command.building, command.limit);
+      return;
+    }
+    case 'setMonsterRate': {
+      if (isMonsterRate(command.rate)) state.monsterRate = command.rate;
       return;
     }
   }

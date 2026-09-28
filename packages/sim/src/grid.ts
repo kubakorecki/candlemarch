@@ -1,5 +1,6 @@
 // Tile maths, footprints, walkability and building placement.
 import type { BuildingDef, BuildingId, Content, TerrainId } from '@candlemarch/content';
+import { inDarkRing } from './dens';
 import { idsOf } from './entities';
 import {
   type EntityId,
@@ -214,10 +215,9 @@ export function tilesUnderStockpiles(state: GameState): Set<number> {
 
 /**
  * Whether a building of this type, turned `rotation`, fits with its origin at (x, y): every
- * footprint tile is in
- * bounds, buildable, and free of trees, roads, stockpiles, other footprints and other doors; its
- * door tile is in bounds, walkable, not blocked and not on a stockpile (it may be on a road), and
- * on a riverbank if the type needs one. Doesn't check whether the player may place this type.
+ * footprint tile is in bounds, buildable, outside every Den's dark ring, and free of trees, roads,
+ * stockpiles, other footprints and other doors; its door tile is in bounds, walkable, not blocked
+ * and not on a stockpile (it may be on a road), and on a riverbank if the type needs one. Doesn't check whether the player may place this type.
  */
 export function fitsAt(
   state: GameState,
@@ -245,6 +245,7 @@ export function fitsAt(
     }
     // Newcomers arrive on the entry tile: keep it open.
     if (map.entry && t.x === map.entry.x && t.y === map.entry.y) return false;
+    if (inDarkRing(state, content, t)) return false;
   }
 
   const { door } = layout;

@@ -205,6 +205,28 @@ export interface AlertsDef {
   lowFoodDays: number;
 }
 
+/**
+ * Monster Dens (M3). At each Dusk a Den spawns `spawnsPerDusk` Gloamlings for the season, scaled by
+ * the game's Monster rate. At the start of each season each Den buds a new Den closer to the
+ * village. Nothing can be built within `darkRingTiles` of a Den (Chebyshev distance).
+ */
+export interface DensDef {
+  spawnsPerDusk: Record<SeasonId, number>;
+  darkRingTiles: number;
+  budding: {
+    /**
+     * A bud stands `closerMin`–`closerMax` tiles closer to the nearest building than its Den
+     * (Chebyshev distance to a footprint), and at most `closerMax` tiles from its Den.
+     */
+    closerMin: number;
+    closerMax: number;
+    /** A bud stands at least this far from every building and construction site. */
+    minBuildingTiles: number;
+    /** No Den buds while the map holds this many. */
+    maxDens: number;
+  };
+}
+
 /** Hunting grounds: forest regions holding Game, which logging drives away. */
 export interface HuntingDef {
   /** The map object a ground's forest is made of: felling one lowers the ground's ceiling. */
@@ -283,6 +305,7 @@ export interface Content {
   hunting: HuntingDef;
   immigration: ImmigrationDef;
   alerts: AlertsDef;
+  dens: DensDef;
   /** First names new villagers are drawn from. */
   villagerNames: readonly string[];
 }

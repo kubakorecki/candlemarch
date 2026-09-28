@@ -5,6 +5,7 @@ import { heroSystem } from './hero';
 import { homesSystem } from './homes';
 import type { GameState } from './state';
 import { constructionSystem } from './systems/construction';
+import { densSystem } from './systems/dens';
 import { fishingSystem } from './systems/fishing';
 import { foragingSystem } from './systems/foraging';
 import { haulingSystem } from './systems/hauling';
@@ -45,16 +46,18 @@ export function step(state: GameState, commands: readonly Command[], content: Co
  * 7. routine: at Dusk villagers finish what they hold, eat at a Granary and go Home to sleep; at
  *    Dawn back to work (or starve, a Meal too many missed)
  * 8. immigration: at Dawn, after its deaths, maybe one Newcomer arrives at the entry tile
- * 9. hero: works the player's order (chop, pick up, deliver)
- * 10. woodcutting
- * 11. fishing
- * 12. foraging
- * 13. hunting: hunters roll for a catch with the PRNG
- * 14. production: workshop crafters take inputs, work, and fill output buffers
- * 15. hauling (job dispatch)
- * 16. construction, by day only
- * 17. staffing: workplaces below their worker limit draft idle carriers
- * 18. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
+ * 9. dens: at Dawn Gloamlings vanish and, at a season's first Dawn, Dens bud (PRNG); at Dusk Dens
+ *    spawn Gloamlings; at Monster rate 0 Gloamlings vanish at once
+ * 10. hero: works the player's order (chop, pick up, deliver)
+ * 11. woodcutting
+ * 12. fishing
+ * 13. foraging
+ * 14. hunting: hunters roll for a catch with the PRNG
+ * 15. production: workshop crafters take inputs, work, and fill output buffers
+ * 16. hauling (job dispatch)
+ * 17. construction, by day only
+ * 18. staffing: workplaces below their worker limit draft idle carriers
+ * 19. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
  * then `tick` increments.
  */
 export function stepInPlace(next: GameState, commands: readonly Command[], content: Content): void {
@@ -66,6 +69,7 @@ export function stepInPlace(next: GameState, commands: readonly Command[], conte
   warmthSystem(next, content);
   routineSystem(next, content);
   immigrationSystem(next, content);
+  densSystem(next, content);
   heroSystem(next, content);
   woodcuttingSystem(next, content);
   fishingSystem(next, content);

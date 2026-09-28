@@ -1005,6 +1005,95 @@ export function drawVillagerStatus(g: Graphics, status: VillagerStatus): void {
   });
 }
 
+/**
+ * A monster Den, drawn around (0, 0) = the centre of its tile: an earth mound with a black mouth,
+ * thorns and a bone.
+ */
+export function drawDen(g: Graphics): void {
+  g.clear();
+  const s = TILE_H / 64;
+  groundShadow(g, 34 * s, 15 * s);
+  const mound = flat([
+    { x: -32 * s, y: 4 * s },
+    { x: -24 * s, y: -14 * s },
+    { x: -8 * s, y: -24 * s },
+    { x: 10 * s, y: -24 * s },
+    { x: 26 * s, y: -14 * s },
+    { x: 32 * s, y: 4 * s },
+  ]);
+  g.poly(mound).fill(palette.denEarth);
+  g.poly(
+    flat([
+      { x: 10 * s, y: -24 * s },
+      { x: 26 * s, y: -14 * s },
+      { x: 32 * s, y: 4 * s },
+      { x: 14 * s, y: 4 * s },
+    ]),
+  ).fill(palette.denEarthDark);
+  g.poly(mound).stroke(INK);
+  g.ellipse(-2 * s, -4 * s, 13 * s, 9 * s)
+    .fill(palette.denMouth)
+    .stroke(INK);
+  g.moveTo(-26 * s, -10 * s).lineTo(-36 * s, -26 * s);
+  g.moveTo(-14 * s, -20 * s).lineTo(-18 * s, -38 * s);
+  g.moveTo(18 * s, -18 * s).lineTo(28 * s, -34 * s);
+  g.stroke({ width: 3 * s, color: palette.ink, cap: 'round' });
+  g.moveTo(14 * s, 2 * s)
+    .lineTo(24 * s, -2 * s)
+    .stroke({ width: 3 * s, color: palette.bone, cap: 'round' });
+}
+
+/** Where a Gloamling's eyes sit, relative to its feet, in art units (× TILE_H / 64). */
+const GLOAMLING_EYES: Vec[] = [
+  { x: -6, y: -18 },
+  { x: 0, y: -21 },
+  { x: 6, y: -18 },
+  { x: -3, y: -13 },
+  { x: 4, y: -13 },
+];
+
+/** A Gloamling's many eyes around (x, y) = its feet. */
+export function drawGloamlingEyes(g: Graphics, x: number, y: number): void {
+  const s = TILE_H / 64;
+  for (const eye of GLOAMLING_EYES) {
+    g.circle(x + eye.x * s, y + eye.y * s, 1.8 * s).fill(palette.gloamEye);
+  }
+}
+
+/** A Gloamling, drawn around (0, 0) = its feet: a small hunched shadow, ragged at the hem. */
+export function drawGloamling(g: Graphics): void {
+  g.clear();
+  const s = TILE_H / 64;
+  groundShadow(g, 12 * s, 5 * s);
+  g.poly(
+    flat([
+      { x: -12 * s, y: 0 },
+      { x: -13 * s, y: -14 * s },
+      { x: -8 * s, y: -25 * s },
+      { x: 0, y: -29 * s },
+      { x: 9 * s, y: -25 * s },
+      { x: 13 * s, y: -14 * s },
+      { x: 12 * s, y: 0 },
+      { x: 7 * s, y: -4 * s },
+      { x: 3 * s, y: 0 },
+      { x: -2 * s, y: -4 * s },
+      { x: -7 * s, y: 0 },
+    ]),
+  )
+    .fill(palette.gloam)
+    .stroke(INK);
+  g.ellipse(-4 * s, -23 * s, 5 * s, 2.5 * s).fill(palette.gloamLight);
+  drawGloamlingEyes(g, 0, 0);
+}
+
+/** The dark rings around Dens, shown while placing a building: nothing can be built there. */
+export function drawDarkRing(g: Graphics, tiles: { x: number; y: number }[]): void {
+  g.clear();
+  for (const t of tiles) {
+    g.poly(flat(diamond(t.x, t.y))).fill({ color: palette.darkRing, alpha: 0.45 });
+  }
+}
+
 /** Tool preview: a set of tiles tinted valid/invalid. */
 export function drawTileGhost(
   g: Graphics,

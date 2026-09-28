@@ -1,6 +1,6 @@
 # Monster dens, night spawns and the Monster rate
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 01, m2-camp-winter/02
 
@@ -21,3 +21,7 @@ Rules in `docs/spec.md`, "Nights in v1 (M3)" (Dens, Monster rate). Numbers Propo
 
 - Headless tests: spawns only at Dusk and by season; all vanish at Dawn; budding moves toward the village and respects the cap and distances; no building fits in the dark ring; rate 0 stops spawns and budding and clears live Gloamlings; determinism and save/load mid-night.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-28 — Done: `content.dens`, `sim/src/dens.ts` (Monster rate check, dark ring), `systems/dens.ts` (`densSystem`, 9th in the tick: Dusk spawns, Dawn vanishing, season-start budding), `setMonsterRate` command, `createInitialState(…, monsterRate)`, legend `D`; client Den/Gloamling art, dark ring in the building preview, dev panel toggle and mid-game button; tests in `sim/test/dens.test.ts`. Differs: a Den is its own `den` store, not a `mapObject` (not gathered, doesn't block walking); budding happens at each season's first Dawn, and a bud also stays within 10 tiles of its Den. See `docs/decisions.md`.
