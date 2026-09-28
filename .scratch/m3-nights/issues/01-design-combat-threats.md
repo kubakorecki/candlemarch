@@ -1,6 +1,6 @@
 # Design session: combat and threats
 
-Status: ready-for-human
+Status: resolved
 Type: grilling
 Blocked by: none
 
@@ -23,3 +23,7 @@ A `/grill-with-docs` session for the M3 rules. Record answers in `docs/spec.md` 
 ## Done when
 
 - Every question has an answer in the spec, and the dependent tickets are updated.
+
+## Comments
+
+2026-09-28 — Held as `/grill-with-docs`. Answers are in `docs/spec.md` (Threats and combat, "Nights in v1 (M3)"), `CONTEXT.md` (Threats: Gloamling, Den, Light, Palisade, Gate, Monster rate; People: Knocked out, Watchman, Militia; Tired widened for day sleep) and `docs/adr/0003-light-is-a-wall.md`. Added: a Monster rate setting that can turn nights off (in 03), and ticket 13 for battering doors and palisades. Tickets 03–11 rewritten and promoted; 05 no longer waits on the hero playtest; 10 is Hero only, so it no longer waits on 07.

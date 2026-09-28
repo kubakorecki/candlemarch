@@ -1,19 +1,21 @@
-# Palisades
+# Palisades and Gates
 
-Status: needs-info
+Status: ready-for-agent
 Type: task
 Blocked by: 01, 04
 
 ## What
 
-- Placeable palisade segments (drag, like paths) that block walking for monsters.
-- Built from logs via construction sites.
+Rules in `docs/spec.md`, "Nights in v1 (M3)" (Palisades). Numbers Proposed, all in content.
 
-## Open questions (design session 01, Q7)
-
-- Gates for villagers, health, cost.
+- Palisade segments, laid by dragging like a Road, built from logs via construction sites: 2 logs, 40 build ticks, 100 HP.
+- A **Gate** segment (4 logs, 80 build ticks, 100 HP) that villagers and the Hero walk through and Gloamlings don't.
+- Palisades block villagers and Gloamlings alike; villager pathfinding goes through Gates.
+- HP is stored now; ticket 13 makes Gloamlings batter it.
+- Nothing inside a Den's dark ring (ticket 03).
+- Client: palisade and Gate placeholder art; drag tool.
 
 ## Done when
 
-- Headless tests: monsters path around or stop at palisades; villagers can still get through as decided.
+- Headless tests: Gloamlings path around palisades or stop; villagers use Gates; a site builds by day like any other.
 - `pnpm check` passes.

@@ -23,7 +23,8 @@ From `docs/spec.md` (Threats and combat; Heroes):
 - Hero and militia clear dens by day for loot.
 - Night rendering: darkness with warm light sources.
 
+- A **Monster rate** setting per game, so nights can be turned off (0) for economy testing.
+
 ## Waiting on
 
-- **Design session (ticket 01)** for the combat and threat rules.
-- **Hero playtest** (`m1-5-hero-playtest/04`) for hero combat.
+Nothing. Design session 01 is done (2026-09-28): rules in `docs/spec.md`, "Nights in v1 (M3)", and `docs/adr/0003-light-is-a-wall.md`. Hero combat no longer waits on the hero playtest.

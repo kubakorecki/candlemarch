@@ -292,7 +292,7 @@ Later candidates: Priest (happiness, healing), Merchant (better trade prices), W
 
 **The hero has no needs** *(Decided)*: it doesn't eat, sleep or freeze, and can keep working at night.
 
-**The hero can't die.** *(Decided)* When defeated, the hero is knocked out and recovers at the village hall after a while. *(Proposed)* This costs time and leaves the village exposed that night.
+**The hero can't die.** *(Decided)* When defeated, the hero is knocked out and recovers at the village hall after a while. *(Proposed)* Before a village hall exists, it recovers where it fell (see Nights in v1). This costs time and leaves the village exposed that night.
 
 **Progression** *(Proposed)*: heroes gain a new perk at each village rank instead of grinding XP, keeping the focus on the village.
 
@@ -306,13 +306,28 @@ Combat is light and automatic: the player positions and prepares, units fight on
 
 - Monsters come from **dens** in the wilds. Left alone, dens slowly multiply toward the village. *(Proposed)*
 - The hero and militia can clear a den by day, which rewards loot and calms the area.
-- **Light keeps them back** *(Proposed)*: torches and braziers burn firewood and reduce spawns near buildings. It's a Don't Starve nod, and another reason the wood chain matters.
+- **Light keeps them out** *(Decided in design session M3-01; see ADR-0003)*: torches and braziers burn firewood, and monsters never step onto a lit tile. It's a Don't Starve nod, and another reason the wood chain matters.
 
 **Defence** *(Decided)*
 
 - **Militia:** a bell calls villagers to arms. They drop their jobs, so every fight costs production.
 - **Hero:** the strongest single fighter.
 - **Palisades** block paths; **watchtowers** spot and shoot.
+
+**Nights in v1 (M3)** *(Decided in design session M3-01; numbers Proposed and in content)*
+
+- **Gloamling:** v1's one monster. Small, shadowy, many-eyed, comes in packs. 20 HP, 4 damage every 20 ticks at an adjacent tile, villager walking speed, sight 12 tiles.
+- **Combat:** integer HP, damage per hit and a cooldown in ticks. A fighter hits its target when in reach and off cooldown. Within a tick, hits resolve in entity-ID order; targets are the nearest by walking distance, ties to the lowest ID. Villagers: 20 HP, 3 damage every 20 ticks, back to full HP at Dawn. A villager a Gloamling reaches fights back, militia or not.
+- **Targets:** a Gloamling goes for the nearest villager out in the open (not asleep at Home), the Hero, or, with neither in sight, the nearest lived-in House. It batters the House's door (60 HP); when the door breaks it kills one resident and moves on. It picks again when its target dies, is Knocked out or steps into Light. Doors heal at Dawn, so nothing needs repairing. Watchtowers can't be attacked.
+- **Dens:** a map object. At each Dusk a Den spawns Gloamlings on its tile: spring 1, summer 2, autumn 3, winter 4. Once a season it **buds**: a new Den 6–10 tiles closer to the nearest building, on a dark tile at least 12 tiles from any building, at most 5 Dens. Nothing can be built within 6 tiles of a Den, so it always keeps a dark ring. At Dawn every Gloamling still out vanishes.
+- **Clearing a Den** (Hero only in M3; militia later): a Den has 80 HP and stings anything adjacent for 5 every 20 ticks. At 0 it's removed and leaves a cache of 4 hides and 6 firewood. No Den buds within 15 tiles of a cleared one for 10 days.
+- **Light:** torch (1×1, 1 log, radius 2, 1 firewood a night, holds 3) and brazier (1×1, 4 logs, radius 4, 2 firewood a night, holds 6), Chebyshev radius. Each burns its night's firewood at Dusk; one that can't stays dark all night. Carriers fill them after Houses and before Stockpiles, and their firewood counts toward the chopping block's target. House windows give no Light.
+- **Palisades:** segments laid like a Road (2 logs, 40 build ticks, 100 HP). A **Gate** (4 logs, 80 build ticks) lets villagers and the Hero through, but not Gloamlings. A Gloamling that can't reach its target batters the palisade in its way; damage heals at Dawn.
+- **Watchtowers:** 1×1, 12 logs, staffed by one **Watchman** on a night shift: eats at Dusk, stands in the tower until Dawn, sleeps at Home by day (day sleep counts for Tired). Shoots Gloamlings within 6 tiles for 5 every 30 ticks, only while its Watchman is in it.
+- **Militia bell:** 1×1, 5 logs, one per village. Ringing it (panel or HUD) calls every villager but Watchmen: they drop their work by the unassign rule and fight Gloamlings within 10 tiles of the bell. Ringing again, or Dawn, stands them down. A night at the bell is a night away from Home: Tired the next day, and Cold in winter.
+- **Hero:** 100 HP, 10 damage every 20 ticks. Fights in reach on its own and can be ordered to attack. At 0 HP it's **Knocked out** where it falls for 400 ticks, ignored by Gloamlings, then gets up at full HP. The village hall (M5) becomes where it recovers.
+- **Monster rate:** a per-game setting in state, chosen at New game (dev panel for now) and changeable mid-game by a dev command. It scales each Dusk's spawns (`trunc(n × rate ÷ 100)`). 0 is off: no spawns, no budding, and Gloamlings out vanish at once. M7 turns it into player-facing levels.
+- **Pressure** grows through the seasons' spawn counts, longer winter nights and budding, not through a separate difficulty curve.
 
 **Bandits** *(Decided as a threat; Proposed for v1.x)*: daytime raids in summer that target the granary and market stockpile. Pushed to v1.x to keep v1 combat to one enemy type.
 

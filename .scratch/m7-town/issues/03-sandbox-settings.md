@@ -18,3 +18,7 @@ Blocked by: 01, m4-valley/12
 
 - Headless tests: each setting changes its system's numbers; the menu works in the browser.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-28 — M3 design session: the Monster rate already exists in state from `m3-nights/03` (0–100, 0 is off, set at New game and by a dev command). This ticket turns it into player-facing levels rather than adding it.

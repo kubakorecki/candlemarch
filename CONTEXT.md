@@ -73,7 +73,7 @@ A villager with no Home. They sleep in the open where they stand.
 _Avoid_: Unhoused, vagrant
 
 **Tired**:
-The state of a villager who didn't get a night's sleep at Home: they walk and work slower the next day.
+The state of a villager who didn't get their sleep at Home (at night, or by day for a Watchman): they walk and work slower until their next sleep.
 _Avoid_: Exhausted, sleepy
 
 **Hungry**:
@@ -92,6 +92,18 @@ _Avoid_: Immigrant, settler (settlers are the starting villagers)
 The one unit the player controls directly, with the mouse, RTS style. Not a villager: has no Job and can't die. Its aura makes nearby Workplaces work faster.
 _Avoid_: Player character, avatar, champion
 
+**Knocked out**:
+The Hero's state at zero health: out of action where it fell for a while, ignored by Gloamlings, then back on its feet at full health.
+_Avoid_: Dead, downed, defeated (as a state)
+
+**Watchman**:
+The Job of a villager who stands in a watchtower through the night and shoots Gloamlings in range. Eats at Dusk and sleeps at Home by day.
+_Avoid_: Guard, sentry, archer
+
+**Militia**:
+Every villager while the bell rings: they drop their Jobs and fight near the bell until it is rung again or Dawn comes. Watchmen stay in their towers.
+_Avoid_: Army, guards, soldiers
+
 ### Time
 
 **Dusk**:
@@ -101,6 +113,32 @@ _Avoid_: Evening, nightfall
 **Dawn**:
 The moment night ends and a new day begins. Spoilage happens here.
 _Avoid_: Morning, daybreak
+
+### Threats
+
+**Gloamling**:
+v1's one monster: small, shadowy, many-eyed, comes in packs. Spawns at a Den at Dusk, never steps into Light, and vanishes at Dawn. It goes for villagers out in the open, the Hero, and lived-in Houses.
+_Avoid_: Monster (except as the category), creature, enemy
+
+**Den**:
+A Gloamling lair in the wilds. It spawns Gloamlings at every Dusk and slowly buds new Dens closer to the village.
+_Avoid_: Nest, lair, spawner
+
+**Light**:
+The tiles a torch or brazier lights at night. Gloamlings never step onto them. House windows give none.
+_Avoid_: Glow (a drawing word), lit zone, safe zone
+
+**Palisade**:
+A wall of log segments laid like a Road. It blocks villagers and Gloamlings alike. A Gloamling that can't reach its target batters the palisade in its way; the damage heals at Dawn.
+_Avoid_: Wall, fence, stockade
+
+**Gate**:
+A Palisade segment that villagers and the Hero walk through and Gloamlings don't.
+_Avoid_: Door (a Door belongs to a building)
+
+**Monster rate**:
+The per-game setting for how hard nights are. 0 means off: no spawns, no budding, and any Gloamlings out vanish at once.
+_Avoid_: Difficulty, threat level
 
 ### Food
 
