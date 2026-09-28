@@ -49,6 +49,7 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     b.cold ??= false;
     b.lit ??= false;
     b.rotation ??= 0;
+    b.hp ??= content.buildings[b.type].wall?.hp ?? null;
   }
   for (const site of Object.values(state.components.site)) site.rotation ??= 0;
   const { villager } = state.components;

@@ -87,6 +87,11 @@ export interface BuildingComponent {
   cold: boolean;
   /** A light (torch, brazier) that burned its fuel at tonight's Dusk: lit until Dawn. */
   lit: boolean;
+  /**
+   * Hit points of a building Gloamlings batter: a wall's (`WallDef.hp`), whole. Null for a
+   * building they don't.
+   */
+  hp: number | null;
 }
 
 export interface SiteComponent {

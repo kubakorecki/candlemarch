@@ -661,6 +661,129 @@ export function drawSite(
   g.stroke({ width: 3, color: palette.sitePost, cap: 'round' });
 }
 
+/** Which of a wall segment's four sides join another wall segment (a palisade or a Gate). */
+export interface WallArms {
+  north: boolean;
+  east: boolean;
+  south: boolean;
+  west: boolean;
+}
+
+/** World points of a tile's centre and the middles of its four edges. */
+function tileMiddles(x: number, y: number): Record<keyof WallArms | 'centre', Vec> {
+  return {
+    centre: gridToWorld(x + 0.5, y + 0.5),
+    north: gridToWorld(x + 0.5, y),
+    east: gridToWorld(x + 1, y + 0.5),
+    south: gridToWorld(x + 0.5, y + 1),
+    west: gridToWorld(x, y + 0.5),
+  };
+}
+
+/** One sharpened log stake standing at `p`, `h` tall. */
+function drawStake(g: Graphics, p: Vec, h: number, color: number): void {
+  const s = TILE_H / 64;
+  const w = 9 * s;
+  g.poly(
+    flat([
+      { x: p.x - w / 2, y: p.y },
+      { x: p.x + w / 2, y: p.y },
+      { x: p.x + w / 2, y: p.y - h },
+      { x: p.x, y: p.y - h - 7 * s },
+      { x: p.x - w / 2, y: p.y - h },
+    ]),
+  )
+    .fill(color)
+    .stroke(THIN_INK);
+}
+
+/** Stakes back to front, so nearer ones overlap farther ones. */
+function drawStakes(g: Graphics, points: Vec[], h: number): void {
+  const sorted = [...points].sort((a, b) => a.y - b.y || a.x - b.x);
+  sorted.forEach((p, i) => {
+    drawStake(g, p, h, i % 2 === 0 ? palette.stake : palette.stakeLight);
+  });
+}
+
+/**
+ * A palisade segment: a row of sharpened stakes from the tile's centre out to each side that
+ * joins another wall segment, so a line of them reads as one fence. A segment on its own runs
+ * east–west. The stake on a shared edge belongs to the segment west or north of it.
+ */
+export function drawPalisade(g: Graphics, layout: BuildingLayout, arms: WallArms): void {
+  g.clear();
+  const m = tileMiddles(layout.origin.x, layout.origin.y);
+  const s = TILE_H / 64;
+  g.ellipse(m.centre.x, m.centre.y, 22 * s, 9 * s).fill({ color: palette.shadow, alpha: 0.3 });
+  const lone = !arms.north && !arms.east && !arms.south && !arms.west;
+  const points: Vec[] = [m.centre];
+  for (const side of ['north', 'east', 'south', 'west'] as const) {
+    if (!arms[side] && !(lone && (side === 'east' || side === 'west'))) continue;
+    const ownsEdge = arms[side] && (side === 'east' || side === 'south');
+    for (const t of ownsEdge ? [1 / 3, 2 / 3, 1] : [1 / 3, 2 / 3]) {
+      points.push(lerp(m.centre, m[side], t));
+    }
+  }
+  drawStakes(g, points, WALL_H * 1.05);
+}
+
+/**
+ * A Gate: a braced plank door between two tall posts, across the line of the wall (east–west
+ * unless it only joins walls to the north or south).
+ */
+export function drawGate(g: Graphics, layout: BuildingLayout, arms: WallArms): void {
+  g.clear();
+  const m = tileMiddles(layout.origin.x, layout.origin.y);
+  const s = TILE_H / 64;
+  g.ellipse(m.centre.x, m.centre.y, 24 * s, 10 * s).fill({ color: palette.shadow, alpha: 0.3 });
+  const alongY = (arms.north || arms.south) && !arms.east && !arms.west;
+  const back = alongY ? m.north : m.west;
+  const front = alongY ? m.south : m.east;
+  const h = WALL_H * 0.85;
+  drawStake(g, back, WALL_H * 1.25, palette.stake);
+  const a = lerp(back, front, 0.12);
+  const b = lerp(back, front, 0.88);
+  g.poly(flat([a, b, up(b, h), up(a, h)]))
+    .fill(palette.gatePlank)
+    .stroke(INK);
+  for (const t of [0.25, 0.5, 0.75]) {
+    const p = lerp(a, b, t);
+    g.moveTo(p.x, p.y).lineTo(p.x, p.y - h);
+  }
+  g.stroke({ ...THIN_INK, alpha: 0.6 });
+  // Two rails and a brace.
+  for (const r of [0.2, 0.8]) g.moveTo(a.x, a.y - h * r).lineTo(b.x, b.y - h * r);
+  g.moveTo(a.x, a.y - h * 0.2).lineTo(b.x, b.y - h * 0.8);
+  g.stroke({ width: 4 * s, color: palette.stake, cap: 'round' });
+  drawStake(g, front, WALL_H * 1.25, palette.stake);
+}
+
+/**
+ * A wall segment's construction site: a trodden patch with short stakes that grow with
+ * `progress` (0–1) and the logs delivered so far. No doorstep: its door is its own tile.
+ */
+export function drawWallSite(
+  g: Graphics,
+  layout: BuildingLayout,
+  delivered: number,
+  progress: number,
+): void {
+  g.clear();
+  const { x, y } = layout.origin;
+  const corners = diamond(x, y);
+  const [top, , bottom] = corners;
+  const mid = lerp(top, bottom, 0.5);
+  const inner = corners.map((p) => lerp(mid, p, 0.8));
+  g.poly(flat(inner))
+    .fill({ color: palette.siteGround, alpha: 0.8 })
+    .stroke({ ...THIN_INK, alpha: 0.5 });
+  const m = tileMiddles(x, y);
+  const stakes = [lerp(m.centre, m.west, 0.5), lerp(m.centre, m.east, 0.5)];
+  drawStakes(g, stakes, WALL_H * (0.2 + 0.8 * progress));
+  const pile = lerp(m.centre, m.south, 0.4);
+  drawGoodsPile(g, 'logs', pile.x, pile.y, delivered);
+}
+
 /** A villager, drawn around (0, 0) = their feet. */
 export function drawVillager(g: Graphics, bodyColor: number): void {
   g.clear();

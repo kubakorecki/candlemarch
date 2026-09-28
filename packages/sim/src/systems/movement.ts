@@ -37,22 +37,27 @@ export function walkGrid(state: GameState, content: Content, walker?: EntityId):
   if (walker !== undefined && state.components.gloamling[walker]) {
     return gloamlingGrid(state, content);
   }
+  return gridOver(state, content, blockedGrid(state, content));
+}
+
+/** A walking grid with `blocked` and the map's road speeds. */
+function gridOver(state: GameState, content: Content, blocked: Uint8Array): Grid {
   const { map } = state;
   return {
     width: map.width,
     height: map.height,
-    blocked: blockedGrid(state, content),
+    blocked,
     speedPercent: speedPercentGrid(map, content),
     maxSpeedPercent: maxSpeedPercent(content),
   };
 }
 
 /**
- * The grid Gloamlings path over: tonight's lit tiles block walking too (Light is a wall,
+ * The grid Gloamlings path over: Gates and tonight's lit tiles block walking too (Light is a wall,
  * ADR-0003).
  */
 export function gloamlingGrid(state: GameState, content: Content): Grid {
-  const grid = walkGrid(state, content);
+  const grid = gridOver(state, content, blockedGrid(state, content, true));
   litGrid(state, content).forEach((lit, i) => {
     if (lit) grid.blocked[i] = 1;
   });

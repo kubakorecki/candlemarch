@@ -93,6 +93,10 @@ export const palette = {
   // The Militia bell: a bronze bell under a timber frame (`torchPole`).
   bell: 0x8c6d3f,
   bellLight: 0xae8c55,
+  // Palisades and Gates: sharpened log stakes, and a Gate's plank door between two posts.
+  stake: 0x6a4e35,
+  stakeLight: 0x7d5e40,
+  gatePlank: 0x8a6a48,
 
   // Monsters: Dens, Gloamlings (pale eyes that shine through the dark) and the dark ring around a
   // Den where nothing can be built.

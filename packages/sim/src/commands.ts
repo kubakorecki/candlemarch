@@ -20,6 +20,7 @@ import {
   removeStockpile,
   STOCKPILE_PRIORITIES,
 } from './stockpiles';
+import { layWall } from './walls';
 import { reassignWorker, setWorkerLimit, unassignWorker } from './workers';
 
 export type Command =
@@ -34,6 +35,8 @@ export type Command =
   | { type: 'cancelConstruction'; siteId: EntityId }
   | { type: 'layPath'; from: Tile; to: Tile }
   | { type: 'removePath'; from: Tile; to: Tile }
+  /** Lays wall segments (`palisade` or `gate`) along the L from `from` to `to`, like a path. */
+  | { type: 'layWall'; building: BuildingId; from: Tile; to: Tile }
   | { type: 'placeStockpile'; x: number; y: number; w: number; h: number }
   | { type: 'removeStockpile'; id: EntityId }
   | { type: 'setStockpilePriority'; id: EntityId; priority: StockpilePriority }
@@ -67,6 +70,10 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'layPath': {
       layPath(state, content, command.from, command.to);
+      return;
+    }
+    case 'layWall': {
+      layWall(state, content, command.building, command.from, command.to);
       return;
     }
     case 'removePath': {

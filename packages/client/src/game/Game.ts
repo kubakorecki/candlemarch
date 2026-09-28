@@ -8,6 +8,7 @@ import {
   type Command,
   calendarAt,
   canLayPath,
+  canLayWall,
   canPlaceBuilding,
   canPlaceStockpile,
   carrierUtilization,
@@ -141,6 +142,20 @@ export const TOOLS: readonly {
     drag: false,
     hint: 'Click to place. One per village; ring it to call every villager to arms.',
   },
+  {
+    id: 'palisade',
+    label: 'Palisade',
+    key: 'p',
+    drag: true,
+    hint: 'Drag to lay an L-shaped palisade. It blocks villagers and Gloamlings alike.',
+  },
+  {
+    id: 'gate',
+    label: 'Gate',
+    key: 'n',
+    drag: true,
+    hint: "Drag to lay Gates, or click for one. Villagers and the hero walk through; Gloamlings don't.",
+  },
   { id: 'path', label: 'Path', key: 'r', drag: true, hint: 'Drag to lay an L-shaped path.' },
   { id: 'removePath', label: 'Remove path', key: 'x', drag: true, hint: 'Drag to remove path.' },
   { id: 'stockpile', label: 'Stockpile', key: 's', drag: true, hint: 'Drag a rectangle.' },
@@ -157,8 +172,14 @@ function toolDef(id: ToolId) {
   return TOOLS.find((t) => t.id === id);
 }
 
+/** A building placed with a click (not a wall, which is dragged). */
 function isBuilding(id: ToolId): id is BuildingId {
-  return id in content.buildings;
+  return id in content.buildings && !isWallTool(id);
+}
+
+/** A wall segment laid by dragging, like a path. */
+function isWallTool(id: ToolId): id is BuildingId {
+  return id in content.buildings && content.buildings[id as BuildingId].wall !== undefined;
 }
 
 /** What the villager panel shows, as display text. */
@@ -715,7 +736,11 @@ export class Game {
     this.updateGhost();
     if (!from || !tool || !state) return;
     const to = this.tileAt(sx, sy);
-    if (tool === 'path') {
+    if (isWallTool(tool)) {
+      if (canLayWall(state, content, tool, from, to)) {
+        this.bridge.command({ type: 'layWall', building: tool, from, to });
+      } else this.setHud({ message: "Can't build there." });
+    } else if (tool === 'path') {
       if (canLayPath(state, content, from, to)) this.bridge.command({ type: 'layPath', from, to });
       else this.setHud({ message: "Can't lay a path there." });
     } else if (tool === 'removePath') {
@@ -952,6 +977,15 @@ export class Game {
 
   private ghostFor(state: GameState, tool: ToolId, hover: Tile): PlacementGhost {
     const { x, y } = hover;
+    if (isWallTool(tool)) {
+      const from = this.dragStart ?? hover;
+      return {
+        kind: 'tiles',
+        tiles: lShapeTiles(from, hover),
+        valid: canLayWall(state, content, tool, from, hover),
+        darkRing: darkRingTiles(state, content),
+      };
+    }
     if (isBuilding(tool)) {
       const { rotation } = this;
       return {

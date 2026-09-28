@@ -10,9 +10,11 @@ describe('door face', () => {
     expect(faces).toEqual(['south', 'west', 'north', 'east']);
   });
 
-  it('draws every building differently in each of its four rotations', () => {
+  it('draws every building but a wall segment differently in each of its four rotations', () => {
     for (const type of Object.keys(content.buildings) as BuildingId[]) {
       const def = content.buildings[type];
+      // A wall segment has no door face: its door is its own tile, and it's drawn by its neighbours.
+      if (def.wall) continue;
       const faces = ROTATIONS.map((r) => doorFace(buildingLayout(def, { x: 4, y: 4 }, r)));
       expect(new Set(faces).size, type).toBe(4);
     }

@@ -226,6 +226,7 @@ export function createInitialState(
       workerLimit: maxWorkers(content, b.type),
       cold: false,
       lit: false,
+      hp: def.wall?.hp ?? null,
     };
     for (const slot of def.employs) {
       for (let i = 0; i < slot.count; i++) {

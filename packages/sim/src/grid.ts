@@ -149,10 +149,30 @@ function structures(state: GameState, content: Content): BuildingLayout[] {
 }
 
 /**
- * Walk-blocking grid: 1 where a villager can't walk. Terrain that isn't walkable, map objects
- * (trees) and building/site footprints block. Built fresh on each call; maps are small.
+ * Whether building or site `id` blocks walking: every footprint does, but a wall's site blocks
+ * nobody until it's built, and a built Gate blocks only Gloamlings (`gatesBlock`).
  */
-export function blockedGrid(state: GameState, content: Content): Uint8Array {
+function blocksWalking(
+  state: GameState,
+  content: Content,
+  id: EntityId,
+  gatesBlock: boolean,
+): boolean {
+  const { building, site } = state.components;
+  const type = building[id]?.type ?? site[id]?.type;
+  if (type === undefined) return false;
+  const wall = content.buildings[type].wall;
+  if (!wall) return true;
+  if (!building[id]) return false;
+  return !wall.gate || gatesBlock;
+}
+
+/**
+ * Walk-blocking grid: 1 where a villager or the Hero can't walk. Terrain that isn't walkable, map
+ * objects (trees) and building/site footprints block, but not a wall's site or a built Gate.
+ * `gatesBlock` makes Gates block too, for Gloamlings. Built fresh on each call; maps are small.
+ */
+export function blockedGrid(state: GameState, content: Content, gatesBlock = false): Uint8Array {
   const { map } = state;
   const blocked = new Uint8Array(map.width * map.height);
   map.terrain.forEach((terrain, i) => {
@@ -162,12 +182,32 @@ export function blockedGrid(state: GameState, content: Content): Uint8Array {
     const t = state.components.tile[id];
     if (t) blocked[tileIndex(map, t.x, t.y)] = 1;
   }
-  for (const s of structures(state, content)) {
-    for (const t of s.tiles) {
+  for (const id of idsOf(state.components.tile)) {
+    if (!blocksWalking(state, content, id, gatesBlock)) continue;
+    for (const t of entityLayout(state, content, id)?.tiles ?? []) {
       if (inBounds(map, t.x, t.y)) blocked[tileIndex(map, t.x, t.y)] = 1;
     }
   }
   return blocked;
+}
+
+/**
+ * Tile indices of every palisade segment, built or a site: no Road goes over one. (A Gate may
+ * stand on a Road.)
+ */
+export function palisadeTiles(state: GameState, content: Content): Set<number> {
+  const { map } = state;
+  const { building, site } = state.components;
+  const tiles = new Set<number>();
+  for (const id of idsOf(state.components.tile)) {
+    const type = building[id]?.type ?? site[id]?.type;
+    const wall = type === undefined ? undefined : content.buildings[type].wall;
+    if (!wall || wall.gate) continue;
+    for (const t of entityLayout(state, content, id)?.tiles ?? []) {
+      if (inBounds(map, t.x, t.y)) tiles.add(tileIndex(map, t.x, t.y));
+    }
+  }
+  return tiles;
 }
 
 /** Walkable tiles around `tile` (8 directions), where a gatherer can stand. */
@@ -215,8 +255,9 @@ export function tilesUnderStockpiles(state: GameState): Set<number> {
 
 /**
  * Whether a building of this type, turned `rotation`, fits with its origin at (x, y): every
- * footprint tile is in bounds, buildable, outside every Den's dark ring, and free of trees, roads,
- * stockpiles, other footprints and other doors; its door tile is in bounds, walkable, not blocked
+ * footprint tile is in bounds, buildable, outside every Den's dark ring, and free of trees, roads
+ * (a Gate may stand on one), stockpiles, other footprints and other doors (a wall's door is its own
+ * tile, so nothing goes on a wall or its site either); its door tile is in bounds, walkable, not blocked
  * and not on a stockpile (it may be on a road), and on a riverbank if the type needs one. Doesn't check whether the player may place this type.
  */
 export function fitsAt(
@@ -240,9 +281,8 @@ export function fitsAt(
     const i = tileIndex(map, t.x, t.y);
     const terrain = map.terrain[i];
     if (terrain === undefined || !content.terrain[terrain].buildable) return false;
-    if (blocked[i] === 1 || doors.has(i) || piles.has(i) || map.roads[i] !== undefined) {
-      return false;
-    }
+    if (blocked[i] === 1 || doors.has(i) || piles.has(i)) return false;
+    if (map.roads[i] !== undefined && !def.wall?.gate) return false;
     // Newcomers arrive on the entry tile: keep it open.
     if (map.entry && t.x === map.entry.x && t.y === map.entry.y) return false;
     if (inDarkRing(state, content, t)) return false;

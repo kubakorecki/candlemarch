@@ -14,7 +14,9 @@ export type BuildingId =
   | 'granary'
   | 'torch'
   | 'brazier'
-  | 'bell';
+  | 'bell'
+  | 'palisade'
+  | 'gate';
 export type JobId = 'woodcutter' | 'carrier' | 'woodsplitter' | 'fisher' | 'forager' | 'hunter';
 export type RoadId = 'dirt_path';
 export type HeroId = 'placeholder';
@@ -290,12 +292,26 @@ export interface BellDef {
   rangeTiles: number;
 }
 
+/**
+ * A wall segment (M3): a 1×1 building laid by dragging like a Road. A palisade blocks villagers
+ * and Gloamlings alike; a Gate lets villagers and the Hero through, but not Gloamlings. Its site
+ * doesn't block anyone until it's built. `hp` is what Gloamlings batter; it heals at Dawn.
+ */
+export interface WallDef {
+  hp: number;
+  /** Makes it a Gate. */
+  gate: boolean;
+}
+
 export interface BuildingDef {
   id: BuildingId;
   name: string;
   /** Footprint in tiles, anchored at the building's origin tile (its smallest x and y). */
   size: { w: number; h: number };
-  /** Tile villagers walk to when they visit the building, as an offset from the origin. Lies outside the footprint. */
+  /**
+   * Tile villagers walk to when they visit the building, as an offset from the origin. Lies
+   * outside the footprint, except a wall's: its own tile, where villagers deliver to its site.
+   */
   door: { x: number; y: number };
   /** The player can place it. Buildings that aren't placeable only come with the map. */
   placeable: boolean;
@@ -339,6 +355,8 @@ export interface BuildingDef {
   light?: LightDef;
   /** Makes it the Militia bell (M3). */
   bell?: BellDef;
+  /** Makes it a wall segment (M3): a palisade or a Gate. */
+  wall?: WallDef;
   /** A village has at most one, built or under construction. */
   onePerVillage?: boolean;
   /** Cost and time to build it from a construction site. Absent for buildings that can't be built. */

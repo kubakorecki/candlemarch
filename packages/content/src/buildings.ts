@@ -160,4 +160,32 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 100, // 5 s
     },
   },
+  // Palisades (spec, Nights in v1): wall segments laid by dragging. The door is the segment's own
+  // tile: villagers stand on the site to deliver, and a built wall is never visited.
+  palisade: {
+    id: 'palisade',
+    name: 'Palisade',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 0 },
+    placeable: true,
+    employs: [],
+    wall: { hp: 100, gate: false },
+    construction: {
+      cost: [{ resource: 'logs', amount: 2 }],
+      buildTicks: 40, // 2 s
+    },
+  },
+  gate: {
+    id: 'gate',
+    name: 'Gate',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 0 },
+    placeable: true,
+    employs: [],
+    wall: { hp: 100, gate: true },
+    construction: {
+      cost: [{ resource: 'logs', amount: 4 }],
+      buildTicks: 80, // 4 s
+    },
+  },
 };

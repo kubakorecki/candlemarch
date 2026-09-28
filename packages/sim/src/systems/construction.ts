@@ -28,6 +28,7 @@ export function constructionSystem(state: GameState, content: Content): void {
         workerLimit: maxWorkers(content, site.type),
         cold: false,
         lit: false,
+        hp: content.buildings[site.type].wall?.hp ?? null,
       };
     }
   }

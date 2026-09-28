@@ -50,5 +50,6 @@ export { canPlaceStockpile, isStockpileGood, STOCKPILE_PRIORITIES } from './stoc
 export { immigrationFoodNeeded, newcomerHome } from './systems/immigration';
 export { openPositions } from './systems/staffing';
 export { carrierUtilization, roadTraffic } from './traffic';
+export { canLayWall, isWall, isWallType } from './walls';
 export { isColdHouse } from './warmth';
 export { maxWorkers, reassignTargets, workersAt } from './workers';

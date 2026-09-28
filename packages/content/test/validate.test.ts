@@ -249,12 +249,23 @@ describe('content validation', () => {
     for (const b of Object.values(buildings)) {
       expectPositiveInt(b.size.w, `${b.id}.size.w`);
       expectPositiveInt(b.size.h, `${b.id}.size.h`);
+      if (b.wall) continue; // walls: see below
       const { x, y } = b.door;
       const inside = x >= 0 && x < b.size.w && y >= 0 && y < b.size.h;
       expect(inside, `${b.id} door inside footprint`).toBe(false);
       // The door must touch the footprint, including diagonally.
       const touches = x >= -1 && x <= b.size.w && y >= -1 && y <= b.size.h;
       expect(touches, `${b.id} door not adjacent`).toBe(true);
+    }
+  });
+
+  it('walls are single tiles whose door is their own tile, with HP', () => {
+    for (const b of Object.values(buildings)) {
+      if (!b.wall) continue;
+      expect(b.size, `${b.id}.size`).toEqual({ w: 1, h: 1 });
+      expect(b.door, `${b.id}.door`).toEqual({ x: 0, y: 0 });
+      expectPositiveInt(b.wall.hp, `${b.id}.wall.hp`);
+      expect(b.employs, `${b.id}.employs`).toEqual([]);
     }
   });
 

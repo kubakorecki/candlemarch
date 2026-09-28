@@ -52,6 +52,7 @@ import {
   drawDen,
   drawDizzyStars,
   drawFledPuff,
+  drawGate,
   drawGloamling,
   drawGloamlingEyes,
   drawGoodsStack,
@@ -68,6 +69,7 @@ import {
   drawMushroomPatch,
   drawNoFirewoodIcon,
   drawOutputFullIcon,
+  drawPalisade,
   drawPileGround,
   drawPlacementGhost,
   drawRoads,
@@ -78,10 +80,12 @@ import {
   drawVillager,
   drawVillagerStatus,
   drawWaitingIcon,
+  drawWallSite,
   drawWindowLight,
   HEAT_LEVELS,
   type HeatTile,
   type RoadTile,
+  type WallArms,
 } from './shapes';
 
 /** A tree, building or construction site, redrawn only when what it shows changes. */
@@ -237,7 +241,13 @@ export type PlacementGhost =
       /** Tiles in a Den's dark ring, shaded while placing. */
       darkRing: Tile[];
     }
-  | { kind: 'tiles'; tiles: Tile[]; valid: boolean };
+  | {
+      kind: 'tiles';
+      tiles: Tile[];
+      valid: boolean;
+      /** Tiles in a Den's dark ring, shaded while laying walls. */
+      darkRing?: Tile[];
+    };
 
 export class WorldRenderer {
   readonly app = new Application();
@@ -393,11 +403,25 @@ export class WorldRenderer {
       }
     }
 
+    const walls = builtWallTiles(state, this.content);
     for (const id of idsOf(building)) {
       const b = building[id];
       const at = tile[id];
       if (!b || !at) continue;
       const def = this.content.buildings[b.type];
+      if (def.wall) {
+        const arms = wallArms(walls, at);
+        const view = this.staticView(`building:${id}`, seen);
+        const key = `${b.type}@${at.x},${at.y}:${JSON.stringify(arms)}`;
+        if (view.key !== key) {
+          const layout = buildingLayout(def, at, b.rotation);
+          if (def.wall.gate) drawGate(view.graphics, layout, arms);
+          else drawPalisade(view.graphics, layout, arms);
+          view.key = key;
+          view.node.zIndex = depthOf(at.x + 0.5, at.y + 0.5);
+        }
+        continue;
+      }
       const layout = buildingLayout(def, at, b.rotation);
       const { size } = layout;
       const buffered = (resource: ResourceId | undefined, amounts: typeof b.stock) =>
@@ -448,6 +472,15 @@ export class WorldRenderer {
       const view = this.staticView(`site:${id}`, seen);
       // Redraw posts in 10% steps; the label updates every change.
       const key = `${s.type}@${at.x},${at.y}r${s.rotation}:${delivered}:${Math.floor(progress * 10)}`;
+      if (this.content.buildings[s.type].wall) {
+        // Wall sites come in long lines: no label, the stakes and logs show how far along it is.
+        if (view.key !== key) {
+          drawWallSite(view.graphics, layout, delivered, progress);
+          view.key = key;
+          view.node.zIndex = depthOf(at.x + 0.5, at.y + 0.5);
+        }
+        continue;
+      }
       if (view.key !== key) {
         drawSite(view.graphics, layout, delivered, progress);
         view.key = key;
@@ -768,7 +801,7 @@ export class WorldRenderer {
 
   setGhost(ghost: PlacementGhost | null): void {
     this.ghost.visible = ghost !== null;
-    const ring = ghost?.kind === 'building' ? ghost.darkRing : [];
+    const ring = ghost?.darkRing ?? [];
     const ringKey = JSON.stringify(ring);
     if (ringKey !== this.darkRingKey) {
       drawDarkRing(this.darkRing, ring);
@@ -1042,4 +1075,26 @@ export class WorldRenderer {
     }
     return view;
   }
+}
+
+/** Tile keys ("x,y") of every built wall segment (palisade or Gate). */
+function builtWallTiles(state: GameState, content: Content): Set<string> {
+  const { building, tile } = state.components;
+  const tiles = new Set<string>();
+  for (const id of idsOf(building)) {
+    const b = building[id];
+    const at = tile[id];
+    if (b && at && content.buildings[b.type].wall) tiles.add(`${at.x},${at.y}`);
+  }
+  return tiles;
+}
+
+/** Which sides of the wall segment at `at` join another built one. */
+function wallArms(walls: Set<string>, at: Tile): WallArms {
+  return {
+    north: walls.has(`${at.x},${at.y - 1}`),
+    east: walls.has(`${at.x + 1},${at.y}`),
+    south: walls.has(`${at.x},${at.y + 1}`),
+    west: walls.has(`${at.x - 1},${at.y}`),
+  };
 }
