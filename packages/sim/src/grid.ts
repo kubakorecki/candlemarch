@@ -163,14 +163,15 @@ function blocksWalking(
   if (type === undefined) return false;
   const wall = content.buildings[type].wall;
   if (!wall) return true;
-  if (!building[id]) return false;
+  const built = building[id];
+  if (!built || built.hp === 0) return false; // battered down until Dawn
   return !wall.gate || gatesBlock;
 }
 
 /**
  * Walk-blocking grid: 1 where a villager or the Hero can't walk. Terrain that isn't walkable, map
- * objects (trees) and building/site footprints block, but not a wall's site or a built Gate.
- * `gatesBlock` makes Gates block too, for Gloamlings. Built fresh on each call; maps are small.
+ * objects (trees) and building/site footprints block, but not a wall's site, a built Gate or a
+ * wall battered down to 0 HP. `gatesBlock` makes Gates block too, for Gloamlings. Built fresh on each call; maps are small.
  */
 export function blockedGrid(state: GameState, content: Content, gatesBlock = false): Uint8Array {
   const { map } = state;

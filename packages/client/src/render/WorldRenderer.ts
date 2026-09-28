@@ -13,6 +13,7 @@ import {
   heroOf,
   idsOf,
   isBellRung,
+  isBrokenWall,
   isColdHouse,
   isDarkLight,
   isKnockedOut,
@@ -45,6 +46,7 @@ import {
   drawBell,
   drawBerryBush,
   drawBoostedMark,
+  drawBrokenWall,
   drawBuilding,
   drawCarriedGoods,
   drawChoppingBlock,
@@ -411,11 +413,13 @@ export class WorldRenderer {
       const def = this.content.buildings[b.type];
       if (def.wall) {
         const arms = wallArms(walls, at);
+        const broken = isBrokenWall(state, this.content, id);
         const view = this.staticView(`building:${id}`, seen);
-        const key = `${b.type}@${at.x},${at.y}:${JSON.stringify(arms)}`;
+        const key = `${b.type}@${at.x},${at.y}:${JSON.stringify(arms)}:${broken}`;
         if (view.key !== key) {
           const layout = buildingLayout(def, at, b.rotation);
-          if (def.wall.gate) drawGate(view.graphics, layout, arms);
+          if (broken) drawBrokenWall(view.graphics, layout);
+          else if (def.wall.gate) drawGate(view.graphics, layout, arms);
           else drawPalisade(view.graphics, layout, arms);
           view.key = key;
           view.node.zIndex = depthOf(at.x + 0.5, at.y + 0.5);
@@ -522,7 +526,10 @@ export class WorldRenderer {
     this.drawPuffs(timeMs);
   }
 
-  /** A health bar over each villager and Gloamling in a fight (the sim's `healthBars`). */
+  /**
+   * A health bar over each villager and Gloamling in a fight, and over each House door or wall
+   * segment being battered (the sim's `healthBars`).
+   */
   private drawHealthBars(
     state: GameState,
     prevPositions: Record<EntityId, Point>,
@@ -536,6 +543,12 @@ export class WorldRenderer {
     g.clear();
     const s = TILE_H / 64;
     for (const bar of this.bars) {
+      if (bar.tile) {
+        // Over a battered door or wall segment, at about the height of its top.
+        const c = tileCenterWorld(bar.tile.x, bar.tile.y);
+        drawHealthBar(g, c.x, c.y - 60 * s, bar.hp, bar.maxHp);
+        continue;
+      }
       const to = state.components.position[bar.id];
       if (!to) continue;
       const at = interpolate(prevPositions[bar.id] ?? to, to, alpha);
@@ -1077,14 +1090,16 @@ export class WorldRenderer {
   }
 }
 
-/** Tile keys ("x,y") of every built wall segment (palisade or Gate). */
+/** Tile keys ("x,y") of every built wall segment (palisade or Gate) still standing. */
 function builtWallTiles(state: GameState, content: Content): Set<string> {
   const { building, tile } = state.components;
   const tiles = new Set<string>();
   for (const id of idsOf(building)) {
     const b = building[id];
     const at = tile[id];
-    if (b && at && content.buildings[b.type].wall) tiles.add(`${at.x},${at.y}`);
+    if (b && at && content.buildings[b.type].wall && !isBrokenWall(state, content, id)) {
+      tiles.add(`${at.x},${at.y}`);
+    }
   }
   return tiles;
 }

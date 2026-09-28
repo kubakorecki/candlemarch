@@ -1,5 +1,6 @@
 // Palisades and Gates (spec, Nights in v1): 1×1 wall segments, laid by dragging like a Road and
-// built from ordinary construction sites. What they block is in `grid.ts` (`blockedGrid`).
+// built from ordinary construction sites. What they block is in `grid.ts` (`blockedGrid`); a wall
+// Gloamlings have battered to 0 HP blocks nobody until it heals at Dawn.
 import type { BuildingId, Content } from '@candlemarch/content';
 import { createEntity } from './entities';
 import { canPlaceBuilding, inBounds, tileIndex } from './grid';
@@ -9,6 +10,22 @@ import type { EntityId, GameState, Tile } from './state';
 /** Whether `type` is a wall segment: a palisade or a Gate. */
 export function isWallType(content: Content, type: BuildingId): boolean {
   return content.buildings[type].wall !== undefined;
+}
+
+/**
+ * Full HP of a `type` building Gloamlings batter: a wall's (`WallDef.hp`) or a House's door
+ * (`houseDoorHp`). Null for buildings they don't batter.
+ */
+export function fullHp(content: Content, type: BuildingId): number | null {
+  const def = content.buildings[type];
+  if (def.wall) return def.wall.hp;
+  return def.residents ? content.combat.houseDoorHp : null;
+}
+
+/** Whether building `id` is a wall segment battered down to 0 HP (it heals at Dawn). */
+export function isBrokenWall(state: GameState, content: Content, id: EntityId): boolean {
+  const b = state.components.building[id];
+  return b !== undefined && isWallType(content, b.type) && b.hp === 0;
 }
 
 /** Whether building or site `id` is a wall segment, built or not. */

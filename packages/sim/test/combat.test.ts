@@ -90,7 +90,7 @@ describe('Gloamling targets', () => {
 });
 
 describe('Gloamling targets', () => {
-  it('leave villagers asleep at Home alone and wait at their door', () => {
+  it('leave villagers asleep at Home alone and go to their door', () => {
     // A Hut at (12,3) (ID 2), door (12,4), where its resident (ID 3) sleeps.
     const start = fieldAtDusk([{ x: 12, y: 4 }], { buildings: [{ type: 'hut', x: 12, y: 3 }] });
     const s = run(start, 1);
@@ -104,6 +104,69 @@ describe('Gloamling targets', () => {
     });
     expect(later.components.path[g]).toBeUndefined();
     expect(later.components.villager[3]?.hp).toBe(20);
+  });
+
+  describe('batter the door of a lived-in House', () => {
+    // A Hut at (12,3) (ID 2), door (12,4), where its residents (IDs 3 and 4) sleep.
+    const houseAtDusk = () =>
+      fieldAtDusk(
+        [
+          { x: 12, y: 4 },
+          { x: 12, y: 4 },
+        ],
+        { buildings: [{ type: 'hut', x: 12, y: 3 }] },
+      );
+    const doorHp = (s: GameState) => s.components.building[2]?.hp;
+
+    it('starts with a 60 HP door', () => {
+      expect(doorHp(houseAtDusk())).toBe(60);
+    });
+
+    it('breaks it with 15 hits of 4, 20 ticks apart, killing the lowest-ID resident', () => {
+      let s = run(houseAtDusk(), 1);
+      const hits: { tick: number; hp: number | null | undefined }[] = [];
+      while (s.components.villager[3] && s.tick < duskTick(1, content) + 1000) {
+        const before = doorHp(s);
+        s = run(s, 1);
+        if (doorHp(s) !== before) hits.push({ tick: s.tick, hp: doorHp(s) });
+      }
+      expect(hits.map((h) => h.hp)).toEqual(Array.from({ length: 15 }, (_, i) => 56 - 4 * i));
+      expect(hits.slice(1).map((h, i) => h.tick - (hits[i]?.tick ?? 0))).toEqual(
+        Array(14).fill(20),
+      );
+      expect(s.components.villager[3]).toBeUndefined();
+      expect(s.components.villager[4]).toBeDefined();
+      expect(s.deaths.map((d) => d.cause)).toEqual(['gloamling']);
+      // A broken door is no target until Dawn: the Gloamling moves on, and nobody else dies.
+      const later = run(s, 200);
+      expect(targetOf(later)).toBeNull();
+      expect(later.components.villager[4]?.hp).toBe(20);
+      expect(later.deaths).toHaveLength(1);
+    });
+
+    it('heals the door to full at Dawn', () => {
+      const broken = runUntil(run(houseAtDusk(), 1), (x) => doorHp(x) === 0, 1000);
+      expect(doorHp(broken)).toBe(0);
+      const morning = run(broken, dawnTick(2, content) + 1 - broken.tick);
+      expect(doorHp(morning)).toBe(60);
+    });
+
+    it('carries on from a save made mid-battering', () => {
+      const mid = runUntil(run(houseAtDusk(), 1), (x) => (doorHp(x) ?? 60) < 40, 1000);
+      expect(doorHp(mid)).toBe(36);
+      const loaded = deserialize(serialize(mid), content);
+      expect(run(loaded, 300)).toEqual(run(mid, 300));
+    });
+
+    it('shows a health bar on the door while battered', () => {
+      const mid = runUntil(run(houseAtDusk(), 1), (x) => (doorHp(x) ?? 60) < 60, 1000);
+      expect(healthBars(mid, content)).toContainEqual({
+        id: 2,
+        hp: 56,
+        maxHp: 60,
+        tile: { x: 12, y: 4 },
+      });
+    });
   });
 
   it('go for the Hero when it is nearest', () => {

@@ -9,6 +9,7 @@ import { gloamlingsNearBell } from './militia';
 import { tileDistance } from './pathfinding';
 import type { EntityId, GameState, Tile } from './state';
 import { villagerTile } from './systems/movement';
+import { fullHp } from './walls';
 
 /**
  * Whether `id` is a villager out in the open (not asleep at Home) or the Hero, unless it's
@@ -36,6 +37,20 @@ export function inReach(state: GameState, a: EntityId, b: EntityId, reachTiles: 
 
 export function chebyshev(a: Tile, b: Tile): number {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+}
+
+/**
+ * The building Gloamling `id` is battering: its target, a House (at its door) or a wall segment
+ * still standing, within its reach. Null when it isn't battering.
+ */
+export function batteredBy(state: GameState, content: Content, id: EntityId): EntityId | null {
+  const target = state.components.gloamling[id]?.target ?? null;
+  if (target === null) return null;
+  const hp = state.components.building[target]?.hp ?? null;
+  const at = targetTile(state, content, target);
+  const here = villagerTile(state, id);
+  if (hp === null || hp <= 0 || !at || !here) return null;
+  return chebyshev(here, at) <= content.combat.gloamling.reachTiles ? target : null;
 }
 
 /** Whether Gloamling `id` has a villager or the Hero in reach as its target. */
@@ -138,16 +153,19 @@ export function targetTile(state: GameState, content: Content, target: EntityId)
   return villagerTile(state, target);
 }
 
-/** A health bar over someone in a fight. */
+/** A health bar over someone in a fight, or over a building Gloamlings batter. */
 export interface HealthBar {
   id: EntityId;
   hp: number;
   maxHp: number;
+  /** A battered building's: the tile it's battered at (a House's door, a wall's own tile). */
+  tile?: Tile;
 }
 
 /**
  * Health of everyone in a fight right now: villagers fighting back or with a Gloamling to hit in
- * the militia, the Hero with a Gloamling in reach, Gloamlings engaged.
+ * the militia, the Hero with a Gloamling in reach, Gloamlings engaged, and each House door or wall
+ * segment being battered.
  */
 export function healthBars(state: GameState, content: Content): HealthBar[] {
   const { villager, gloamling, hero } = state.components;
@@ -168,6 +186,17 @@ export function healthBars(state: GameState, content: Content): HealthBar[] {
     if (g && isEngaged(state, content, id)) {
       bars.push({ id, hp: g.hp, maxHp: content.combat.gloamling.hp });
     }
+  }
+  const battered = new Set<EntityId>();
+  for (const id of idsOf(gloamling)) {
+    const b = batteredBy(state, content, id);
+    if (b !== null) battered.add(b);
+  }
+  for (const id of [...battered].sort((a, b) => a - b)) {
+    const b = state.components.building[id];
+    const maxHp = b && fullHp(content, b.type);
+    const tile = targetTile(state, content, id);
+    if (b?.hp != null && maxHp && tile) bars.push({ id, hp: b.hp, maxHp, tile });
   }
   return bars;
 }

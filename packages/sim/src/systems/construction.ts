@@ -4,6 +4,7 @@ import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
 import type { GameState } from '../state';
+import { fullHp } from '../walls';
 import { maxWorkers } from '../workers';
 
 export function constructionSystem(state: GameState, content: Content): void {
@@ -28,7 +29,7 @@ export function constructionSystem(state: GameState, content: Content): void {
         workerLimit: maxWorkers(content, site.type),
         cold: false,
         lit: false,
-        hp: content.buildings[site.type].wall?.hp ?? null,
+        hp: fullHp(content, site.type),
       };
     }
   }

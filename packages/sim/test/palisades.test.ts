@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { dawnTick, duskTick } from '../src/calendar';
 import { idsOf } from '../src/entities';
-import { canPlaceBuilding, tileIndex } from '../src/grid';
+import { blockedGrid, canPlaceBuilding, tileIndex } from '../src/grid';
 import { createInitialState, type MapDef } from '../src/map';
 import { canLayPath } from '../src/roads';
 import { deserialize, serialize } from '../src/save';
@@ -191,7 +191,7 @@ describe('what walls block', () => {
     expect(s.components.path[hero]?.tiles).toContain(gate);
   });
 
-  it('saves made before walls load with HP on walls and none on other buildings', () => {
+  it('saves made before walls load with HP on walls and House doors, and none on others', () => {
     const s = yard({
       buildings: [...(wallDown(6, 2, { gates: [1] }) ?? []), { type: 'hut', x: 1, y: 1 }],
     });
@@ -203,8 +203,10 @@ describe('what walls block', () => {
     expect(Object.values(loaded.components.building).map((b) => [b.type, b.hp])).toEqual([
       ['palisade', 100],
       ['gate', 100],
-      ['hut', null],
+      ['hut', 60],
     ]);
+    const pile = yard({ buildings: [{ type: 'granary', x: 1, y: 1 }] });
+    expect(Object.values(pile.components.building).map((b) => b.hp)).toEqual([null]);
   });
 
   it("a wall's site blocks nobody", () => {
@@ -260,13 +262,66 @@ describe('Gloamlings and walls', () => {
     expect([...tiles].filter((t) => t.startsWith('11,'))).toEqual(['11,8']);
   });
 
-  it('stop when palisades and Gates shut their target in', () => {
-    const s0 = fieldAtDusk(wallDown(11, HEIGHT, { gates: [4] }));
+  /** HP of each wall segment by tile, as `x,y: hp`. */
+  function wallHp(s: GameState): Record<string, number | null> {
+    const hp: Record<string, number | null> = {};
+    for (const id of idsOf(s.components.building)) {
+      const b = s.components.building[id];
+      const t = s.components.tile[id];
+      if (b && t && (b.type === 'palisade' || b.type === 'gate')) hp[`${t.x},${t.y}`] = b.hp;
+    }
+    return hp;
+  }
+
+  const allAt = (hp: number) =>
+    Object.fromEntries(Array.from({ length: HEIGHT }, (_, y) => [`11,${y}`, hp]));
+
+  it('batter through the palisade in the way when it shuts their target in', () => {
+    const s0 = fieldAtDusk(wallDown(11, HEIGHT));
     const [carrier] = idsOf(s0.components.villager);
-    const { s, tiles } = watch(s0, 600);
-    const [g] = idsOf(s.components.gloamling);
-    expect(s.components.gloamling[g ?? -1]?.target).toBeNull();
-    expect(s.components.villager[carrier ?? -1]?.fighting).toBe(false);
-    expect([...tiles].some((t) => Number(t.split(',')[0]) <= 11)).toBe(false);
+    // The Gloamling goes straight along row 4, so (11,4) is the first segment in its way.
+    const broken = runUntil(s0, (x) => wallHp(x)['11,4'] === 0, 1000);
+    expect(wallHp(broken)).toEqual({ ...allAt(100), '11,4': 0 });
+    const { s, tiles } = watch(broken, 300);
+    expect(s.components.villager[carrier ?? -1]).toBeUndefined();
+    expect(s.deaths.map((d) => d.cause)).toEqual(['gloamling']);
+    expect([...tiles].filter((t) => t.startsWith('11,'))).toEqual(['11,4']);
+  });
+
+  it('take 25 hits of 4 to break a segment, and a Gate the same', () => {
+    const s0 = fieldAtDusk(wallDown(11, HEIGHT, { gates: [4] }));
+    let s = s0;
+    const hits: number[] = [];
+    while (wallHp(s)['11,4'] !== 0 && s.tick < s0.tick + 1000) {
+      const before = wallHp(s)['11,4'];
+      s = step(s, [], content);
+      if (wallHp(s)['11,4'] !== before) hits.push(s.tick);
+    }
+    expect(hits).toHaveLength(25);
+    expect(hits.slice(1).map((t, i) => t - (hits[i] ?? 0))).toEqual(Array(24).fill(20));
+  });
+
+  it('heal to full at Dawn, blocking again', () => {
+    const broken = runUntil(
+      fieldAtDusk(wallDown(11, HEIGHT)),
+      (x) => wallHp(x)['11,4'] === 0,
+      1000,
+    );
+    const at = tileIndex(broken.map, 11, 4);
+    expect(blockedGrid(broken, content)[at]).toBe(0);
+    const morning = run(broken, dawnTick(2, content) + 1 - broken.tick);
+    expect(wallHp(morning)).toEqual(allAt(100));
+    expect(blockedGrid(morning, content)[at]).toBe(1);
+  });
+
+  it('carry on from a save made mid-battering', () => {
+    const mid = runUntil(
+      fieldAtDusk(wallDown(11, HEIGHT)),
+      (x) => (wallHp(x)['11,4'] ?? 100) <= 60,
+      1000,
+    );
+    expect(wallHp(mid)['11,4']).toBe(60);
+    const loaded = deserialize(serialize(mid), content);
+    expect(run(loaded, 400)).toEqual(run(mid, 400));
   });
 });

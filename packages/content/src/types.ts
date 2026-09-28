@@ -254,6 +254,11 @@ export interface CombatDef {
    * Back to full HP at Dawn.
    */
   hero: FighterDef & { knockoutTicks: number };
+  /**
+   * HP of every House's door, which Gloamlings batter; a broken door costs one resident. Back to
+   * full at Dawn.
+   */
+  houseDoorHp: number;
 }
 
 /** Hunting grounds: forest regions holding Game, which logging drives away. */

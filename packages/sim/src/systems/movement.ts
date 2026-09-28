@@ -15,6 +15,7 @@ import {
   type Tile,
 } from '../state';
 import { countStep } from '../traffic';
+import { isWall } from '../walls';
 
 /** Tile the villager is standing on (or walking through). */
 export function villagerTile(state: GameState, id: EntityId): Tile | null {
@@ -54,10 +55,16 @@ function gridOver(state: GameState, content: Content, blocked: Uint8Array): Grid
 
 /**
  * The grid Gloamlings path over: Gates and tonight's lit tiles block walking too (Light is a wall,
- * ADR-0003).
+ * ADR-0003). `throughWalls` lets them through every wall segment, to find the one in their way.
  */
-export function gloamlingGrid(state: GameState, content: Content): Grid {
+export function gloamlingGrid(state: GameState, content: Content, throughWalls = false): Grid {
   const grid = gridOver(state, content, blockedGrid(state, content, true));
+  if (throughWalls) {
+    for (const id of idsOf(state.components.building)) {
+      const t = state.components.tile[id];
+      if (t && isWall(state, content, id)) grid.blocked[tileIndex(state.map, t.x, t.y)] = 0;
+    }
+  }
   litGrid(state, content).forEach((lit, i) => {
     if (lit) grid.blocked[i] = 1;
   });

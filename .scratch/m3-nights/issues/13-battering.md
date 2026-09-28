@@ -1,6 +1,6 @@
 # Gloamlings batter House doors and palisades
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 04, 08
 
@@ -17,3 +17,7 @@ Rules in `docs/spec.md`, "Nights in v1 (M3)" (Targets, Palisades). Numbers Propo
 
 - Headless tests: a door breaks after the right number of hits and one resident dies; a palisade blocking the only path is battered through; both heal at Dawn; save/load mid-battering.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-28: Done. Door HP is `content.combat.houseDoorHp` (60) on `building.hp`; a broken door kills the lowest-ID resident asleep at Home (none if nobody's home) and the House is no target until Dawn; a broken wall blocks nobody until Dawn and is drawn as stumps. Gloamlings prefer walkable targets and batter only when nothing in reach of their priority is walkable (details in docs/decisions.md). Health bars over battered doors and walls.

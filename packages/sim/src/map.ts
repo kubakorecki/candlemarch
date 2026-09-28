@@ -33,6 +33,7 @@ import {
   roomOnTile,
 } from './stockpiles';
 import { spawnVillager } from './villagers';
+import { fullHp } from './walls';
 import { maxWorkers } from './workers';
 
 export interface MapDef {
@@ -226,7 +227,7 @@ export function createInitialState(
       workerLimit: maxWorkers(content, b.type),
       cold: false,
       lit: false,
-      hp: def.wall?.hp ?? null,
+      hp: fullHp(content, b.type),
     };
     for (const slot of def.employs) {
       for (let i = 0; i < slot.count; i++) {

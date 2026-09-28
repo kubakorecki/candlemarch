@@ -4,6 +4,7 @@ import { idsOf } from './entities';
 import { createEmptyState } from './map';
 import { type Components, type GameState, type MapState, STATE_VERSION } from './state';
 import { fallbackVillagerName } from './villagers';
+import { fullHp } from './walls';
 import { maxWorkers } from './workers';
 
 /** A save of the current version, which may lack state added after it was made. */
@@ -49,7 +50,8 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     b.cold ??= false;
     b.lit ??= false;
     b.rotation ??= 0;
-    b.hp ??= content.buildings[b.type].wall?.hp ?? null;
+    // Houses before door battering were saved with null.
+    if (b.hp === undefined || b.hp === null) b.hp = fullHp(content, b.type);
   }
   for (const site of Object.values(state.components.site)) site.rotation ??= 0;
   const { villager } = state.components;

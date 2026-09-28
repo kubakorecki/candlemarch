@@ -728,6 +728,18 @@ export function drawPalisade(g: Graphics, layout: BuildingLayout, arms: WallArms
 }
 
 /**
+ * A palisade segment or Gate Gloamlings have battered down: a few splintered stumps, until it
+ * heals at Dawn.
+ */
+export function drawBrokenWall(g: Graphics, layout: BuildingLayout): void {
+  g.clear();
+  const m = tileMiddles(layout.origin.x, layout.origin.y);
+  const s = TILE_H / 64;
+  g.ellipse(m.centre.x, m.centre.y, 18 * s, 7 * s).fill({ color: palette.shadow, alpha: 0.3 });
+  drawStakes(g, [lerp(m.centre, m.west, 0.5), m.centre, lerp(m.centre, m.east, 0.5)], WALL_H * 0.3);
+}
+
+/**
  * A Gate: a braced plank door between two tall posts, across the line of the wall (east–west
  * unless it only joins walls to the north or south).
  */
