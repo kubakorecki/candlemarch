@@ -1,12 +1,14 @@
 // Night combat, resolved on its own. Each tick every Gloamling picks what to go for and walks
 // there; a villager a Gloamling reaches drops its work and hits back; then everyone in reach and
 // off cooldown hits, in entity-ID order, so the same fight always ends the same way. Villagers are
-// back to full HP at Dawn.
+// back to full HP at Dawn, and so is the Hero; a Knocked-out Hero gets up at full HP once its time
+// is up.
 import type { Content } from '@candlemarch/content';
 import { isDawn } from '../calendar';
 import {
   attackersOf,
   chebyshev,
+  heroFoe,
   inReach,
   isEngaged,
   isLivedInHouse,
@@ -26,12 +28,20 @@ import { isAt, rerouteTo, stopAtNextTile, villagerTile, walkGrid } from './movem
 type CostsFrom = (tile: Tile) => Float64Array;
 
 export function combatSystem(state: GameState, content: Content): void {
-  const { villager, gloamling } = state.components;
-  if (isDawn(state.tick, content)) {
+  const { villager, gloamling, hero } = state.components;
+  const dawn = isDawn(state.tick, content);
+  if (dawn) {
     for (const id of idsOf(villager)) {
       const v = villager[id];
       if (v) v.hp = content.combat.villager.hp;
     }
+  }
+  for (const id of idsOf(hero)) {
+    const h = hero[id];
+    if (!h) continue;
+    const getsUp = h.knockedOutUntil !== null && state.tick >= h.knockedOutUntil;
+    if (getsUp) h.knockedOutUntil = null;
+    if (getsUp || (dawn && h.knockedOutUntil === null)) h.hp = content.combat.hero.hp;
   }
   const gloamlings = idsOf(gloamling);
   if (gloamlings.length === 0) {
@@ -163,15 +173,26 @@ function engage(state: GameState, content: Content): void {
 
 /**
  * Everyone in reach of its foe and off cooldown hits once, in entity-ID order: a Gloamling its
- * target, a fighting villager its opponent. Whoever drops to 0 HP is gone before its turn comes.
+ * target, a fighting villager its opponent, the Hero its foe (`heroFoe`). Whoever drops to 0 HP is
+ * gone (or Knocked out) before its turn comes.
  */
 function resolveHits(state: GameState, content: Content): void {
-  const { villager, gloamling } = state.components;
+  const { villager, gloamling, hero } = state.components;
   const fighters = [
     ...idsOf(villager).filter((id) => villager[id]?.fighting),
+    ...idsOf(hero),
     ...idsOf(gloamling),
   ].sort((a, b) => a - b);
   for (const id of fighters) {
+    const h = hero[id];
+    if (h) {
+      if (state.tick < h.readyAt) continue;
+      const foe = heroFoe(state, content, id);
+      if (foe === null) continue;
+      h.readyAt = state.tick + content.combat.hero.cooldownTicks;
+      hurt(state, content, foe, content.combat.hero.damage);
+      continue;
+    }
     const g = gloamling[id];
     if (g) {
       const { damage, cooldownTicks, reachTiles } = content.combat.gloamling;
@@ -193,10 +214,16 @@ function resolveHits(state: GameState, content: Content): void {
 }
 
 /**
- * Takes `damage` off `id`: a villager at 0 HP dies of it, a Gloamling is gone. The Hero takes no
- * damage until it has HP (M3 ticket 05).
+ * Takes `damage` off `id`: a villager at 0 HP dies of it, the Hero is Knocked out, a Gloamling is
+ * gone.
  */
 function hurt(state: GameState, content: Content, id: EntityId, damage: number): void {
+  const h = state.components.hero[id];
+  if (h) {
+    h.hp = Math.max(0, h.hp - damage);
+    if (h.hp === 0) knockOut(state, content, id);
+    return;
+  }
   const v = state.components.villager[id];
   if (v) {
     v.hp -= damage;
@@ -208,4 +235,16 @@ function hurt(state: GameState, content: Content, id: EntityId, damage: number):
     g.hp -= damage;
     if (g.hp <= 0) destroyEntity(state, id);
   }
+}
+
+/**
+ * The Hero falls where it stands for `knockoutTicks`: its order is dropped (goods stay in its
+ * hands) and its walk ends at the next tile.
+ */
+function knockOut(state: GameState, content: Content, id: EntityId): void {
+  const h = state.components.hero[id];
+  if (!h) return;
+  h.knockedOutUntil = state.tick + content.combat.hero.knockoutTicks;
+  h.order = null;
+  stopAtNextTile(state, id);
 }

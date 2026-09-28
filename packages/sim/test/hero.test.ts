@@ -35,7 +35,14 @@ describe('hero', () => {
     const s = createInitialState(1, field, content);
     expect(idsOf(s.components.hero)).toHaveLength(1);
     const id = heroId(s);
-    expect(s.components.hero[id]).toEqual({ type: 'placeholder', carrying: null, order: null });
+    expect(s.components.hero[id]).toEqual({
+      type: 'placeholder',
+      carrying: null,
+      order: null,
+      hp: 100,
+      readyAt: 0,
+      knockedOutUntil: null,
+    });
     expect(s.components.position[id]).toEqual({ x: 1500, y: 1500 });
     expect(s.components.villager[id]).toBeUndefined();
   });

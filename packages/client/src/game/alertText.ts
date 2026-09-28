@@ -1,7 +1,14 @@
 // Words for what the sim works out: alerts, the death log, the winter countdown, why a
-// Workplace is idle and Carrier utilization. Pure.
+// Workplace is idle, Carrier utilization and the Hero's knockout countdown. Pure.
 import { content, type ResourceId } from '@candlemarch/content';
-import type { Alert, Death, DeathCause, GameOver, WorkplaceStatus } from '@candlemarch/sim';
+import {
+  type Alert,
+  type Death,
+  type DeathCause,
+  type GameOver,
+  TICKS_PER_SECOND,
+  type WorkplaceStatus,
+} from '@candlemarch/sim';
 
 /** "1 day", "3 days". */
 function count(n: number, one: string, many: string): string {
@@ -78,4 +85,9 @@ export function workplaceStatusText(status: WorkplaceStatus): string {
 /** Carrier utilization for the readout: "64%", or a dash when no Carrier has worked lately. */
 export function utilizationText(percent: number | null): string {
   return percent === null ? '–' : `${percent}%`;
+}
+
+/** The Hero panel while it's Knocked out: "Knocked out, up in 14 s" (seconds at normal speed). */
+export function knockoutText(ticksLeft: number): string {
+  return `Knocked out, up in ${Math.ceil(ticksLeft / TICKS_PER_SECOND)} s`;
 }

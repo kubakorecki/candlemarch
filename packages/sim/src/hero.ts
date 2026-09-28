@@ -1,6 +1,7 @@
 // The hero: one per game, not a villager, acts only on the player's orders. It walks, chops trees
 // and carries goods by hand to kickstart the village (spec, logistics stage 1).
 import type { Content, ResourceId } from '@candlemarch/content';
+import { inReach, isKnockedOut } from './combat';
 import { idsOf } from './entities';
 import { isForagePatch } from './forage';
 import {
@@ -31,7 +32,8 @@ export type HeroOrder =
   | { order: 'move'; x: number; y: number }
   | { order: 'gather'; tree: EntityId }
   | { order: 'deliver'; target: EntityId }
-  | { order: 'pickup'; source: EntityId };
+  | { order: 'pickup'; source: EntityId }
+  | { order: 'attack'; gloamling: EntityId };
 
 /** The hero's entity ID, or null if this game has none. */
 export function heroOf(state: GameState): EntityId | null {
@@ -63,11 +65,14 @@ function treeStandingTiles(state: GameState, content: Content, tree: EntityId): 
  *   as incoming.
  * - pickup: take goods no carrier has claimed from a building's output buffer or a stockpile,
  *   as many as the hero's hands still hold.
+ * - attack: go after a Gloamling, following it as it moves, and hit it first once it's in reach
+ *   (the hero hits any Gloamling in reach on its own anyway).
+ * A Knocked-out hero takes no orders.
  */
 export function orderHero(state: GameState, content: Content, order: HeroOrder): void {
   const id = heroOf(state);
   const hero = id === null ? undefined : state.components.hero[id];
-  if (id === null || !hero) return;
+  if (id === null || !hero || isKnockedOut(state, id)) return;
   switch (order.order) {
     case 'move': {
       if (rerouteTo(state, content, id, [{ x: order.x, y: order.y }])) hero.order = null;
@@ -93,6 +98,17 @@ export function orderHero(state: GameState, content: Content, order: HeroOrder):
       const task = pickupTask(state, content, hero, order.source);
       if (!task || !rerouteTo(state, content, id, [tileAt(state.map, task.tile)])) return;
       hero.order = task;
+      return;
+    }
+    case 'attack': {
+      const at = villagerTile(state, order.gloamling);
+      if (!state.components.gloamling[order.gloamling] || !at) return;
+      if (inReach(state, id, order.gloamling, content.combat.hero.reachTiles)) {
+        stopAtNextTile(state, id);
+      } else if (!rerouteTo(state, content, id, [at])) {
+        return;
+      }
+      hero.order = { kind: 'attack', gloamling: order.gloamling };
       return;
     }
   }
@@ -225,16 +241,28 @@ function thingAt(state: GameState, content: Content, tile: Tile): EntityId | nul
   return null;
 }
 
+/** The Gloamling (lowest ID) standing on or walking through `tile`, if any. */
+function gloamlingAt(state: GameState, tile: Tile): EntityId | null {
+  for (const id of idsOf(state.components.gloamling)) {
+    const at = villagerTile(state, id);
+    if (at && at.x === tile.x && at.y === tile.y) return id;
+  }
+  return null;
+}
+
 /**
- * What right-clicking `tile` orders the hero to do: chop a tree; deliver what it holds to a site,
- * workshop or stockpile that wants it, or else pick up from a building or stockpile with goods;
- * walk onto open ground. Null when there's something on the tile but nothing to do with it. The
- * client uses this so the rules stay in the sim; the command is still checked when it's applied.
+ * What right-clicking `tile` orders the hero to do: attack a Gloamling there; chop a tree;
+ * deliver what it holds to a site, workshop or stockpile that wants it, or else pick up from a
+ * building or stockpile with goods; walk onto open ground. Null when there's something on the tile but nothing to do with it, or
+ * the hero is Knocked out. The client uses this so the rules stay in the sim; the command is still
+ * checked when it's applied.
  */
 export function heroOrderAt(state: GameState, content: Content, tile: Tile): HeroOrder | null {
   const id = heroOf(state);
   const hero = id === null ? undefined : state.components.hero[id];
-  if (!hero) return null;
+  if (id === null || !hero || isKnockedOut(state, id)) return null;
+  const gloamling = gloamlingAt(state, tile);
+  if (gloamling !== null) return { order: 'attack', gloamling };
   const thing = thingAt(state, content, tile);
   if (thing === null) {
     return isWalkableTerrain(state, content, tile) ? { order: 'move', x: tile.x, y: tile.y } : null;
@@ -255,8 +283,7 @@ function touches(a: Tile, b: Tile): boolean {
   return Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1;
 }
 
-/** Works the hero's order for one tick, once it has walked where the order needs it. */
-/** Whether the tree, site, stockpile or building an order is for still exists. */
+/** Whether the tree, site, stockpile, building or Gloamling an order is for still exists. */
 function orderTargetExists(state: GameState, order: HeroTask): boolean {
   const { mapObject, site, stockpile, building } = state.components;
   switch (order.kind) {
@@ -270,9 +297,37 @@ function orderTargetExists(state: GameState, order: HeroTask): boolean {
       );
     case 'pickup':
       return building[order.source] !== undefined || stockpile[order.source] !== undefined;
+    case 'attack':
+      return state.components.gloamling[order.gloamling] !== undefined;
   }
 }
 
+/**
+ * Walks hero `id` after `gloamling`, re-routing when it moves to another tile, and stands once
+ * it's in reach. The order ends if it can't be reached. The hits are `systems/combat.ts`.
+ */
+function chaseGloamling(
+  state: GameState,
+  content: Content,
+  id: EntityId,
+  gloamling: EntityId,
+): void {
+  const hero = state.components.hero[id];
+  const at = villagerTile(state, gloamling);
+  if (!hero || !at) return;
+  if (inReach(state, id, gloamling, content.combat.hero.reachTiles)) {
+    stopAtNextTile(state, id);
+    return;
+  }
+  const path = state.components.path[id];
+  if (path && path.tiles[path.tiles.length - 1] === tileIndex(state.map, at.x, at.y)) return;
+  if (!rerouteTo(state, content, id, [at])) {
+    hero.order = null;
+    stopAtNextTile(state, id);
+  }
+}
+
+/** Works the hero's order for one tick, once it has walked where the order needs it. */
 export function heroSystem(state: GameState, content: Content): void {
   const id = heroOf(state);
   const hero = id === null ? undefined : state.components.hero[id];
@@ -283,6 +338,10 @@ export function heroSystem(state: GameState, content: Content): void {
   if (!orderTargetExists(state, order)) {
     hero.order = null;
     stopAtNextTile(state, id);
+    return;
+  }
+  if (order.kind === 'attack') {
+    chaseGloamling(state, content, id, order.gloamling);
     return;
   }
   if (state.components.path[id]) return;

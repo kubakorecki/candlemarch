@@ -73,6 +73,9 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
   for (const hero of Object.values(state.components.hero)) {
     hero.carrying ??= null;
     hero.order ??= null;
+    hero.hp ??= content.combat.hero.hp;
+    hero.readyAt ??= 0;
+    hero.knockedOutUntil ??= null;
   }
   return state;
 }

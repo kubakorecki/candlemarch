@@ -1,9 +1,13 @@
 // Night combat: Gloamlings going for the nearest target, fights resolved hit by hit in ID order,
 // deaths by Gloamling, HP back to full at Dawn.
 import { describe, expect, it } from 'vitest';
+import { workSpeedPercent } from '../src/aura';
 import { dawnTick, duskTick } from '../src/calendar';
+import { healthBars } from '../src/combat';
+import type { Command } from '../src/commands';
 import { idsOf } from '../src/entities';
 import { tileCenter, tileOfPoint } from '../src/grid';
+import { heroOrderAt } from '../src/hero';
 import { createInitialState, type MapDef } from '../src/map';
 import { deserialize, serialize } from '../src/save';
 import type { EntityId, GameState, Tile } from '../src/state';
@@ -243,5 +247,119 @@ describe('a villager a Gloamling reaches', () => {
     expect(fight.components.villager[3]).toMatchObject({ job: 'woodcutter', workplace: 2 });
     expect(fight.components.woodcutter[3]).toEqual({ kind: 'idle', retryAt: 0 });
     expect(fight.components.building[2]?.stock.logs).toBe(1);
+  });
+});
+
+describe('the Hero', () => {
+  /** The Hero (ID 2) at (17,4), three tiles from the Den; its Gloamling is ID 3. */
+  function heroField(): GameState {
+    return fieldAtDusk([], { hero: { x: 17, y: 4 } });
+  }
+
+  it('kills a Gloamling that reaches it', () => {
+    const s = runUntil(run(heroField(), 1), (x) => x.components.gloamling[3] === undefined, 400);
+    expect(s.components.gloamling[3]).toBeUndefined();
+    // Two hits of 10. The Hero (lower ID) strikes first each round, so the Gloamling lands one
+    // hit of 4.
+    expect(s.components.hero[2]?.hp).toBe(96);
+  });
+
+  /**
+   * A villager (ID 2) at (6,4) and the Hero (ID 3) at (17,4); the Gloamling (ID 4) goes for the
+   * Hero, which is 4 HP from a knockout, and can't be killed.
+   */
+  function knockout(): GameState {
+    const s = run(fieldAtDusk([{ x: 6, y: 4 }], { hero: { x: 17, y: 4 } }), 1);
+    (s.components.hero[3] as { hp: number }).hp = 4;
+    (s.components.gloamling[4] as { hp: number }).hp = 1000;
+    return s;
+  }
+
+  it('is Knocked out at 0 HP, and its Gloamling goes for someone else', () => {
+    const s = knockout();
+    expect(targetOf(s)).toBe(3);
+    const out = runUntil(s, (x) => x.components.hero[3]?.knockedOutUntil !== null, 400);
+    expect(out.components.hero[3]).toMatchObject({ hp: 0, knockedOutUntil: out.tick - 1 + 400 });
+    expect(targetOf(run(out, 1))).toBe(2);
+  });
+
+  it('gets up at full HP 400 ticks later', () => {
+    const out = runUntil(knockout(), (x) => x.components.hero[3]?.knockedOutUntil !== null, 400);
+    const until = out.components.hero[3]?.knockedOutUntil as number;
+    const still = run(out, until - out.tick);
+    expect(still.components.hero[3]).toMatchObject({ hp: 0, knockedOutUntil: until });
+    expect(run(still, 1).components.hero[3]).toMatchObject({ hp: 100, knockedOutUntil: null });
+  });
+
+  it('takes no orders while Knocked out', () => {
+    const out = runUntil(knockout(), (x) => x.components.hero[3]?.knockedOutUntil !== null, 400);
+    const settled = run(out, 30); // it finishes the step it fell on
+    const at = settled.components.position[3];
+    const s = run(settled, 30, {
+      [settled.tick]: [{ type: 'orderHero', order: 'move', x: 17, y: 0 }],
+    });
+    expect(s.components.path[3]).toBeUndefined();
+    expect(s.components.position[3]).toEqual(at);
+    expect(heroOrderAt(s, content, { x: 17, y: 0 })).toBeNull();
+  });
+
+  it('has no aura while Knocked out', () => {
+    // A woodcutter's hut (ID 2) at (10,3) with its woodcutter (ID 3); the Hero (ID 4) beside it.
+    const s = fieldAtDusk([], {
+      buildings: [{ type: 'woodcutters_hut', x: 10, y: 3 }],
+      hero: { x: 12, y: 4 },
+    });
+    expect(workSpeedPercent(s, content, 2)).toBe(125);
+    (s.components.hero[4] as { knockedOutUntil: number | null }).knockedOutUntil = s.tick + 400;
+    expect(workSpeedPercent(s, content, 2)).toBe(100);
+  });
+
+  // The Hero (ID 2) at (5,4), out of the Gloamling's sight (ID 3), which waits at its Den with
+  // nothing to go for.
+  function outOfSight(): GameState {
+    return run(fieldAtDusk([], { hero: { x: 5, y: 4 } }), 1);
+  }
+
+  it('is ordered to attack by right-clicking a Gloamling', () => {
+    const s = outOfSight();
+    expect(targetOf(s)).toBeNull();
+    expect(heroOrderAt(s, content, DEN)).toEqual({ order: 'attack', gloamling: 3 });
+  });
+
+  it('walks to a Gloamling it is ordered to attack and kills it', () => {
+    const s = outOfSight();
+    const idle = run(s, 200);
+    expect(idle.components.gloamling[3]).toBeDefined();
+    expect(idle.components.position[2]).toEqual(s.components.position[2]);
+    const attack: Command = { type: 'orderHero', order: 'attack', gloamling: 3 };
+    const done = runUntil(s, (x) => x.components.gloamling[3] === undefined, 400, {
+      [s.tick]: [attack],
+    });
+    expect(done.components.gloamling[3]).toBeUndefined();
+    expect(done.components.hero[2]?.order).toBeNull();
+  });
+
+  it('carries on from a save made while Knocked out', () => {
+    const out = run(
+      runUntil(knockout(), (x) => x.components.hero[3]?.knockedOutUntil !== null, 400),
+      50,
+    );
+    expect(out.components.hero[3]?.knockedOutUntil).not.toBeNull();
+    const loaded = deserialize(serialize(out), content);
+    expect(run(loaded, 400)).toEqual(run(out, 400));
+  });
+
+  it('loads saves made before it could fight with full HP, up and ready', () => {
+    const old = JSON.parse(serialize(fieldAtDusk([], { hero: { x: 5, y: 4 } })));
+    for (const key of ['hp', 'readyAt', 'knockedOutUntil']) delete old.components.hero[2][key];
+    const loaded = deserialize(JSON.stringify(old), content);
+    expect(loaded.components.hero[2]).toMatchObject({ hp: 100, readyAt: 0, knockedOutUntil: null });
+  });
+
+  it('shows a health bar while a Gloamling is in its reach', () => {
+    const s = run(heroField(), 1);
+    expect(healthBars(s, content).some((b) => b.id === 2)).toBe(false);
+    const fight = runUntil(s, (x) => x.components.hero[2]?.hp !== 100, 400);
+    expect(healthBars(fight, content)).toContainEqual({ id: 2, hp: 96, maxHp: 100 });
   });
 });

@@ -4,6 +4,7 @@ import {
   alertText,
   deathText,
   gameOverText,
+  knockoutText,
   utilizationText,
   winterText,
   workplaceStatusText,
@@ -82,5 +83,12 @@ describe('carrier utilization text', () => {
   it('reads as a percent, or a dash before any Carrier has worked', () => {
     expect(utilizationText(64)).toBe('64%');
     expect(utilizationText(null)).toBe('–');
+  });
+});
+
+describe('knockout text', () => {
+  it('counts down the seconds, at normal speed, until the Hero gets up', () => {
+    expect(knockoutText(400)).toBe('Knocked out, up in 20 s');
+    expect(knockoutText(1)).toBe('Knocked out, up in 1 s');
   });
 });

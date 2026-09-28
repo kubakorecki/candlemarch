@@ -157,6 +157,15 @@ export interface HeroComponent {
   carrying: ResourceAmount | null;
   /** The order being carried out, or null when idle or just walking somewhere. */
   order: HeroTask | null;
+  /** Hit points, whole. Back to full at Dawn and when it gets up; Knocked out at 0. */
+  hp: number;
+  /** First tick it can hit again. */
+  readyAt: number;
+  /**
+   * While Knocked out, the tick it gets up at full HP; null when it's up. Knocked out, it takes no
+   * orders, has no aura, and Gloamlings ignore it.
+   */
+  knockedOutUntil: number | null;
 }
 
 /**
@@ -173,7 +182,9 @@ export type HeroTask =
    */
   | { kind: 'deliver'; target: EntityId; resource: ResourceId; tile: number; amount: number }
   /** Take goods carriers haven't claimed from a building's output buffer or a stockpile tile. */
-  | { kind: 'pickup'; source: EntityId; resource: ResourceId; tile: number };
+  | { kind: 'pickup'; source: EntityId; resource: ResourceId; tile: number }
+  /** Go after `gloamling`, following it as it moves, and hit it first while it's in reach. */
+  | { kind: 'attack'; gloamling: EntityId };
 
 /** A walk in progress along tile centres. Removed on arrival. */
 export interface PathComponent {

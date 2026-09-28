@@ -9,9 +9,12 @@ import { tileDistance } from './pathfinding';
 import type { EntityId, GameState, Tile } from './state';
 import { villagerTile } from './systems/movement';
 
-/** Whether `id` is a villager out in the open (not asleep at Home) or the Hero. */
+/**
+ * Whether `id` is a villager out in the open (not asleep at Home) or the Hero, unless it's
+ * Knocked out.
+ */
 export function isOutInTheOpen(state: GameState, content: Content, id: EntityId): boolean {
-  if (state.components.hero[id]) return true;
+  if (state.components.hero[id]) return !isKnockedOut(state, id);
   const v = state.components.villager[id];
   if (!v) return false;
   return !(v.routine === 'asleep' && isAtHome(state, content, id));
@@ -53,19 +56,52 @@ export function attackersOf(state: GameState, content: Content, id: EntityId): E
  * they're all a step away), ties to the lowest ID. Null when none is.
  */
 export function opponentOf(state: GameState, content: Content, id: EntityId): EntityId | null {
+  return nearestTo(state, id, attackersOf(state, content, id));
+}
+
+/** Whether Hero `id` is Knocked out. */
+export function isKnockedOut(state: GameState, id: EntityId): boolean {
+  return (state.components.hero[id]?.knockedOutUntil ?? null) !== null;
+}
+
+/**
+ * The Gloamling Hero `id` hits: the one it's ordered to attack when that's in reach, else the
+ * nearest in its reach (tile distance), ties to the lowest ID. Null while it's Knocked out or
+ * none is in reach.
+ */
+export function heroFoe(state: GameState, content: Content, id: EntityId): EntityId | null {
+  const hero = state.components.hero[id];
+  if (!hero || isKnockedOut(state, id)) return null;
+  const { reachTiles } = content.combat.hero;
+  const ordered = hero.order?.kind === 'attack' ? hero.order.gloamling : null;
+  if (
+    ordered !== null &&
+    state.components.gloamling[ordered] &&
+    inReach(state, id, ordered, reachTiles)
+  ) {
+    return ordered;
+  }
+  const inReachOf = idsOf(state.components.gloamling).filter((g) =>
+    inReach(state, id, g, reachTiles),
+  );
+  return nearestTo(state, id, inReachOf);
+}
+
+/** Of `ids` (ascending), the one nearest `id` by tile distance, ties to the lowest ID. */
+function nearestTo(state: GameState, id: EntityId, ids: readonly EntityId[]): EntityId | null {
   const here = villagerTile(state, id);
   if (!here) return null;
   const { map } = state;
   let best: { id: EntityId; distance: number } | null = null;
-  for (const g of attackersOf(state, content, id)) {
-    const t = villagerTile(state, g);
+  for (const other of ids) {
+    const t = villagerTile(state, other);
     if (!t) continue;
     const distance = tileDistance(
       map.width,
       tileIndex(map, here.x, here.y),
       tileIndex(map, t.x, t.y),
     );
-    if (!best || distance < best.distance) best = { id: g, distance };
+    if (!best || distance < best.distance) best = { id: other, distance };
   }
   return best?.id ?? null;
 }
@@ -86,13 +122,22 @@ export interface HealthBar {
   maxHp: number;
 }
 
-/** Health of everyone in a fight right now: villagers fighting back, Gloamlings engaged. */
+/**
+ * Health of everyone in a fight right now: villagers fighting back, the Hero with a Gloamling in
+ * reach, Gloamlings engaged.
+ */
 export function healthBars(state: GameState, content: Content): HealthBar[] {
-  const { villager, gloamling } = state.components;
+  const { villager, gloamling, hero } = state.components;
   const bars: HealthBar[] = [];
   for (const id of idsOf(villager)) {
     const v = villager[id];
     if (v?.fighting) bars.push({ id, hp: v.hp, maxHp: content.combat.villager.hp });
+  }
+  for (const id of idsOf(hero)) {
+    const h = hero[id];
+    if (h && heroFoe(state, content, id) !== null) {
+      bars.push({ id, hp: h.hp, maxHp: content.combat.hero.hp });
+    }
   }
   for (const id of idsOf(gloamling)) {
     const g = gloamling[id];

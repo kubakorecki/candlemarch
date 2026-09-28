@@ -111,7 +111,7 @@ export interface JobDef {
   idleRetryTicks: number;
 }
 
-/** A hero the player controls. Not a villager: has no Job and can't die. */
+/** A hero the player controls. Not a villager: has no Job and can't die. Fights with `combat.hero`. */
 export interface HeroDef {
   id: HeroId;
   name: string;
@@ -244,6 +244,11 @@ export interface CombatDef {
   gloamling: FighterDef & { walkSpeed: number; sightTiles: number };
   /** Every villager, whatever its Job. Back to full HP at Dawn. */
   villager: FighterDef;
+  /**
+   * The Hero. At 0 HP it's Knocked out where it falls for `knockoutTicks`, then gets up at full HP.
+   * Back to full HP at Dawn.
+   */
+  hero: FighterDef & { knockoutTicks: number };
 }
 
 /** Hunting grounds: forest regions holding Game, which logging drives away. */

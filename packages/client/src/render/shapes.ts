@@ -698,6 +698,42 @@ export function drawHero(g: Graphics): void {
     .stroke({ width: 4 * s, color: palette.heroTrim, cap: 'round' });
 }
 
+/**
+ * The hero Knocked out, lying on the ground at (0, 0): head to the left, cloak spread under it,
+ * the same colours as `drawHero`.
+ */
+export function drawHeroFallen(g: Graphics): void {
+  g.clear();
+  const s = TILE_H / 64;
+  groundShadow(g, 30 * s, 9 * s);
+  // Cloak spread out under the body, flaring towards the feet.
+  g.poly([-16 * s, -9 * s, -16 * s, 3 * s, 26 * s, 8 * s, 26 * s, -12 * s])
+    .fill(palette.heroCloak)
+    .stroke(INK);
+  g.roundRect(-14 * s, -9 * s, 32 * s, 13 * s, 6 * s)
+    .fill(palette.heroTunic)
+    .stroke(INK);
+  g.rect(0, -9 * s, 4 * s, 13 * s).fill(palette.heroTrim);
+  g.circle(-22 * s, -4 * s, 8 * s)
+    .fill(palette.skin)
+    .stroke(INK);
+  g.moveTo(-27 * s, -11 * s)
+    .lineTo(-27 * s, 3 * s)
+    .stroke({ width: 4 * s, color: palette.heroTrim, cap: 'round' });
+}
+
+/** Three small stars circling (0, 0), over a Knocked-out head; rotate the Graphics to spin them. */
+export function drawDizzyStars(g: Graphics): void {
+  g.clear();
+  const s = TILE_H / 64;
+  for (let i = 0; i < 3; i++) {
+    const a = (i * 2 * Math.PI) / 3;
+    g.star(Math.cos(a) * 13 * s, Math.sin(a) * 5 * s, 5, 5.5 * s, 2.5 * s)
+      .fill(palette.heroTrim)
+      .stroke({ width: 1.5 * s, color: palette.ink });
+  }
+}
+
 /** A selection ring on the ground around (0, 0). */
 export function drawSelectionRing(g: Graphics): void {
   g.clear();

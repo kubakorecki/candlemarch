@@ -12,7 +12,7 @@ export {
   isNight,
   isRiverFrozen,
 } from './calendar';
-export { type HealthBar, healthBars } from './combat';
+export { type HealthBar, healthBars, isKnockedOut } from './combat';
 export type { Command } from './commands';
 export { darkRingTiles } from './dens';
 export { idsOf } from './entities';

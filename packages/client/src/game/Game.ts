@@ -20,11 +20,13 @@ import {
   groundHealth,
   groundsInReach,
   groundsNear,
+  type HeroOrder,
   heroOf,
   heroOrderAt,
   huntChancePermille,
   idsOf,
   isForagePatch,
+  isKnockedOut,
   isWithered,
   lShapeTiles,
   type MapName,
@@ -46,6 +48,7 @@ import {
   alertText,
   deathText,
   gameOverText,
+  knockoutText,
   utilizationText,
   winterText,
   workplaceStatusText,
@@ -269,6 +272,8 @@ export interface HudState {
   monsterRate: number;
   /** What the hero holds, e.g. "3/5 logs", or null if this game has no hero. */
   heroLoad: string | null;
+  /** "Knocked out, up in 14 s" while the hero is Knocked out, else null. */
+  heroKnockout: string | null;
   message: string | null;
 }
 
@@ -278,6 +283,10 @@ export class Game {
   private input: CameraInput | null = null;
   private readonly camera: CameraView = { x: 0, y: 0, zoom: 0.6 };
   private hover: Tile | null = null;
+  /** Screen point under the mouse, or null when it's off the canvas. */
+  private pointer: { sx: number; sy: number } | null = null;
+  /** Whether the canvas shows the attack cursor (the hero is selected, over a Gloamling). */
+  private attackCursor = false;
   /** Tile a tool drag started on, while one is in progress. */
   private dragStart: Tile | null = null;
   /** Quarter turns clockwise the next building is placed with; kept between placements. */
@@ -319,6 +328,7 @@ export class Game {
     heroSelected: false,
     monsterRate: DEFAULT_MONSTER_RATE,
     heroLoad: null,
+    heroKnockout: null,
     message: null,
   };
   private readonly listeners = new Set<() => void>();
@@ -502,10 +512,12 @@ export class Game {
       {
         onHover: (sx, sy) => {
           this.hover = this.tileAt(sx, sy);
+          this.pointer = { sx, sy };
           this.updateGhost();
         },
         onLeave: () => {
           this.hover = null;
+          this.pointer = null;
           this.updateGhost();
         },
         onClick: (sx, sy, button, shiftKey) => this.onClick(sx, sy, button, shiftKey),
@@ -531,6 +543,27 @@ export class Game {
       );
       this.renderer.drawNight(nightLook(state.tick, content));
     }
+    this.updateCursor();
+  }
+
+  /**
+   * Shows the attack cursor while the hero, selected and up, has a Gloamling under the mouse.
+   * Checked every frame, as Gloamlings move under a still mouse.
+   */
+  private updateCursor(): void {
+    const state = this.bridge.state;
+    const hero = state ? heroOf(state) : null;
+    const attack =
+      state !== null &&
+      hero !== null &&
+      this.hud.heroSelected &&
+      this.hud.tool === null &&
+      this.pointer !== null &&
+      !isKnockedOut(state, hero) &&
+      this.renderer.hitGloamling(this.pointer.sx, this.pointer.sy) !== null;
+    if (attack === this.attackCursor) return;
+    this.attackCursor = attack;
+    this.renderer.canvas.style.cursor = attack ? 'crosshair' : '';
   }
 
   private onSnapshot(state: GameState): void {
@@ -561,6 +594,7 @@ export class Game {
       hutLogs: hut && buffer ? (hut.stock[buffer.resource] ?? 0) : 0,
       hutCapacity: buffer?.capacity ?? 0,
       heroLoad: heroLoadLabel(state),
+      heroKnockout: heroKnockoutLabel(state),
       date: dateLabel(time, content),
       year: time.year,
       isNight: time.isNight,
@@ -683,7 +717,17 @@ export class Game {
       const taken = unit || workplace !== null || patch !== null;
       this.selectGround(taken ? null : groundAt(state, tile));
     } else if (button === 2 && this.hud.heroSelected) {
-      const order = heroOrderAt(state, content, this.tileAt(sx, sy));
+      const hero = heroOf(state);
+      if (hero !== null && isKnockedOut(state, hero)) {
+        this.setHud({ message: 'The hero is Knocked out.' });
+        return;
+      }
+      // A Gloamling drawn under the mouse, even over another tile, is the one to attack.
+      const gloamling = this.renderer.hitGloamling(sx, sy);
+      const order: HeroOrder | null =
+        gloamling !== null
+          ? { order: 'attack', gloamling }
+          : heroOrderAt(state, content, this.tileAt(sx, sy));
       if (order) this.bridge.command({ type: 'orderHero', ...order });
       else this.setHud({ message: 'Nothing for the hero to do there.' });
     }
@@ -694,7 +738,7 @@ export class Game {
     this.setHud({
       heroSelected: selected,
       message: selected
-        ? 'Hero selected. Right-click to walk, chop a tree, or carry goods. Esc deselects.'
+        ? 'Hero selected. Right-click to walk, chop a tree, carry goods, or attack a Gloamling. Esc deselects.'
         : null,
     });
   }
@@ -1146,6 +1190,13 @@ function heroLoadLabel(state: GameState): string | null {
   const goods = hero.carrying;
   if (!goods) return `0/${capacity}`;
   return `${goods.amount}/${capacity} ${content.resources[goods.resource].name.toLowerCase()}`;
+}
+
+/** The hero's knockout countdown, or null when it's up or there's no hero. */
+function heroKnockoutLabel(state: GameState): string | null {
+  const id = heroOf(state);
+  const until = id === null ? null : (state.components.hero[id]?.knockedOutUntil ?? null);
+  return until === null ? null : knockoutText(until - state.tick);
 }
 
 /** The save in `slot`, or null when there's none or storage can't be read. */

@@ -94,6 +94,12 @@ export function Hud({ game }: { game: Game }) {
               <span>{hud.heroLoad}</span>
             </div>
           )}
+          {hud.heroKnockout && (
+            <div className="row">
+              <span className="muted">Hero</span>
+              <span>{hud.heroKnockout}</span>
+            </div>
+          )}
         </div>
 
         {hud.workers && (

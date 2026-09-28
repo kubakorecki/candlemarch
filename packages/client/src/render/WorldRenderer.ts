@@ -13,6 +13,7 @@ import {
   heroOf,
   idsOf,
   isColdHouse,
+  isKnockedOut,
   isRiverFrozen,
   isWithered,
   lightSources,
@@ -46,6 +47,7 @@ import {
   drawChoppingBlock,
   drawDarkRing,
   drawDen,
+  drawDizzyStars,
   drawFledPuff,
   drawGloamling,
   drawGloamlingEyes,
@@ -54,6 +56,7 @@ import {
   drawHealthBar,
   drawHeatMap,
   drawHero,
+  drawHeroFallen,
   drawHeroLoad,
   drawHuntingGround,
   drawMissingIcon,
@@ -146,6 +149,10 @@ interface HeroView {
   body: Graphics;
   /** Selection ring on the ground under the feet. */
   ring: Graphics;
+  /** The hero lying where it fell, shown instead of `body` while it's Knocked out. */
+  fallen: Graphics;
+  /** Stars circling over the fallen hero's head. */
+  dizzy: Graphics;
   /** Swings while the hero chops. */
   axe: Graphics;
   /** The goods in the hero's hands. */
@@ -581,6 +588,19 @@ export class WorldRenderer {
     return this.hero !== null && hitsNode(this.hero.node, sx, sy);
   }
 
+  /** The Gloamling drawn at screen point (sx, sy), the frontmost if several overlap. */
+  hitGloamling(sx: number, sy: number): EntityId | null {
+    let hit: EntityId | null = null;
+    let front = -Infinity;
+    for (const [id, node] of this.gloamlings) {
+      if (node.zIndex > front && hitsNode(node, sx, sy)) {
+        hit = id;
+        front = node.zIndex;
+      }
+    }
+    return hit;
+  }
+
   /** Rings villager `id`, or no villager when null. */
   setSelectedVillager(id: EntityId | null): void {
     this.selectedVillager = id;
@@ -601,7 +621,7 @@ export class WorldRenderer {
   }
 
   /**
-   * Marks every Workplace the sim says is boosted and, while the hero is selected, its aura
+   * Marks every Workplace the sim says is boosted and, while the hero is selected and up, its aura
    * radius. The radius is centred on the hero's tile, as the sim measures it, so it moves a tile
    * at a time.
    */
@@ -618,7 +638,7 @@ export class WorldRenderer {
     const heroId = heroOf(state);
     const h = heroId === null ? undefined : hero[heroId];
     const pos = heroId === null ? undefined : position[heroId];
-    if (this.heroSelected && h && pos) {
+    if (this.heroSelected && heroId !== null && h && pos && !isKnockedOut(state, heroId)) {
       const at = tileOfPoint(pos);
       drawAuraRadius(g, at.x + 0.5, at.y + 0.5, this.content.heroes[h.type].aura.radiusTiles);
     }
@@ -659,6 +679,13 @@ export class WorldRenderer {
     const chopping = hero?.order?.kind === 'gather' && !state.components.path[id];
     view.axe.visible = chopping;
     if (chopping) view.axe.rotation = -0.4 + Math.abs(Math.sin(timeMs / 160)) * 1.3;
+    // Knocked out: lying where it fell, stars circling its head, its load out of sight.
+    const out = isKnockedOut(state, id);
+    view.body.visible = !out;
+    view.load.visible = !out;
+    view.fallen.visible = out;
+    view.dizzy.visible = out;
+    if (out) view.dizzy.rotation = timeMs / 400;
   }
 
   private drawVillagers(
@@ -936,14 +963,21 @@ export class WorldRenderer {
       ring.visible = this.heroSelected;
       const body = new Graphics();
       drawHero(body);
+      const fallen = new Graphics();
+      drawHeroFallen(fallen);
+      fallen.visible = false;
+      const dizzy = new Graphics();
+      drawDizzyStars(dizzy);
+      dizzy.position.set(-22 * (TILE_H / 64), -24 * (TILE_H / 64));
+      dizzy.visible = false;
       const axe = new Graphics();
       drawAxe(axe);
       axe.position.set(11, -22);
       axe.visible = false;
       const load = new Graphics();
-      node.addChild(ring, body, axe, load);
+      node.addChild(ring, body, fallen, dizzy, axe, load);
       this.objects.addChild(node);
-      this.hero = { node, body, ring, axe, load, loadDrawn: '' };
+      this.hero = { node, body, fallen, dizzy, ring, axe, load, loadDrawn: '' };
     }
     return this.hero;
   }

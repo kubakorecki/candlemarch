@@ -281,7 +281,14 @@ export function createInitialState(
       throw new Error(`map ${map.name}: hero off the map or on unwalkable terrain at ${x},${y}`);
     }
     const id = createEntity(state);
-    state.components.hero[id] = { type: DEFAULT_HERO, carrying: null, order: null };
+    state.components.hero[id] = {
+      type: DEFAULT_HERO,
+      carrying: null,
+      order: null,
+      hp: content.combat.hero.hp,
+      readyAt: 0,
+      knockedOutUntil: null,
+    };
     state.components.position[id] = tileCenter({ x, y });
   }
 
