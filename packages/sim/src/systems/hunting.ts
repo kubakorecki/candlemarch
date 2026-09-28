@@ -1,5 +1,6 @@
 // Hunters: walk into the nearest Hunting ground in their lodge's radius that has Game, hunt, roll
 // for a catch with the seeded PRNG, and walk back to the lodge, with the catch or empty-handed.
+
 import type { Content, ResourceAmount } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
@@ -10,6 +11,7 @@ import { tileDistance } from '../pathfinding';
 import { randomInt } from '../rng';
 import { workTicks } from '../speed';
 import type { EntityId, GameState, Tile } from '../state';
+import { isAtWork } from '../villagers';
 import { isAt, villagerTile, walkTo } from './movement';
 
 /**
@@ -64,7 +66,7 @@ export function huntingSystem(state: GameState, content: Content): void {
     const task = tasks[id];
     const v = villager[id];
     // Still walking, or off work for the night.
-    if (!task || !v || path[id] || v.workplace === null || v.routine !== 'work') continue;
+    if (!task || !v || path[id] || v.workplace === null || !isAtWork(v)) continue;
     const lodgeId = v.workplace;
     const lodge = building[lodgeId];
     const origin = tile[lodgeId];

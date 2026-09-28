@@ -1060,6 +1060,19 @@ export function drawGloamlingEyes(g: Graphics, x: number, y: number): void {
   }
 }
 
+/** A health bar centred on (x, y): `hp` of `maxHp` filled from the left, in an ink frame. */
+export function drawHealthBar(g: Graphics, x: number, y: number, hp: number, maxHp: number): void {
+  const s = TILE_H / 64;
+  const w = 26 * s;
+  const h = 5 * s;
+  const left = x - w / 2;
+  const top = y - h / 2;
+  g.rect(left, top, w, h).fill(palette.healthLost);
+  const filled = (w * Math.max(0, Math.min(hp, maxHp))) / maxHp;
+  if (filled > 0) g.rect(left, top, filled, h).fill(palette.health);
+  g.rect(left, top, w, h).stroke({ ...INK, width: 1.5 });
+}
+
 /** A Gloamling, drawn around (0, 0) = its feet: a small hunched shadow, ragged at the hem. */
 export function drawGloamling(g: Graphics): void {
   g.clear();

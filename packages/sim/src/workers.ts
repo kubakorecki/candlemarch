@@ -50,12 +50,13 @@ export function reassignTargets(state: GameState, content: Content, id: EntityId
 }
 
 /**
- * Makes villager `id` a Carrier with no Workplace, from where it stands (it stops at the next
- * tile). Nothing in hand is lost: goods, and a hunter's bag, go to its Workplace's output buffer,
- * even if that overfills it, and a batch under way puts its inputs back in the input buffer. A
- * chop, catch or hunt under way is abandoned. A Carrier drops its haul (see `abandonHaul`). Leaves worker limits alone.
+ * Villager `id` puts down its work in hand and stops at the next tile, keeping its Job: nothing in
+ * hand is lost. Goods, and a hunter's bag, go to its Workplace's output buffer, even if that
+ * overfills it, and a batch under way puts its inputs back in the input buffer. A chop, catch or
+ * hunt under way is abandoned, and its task starts again from idle. A Carrier drops its haul (see
+ * `abandonHaul`). Unassigning uses it, and so does a villager a Gloamling reaches.
  */
-function release(state: GameState, content: Content, id: EntityId): void {
+export function dropWork(state: GameState, content: Content, id: EntityId): void {
   const v = state.components.villager[id];
   if (!v) return;
   abandonHaul(state, id);
@@ -77,6 +78,15 @@ function release(state: GameState, content: Content, id: EntityId): void {
   }
   v.carrying = null;
   stopAtNextTile(state, id);
+  assignJob(state, content, id, v.job, v.workplace);
+}
+
+/**
+ * Makes villager `id` a Carrier with no Workplace, from where it stands, once it has dropped its
+ * work (`dropWork`). Leaves worker limits alone.
+ */
+function release(state: GameState, content: Content, id: EntityId): void {
+  dropWork(state, content, id);
   assignJob(state, content, id, 'carrier', null);
 }
 

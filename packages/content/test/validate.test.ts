@@ -318,6 +318,17 @@ describe('content validation', () => {
     expectPositiveInt(budding.maxDens, 'dens.budding.maxDens');
   });
 
+  it('fighters use positive whole numbers', () => {
+    const { gloamling, villager } = content.combat;
+    for (const [name, f] of Object.entries({ gloamling, villager })) {
+      for (const key of ['hp', 'damage', 'cooldownTicks', 'reachTiles'] as const) {
+        expectPositiveInt(f[key], `combat.${name}.${key}`);
+      }
+    }
+    expectPositiveInt(gloamling.walkSpeed, 'combat.gloamling.walkSpeed');
+    expectPositiveInt(gloamling.sightTiles, 'combat.gloamling.sightTiles');
+  });
+
   it('every resource has a known store', () => {
     for (const r of Object.values(resources)) {
       expect(['stockpile', 'granary'], `${r.id}.storage`).toContain(r.storage);

@@ -227,6 +227,25 @@ export interface DensDef {
   };
 }
 
+/**
+ * A fighter's numbers (M3 combat): whole HP, damage a hit, ticks between hits, and reach in tiles
+ * (Chebyshev distance between the tiles they stand on; 1 is an adjacent tile).
+ */
+export interface FighterDef {
+  hp: number;
+  damage: number;
+  cooldownTicks: number;
+  reachTiles: number;
+}
+
+/** Auto-resolved night combat (M3). */
+export interface CombatDef {
+  /** The night monster. It walks at `walkSpeed` (milli-tiles per tick) and sees `sightTiles` far. */
+  gloamling: FighterDef & { walkSpeed: number; sightTiles: number };
+  /** Every villager, whatever its Job. Back to full HP at Dawn. */
+  villager: FighterDef;
+}
+
 /** Hunting grounds: forest regions holding Game, which logging drives away. */
 export interface HuntingDef {
   /** The map object a ground's forest is made of: felling one lowers the ground's ceiling. */
@@ -306,6 +325,7 @@ export interface Content {
   immigration: ImmigrationDef;
   alerts: AlertsDef;
   dens: DensDef;
+  combat: CombatDef;
   /** First names new villagers are drawn from. */
   villagerNames: readonly string[];
 }

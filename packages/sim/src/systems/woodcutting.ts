@@ -1,4 +1,5 @@
 // Woodcutters: walk to the nearest tree, chop, carry the logs to their hut's output buffer, repeat.
+
 import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
@@ -7,6 +8,7 @@ import { doorTile } from '../grid';
 import { fellTree } from '../huntingGrounds';
 import { workTicks } from '../speed';
 import type { EntityId, GameState } from '../state';
+import { isAtWork } from '../villagers';
 import { isAt, walkTo } from './movement';
 
 export function woodcuttingSystem(state: GameState, content: Content): void {
@@ -16,7 +18,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
     const task = tasks[id];
     const v = villager[id];
     // Still walking, or off work for the night.
-    if (!task || !v || path[id] || v.routine !== 'work') continue;
+    if (!task || !v || path[id] || !isAtWork(v)) continue;
 
     const job = content.jobs[v.job];
     const hutId = v.workplace;

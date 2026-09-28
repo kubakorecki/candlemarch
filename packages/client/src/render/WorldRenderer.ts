@@ -8,6 +8,8 @@ import {
   type GameState,
   type GroundHealth,
   groundHealth,
+  type HealthBar,
+  healthBars,
   heroOf,
   idsOf,
   isColdHouse,
@@ -49,6 +51,7 @@ import {
   drawGloamlingEyes,
   drawGoodsStack,
   drawGround,
+  drawHealthBar,
   drawHeatMap,
   drawHero,
   drawHeroLoad,
@@ -261,6 +264,10 @@ export class WorldRenderer {
   /** Gloamlings' eyes, added over the darkness like `lights` so they shine at night. Per frame. */
   private readonly eyes = new Graphics({ blendMode: 'add' });
   private readonly gloamlings = new Map<EntityId, Container>();
+  /** Health bars over everyone in a fight, above the darkness so they read at night. Per frame. */
+  private readonly healthBars = new Graphics();
+  private bars: HealthBar[] = [];
+  private barsState: GameState | null = null;
   private readonly statics = new Map<string, StaticView>();
   private readonly villagers = new Map<EntityId, VillagerView>();
   private hero: HeroView | null = null;
@@ -296,7 +303,7 @@ export class WorldRenderer {
       this.puffLabels,
       this.ghost,
     );
-    this.app.stage.addChild(this.world, this.night, this.lights, this.eyes);
+    this.app.stage.addChild(this.world, this.night, this.lights, this.eyes, this.healthBars);
   }
 
   get canvas(): HTMLCanvasElement {
@@ -319,6 +326,8 @@ export class WorldRenderer {
     this.lights.scale.set(camera.zoom);
     this.eyes.position.set(origin.x, origin.y);
     this.eyes.scale.set(camera.zoom);
+    this.healthBars.position.set(origin.x, origin.y);
+    this.healthBars.scale.set(camera.zoom);
   }
 
   /** Brings trees, buildings and sites in line with a new snapshot. */
@@ -459,10 +468,38 @@ export class WorldRenderer {
     this.drawVillagers(state, prevPositions, alpha, timeMs);
     this.drawHero(state, prevPositions, alpha, timeMs);
     this.drawGloamlings(state, prevPositions, alpha, timeMs);
+    this.drawHealthBars(state, prevPositions, alpha);
     this.drawPuffs(timeMs);
   }
 
-  /** Gloamlings, swaying where they stand, with their eyes on the `eyes` layer too. */
+  /** A health bar over each villager and Gloamling in a fight (the sim's `healthBars`). */
+  private drawHealthBars(
+    state: GameState,
+    prevPositions: Record<EntityId, Point>,
+    alpha: number,
+  ): void {
+    if (state !== this.barsState) {
+      this.bars = healthBars(state, this.content);
+      this.barsState = state;
+    }
+    const g = this.healthBars;
+    g.clear();
+    const s = TILE_H / 64;
+    for (const bar of this.bars) {
+      const to = state.components.position[bar.id];
+      if (!to) continue;
+      const at = interpolate(prevPositions[bar.id] ?? to, to, alpha);
+      const w = gridToWorld(at.x, at.y);
+      // Over a Gloamling's head, or over a villager's status icons.
+      const above = state.components.gloamling[bar.id] ? 36 : 82;
+      drawHealthBar(g, w.x, w.y - above * s, bar.hp, bar.maxHp);
+    }
+  }
+
+  /**
+   * Gloamlings, swaying where they stand and scuttling (a quick hop) as they walk, with their eyes
+   * on the `eyes` layer too.
+   */
   private drawGloamlings(
     state: GameState,
     prevPositions: Record<EntityId, Point>,
@@ -485,12 +522,15 @@ export class WorldRenderer {
         this.objects.addChild(node);
         this.gloamlings.set(id, node);
       }
-      const g = interpolate(prevPositions[id] ?? to, to, alpha);
+      const from = prevPositions[id] ?? to;
+      const g = interpolate(from, to, alpha);
       const w = gridToWorld(g.x, g.y);
-      const sway = Math.sin(timeMs / 300 + id) * 2 * (TILE_H / 64);
-      node.position.set(w.x + sway, w.y);
+      const walking = from.x !== to.x || from.y !== to.y;
+      const sway = walking ? 0 : Math.sin(timeMs / 300 + id) * 2 * (TILE_H / 64);
+      const hop = walking ? Math.abs(Math.sin(timeMs / 70 + id)) * 4 * (TILE_H / 64) : 0;
+      node.position.set(w.x + sway, w.y - hop);
       node.zIndex = depthOf(g.x, g.y) + 0.01;
-      drawGloamlingEyes(this.eyes, w.x + sway, w.y);
+      drawGloamlingEyes(this.eyes, w.x + sway, w.y - hop);
     }
     for (const [id, node] of this.gloamlings) {
       if (!seen.has(id)) {

@@ -94,6 +94,9 @@ export const palette = {
   gloamLight: 0x433d4d,
   gloamEye: 0xd9e3a4,
   darkRing: 0x221c2a,
+  // Health bars over anyone in a fight: what's left, and the empty part of the bar.
+  health: 0xb8503f,
+  healthLost: 0x2a2226,
 
   valid: 0x9dbf73,
   invalid: 0xc4584a,

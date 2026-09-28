@@ -3,7 +3,7 @@ import type { Content, JobId } from '@candlemarch/content';
 import { createEntity } from './entities';
 import { tileCenter } from './grid';
 import { randomInt } from './rng';
-import type { EntityId, GameState, Tile } from './state';
+import type { EntityId, GameState, Tile, VillagerComponent } from './state';
 
 /**
  * Draws a name for a new villager with the state's PRNG: one no living villager has, while any
@@ -26,6 +26,11 @@ export function fallbackVillagerName(id: EntityId, content: Content): string {
   const name = pool[(id - 1) % pool.length];
   if (name === undefined) throw new Error('content has no villager names');
   return name;
+}
+
+/** Whether villager `v` is at its Job: its routine is `work` and it isn't fighting. */
+export function isAtWork(v: VillagerComponent): boolean {
+  return v.routine === 'work' && !v.fighting;
 }
 
 /**
@@ -80,6 +85,9 @@ export function spawnVillager(
     tired: false,
     missedMeals: 0,
     coldNights: 0,
+    hp: content.combat.villager.hp,
+    readyAt: 0,
+    fighting: false,
   };
   state.components.position[id] = tileCenter(tile);
   assignJob(state, content, id, job, workplace);

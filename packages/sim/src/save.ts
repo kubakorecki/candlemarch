@@ -61,6 +61,14 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     v.tired ??= false;
     v.missedMeals ??= 0;
     v.coldNights ??= 0;
+    v.hp ??= content.combat.villager.hp;
+    v.readyAt ??= 0;
+    v.fighting ??= false;
+  }
+  for (const g of Object.values(state.components.gloamling)) {
+    g.hp ??= content.combat.gloamling.hp;
+    g.readyAt ??= 0;
+    g.target ??= null;
   }
   for (const hero of Object.values(state.components.hero)) {
     hero.carrying ??= null;

@@ -1,5 +1,6 @@
 // Foragers: walk to the nearest forage patch in their hut's radius that has stock and shade,
 // gather, carry the Food back to the hut's output buffer, repeat. Patches stay when emptied.
+
 import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
@@ -8,6 +9,7 @@ import { gatherTargets, outputRoom, walkToNearest } from '../gathering';
 import { doorTile } from '../grid';
 import { workTicks } from '../speed';
 import type { GameState } from '../state';
+import { isAtWork } from '../villagers';
 import { isAt, walkTo } from './movement';
 
 export function foragingSystem(state: GameState, content: Content): void {
@@ -17,7 +19,7 @@ export function foragingSystem(state: GameState, content: Content): void {
     const task = tasks[id];
     const v = villager[id];
     // Still walking, or off work for the night.
-    if (!task || !v || path[id] || v.workplace === null || v.routine !== 'work') continue;
+    if (!task || !v || path[id] || v.workplace === null || !isAtWork(v)) continue;
     const hutId = v.workplace;
     const hut = building[hutId];
     const origin = tile[hutId];

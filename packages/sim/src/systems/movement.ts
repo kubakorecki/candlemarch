@@ -110,17 +110,18 @@ function segmentLength(width: number, from: number, to: number): number {
   return diagonal ? DIAGONAL_UNITS : TILE_UNITS;
 }
 
-/** Off-road walking speed of a villager (from its Job) or hero, in milli-tiles per tick. */
+/** Off-road walking speed of a villager (from its Job), hero or Gloamling, in milli-tiles per tick. */
 function walkSpeedOf(state: GameState, content: Content, id: EntityId): number | undefined {
   const job = state.components.villager[id]?.job;
   if (job !== undefined) return content.jobs[job].walkSpeed;
   const hero = state.components.hero[id]?.type;
   if (hero !== undefined) return content.heroes[hero].walkSpeed;
+  if (state.components.gloamling[id]) return content.combat.gloamling.walkSpeed;
   return undefined;
 }
 
 /**
- * Advances every walker (villagers and the hero) by its walk speed, faster on roads and slower
+ * Advances every walker (villagers, the hero and Gloamlings) by its walk speed, faster on roads and slower
  * for a slowed villager (`speedPercent`). Removes the walk (its `PathComponent`) on arrival.
  * Counts each Carrier step onto a Road tile (`countStep`) for road traffic.
  */

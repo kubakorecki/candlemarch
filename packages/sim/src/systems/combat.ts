@@ -1,0 +1,211 @@
+// Night combat, resolved on its own. Each tick every Gloamling picks what to go for and walks
+// there; a villager a Gloamling reaches drops its work and hits back; then everyone in reach and
+// off cooldown hits, in entity-ID order, so the same fight always ends the same way. Villagers are
+// back to full HP at Dawn.
+import type { Content } from '@candlemarch/content';
+import { isDawn } from '../calendar';
+import {
+  attackersOf,
+  chebyshev,
+  inReach,
+  isEngaged,
+  isLivedInHouse,
+  isOutInTheOpen,
+  opponentOf,
+  targetTile,
+} from '../combat';
+import { killVillager } from '../deaths';
+import { destroyEntity, idsOf } from '../entities';
+import { entityDoor, tileIndex } from '../grid';
+import { type Grid, travelCosts } from '../pathfinding';
+import type { EntityId, GameState, Tile } from '../state';
+import { dropWork } from '../workers';
+import { isAt, rerouteTo, stopAtNextTile, villagerTile, walkGrid } from './movement';
+
+/** Walking costs from a tile to every tile, worked out at most once a tick per tile. */
+type CostsFrom = (tile: Tile) => Float64Array;
+
+export function combatSystem(state: GameState, content: Content): void {
+  const { villager, gloamling } = state.components;
+  if (isDawn(state.tick, content)) {
+    for (const id of idsOf(villager)) {
+      const v = villager[id];
+      if (v) v.hp = content.combat.villager.hp;
+    }
+  }
+  const gloamlings = idsOf(gloamling);
+  if (gloamlings.length === 0) {
+    for (const id of idsOf(villager)) {
+      const v = villager[id];
+      if (v) v.fighting = false;
+    }
+    return;
+  }
+
+  let grid: Grid | null = null;
+  const cache = new Map<number, Float64Array>();
+  const costsFrom: CostsFrom = (tile) => {
+    const i = tileIndex(state.map, tile.x, tile.y);
+    let costs = cache.get(i);
+    if (!costs) {
+      grid ??= walkGrid(state, content);
+      costs = travelCosts(grid, i);
+      cache.set(i, costs);
+    }
+    return costs;
+  };
+  for (const id of gloamlings) pickTarget(state, content, id, costsFrom);
+  for (const id of gloamlings) chase(state, content, id);
+  engage(state, content);
+  resolveHits(state, content);
+}
+
+/** Whether Gloamling `target` is still worth going for. */
+function stillTarget(state: GameState, content: Content, target: EntityId): boolean {
+  if (state.components.building[target]) return isLivedInHouse(state, content, target);
+  return isOutInTheOpen(state, content, target);
+}
+
+/**
+ * Gloamling `id` keeps its villager or Hero until it's gone or safe asleep at Home. Otherwise it
+ * goes for the nearest (walking cost) villager out in the open or Hero within its sight, ties to
+ * the lowest ID; with none in sight, for the nearest lived-in House it can walk to.
+ */
+function pickTarget(state: GameState, content: Content, id: EntityId, costsFrom: CostsFrom): void {
+  const g = state.components.gloamling[id];
+  const here = villagerTile(state, id);
+  if (!g || !here) return;
+  if (g.target !== null && !stillTarget(state, content, g.target)) g.target = null;
+  if (g.target !== null && !state.components.building[g.target]) return;
+
+  const { villager, hero } = state.components;
+  const sight = content.combat.gloamling.sightTiles;
+  const inSight = [...idsOf(villager), ...idsOf(hero)]
+    .sort((a, b) => a - b)
+    .filter((c) => {
+      const t = villagerTile(state, c);
+      return t !== null && chebyshev(t, here) <= sight && isOutInTheOpen(state, content, c);
+    });
+  if (inSight.length > 0) {
+    const nearest = nearestBy(inSight, costsFrom(here), (c) => villagerTile(state, c), state);
+    if (nearest !== null) {
+      g.target = nearest;
+      return;
+    }
+  }
+  if (g.target !== null) return; // keeps heading for its House
+  const houses = idsOf(state.components.building).filter((b) => isLivedInHouse(state, content, b));
+  g.target = nearestBy(houses, costsFrom(here), (b) => entityDoor(state, content, b), state);
+}
+
+/** Of `ids` (ascending), the one whose tile costs least in `costs`, ties to the lowest ID. */
+function nearestBy(
+  ids: readonly EntityId[],
+  costs: Float64Array,
+  tileOf: (id: EntityId) => Tile | null,
+  state: GameState,
+): EntityId | null {
+  let best: { id: EntityId; cost: number } | null = null;
+  for (const id of ids) {
+    const t = tileOf(id);
+    if (!t) continue;
+    const cost = costs[tileIndex(state.map, t.x, t.y)] ?? Number.POSITIVE_INFINITY;
+    if (cost !== Number.POSITIVE_INFINITY && (!best || cost < best.cost)) best = { id, cost };
+  }
+  return best?.id ?? null;
+}
+
+/**
+ * Walks Gloamling `id` toward its target, following it as it moves: to a villager's or the Hero's
+ * tile until it's in reach, or to a House's door, where it waits. It stops at the next tile when
+ * it has nothing to go for, and gives up a target it can't walk to.
+ */
+function chase(state: GameState, content: Content, id: EntityId): void {
+  const g = state.components.gloamling[id];
+  if (!g) return;
+  if (g.target === null) {
+    stopAtNextTile(state, id);
+    return;
+  }
+  if (isEngaged(state, content, id)) {
+    stopAtNextTile(state, id);
+    return;
+  }
+  const goal = targetTile(state, content, g.target);
+  if (!goal) {
+    g.target = null;
+    return;
+  }
+  const path = state.components.path[id];
+  if (path && path.tiles[path.tiles.length - 1] === tileIndex(state.map, goal.x, goal.y)) return;
+  if (isAt(state, id, goal)) return;
+  if (!rerouteTo(state, content, id, [goal])) g.target = null;
+}
+
+/**
+ * A villager a Gloamling reaches starts fighting: it drops its work (the unassign rule, keeping
+ * its Job) and stands. It stops once none is left in reach, and its routine carries on.
+ */
+function engage(state: GameState, content: Content): void {
+  const { villager } = state.components;
+  for (const id of idsOf(villager)) {
+    const v = villager[id];
+    if (!v) continue;
+    const attacked = attackersOf(state, content, id).length > 0;
+    if (attacked && !v.fighting) {
+      dropWork(state, content, id);
+      v.fighting = true;
+    } else if (!attacked) {
+      v.fighting = false;
+    }
+  }
+}
+
+/**
+ * Everyone in reach of its foe and off cooldown hits once, in entity-ID order: a Gloamling its
+ * target, a fighting villager its opponent. Whoever drops to 0 HP is gone before its turn comes.
+ */
+function resolveHits(state: GameState, content: Content): void {
+  const { villager, gloamling } = state.components;
+  const fighters = [
+    ...idsOf(villager).filter((id) => villager[id]?.fighting),
+    ...idsOf(gloamling),
+  ].sort((a, b) => a - b);
+  for (const id of fighters) {
+    const g = gloamling[id];
+    if (g) {
+      const { damage, cooldownTicks, reachTiles } = content.combat.gloamling;
+      if (g.target === null || state.tick < g.readyAt) continue;
+      if (state.components.building[g.target] || !inReach(state, id, g.target, reachTiles)) {
+        continue;
+      }
+      g.readyAt = state.tick + cooldownTicks;
+      hurt(state, content, g.target, damage);
+      continue;
+    }
+    const v = villager[id];
+    if (!v?.fighting || state.tick < v.readyAt) continue;
+    const foe = opponentOf(state, content, id);
+    if (foe === null || !inReach(state, id, foe, content.combat.villager.reachTiles)) continue;
+    v.readyAt = state.tick + content.combat.villager.cooldownTicks;
+    hurt(state, content, foe, content.combat.villager.damage);
+  }
+}
+
+/**
+ * Takes `damage` off `id`: a villager at 0 HP dies of it, a Gloamling is gone. The Hero takes no
+ * damage until it has HP (M3 ticket 05).
+ */
+function hurt(state: GameState, content: Content, id: EntityId, damage: number): void {
+  const v = state.components.villager[id];
+  if (v) {
+    v.hp -= damage;
+    if (v.hp <= 0) killVillager(state, content, id, 'gloamling');
+    return;
+  }
+  const g = state.components.gloamling[id];
+  if (g) {
+    g.hp -= damage;
+    if (g.hp <= 0) destroyEntity(state, id);
+  }
+}

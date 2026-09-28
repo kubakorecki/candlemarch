@@ -41,7 +41,12 @@ function spawnGloamlings(state: GameState, content: Content): void {
     if (!at) continue;
     for (let i = 0; i < count; i++) {
       const id = createEntity(state);
-      state.components.gloamling[id] = { den: denId };
+      state.components.gloamling[id] = {
+        den: denId,
+        hp: content.combat.gloamling.hp,
+        readyAt: 0,
+        target: null,
+      };
       state.components.position[id] = tileCenter(at);
     }
   }

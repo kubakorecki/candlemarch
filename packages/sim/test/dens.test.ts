@@ -63,7 +63,12 @@ describe('Den spawns', () => {
     const s = run(before, 1);
     const [g] = gloamlings(s);
     expect(gloamlings(s)).toHaveLength(1);
-    expect(s.components.gloamling[g as number]).toEqual({ den: 1 });
+    expect(s.components.gloamling[g as number]).toEqual({
+      den: 1,
+      hp: 20,
+      readyAt: 0,
+      target: null,
+    });
     expect(s.components.position[g as number]).toEqual(tileCenter({ x: 38, y: 6 }));
     // No more come out later in the night.
     expect(gloamlings(run(s, 100))).toHaveLength(1);

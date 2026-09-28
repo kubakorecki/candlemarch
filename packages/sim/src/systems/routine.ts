@@ -130,6 +130,8 @@ export function routineSystem(state: GameState, content: Content): void {
       continue;
     }
 
+    // Standing its ground against a Gloamling (`systems/combat.ts`): its routine waits.
+    if (v.fighting) continue;
     switch (v.routine) {
       case 'work': {
         if (!finishWork(state, id)) seekMeal(state, content, id);

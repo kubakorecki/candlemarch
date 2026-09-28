@@ -136,6 +136,15 @@ export interface VillagerComponent {
   missedMeals: number;
   /** Cold nights in a row (a cold season's night in a cold House or in the open). Cold at 1 or more. */
   coldNights: number;
+  /** Hit points, whole. Back to full at Dawn; it dies at 0 (`systems/combat.ts`). */
+  hp: number;
+  /** First tick it can hit again. */
+  readyAt: number;
+  /**
+   * A Gloamling going for it is in reach: it has dropped its work and stands its ground, hitting
+   * back, until none is. Its `routine` carries on from there afterwards.
+   */
+  fighting: boolean;
 }
 
 /**
@@ -236,6 +245,15 @@ export type DenComponent = Record<string, never>;
 export interface GloamlingComponent {
   /** The Den it came out of. */
   den: EntityId;
+  /** Hit points, whole. It's gone at 0. */
+  hp: number;
+  /** First tick it can hit again. */
+  readyAt: number;
+  /**
+   * What it's going for: a villager out in the open, the Hero, or (with neither in sight) a
+   * lived-in House, whose door it walks to. Null with nothing to go for.
+   */
+  target: EntityId | null;
 }
 
 export interface Components {
@@ -260,7 +278,7 @@ export interface Components {
 }
 
 /** How a villager died. */
-export type DeathCause = 'starvation' | 'freezing';
+export type DeathCause = 'starvation' | 'freezing' | 'gloamling';
 
 /** A villager's death, kept for the message log and alerts. */
 export interface Death {

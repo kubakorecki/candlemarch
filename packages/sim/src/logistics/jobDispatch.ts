@@ -9,6 +9,7 @@ import { tileDistance, travelCosts } from '../pathfinding';
 import type { EntityId, GameState, Store, Tile } from '../state';
 import { addToTile, amountOnTile, roomOnTile, takeFromTile } from '../stockpiles';
 import { isAt, stopAtNextTile, villagerTile, walkGrid, walkTo } from '../systems/movement';
+import { isAtWork } from '../villagers';
 import { isHouse } from '../warmth';
 import {
   canServe,
@@ -447,8 +448,9 @@ export function updateHauls(state: GameState, content: Content): void {
     if (haul) advanceHaul(state, content, id, haul);
     // A carrier freed this tick waits until the next one; this keeps each step simple. No new
     // Haul starts after Dusk.
-    else if (!state.components.path[id] && !night && villager[id]?.routine === 'work') {
-      dispatch(state, content, id);
+    else {
+      const v = villager[id];
+      if (v && !state.components.path[id] && !night && isAtWork(v)) dispatch(state, content, id);
     }
   }
 }

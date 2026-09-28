@@ -35,7 +35,11 @@ export function alertText(alert: Alert): string {
   }
 }
 
-const DIED: Record<DeathCause, string> = { starvation: 'starved', freezing: 'froze' };
+const DIED: Record<DeathCause, string> = {
+  starvation: 'starved',
+  freezing: 'froze',
+  gloamling: 'was killed by a Gloamling',
+};
 
 /** A message-log line: "Ada starved, day 14". */
 export function deathText(death: Death): string {

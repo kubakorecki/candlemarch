@@ -1,6 +1,6 @@
 # Gloamling movement and auto-resolve combat
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 01, 03
 
@@ -20,3 +20,7 @@ Rules in `docs/spec.md`, "Nights in v1 (M3)" (Gloamling, Combat, Targets). Numbe
 
 - Headless tests: a Gloamling goes for the nearest target; ties by ID; a one-on-one fight resolves the same way every run; deaths are recorded with their cause; HP resets at Dawn; save/load mid-fight.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-28 — Done. Content `combat` (Gloamling, villager fighters), `systems/combat.ts` (10th in the tick: targeting, chasing, fighting back, hits in ID order, HP back at Dawn), derived helpers in `sim/src/combat.ts`, `villager.hp/readyAt/fighting` and Gloamling `hp/readyAt/target` (saves backfill), death cause `gloamling`. Client: Gloamlings walk (with a hop), health bars over anyone in a fight, death text. Differences: the Hero is targeted and swung at but takes no damage until ticket 05 gives it HP. Reach and sight are Chebyshev tile distances; sight filters, walking cost picks. A fighting villager's routine pauses and carries on afterwards (`isAtWork` gates work). Details in `docs/decisions.md`.

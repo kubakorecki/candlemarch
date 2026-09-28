@@ -1,11 +1,13 @@
 // Fishers: stand at their hut's door on the riverbank and fish, putting each catch straight into
 // the hut's output buffer. Fish never run out; nothing is caught while the river is frozen.
+
 import type { Content } from '@candlemarch/content';
 import { isRiverFrozen } from '../calendar';
 import { idsOf } from '../entities';
 import { doorTile } from '../grid';
 import { workTicks } from '../speed';
 import type { GameState } from '../state';
+import { isAtWork } from '../villagers';
 import { isAt, walkTo } from './movement';
 
 export function fishingSystem(state: GameState, content: Content): void {
@@ -15,7 +17,7 @@ export function fishingSystem(state: GameState, content: Content): void {
     const task = tasks[id];
     const v = villager[id];
     // Still walking, or off work for the night.
-    if (!task || !v || path[id] || v.workplace === null || v.routine !== 'work') continue;
+    if (!task || !v || path[id] || v.workplace === null || !isAtWork(v)) continue;
     const hutId = v.workplace;
     const hut = building[hutId];
     const origin = tile[hutId];

@@ -48,6 +48,9 @@ describe('death and winter text', () => {
   it('logs a death with its day', () => {
     expect(deathText({ name: 'Ada', cause: 'starvation', day: 14 })).toBe('Ada starved, day 14');
     expect(deathText({ name: 'Oda', cause: 'freezing', day: 17 })).toBe('Oda froze, day 17');
+    expect(deathText({ name: 'Wynn', cause: 'gloamling', day: 3 })).toBe(
+      'Wynn was killed by a Gloamling, day 3',
+    );
   });
 
   it('says how the game ended', () => {
