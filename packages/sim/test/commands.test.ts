@@ -14,7 +14,12 @@ describe('placeBuilding', () => {
     const sites = idsOf(s.components.site);
     expect(sites).toHaveLength(1);
     const id = sites[0] as number;
-    expect(s.components.site[id]).toEqual({ type: 'hut', delivered: {}, buildProgress: 0 });
+    expect(s.components.site[id]).toEqual({
+      type: 'hut',
+      rotation: 0,
+      delivered: {},
+      buildProgress: 0,
+    });
     expect(s.components.tile[id]).toEqual({ x: 4, y: 4 });
   });
 

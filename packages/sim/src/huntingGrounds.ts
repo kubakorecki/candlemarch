@@ -3,7 +3,8 @@
 import type { BuildingId, Content } from '@candlemarch/content';
 import { destroyEntity, idsOf } from './entities';
 import { inWorkRadius } from './gathering';
-import type { EntityId, GameState, HuntingGroundComponent, Tile } from './state';
+import { buildingLayout } from './grid';
+import type { EntityId, GameState, HuntingGroundComponent, Rotation, Tile } from './state';
 
 /** The health word for a ground, from its Game as a share of its max Game. */
 export type GroundHealth = 'thriving' | 'thinning' | 'scarce' | 'empty';
@@ -45,8 +46,11 @@ export function groundsNear(
   content: Content,
   type: BuildingId,
   origin: Tile,
+  rotation: Rotation = 0,
 ): EntityId[] {
-  const { size, workRadius } = content.buildings[type];
+  const def = content.buildings[type];
+  const { size } = buildingLayout(def, origin, rotation);
+  const { workRadius } = def;
   const r = workRadius ?? Number.POSITIVE_INFINITY;
   return idsOf(state.components.huntingGround).filter((g) => {
     const ground = state.components.huntingGround[g];
@@ -69,7 +73,7 @@ export function groundsNear(
 export function groundsInReach(state: GameState, content: Content, id: EntityId): EntityId[] {
   const b = state.components.building[id];
   const origin = state.components.tile[id];
-  return b && origin ? groundsNear(state, content, b.type, origin) : [];
+  return b && origin ? groundsNear(state, content, b.type, origin, b.rotation) : [];
 }
 
 /** Forest map objects (content `hunting.forest`) standing in `ground`. */

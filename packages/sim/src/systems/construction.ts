@@ -22,6 +22,7 @@ export function constructionSystem(state: GameState, content: Content): void {
       delete sites[id];
       building[id] = {
         type: site.type,
+        rotation: site.rotation,
         stock: {},
         input: {},
         workerLimit: maxWorkers(content, site.type),

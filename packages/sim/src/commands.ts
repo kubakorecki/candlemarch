@@ -4,7 +4,14 @@ import { createEntity, destroyEntity } from './entities';
 import { canPlaceBuilding } from './grid';
 import { type HeroOrder, orderHero } from './hero';
 import { layPath, removePath } from './roads';
-import type { EntityId, GameState, StockpilePriority, Tile } from './state';
+import {
+  type EntityId,
+  type GameState,
+  isRotation,
+  type Rotation,
+  type StockpilePriority,
+  type Tile,
+} from './state';
 import {
   isStockpileGood,
   placeStockpile,
@@ -14,7 +21,14 @@ import {
 import { reassignWorker, setWorkerLimit, unassignWorker } from './workers';
 
 export type Command =
-  | { type: 'placeBuilding'; building: BuildingId; x: number; y: number }
+  | {
+      type: 'placeBuilding';
+      building: BuildingId;
+      x: number;
+      y: number;
+      /** Quarter turns clockwise from the content layout; 0 when omitted. */
+      rotation?: Rotation;
+    }
   | { type: 'cancelConstruction'; siteId: EntityId }
   | { type: 'layPath'; from: Tile; to: Tile }
   | { type: 'removePath'; from: Tile; to: Tile }
@@ -31,11 +45,13 @@ export type Command =
 export function applyCommand(state: GameState, command: Command, content: Content): void {
   switch (command.type) {
     case 'placeBuilding': {
-      const { building, x, y } = command;
-      if (!canPlaceBuilding(state, content, building, x, y)) return;
+      const { building, x, y, rotation = 0 } = command;
+      if (!isRotation(rotation) || !canPlaceBuilding(state, content, building, x, y, rotation)) {
+        return;
+      }
       const id = createEntity(state);
       state.components.tile[id] = { x, y };
-      state.components.site[id] = { type: building, delivered: {}, buildProgress: 0 };
+      state.components.site[id] = { type: building, rotation, delivered: {}, buildProgress: 0 };
       return;
     }
     case 'cancelConstruction': {

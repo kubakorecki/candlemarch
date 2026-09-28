@@ -80,6 +80,7 @@ describe('worker limit', () => {
     const site = idsOf(placed.components.site)[0] as EntityId;
     placed.components.site[site] = {
       type: 'chopping_block',
+      rotation: 0,
       delivered: { logs: 3 },
       buildProgress: 0,
     };

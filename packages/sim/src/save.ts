@@ -47,7 +47,9 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     b.input ??= {};
     b.workerLimit ??= maxWorkers(content, b.type);
     b.cold ??= false;
+    b.rotation ??= 0;
   }
+  for (const site of Object.values(state.components.site)) site.rotation ??= 0;
   const { villager } = state.components;
   for (const id of idsOf(villager)) {
     const v = villager[id];

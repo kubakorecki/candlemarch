@@ -1,5 +1,6 @@
 // Placeholder art drawn in code: bold ink outlines, flat earthy fills. Colours come from palette.ts.
-import type { BuildingDef, ResourceAmount, ResourceId, TerrainId } from '@candlemarch/content';
+import type { ResourceAmount, ResourceId, TerrainId } from '@candlemarch/content';
+import type { BuildingLayout } from '@candlemarch/sim';
 import type { Graphics } from 'pixi.js';
 import { gridToWorld, TILE_H, TILE_W, type Vec } from './iso';
 import { palette } from './palette';
@@ -340,17 +341,44 @@ export function drawGoodsPile(
   }
 }
 
-/** Door rectangle on the front-left or front-right wall, if the door tile is in front of one. */
-function drawDoor(g: Graphics, def: BuildingDef, ox: number, oy: number): void {
-  const { w, h } = def.size;
+/** The side of its footprint a building's door tile is on. */
+export type DoorFace = 'south' | 'west' | 'north' | 'east';
+
+export function doorFace(layout: BuildingLayout): DoorFace {
+  const { origin, size, door } = layout;
+  if (door.y >= origin.y + size.h) return 'south';
+  if (door.x < origin.x) return 'west';
+  if (door.y < origin.y) return 'north';
+  return 'east';
+}
+
+/** North and west walls face away from the isometric camera. */
+function isBackFace(face: DoorFace): boolean {
+  return face === 'north' || face === 'west';
+}
+
+/**
+ * Grid offset from the door tile's centre to the goods pile beside it: one tile along the wall,
+ * turning with the door. A south door has its pile to the west.
+ */
+const PILE_BESIDE: Record<DoorFace, Vec> = {
+  south: { x: -0.8, y: 0.1 },
+  west: { x: -0.1, y: -0.8 },
+  north: { x: 0.8, y: -0.1 },
+  east: { x: 0.1, y: 0.8 },
+};
+
+/** Door rectangle on the front-left (south) or front-right (east) wall. */
+function drawDoor(g: Graphics, layout: BuildingLayout, face: DoorFace): void {
+  const { origin, size, door } = layout;
   let a: Vec;
   let b: Vec;
-  if (def.door.y === h) {
-    a = gridToWorld(ox + def.door.x + 0.25, oy + h);
-    b = gridToWorld(ox + def.door.x + 0.75, oy + h);
-  } else if (def.door.x === w) {
-    a = gridToWorld(ox + w, oy + def.door.y + 0.75);
-    b = gridToWorld(ox + w, oy + def.door.y + 0.25);
+  if (face === 'south') {
+    a = gridToWorld(door.x + 0.25, origin.y + size.h);
+    b = gridToWorld(door.x + 0.75, origin.y + size.h);
+  } else if (face === 'east') {
+    a = gridToWorld(origin.x + size.w, door.y + 0.75);
+    b = gridToWorld(origin.x + size.w, door.y + 0.25);
   } else {
     return;
   }
@@ -361,21 +389,53 @@ function drawDoor(g: Graphics, def: BuildingDef, ox: number, oy: number): void {
 }
 
 /**
- * A finished building in world coordinates: an iso box with a pyramid roof and a door.
- * `stock` draws a pile beside the door (the output buffer).
+ * A doorstep on the ground at `door`: where a door on a hidden back wall opens, and where a site's
+ * door will be. Its long side runs along the wall.
+ */
+function drawDoorstep(g: Graphics, door: Vec, face: DoorFace): void {
+  const along = face === 'north' || face === 'south';
+  const w = along ? 0.5 : 0.3;
+  const h = along ? 0.3 : 0.5;
+  const nearWall: Record<DoorFace, Vec> = {
+    south: { x: 0.25, y: 0 },
+    north: { x: 0.25, y: 0.7 },
+    west: { x: 0.7, y: 0.25 },
+    east: { x: 0, y: 0.25 },
+  };
+  const at = nearWall[face];
+  g.poly(flat(diamond(door.x + at.x, door.y + at.y, w, h)))
+    .fill(palette.door)
+    .stroke(THIN_INK);
+}
+
+/**
+ * A finished building in world coordinates: an iso box with a pyramid roof and a door on the wall
+ * it faces, or a doorstep on the ground when that wall is at the back. `stock` draws a pile beside
+ * the door (the output buffer).
  */
 export function drawBuilding(
   g: Graphics,
-  def: BuildingDef,
-  ox: number,
-  oy: number,
+  layout: BuildingLayout,
   stock: ResourceAmount | null,
 ): void {
   g.clear();
-  const [top, right, bottom, left] = diamond(ox, oy, def.size.w, def.size.h);
+  const { origin, size } = layout;
+  const face = doorFace(layout);
+  const back = isBackFace(face);
+  const drawPile = () => {
+    if (!stock || stock.amount <= 0) return;
+    const beside = PILE_BESIDE[face];
+    const at = gridToWorld(layout.door.x + 0.5 + beside.x, layout.door.y + 0.5 + beside.y);
+    drawGoodsPile(g, stock.resource, at.x, at.y, stock.amount);
+  };
+  // A pile behind the building goes first so the walls hide what they should.
+  if (back) drawPile();
+
+  const [top, right, bottom, left] = diamond(origin.x, origin.y, size.w, size.h);
   const centre = lerp(top, bottom, 0.5);
-  const wallH = WALL_H * (0.8 + 0.2 * def.size.w);
-  const roofH = ROOF_H * (0.7 + 0.3 * def.size.w);
+  const span = Math.max(size.w, size.h);
+  const wallH = WALL_H * (0.8 + 0.2 * span);
+  const roofH = ROOF_H * (0.7 + 0.3 * span);
   const apex = up(centre, wallH + roofH);
 
   g.poly(flat([top, right, bottom, left])).fill({ color: palette.shadow, alpha: 0.3 });
@@ -385,7 +445,7 @@ export function drawBuilding(
   g.poly(flat([bottom, right, up(right, wallH), up(bottom, wallH)]))
     .fill(palette.wallDark)
     .stroke(INK);
-  drawDoor(g, def, ox, oy);
+  drawDoor(g, layout, face);
 
   // Roof, with a little overhang: back faces first, then the two visible ones.
   const eave = (p: Vec) => up(lerp(centre, p, 1.12), wallH - 4);
@@ -403,29 +463,62 @@ export function drawBuilding(
     .fill(palette.roofDark)
     .stroke(INK);
 
-  if (stock && stock.amount > 0) {
-    const door = gridToWorld(ox + def.door.x + 0.5, oy + def.door.y + 0.5);
-    drawGoodsPile(g, stock.resource, door.x - TILE_H * 0.9, door.y - TILE_H * 0.35, stock.amount);
-  }
+  if (back) drawBackDoorMark(g, layout.door, face);
+  else drawPile();
 }
 
 /**
- * A chopping block on tile (ox, oy): a stump with an axe in it, the logs waiting to be split
- * behind it (`input`) and the firewood in front (`output`).
+ * A door on a hidden back wall: its doorstep and a small door standing on the door tile, drawn
+ * over the building so it stays readable.
+ */
+function drawBackDoorMark(g: Graphics, door: Vec, face: DoorFace): void {
+  drawDoorstep(g, door, face);
+  const s = TILE_H / 64;
+  const c = gridToWorld(door.x + 0.5, door.y + 0.5);
+  const w = 7 * s;
+  const h = 22 * s;
+  g.roundRect(c.x - w, c.y - h, w * 2, h, w)
+    .fill(palette.door)
+    .stroke(THIN_INK);
+  g.rect(c.x - w, c.y - h / 2, w * 2, h / 2).fill(palette.door);
+  g.moveTo(c.x - w, c.y - h / 2)
+    .lineTo(c.x - w, c.y)
+    .lineTo(c.x + w, c.y)
+    .lineTo(c.x + w, c.y - h / 2)
+    .stroke(THIN_INK);
+}
+
+/**
+ * A chopping block: a stump with an axe in it, wood chips where its worker stands at the door, the
+ * firewood (`output`) piled on the door side and the logs waiting to be split (`input`) behind.
+ * The axe handle leans towards the door.
  */
 export function drawChoppingBlock(
   g: Graphics,
-  ox: number,
-  oy: number,
+  layout: BuildingLayout,
   input: ResourceAmount | null,
   output: ResourceAmount | null,
 ): void {
   g.clear();
   const s = TILE_H / 64;
-  const c = gridToWorld(ox + 0.5, oy + 0.5);
-  if (input && input.amount > 0) {
-    drawGoodsPile(g, input.resource, c.x - 24 * s, c.y - 6 * s, input.amount);
-  }
+  const { origin, door } = layout;
+  const c = gridToWorld(origin.x + 0.5, origin.y + 0.5);
+  // Grid direction from the block to its door; piles sit along it, clear of the stump.
+  const dir = { x: door.x - origin.x, y: door.y - origin.y };
+  const toward = (t: number): Vec =>
+    gridToWorld(origin.x + 0.5 + dir.x * t, origin.y + 0.5 + dir.y * t);
+  const piles: { at: Vec; goods: ResourceAmount }[] = [];
+  if (output && output.amount > 0) piles.push({ at: toward(0.42), goods: output });
+  if (input && input.amount > 0) piles.push({ at: toward(-0.42), goods: input });
+  const drawPiles = (front: boolean) => {
+    for (const p of piles) {
+      if (p.at.y > c.y === front)
+        drawGoodsPile(g, p.goods.resource, p.at.x, p.at.y, p.goods.amount);
+    }
+  };
+
+  drawChips(g, gridToWorld(door.x + 0.5, door.y + 0.5), s);
+  drawPiles(false);
 
   const rx = 16 * s;
   const ry = 7 * s;
@@ -441,36 +534,64 @@ export function drawChoppingBlock(
     .stroke(INK);
   g.ellipse(c.x, c.y - h, rx * 0.5, ry * 0.5).stroke(THIN_INK);
 
-  // The axe, bitten into the top.
-  g.moveTo(c.x + 2 * s, c.y - h - 2 * s)
-    .lineTo(c.x + 14 * s, c.y - h - 22 * s)
+  // The axe, bitten into the top, its handle leaning to the door's side of the screen.
+  const side = toward(1).x < c.x ? -1 : 1;
+  const bite = { x: c.x + 2 * s * side, y: c.y - h - 2 * s };
+  const grip = { x: c.x + 14 * s * side, y: c.y - h - 22 * s };
+  g.moveTo(bite.x, bite.y)
+    .lineTo(grip.x, grip.y)
     .stroke({ width: 6 * s, color: palette.ink, cap: 'round' });
-  g.moveTo(c.x + 2 * s, c.y - h - 2 * s)
-    .lineTo(c.x + 14 * s, c.y - h - 22 * s)
+  g.moveTo(bite.x, bite.y)
+    .lineTo(grip.x, grip.y)
     .stroke({ width: 3 * s, color: palette.log, cap: 'round' });
-  g.poly([c.x - 6 * s, c.y - h - 6 * s, c.x + 4 * s, c.y - h - 2 * s, c.x - 2 * s, c.y - h + 3 * s])
+  g.poly([
+    c.x - 6 * s * side,
+    c.y - h - 6 * s,
+    c.x + 4 * s * side,
+    c.y - h - 2 * s,
+    c.x - 2 * s * side,
+    c.y - h + 3 * s,
+  ])
     .fill(palette.axeHead)
     .stroke(THIN_INK);
 
-  if (output && output.amount > 0) {
-    drawGoodsPile(g, output.resource, c.x + 20 * s, c.y + 12 * s, output.amount);
+  drawPiles(true);
+}
+
+/** A scatter of pale wood chips on the ground around `at`. */
+function drawChips(g: Graphics, at: Vec, s: number): void {
+  const chips: [number, number, number][] = [
+    [-12, -3, 0.4],
+    [-3, 4, -0.3],
+    [7, -4, 0.9],
+    [13, 3, 0.1],
+    [0, -7, -0.8],
+  ];
+  for (const [dx, dy, turn] of chips) {
+    const x = at.x + dx * s;
+    const y = at.y + dy * s;
+    const cos = Math.cos(turn) * 4 * s;
+    const sin = Math.sin(turn) * 2 * s;
+    g.poly([x - cos, y - sin, x + sin, y - cos / 2, x + cos, y + sin, x - sin, y + cos / 2])
+      .fill(palette.logEnd)
+      .stroke({ width: 1.5, color: palette.ink, alpha: 0.6 });
   }
 }
 
 /**
  * A construction site in world coordinates: a packed-earth plate, corner posts that rise
- * with build progress, and the logs delivered so far.
+ * with build progress, the logs delivered so far, and a doorstep where the door will be.
  */
 export function drawSite(
   g: Graphics,
-  def: BuildingDef,
-  ox: number,
-  oy: number,
+  layout: BuildingLayout,
   delivered: number,
   progress: number,
 ): void {
   g.clear();
-  const corners = diamond(ox, oy, def.size.w, def.size.h);
+  const { origin, size } = layout;
+  drawDoorstep(g, layout.door, doorFace(layout));
+  const corners = diamond(origin.x, origin.y, size.w, size.h);
   const [top, right, bottom, left] = corners;
   g.poly(flat(corners)).fill(palette.siteGround).stroke(INK);
   const inner = corners.map((p) => lerp(lerp(top, bottom, 0.5), p, 0.7));
@@ -564,8 +685,9 @@ export function drawAuraRadius(g: Graphics, gx: number, gy: number, radiusTiles:
 }
 
 /** Ground marking under a Workplace the hero's aura is boosting. */
-export function drawBoostedMark(g: Graphics, def: BuildingDef, ox: number, oy: number): void {
-  g.poly(flat(diamond(ox - 0.15, oy - 0.15, def.size.w + 0.3, def.size.h + 0.3)))
+export function drawBoostedMark(g: Graphics, layout: BuildingLayout): void {
+  const { origin, size } = layout;
+  g.poly(flat(diamond(origin.x - 0.15, origin.y - 0.15, size.w + 0.3, size.h + 0.3)))
     .fill({ color: palette.aura, alpha: 0.25 })
     .stroke({ width: 4, color: palette.aura, alpha: 0.9, join: 'round' });
 }
@@ -604,19 +726,15 @@ export function drawAxe(g: Graphics): void {
 }
 
 /** Placement preview: footprint tinted valid/invalid, plus the door tile outlined. */
-export function drawPlacementGhost(
-  g: Graphics,
-  def: BuildingDef,
-  ox: number,
-  oy: number,
-  valid: boolean,
-): void {
+export function drawPlacementGhost(g: Graphics, layout: BuildingLayout, valid: boolean): void {
   g.clear();
   const color = valid ? palette.valid : palette.invalid;
-  g.poly(flat(diamond(ox, oy, def.size.w, def.size.h)))
+  const { origin, size, door } = layout;
+  g.poly(flat(diamond(origin.x, origin.y, size.w, size.h)))
     .fill({ color, alpha: 0.45 })
     .stroke(INK);
-  g.poly(flat(diamond(ox + def.door.x, oy + def.door.y)))
+  drawDoorstep(g, door, doorFace(layout));
+  g.poly(flat(diamond(door.x, door.y)))
     .fill({ color, alpha: 0.15 })
     .stroke({ width: 2, color, alpha: 0.9 });
 }

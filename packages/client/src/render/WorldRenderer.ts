@@ -2,6 +2,7 @@
 import type { BuildingId, Content, JobId, ResourceAmount, ResourceId } from '@candlemarch/content';
 import {
   boostedWorkplaces,
+  buildingLayout,
   type EntityId,
   foodIds,
   type GameState,
@@ -13,6 +14,7 @@ import {
   isRiverFrozen,
   isWithered,
   type Point,
+  type Rotation,
   roadTraffic,
   type Tile,
   tileOfPoint,
@@ -206,7 +208,14 @@ function interpolate(from: Point, to: Point, alpha: number): { x: number; y: num
 
 /** Tool preview: a building footprint, or a set of tiles. */
 export type PlacementGhost =
-  | { kind: 'building'; type: BuildingId; x: number; y: number; valid: boolean }
+  | {
+      kind: 'building';
+      type: BuildingId;
+      x: number;
+      y: number;
+      rotation: Rotation;
+      valid: boolean;
+    }
   | { kind: 'tiles'; tiles: Tile[]; valid: boolean };
 
 export class WorldRenderer {
@@ -331,6 +340,8 @@ export class WorldRenderer {
       const at = tile[id];
       if (!b || !at) continue;
       const def = this.content.buildings[b.type];
+      const layout = buildingLayout(def, at, b.rotation);
+      const { size } = layout;
       const buffered = (resource: ResourceId | undefined, amounts: typeof b.stock) =>
         resource ? { resource, amount: amounts[resource] ?? 0 } : null;
       const output =
@@ -341,21 +352,20 @@ export class WorldRenderer {
       const status = workplaceStatus(state, this.content, id);
       const cold = isColdHouse(state, this.content, id);
       const view = this.staticView(`building:${id}`, seen);
-      const key = `${b.type}@${at.x},${at.y}:${input?.amount}:${output?.resource}${output?.amount}:${JSON.stringify(status)}:${cold}`;
+      const key = `${b.type}@${at.x},${at.y}r${b.rotation}:${input?.amount}:${output?.resource}${output?.amount}:${JSON.stringify(status)}:${cold}`;
       if (view.key !== key) {
-        if (b.type === 'chopping_block')
-          drawChoppingBlock(view.graphics, at.x, at.y, input, output);
-        else drawBuilding(view.graphics, def, at.x, at.y, output);
+        if (b.type === 'chopping_block') drawChoppingBlock(view.graphics, layout, input, output);
+        else drawBuilding(view.graphics, layout, output);
         if (status) {
-          const c = gridToWorld(at.x + def.size.w / 2, at.y + def.size.h / 2);
+          const c = gridToWorld(at.x + size.w / 2, at.y + size.h / 2);
           drawStatusIcon(view.graphics, status, c.x, c.y - TILE_H * 2.4);
         }
         if (cold) {
-          const c = gridToWorld(at.x + def.size.w / 2, at.y + def.size.h / 2);
+          const c = gridToWorld(at.x + size.w / 2, at.y + size.h / 2);
           drawNoFirewoodIcon(view.graphics, c.x, c.y - TILE_H * 2.4);
         }
         view.key = key;
-        view.node.zIndex = depthOf(at.x + def.size.w - 0.5, at.y + def.size.h - 0.5);
+        view.node.zIndex = depthOf(at.x + size.w - 0.5, at.y + size.h - 0.5);
       }
     }
 
@@ -364,7 +374,8 @@ export class WorldRenderer {
       const at = tile[id];
       const construction = s ? this.content.buildings[s.type].construction : undefined;
       if (!s || !at || !construction) continue;
-      const def = this.content.buildings[s.type];
+      const layout = buildingLayout(this.content.buildings[s.type], at, s.rotation);
+      const { size } = layout;
       const needed = construction.cost.reduce((n, c) => n + c.amount, 0);
       const delivered = construction.cost.reduce(
         (n, c) => n + Math.min(c.amount, s.delivered[c.resource] ?? 0),
@@ -373,13 +384,13 @@ export class WorldRenderer {
       const progress = s.buildProgress / construction.buildTicks;
       const view = this.staticView(`site:${id}`, seen);
       // Redraw posts in 10% steps; the label updates every change.
-      const key = `${s.type}@${at.x},${at.y}:${delivered}:${Math.floor(progress * 10)}`;
+      const key = `${s.type}@${at.x},${at.y}r${s.rotation}:${delivered}:${Math.floor(progress * 10)}`;
       if (view.key !== key) {
-        drawSite(view.graphics, def, at.x, at.y, delivered, progress);
+        drawSite(view.graphics, layout, delivered, progress);
         view.key = key;
-        view.node.zIndex = depthOf(at.x + def.size.w - 0.5, at.y + def.size.h - 0.5);
+        view.node.zIndex = depthOf(at.x + size.w - 0.5, at.y + size.h - 0.5);
       }
-      const label = this.siteLabel(view, def.size.w, def.size.h, at.x, at.y);
+      const label = this.siteLabel(view, size.w, size.h, at.x, at.y);
       label.text =
         delivered < needed
           ? `${delivered}/${needed} logs`
@@ -465,7 +476,8 @@ export class WorldRenderer {
     for (const id of boostedWorkplaces(state, this.content)) {
       const b = building[id];
       const at = tile[id];
-      if (b && at) drawBoostedMark(g, this.content.buildings[b.type], at.x, at.y);
+      if (b && at)
+        drawBoostedMark(g, buildingLayout(this.content.buildings[b.type], at, b.rotation));
     }
     const heroId = heroOf(state);
     const h = heroId === null ? undefined : hero[heroId];
@@ -571,13 +583,9 @@ export class WorldRenderer {
   setGhost(ghost: PlacementGhost | null): void {
     this.ghost.visible = ghost !== null;
     if (ghost?.kind === 'building') {
-      drawPlacementGhost(
-        this.ghost,
-        this.content.buildings[ghost.type],
-        ghost.x,
-        ghost.y,
-        ghost.valid,
-      );
+      const def = this.content.buildings[ghost.type];
+      const layout = buildingLayout(def, { x: ghost.x, y: ghost.y }, ghost.rotation);
+      drawPlacementGhost(this.ghost, layout, ghost.valid);
     } else if (ghost) {
       drawTileGhost(this.ghost, ghost.tiles, ghost.valid);
     }

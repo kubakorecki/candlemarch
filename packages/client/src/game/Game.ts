@@ -12,7 +12,7 @@ import {
   carrierUtilization,
   DEFAULT_MAP,
   type EntityId,
-  footprint,
+  entityLayout,
   type GameState,
   type GroundHealth,
   groundHealth,
@@ -27,6 +27,7 @@ import {
   lShapeTiles,
   type MapName,
   maxWorkers,
+  type Rotation,
   reassignTargets,
   type StockpilePriority,
   type Tile,
@@ -275,6 +276,8 @@ export class Game {
   private hover: Tile | null = null;
   /** Tile a tool drag started on, while one is in progress. */
   private dragStart: Tile | null = null;
+  /** Quarter turns clockwise the next building is placed with; kept between placements. */
+  private rotation: Rotation = 0;
   private selectedPile: EntityId | null = null;
   private selectedVillager: EntityId | null = null;
   private selectedBuilding: EntityId | null = null;
@@ -357,7 +360,8 @@ export class Game {
     this.dragStart = null;
     this.clearSelection();
     const hint = toolDef(tool)?.hint ?? '';
-    this.setHud({ tool, message: `${hint} Esc or right-click cancels.` });
+    const turn = isBuilding(tool) ? ' Q/E turns it.' : '';
+    this.setHud({ tool, message: `${hint}${turn} Esc or right-click cancels.` });
     this.updateGhost();
   }
 
@@ -600,11 +604,12 @@ export class Game {
     const state = this.bridge.state;
     if (!state) return;
     if (isBuilding(tool)) {
-      if (!canPlaceBuilding(state, content, tool, tile.x, tile.y)) {
+      const { rotation } = this;
+      if (!canPlaceBuilding(state, content, tool, tile.x, tile.y, rotation)) {
         this.setHud({ message: "Can't build there." });
         return;
       }
-      this.bridge.command({ type: 'placeBuilding', building: tool, x: tile.x, y: tile.y });
+      this.bridge.command({ type: 'placeBuilding', building: tool, ...tile, rotation });
       if (shiftKey) this.setHud({ message: 'Placed. Shift-click to place more.' });
       else this.cancelTool();
       return;
@@ -692,10 +697,20 @@ export class Game {
       this.setSpeed(Number(e.key) as Speed);
     else if (e.key.toLowerCase() === 'v') this.toggleWorkers();
     else if (e.key.toLowerCase() === 't') this.toggleHeatMap();
+    else if (e.key.toLowerCase() === 'e') this.turnBuilding(1);
+    else if (e.key.toLowerCase() === 'q') this.turnBuilding(3);
     else {
       const tool = TOOLS.find((t) => t.key === e.key.toLowerCase());
       if (tool) this.selectTool(tool.id);
     }
+  }
+
+  /** Turns the building being placed `quarters` quarter turns clockwise (3 is one anticlockwise). */
+  private turnBuilding(quarters: 1 | 3): void {
+    const tool = this.hud.tool;
+    if (!tool || !isBuilding(tool)) return;
+    this.rotation = ((this.rotation + quarters) % 4) as Rotation;
+    this.updateGhost();
   }
 
   private tileAt(sx: number, sy: number): { x: number; y: number } {
@@ -813,7 +828,7 @@ export class Game {
     const tool = this.hud.tool;
     const warning =
       state && tool && this.hover && isBuilding(tool)
-        ? placementWarning(state, tool, this.hover)
+        ? placementWarning(state, tool, this.hover, this.rotation)
         : null;
     this.setHud({ placementWarning: warning });
     if (state && tool && this.hover) {
@@ -830,11 +845,9 @@ export class Game {
       return;
     }
     const building = this.selectedBuilding;
-    const origin = building === null ? undefined : state?.components.tile[building];
-    const type = building === null ? undefined : state?.components.building[building]?.type;
-    if (origin && type) {
-      const tiles = footprint(content.buildings[type], origin);
-      this.renderer.setGhost({ kind: 'tiles', tiles, valid: true });
+    const layout = building === null || !state ? null : entityLayout(state, content, building);
+    if (layout) {
+      this.renderer.setGhost({ kind: 'tiles', tiles: layout.tiles, valid: true });
       return;
     }
     const id = this.selectedPile;
@@ -850,12 +863,14 @@ export class Game {
   private ghostFor(state: GameState, tool: ToolId, hover: Tile): PlacementGhost {
     const { x, y } = hover;
     if (isBuilding(tool)) {
+      const { rotation } = this;
       return {
         kind: 'building',
         type: tool,
         x,
         y,
-        valid: canPlaceBuilding(state, content, tool, x, y),
+        rotation,
+        valid: canPlaceBuilding(state, content, tool, x, y, rotation),
       };
     }
     const from = this.dragStart ?? hover;
@@ -934,12 +949,12 @@ function stockpileAt(state: GameState, tile: Tile): EntityId | null {
 
 /** The Workplace (a building that employs anyone) covering `tile`, if any. */
 function workplaceAt(state: GameState, tile: Tile): EntityId | null {
-  const { tile: at, building } = state.components;
+  const { building } = state.components;
   for (const id of idsOf(building)) {
     const b = building[id];
     if (!b || maxWorkers(content, b.type) === 0) continue;
-    const { size } = content.buildings[b.type];
-    if (covers(at[id], size.w, size.h, tile)) return id;
+    const layout = entityLayout(state, content, id);
+    if (layout && covers(layout.origin, layout.size.w, layout.size.h, tile)) return id;
   }
   return null;
 }
@@ -996,9 +1011,14 @@ function groundInfo(state: GameState, id: EntityId): GroundInfo | null {
  * What placing a `type` building at `origin` would do to Hunting grounds, if anything: one that
  * fells the forest warns when its radius reaches into a ground.
  */
-function placementWarning(state: GameState, type: BuildingId, origin: Tile): string | null {
+function placementWarning(
+  state: GameState,
+  type: BuildingId,
+  origin: Tile,
+  rotation: Rotation,
+): string | null {
   if (!content.buildings[type].gathers?.includes(content.hunting.forest)) return null;
-  const names = groundsNear(state, content, type, origin).map(
+  const names = groundsNear(state, content, type, origin, rotation).map(
     (id) => state.components.huntingGround[id]?.name ?? '',
   );
   if (names.length === 0) return null;
@@ -1065,11 +1085,9 @@ function workersView(state: GameState): WorkersView {
 function demolishCommand(state: GameState, tile: Tile): Command | null {
   const pile = stockpileAt(state, tile);
   if (pile !== null) return { type: 'removeStockpile', id: pile };
-  const { tile: at, site } = state.components;
-  for (const id of idsOf(site)) {
-    const s = site[id];
-    const size = s ? content.buildings[s.type].size : null;
-    if (size && covers(at[id], size.w, size.h, tile)) {
+  for (const id of idsOf(state.components.site)) {
+    const layout = entityLayout(state, content, id);
+    if (layout && covers(layout.origin, layout.size.w, layout.size.h, tile)) {
       return { type: 'cancelConstruction', siteId: id };
     }
   }

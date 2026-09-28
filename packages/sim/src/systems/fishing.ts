@@ -30,7 +30,7 @@ export function fishingSystem(state: GameState, content: Content): void {
     switch (task.kind) {
       case 'idle': {
         if (state.tick < task.retryAt) break;
-        const door = doorTile(def, origin);
+        const door = doorTile(def, origin, hut.rotation);
         if (!isAt(state, id, door)) {
           if (!walkTo(state, content, id, [door])) idle();
           break;

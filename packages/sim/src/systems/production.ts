@@ -111,7 +111,7 @@ export function productionSystem(state: GameState, content: Content): void {
     switch (task.kind) {
       case 'idle': {
         if (state.tick < task.retryAt) break;
-        const door = doorTile(content.buildings[workshop.type], origin);
+        const door = doorTile(content.buildings[workshop.type], origin, workshop.rotation);
         if (!isAt(state, id, door)) {
           if (!walkTo(state, content, id, [door])) idle();
           break;

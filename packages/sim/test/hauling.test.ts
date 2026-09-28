@@ -107,6 +107,7 @@ describe('hauling on roads (job dispatch)', () => {
     const hut = idsOf(s0.components.building)[0] as number;
     s0.components.building[hut] = {
       type: 'woodcutters_hut',
+      rotation: 0,
       stock: { logs: 4 },
       input: {},
       workerLimit: 1,

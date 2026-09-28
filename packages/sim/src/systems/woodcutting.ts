@@ -24,7 +24,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
     const hut = building[hutId];
     const hutOrigin = state.components.tile[hutId];
     if (!hut || !hutOrigin) continue;
-    const door = doorTile(content.buildings[hut.type], hutOrigin);
+    const door = doorTile(content.buildings[hut.type], hutOrigin, hut.rotation);
     const idle = () => {
       tasks[id] = { kind: 'idle', retryAt: state.tick + job.idleRetryTicks };
     };

@@ -25,7 +25,7 @@ export function workSpeedPercent(state: GameState, content: Content, building: E
   if (!hero || !pos) return 100;
   const { radiusTiles, speedPercent } = content.heroes[hero.type].aura;
   const at = tileOfPoint(pos);
-  const inRange = footprint(def, origin).some(
+  const inRange = footprint(def, origin, b.rotation).some(
     (t) => (t.x - at.x) ** 2 + (t.y - at.y) ** 2 <= radiusTiles * radiusTiles,
   );
   return inRange ? speedPercent : 100;

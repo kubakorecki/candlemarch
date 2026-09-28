@@ -53,8 +53,22 @@ export interface MapObjectComponent {
   amount: number;
 }
 
+/**
+ * Quarter turns clockwise from the layout content gives a building (its `size` and `door`):
+ * 0 is that layout, and a door on the south side faces west at 1, north at 2 and east at 3.
+ */
+export type Rotation = 0 | 1 | 2 | 3;
+
+export const ROTATIONS: readonly Rotation[] = [0, 1, 2, 3];
+
+export function isRotation(value: unknown): value is Rotation {
+  return ROTATIONS.includes(value as Rotation);
+}
+
 export interface BuildingComponent {
   type: BuildingId;
+  /** Quarter turns from the content layout. */
+  rotation: Rotation;
   /** Output buffer contents, the Food a Granary holds, or a House's fuel. */
   stock: ResourceAmounts;
   /** Input buffer contents. Empty unless the building is a workshop. */
@@ -74,6 +88,8 @@ export interface BuildingComponent {
 export interface SiteComponent {
   /** The building this site turns into. */
   type: BuildingId;
+  /** Quarter turns from the content layout; the building keeps it. */
+  rotation: Rotation;
   delivered: ResourceAmounts;
   /** Ticks of building done so far. Advances only by day, once every cost is delivered. */
   buildProgress: number;

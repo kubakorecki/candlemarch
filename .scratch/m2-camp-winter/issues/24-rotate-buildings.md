@@ -1,6 +1,6 @@
 # Rotate buildings when placing them
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: none
 
@@ -36,3 +36,7 @@ All views for each orientation for existing buildings should be implemented in t
   - every existing building has 4 rotation options. It differs visually in all 4 rotations.
 - The rotation rule is added to `docs/spec.md` and logged in `docs/decisions.md`.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-28 — Done. `rotation` on buildings and sites, `buildingLayout` in `sim/src/grid.ts`, optional `rotation` on `placeBuilding` and map buildings/sites, saves backfill 0. Client: `E`/`Q` turn the preview; back-wall doors draw as a doorstep plus a small door over the building; sites show the doorstep; the chopping block's chips, piles and axe follow its door. Tests: `sim/test/rotation.test.ts` (layouts, riverbank, commands, pathing, carriers, determinism, save/load, old saves) and `client/test/rotation.test.ts` (each building's door is on a different face in all four rotations). No content building is non-square, so the swapped-footprint tests use a test `Content` with a 3×1 Granary.

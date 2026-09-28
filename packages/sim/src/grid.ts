@@ -4,8 +4,10 @@ import { idsOf } from './entities';
 import {
   type EntityId,
   type GameState,
+  isRotation,
   type MapState,
   type Point,
+  type Rotation,
   TILE_UNITS,
   type Tile,
 } from './state';
@@ -73,31 +75,74 @@ export function isRiverbank(state: GameState, content: Content, tile: Tile): boo
   ].some((n) => terrainAt(state.map, n) === 'river');
 }
 
-/** Tiles covered by a building placed with its origin at `origin`. */
-export function footprint(def: BuildingDef, origin: Tile): Tile[] {
-  return rectTiles(origin, def.size.w, def.size.h);
+/** Where a placed building stands: its size and tiles, and the tile in front of its door. */
+export interface BuildingLayout {
+  /** Smallest x and y of the footprint. */
+  origin: Tile;
+  /** Size in tiles after turning: a quarter turn swaps `w` and `h`. */
+  size: { w: number; h: number };
+  /** Footprint tiles, row by row. */
+  tiles: Tile[];
+  door: Tile;
 }
 
-export function doorTile(def: BuildingDef, origin: Tile): Tile {
-  return { x: origin.x + def.door.x, y: origin.y + def.door.y };
+/**
+ * The layout of a `def` building with its origin at `origin`, turned `rotation` quarter turns
+ * clockwise from the content layout. Every rule that reads a placed building's size or door goes
+ * through here.
+ */
+export function buildingLayout(
+  def: BuildingDef,
+  origin: Tile,
+  rotation: Rotation = 0,
+): BuildingLayout {
+  let { w, h } = def.size;
+  let door = { x: def.door.x, y: def.door.y };
+  for (let turn = 0; turn < rotation; turn++) {
+    // Clockwise with y pointing south: the w×h box becomes h×w and (x, y) goes to (h−1−y, x).
+    door = { x: h - 1 - door.y, y: door.x };
+    [w, h] = [h, w];
+  }
+  return {
+    origin: { x: origin.x, y: origin.y },
+    size: { w, h },
+    tiles: rectTiles(origin, w, h),
+    door: { x: origin.x + door.x, y: origin.y + door.y },
+  };
+}
+
+/** Tiles covered by a building placed with its origin at `origin`. */
+export function footprint(def: BuildingDef, origin: Tile, rotation: Rotation = 0): Tile[] {
+  return buildingLayout(def, origin, rotation).tiles;
+}
+
+export function doorTile(def: BuildingDef, origin: Tile, rotation: Rotation = 0): Tile {
+  return buildingLayout(def, origin, rotation).door;
+}
+
+/** Layout of a building or construction site entity, or null if `id` is neither. */
+export function entityLayout(
+  state: GameState,
+  content: Content,
+  id: EntityId,
+): BuildingLayout | null {
+  const placed = state.components.building[id] ?? state.components.site[id];
+  const origin = state.components.tile[id];
+  if (placed === undefined || origin === undefined) return null;
+  return buildingLayout(content.buildings[placed.type], origin, placed.rotation);
 }
 
 /** Door tile of a building or construction site entity. */
 export function entityDoor(state: GameState, content: Content, id: number): Tile | null {
-  const type = state.components.building[id]?.type ?? state.components.site[id]?.type;
-  const origin = state.components.tile[id];
-  if (type === undefined || origin === undefined) return null;
-  return doorTile(content.buildings[type], origin);
+  return entityLayout(state, content, id)?.door ?? null;
 }
 
-/** Every building and construction site with its type and origin, in ID order. */
-function structures(state: GameState): { type: BuildingId; origin: Tile }[] {
-  const { building, site, tile } = state.components;
-  const result: { type: BuildingId; origin: Tile }[] = [];
-  for (const id of idsOf(tile)) {
-    const type = building[id]?.type ?? site[id]?.type;
-    const origin = tile[id];
-    if (type !== undefined && origin !== undefined) result.push({ type, origin });
+/** Layouts of every building and construction site, in ID order. */
+function structures(state: GameState, content: Content): BuildingLayout[] {
+  const result: BuildingLayout[] = [];
+  for (const id of idsOf(state.components.tile)) {
+    const layout = entityLayout(state, content, id);
+    if (layout) result.push(layout);
   }
   return result;
 }
@@ -116,8 +161,8 @@ export function blockedGrid(state: GameState, content: Content): Uint8Array {
     const t = state.components.tile[id];
     if (t) blocked[tileIndex(map, t.x, t.y)] = 1;
   }
-  for (const s of structures(state)) {
-    for (const t of footprint(content.buildings[s.type], s.origin)) {
+  for (const s of structures(state, content)) {
+    for (const t of s.tiles) {
       if (inBounds(map, t.x, t.y)) blocked[tileIndex(map, t.x, t.y)] = 1;
     }
   }
@@ -144,8 +189,7 @@ export function standingTiles(state: GameState, blocked: Uint8Array, tile: Tile)
 export function doorTiles(state: GameState, content: Content): Set<number> {
   const { map } = state;
   const doors = new Set<number>();
-  for (const s of structures(state)) {
-    const d = doorTile(content.buildings[s.type], s.origin);
+  for (const { door: d } of structures(state, content)) {
     if (inBounds(map, d.x, d.y)) doors.add(tileIndex(map, d.x, d.y));
   }
   return doors;
@@ -169,7 +213,8 @@ export function tilesUnderStockpiles(state: GameState): Set<number> {
 }
 
 /**
- * Whether a building of this type fits with its origin at (x, y): every footprint tile is in
+ * Whether a building of this type, turned `rotation`, fits with its origin at (x, y): every
+ * footprint tile is in
  * bounds, buildable, and free of trees, roads, stockpiles, other footprints and other doors; its
  * door tile is in bounds, walkable, not blocked and not on a stockpile (it may be on a road), and
  * on a riverbank if the type needs one. Doesn't check whether the player may place this type.
@@ -180,15 +225,17 @@ export function fitsAt(
   type: BuildingId,
   x: number,
   y: number,
+  rotation: Rotation = 0,
 ): boolean {
   const { map } = state;
   const def = content.buildings[type];
-  if (!inBounds(map, x, y)) return false;
+  if (!inBounds(map, x, y) || !isRotation(rotation)) return false;
+  const layout = buildingLayout(def, { x, y }, rotation);
   const blocked = blockedGrid(state, content);
   const doors = doorTiles(state, content);
   const piles = tilesUnderStockpiles(state);
 
-  for (const t of footprint(def, { x, y })) {
+  for (const t of layout.tiles) {
     if (!inBounds(map, t.x, t.y)) return false;
     const i = tileIndex(map, t.x, t.y);
     const terrain = map.terrain[i];
@@ -200,22 +247,23 @@ export function fitsAt(
     if (map.entry && t.x === map.entry.x && t.y === map.entry.y) return false;
   }
 
-  const door = doorTile(def, { x, y });
+  const { door } = layout;
   if (!inBounds(map, door.x, door.y)) return false;
   const doorIndex = tileIndex(map, door.x, door.y);
   if (def.doorOnRiverbank && !isRiverbank(state, content, door)) return false;
   return blocked[doorIndex] === 0 && !piles.has(doorIndex);
 }
 
-/** Whether the player may place a building of this type at (x, y) right now. */
+/** Whether the player may place a building of this type, turned `rotation`, at (x, y) now. */
 export function canPlaceBuilding(
   state: GameState,
   content: Content,
   type: BuildingId,
   x: number,
   y: number,
+  rotation: Rotation = 0,
 ): boolean {
   const def = content.buildings[type];
   if (!def?.placeable || !def.construction) return false;
-  return fitsAt(state, content, type, x, y);
+  return fitsAt(state, content, type, x, y, rotation);
 }

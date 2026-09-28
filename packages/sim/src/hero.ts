@@ -213,8 +213,10 @@ function thingAt(state: GameState, content: Content, tile: Tile): EntityId | nul
   for (const id of idsOf(state.components.tile)) {
     const origin = state.components.tile[id] as Tile;
     if (mapObject[id] && same(origin)) return id;
-    const type = building[id]?.type ?? site[id]?.type;
-    if (type && footprint(content.buildings[type], origin).some(same)) return id;
+    const placed = building[id] ?? site[id];
+    if (placed && footprint(content.buildings[placed.type], origin, placed.rotation).some(same)) {
+      return id;
+    }
     const pile = stockpile[id];
     if (pile && stockpileTileIndices(state, id).includes(tileIndex(state.map, tile.x, tile.y))) {
       return id;

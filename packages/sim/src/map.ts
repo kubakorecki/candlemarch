@@ -23,7 +23,7 @@ import {
 } from './grid';
 import { standingTrees } from './huntingGrounds';
 import { seedRng } from './rng';
-import { type GameState, STATE_VERSION } from './state';
+import { type GameState, type Rotation, STATE_VERSION } from './state';
 import {
   addToTile,
   canPlaceStockpile,
@@ -44,9 +44,16 @@ export interface MapDef {
    * Buildings standing at map start, by origin tile, with goods already in `building.stock`:
    * a Granary's Food, a House's fuel, or a Workplace's output buffer.
    */
-  buildings: { type: BuildingId; x: number; y: number; stock?: ResourceAmount[] }[];
+  buildings: {
+    type: BuildingId;
+    x: number;
+    y: number;
+    /** Quarter turns from the content layout; 0 when omitted. */
+    rotation?: Rotation;
+    stock?: ResourceAmount[];
+  }[];
   /** Construction sites at map start, by origin tile. */
-  sites?: { type: BuildingId; x: number; y: number }[];
+  sites?: { type: BuildingId; x: number; y: number; rotation?: Rotation }[];
   /**
    * Stockpiles at map start, by origin tile and size in tiles, with `goods` laid on their tiles
    * row by row, each tile filled to capacity before the next.
@@ -177,7 +184,8 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
   }
 
   for (const b of map.buildings) {
-    if (!fitsAt(state, content, b.type, b.x, b.y)) {
+    const rotation = b.rotation ?? 0;
+    if (!fitsAt(state, content, b.type, b.x, b.y, rotation)) {
       throw new Error(`map ${map.name}: ${b.type} doesn't fit at ${b.x},${b.y}`);
     }
     const def = content.buildings[b.type];
@@ -192,6 +200,7 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
     state.components.tile[id] = { x: b.x, y: b.y };
     state.components.building[id] = {
       type: b.type,
+      rotation,
       stock,
       input: {},
       workerLimit: maxWorkers(content, b.type),
@@ -199,18 +208,19 @@ export function createInitialState(seed: number, map: MapDef, content: Content):
     };
     for (const slot of def.employs) {
       for (let i = 0; i < slot.count; i++) {
-        spawnVillager(state, content, slot.job, doorTile(def, { x: b.x, y: b.y }), id);
+        spawnVillager(state, content, slot.job, doorTile(def, { x: b.x, y: b.y }, rotation), id);
       }
     }
   }
 
   for (const site of map.sites ?? []) {
-    if (!canPlaceBuilding(state, content, site.type, site.x, site.y)) {
+    const rotation = site.rotation ?? 0;
+    if (!canPlaceBuilding(state, content, site.type, site.x, site.y, rotation)) {
       throw new Error(`map ${map.name}: ${site.type} site can't be placed at ${site.x},${site.y}`);
     }
     const id = createEntity(state);
     state.components.tile[id] = { x: site.x, y: site.y };
-    state.components.site[id] = { type: site.type, delivered: {}, buildProgress: 0 };
+    state.components.site[id] = { type: site.type, rotation, delivered: {}, buildProgress: 0 };
   }
 
   for (const { x, y, w, h, goods } of map.stockpiles ?? []) {

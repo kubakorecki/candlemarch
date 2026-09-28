@@ -71,7 +71,7 @@ export function huntingSystem(state: GameState, content: Content): void {
     if (!lodge || !origin) continue;
     const def = content.buildings[lodge.type];
     if (!def.hunts) continue;
-    const door: Tile = doorTile(def, origin);
+    const door: Tile = doorTile(def, origin, lodge.rotation);
 
     switch (task.kind) {
       case 'idle': {

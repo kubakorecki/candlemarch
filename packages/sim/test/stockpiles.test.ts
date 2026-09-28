@@ -92,6 +92,7 @@ function stocked(logs: number): GameState {
   const hut = idsOf(s.components.building)[0] as number;
   s.components.building[hut] = {
     type: 'woodcutters_hut',
+    rotation: 0,
     stock: { logs },
     input: {},
     workerLimit: 1,
@@ -411,6 +412,7 @@ describe('what stockpiles store', () => {
     const hutId = idsOf(s0.components.building)[0] as number;
     s0.components.building[hutId] = {
       type: 'woodcutters_hut',
+      rotation: 0,
       stock: { logs },
       input: {},
       workerLimit: 1,

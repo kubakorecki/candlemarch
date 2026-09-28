@@ -75,7 +75,12 @@ describe('createInitialState with roads, stockpiles and sites', () => {
     );
     expect(Object.values(s.map.roads)).toEqual(Array(6).fill('dirt_path'));
     // IDs: woodcutter's hut 1, its woodcutter 2, site 3, stockpile 4, carrier 5.
-    expect(s.components.site[3]).toEqual({ type: 'hut', delivered: {}, buildProgress: 0 });
+    expect(s.components.site[3]).toEqual({
+      type: 'hut',
+      rotation: 0,
+      delivered: {},
+      buildProgress: 0,
+    });
     expect(s.components.tile[3]).toEqual({ x: 3, y: 1 });
     expect(s.components.stockpile[4]).toEqual({
       size: { w: 2, h: 2 },

@@ -50,6 +50,7 @@ Each game is a procedurally generated valley seeded with handcrafted points of i
 - **Terrain:** meadow, forest, rock and mountain, river, swamp. Terrain gates expansion: a swamp needs draining, a snowed-in pass needs a road. *(Decided)*
 - **Points of interest (handcrafted, placed by the generator):** ruins with loot, an abandoned mine, a roadside shrine, monster dens. *(Proposed)*
 - **Resources deplete and regrow.** Forests and game recover slowly; ore and stone do not. *(Decided)*
+- **Rotating buildings:** a building is placed in one of four orientations: the layout it is designed with, then quarter turns clockwise (a south door faces west, north, then east). A turn swaps its width and height, and every placement rule (a fisher's hut's door on the riverbank, say) is checked on the turned layout, so a fisher's hut fits either bank of a river. `Q` and `E` turn the placement preview. *(Proposed)*
 
 **Forest ecology** *(Decided: logging and foraging compete; Proposed: the mechanics)*
 

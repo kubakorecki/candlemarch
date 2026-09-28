@@ -23,7 +23,7 @@ export function foragingSystem(state: GameState, content: Content): void {
     const origin = tile[hutId];
     if (!hut || !origin) continue;
     const job = content.jobs[v.job];
-    const door = doorTile(content.buildings[hut.type], origin);
+    const door = doorTile(content.buildings[hut.type], origin, hut.rotation);
     const idle = () => {
       tasks[id] = { kind: 'idle', retryAt: state.tick + job.idleRetryTicks };
     };

@@ -16,7 +16,16 @@ export type { Command } from './commands';
 export { idsOf } from './entities';
 export { isForagePatch, isWithered } from './forage';
 export { foodIds, villageFood } from './granary';
-export { canPlaceBuilding, doorTile, footprint, tileCenter, tileOfPoint } from './grid';
+export {
+  type BuildingLayout,
+  buildingLayout,
+  canPlaceBuilding,
+  doorTile,
+  entityLayout,
+  footprint,
+  tileCenter,
+  tileOfPoint,
+} from './grid';
 export { type HeroOrder, heroOf, heroOrderAt } from './hero';
 export {
   type GroundHealth,
