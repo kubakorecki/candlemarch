@@ -1,5 +1,5 @@
 // The Starting Camp's first year, played headless with the scripted sensible layout. The whole
-// run takes about 10 s, so it has a file to itself and runs alongside the rest of the suite.
+// run takes about 7 s, so it runs under `pnpm test:scenarios`, not `pnpm test`.
 import { content } from '@candlemarch/content';
 import { describe, expect, it } from 'vitest';
 import { runScenario } from './harness';

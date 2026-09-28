@@ -9,11 +9,12 @@
   "scripts": {
     "dev": "pnpm --filter @candlemarch/client dev",
     "test": "vitest run",
+    "test:scenarios": "vitest run --config vitest.scenarios.config.ts",
     "typecheck": "pnpm -r typecheck && tsc -p tooling --noEmit",
     "lint": "biome check .",
     "format": "biome check --write .",
     "balance": "tsx tooling/balance/cli.ts",
-    "check": "pnpm typecheck && pnpm lint && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm test:scenarios"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.14",

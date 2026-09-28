@@ -10,7 +10,7 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 ## sim (`packages/sim/src`): pure, deterministic
 - `index.ts`: public API; the client and tooling import only from here. Export new helpers here.
 - `state.ts`: `GameState`, `Components`, all component and task types, `STATE_VERSION`, `TICKS_PER_SECOND`, `TILE_UNITS` (1000), `DIAGONAL_UNITS`.
-- `step.ts`: `step()`, the tick (see below). `commands.ts`: `Command` union + `applyCommand()` switch.
+- `step.ts`: `step()`, the tick (see below); `stepInPlace()` runs the same tick without the copy, for long headless runs that own their state (the balance harness). `commands.ts`: `Command` union + `applyCommand()` switch.
 - `entities.ts`: `createEntity`, `destroyEntity` (clears every store), `idsOf` (sorted IDs; use for any ordered loop).
 - `rng.ts`: mulberry32 over `state.rng`: `seedRng`, `nextU32`, `randomInt(state, n)`.
 - `calendar.ts`: derived from `state.tick`, nothing stored: `calendarAt`, `isNight`, `isDawn`, `isDusk`, `dawnTick`, `duskTick`, `isRiverFrozen`.
@@ -63,10 +63,10 @@ Orientation for agents. Read before exploring; update when a module is added, mo
 
 ## tooling
 - `boundaries.test.ts`: import-boundary test (manifests, sim imports, hidden inputs grep).
-- `balance/harness.ts` (`Scenario`, `runScenario`, `formatTable`; `DayReport` has population, deaths, `carriersBusy`, stock), `balance/scenarios.ts` (named scenarios; `camp`/`campNoFirewood` = the scripted sensible Camp layout `campLayout`, building IDs via `campId(n)`), `balance/cli.ts` (`pnpm balance <name>`), `balance/harness.test.ts`, `balance/camp.test.ts` and `balance/campNoFirewood.test.ts` (whole-year runs, ~15–18 s each, one file each so they run in parallel).
+- `balance/harness.ts` (`Scenario`, `runScenario`, `formatTable`; `DayReport` has population, deaths, `carriersBusy`, stock), `balance/scenarios.ts` (named scenarios; `camp`/`campNoFirewood` = the scripted sensible Camp layout `campLayout`, building IDs via `campId(n)`), `balance/cli.ts` (`pnpm balance <name>`), `balance/harness.test.ts`, `balance/camp.scenario.test.ts` and `balance/campNoFirewood.scenario.test.ts` (whole-year runs, ~7 s each, stepped with `stepInPlace`; `*.scenario.test.ts` files run only under `pnpm test:scenarios` (`vitest.scenarios.config.ts`), which `pnpm check` includes).
 
 ## The tick: `sim/src/step.ts` `step(state, commands, content)`
-Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `movementSystem` → 3 `homesSystem` (`homes.ts`) → 4 `spoilageSystem` (Dawn only) → 5 `patchesSystem` (season's first Dawn) → 6 `warmthSystem` (winter Dusk, Dawn) → 7 `routineSystem` → 8 `immigrationSystem` (Dawn only) → 9 `heroSystem` (`hero.ts`) → 10 `woodcuttingSystem` → 11 `fishingSystem` → 12 `foragingSystem` → 13 `huntingSystem` → 14 `productionSystem` → 15 `haulingSystem` → 16 `constructionSystem` (skips at night) → 17 `staffingSystem` → 18 `trafficSystem` → `tick += 1`. Movement also counts Carrier road steps (`countStep`). Systems mutate the clone.
+Clones state (JSON), then `stepInPlace` runs: 1 `applyCommand` per command (`commands.ts`) → 2 `movementSystem` → 3 `homesSystem` (`homes.ts`) → 4 `spoilageSystem` (Dawn only) → 5 `patchesSystem` (season's first Dawn) → 6 `warmthSystem` (winter Dusk, Dawn) → 7 `routineSystem` → 8 `immigrationSystem` (Dawn only) → 9 `heroSystem` (`hero.ts`) → 10 `woodcuttingSystem` → 11 `fishingSystem` → 12 `foragingSystem` → 13 `huntingSystem` → 14 `productionSystem` → 15 `haulingSystem` → 16 `constructionSystem` (skips at night) → 17 `staffingSystem` → 18 `trafficSystem` → `tick += 1`. Movement also counts Carrier road steps (`countStep`). Systems mutate the clone.
 
 ## State (`sim/src/state.ts`)
 - `GameState`: `version`, `tick`, `rng` (PRNG uint32), `nextId`, `map` (`width`, `height`, `terrain[]` row-major, `roads` by tile index, `entry` tile or null), `components`, `logistics.hauls` (by carrier ID), `deaths` (`Death[]`: `name`, `cause` (`starvation` | `freezing`), `day`), `gameOver` (`{day, cause}` of the last death, or null while the game runs), `traffic` (`TrafficSlice[]`: `slice`, `carrierTicks`, `haulTicks`, `roadSteps` by tile index; oldest first, the last day only).
@@ -84,7 +84,7 @@ Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `m
 - **Villager task/activity**: task union in `state.ts`, store in `Components` and `createEmptyState` (`map.ts`); init/clear in `assignJob` (`villagers.ts`); undo work in progress in `release` (`workers.ts`); new Job: `JobId` + `jobs.ts` + `JOB_COLORS` (`WorldRenderer.ts`) + palette colour; animation in `drawVillagers`. Missing stores in old saves backfill automatically; new fields in existing components need a line in `save.ts` `normalizeLoadedState` (breaking change: bump `STATE_VERSION`).
 
 ## Tests
-- `pnpm vitest run packages/sim/test/hauling.test.ts` runs one file. `pnpm test` runs all projects (`vitest.config.ts`).
+- `pnpm vitest run packages/sim/test/hauling.test.ts` runs one file. `pnpm test` runs all projects (`vitest.config.ts`) except `*.scenario.test.ts`; `pnpm test:scenarios` runs those. A test that plays months of game time is a scenario test.
 - `sim/test/helpers.ts`: `run(state, ticks, commandsAt)`, `runUntil(state, done, max, commandsAt)`, `totalLogs`, `woodcuttersHutStock`, re-exported `content`.
 - Small maps: inline `MapDef` constants in each test file (e.g. `yard` in `construction.test.ts`, `riverMap()` in `river.test.ts`), built with `createInitialState(seed, map, content)`.
 - Determinism: `sim/test/milestone.test.ts` ("is deterministic"). Save/load continuation: `sim/test/scenarios.test.ts` (branching network), `hero.test.ts` (mid-walk) and `sleep.test.ts` (mid-night); format/backfill in `save.test.ts`.
@@ -99,7 +99,7 @@ Clones state (JSON), then: 1 `applyCommand` per command (`commands.ts`) → 2 `m
 - Night tests (`sleep.test.ts`) start a state at Dusk with a `jump(s, tick)` helper that just sets `tick`. A state at tick T hasn't run tick T yet: to see Dawn's effects, run to `DAWN + 1`. Jumping straight to a Dawn makes everyone Tired (no sleep counted).
 - Bottlenecks: `sim/test/bottlenecks.test.ts` (chopping-block `yard`; `yardWith(logs, firewood)`), `sim/test/traffic.test.ts` (`lane`: hut, stockpile, 2 Carriers, a path on row 3; tests walk a Carrier with `walkTo`). Tests that compare states across time must ignore `traffic` (it counts time passing, like `tick`; see `settled` in `woodcutting.test.ts`).
 - Content validation: `content/test/validate.test.ts`. Import boundaries + hidden inputs: `tooling/boundaries.test.ts`.
-- Camp scenario (Y1 to Y2 spring with the sensible layout; without firewood it freezes, alerts first): `tooling/balance/camp*.test.ts`, driving `scenarios.camp*`. Start goods on maps: `sim/test/map.test.ts`.
+- Camp scenario (Y1 to Y2 spring with the sensible layout; without firewood it freezes, alerts first): `tooling/balance/camp*.scenario.test.ts`, driving `scenarios.camp*`. Start goods on maps: `sim/test/map.test.ts`.
 - Client unit tests: `client/test/{alertText,autosave,clock,iso,night}.test.ts`. Balance: `pnpm balance meadow` (add scenarios in `tooling/balance/scenarios.ts`).
 
 ## Docs

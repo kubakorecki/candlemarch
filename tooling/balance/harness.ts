@@ -11,7 +11,7 @@ import {
   idsOf,
   isDawn,
   type MapDef,
-  step,
+  stepInPlace,
 } from '@candlemarch/sim';
 
 export interface Scenario {
@@ -77,11 +77,11 @@ export function measure(state: GameState, content: Content, seen: Set<EntityId>)
 
 /** Runs `scenario` and reports at the start, at every Dawn after it, and at the last tick. */
 export function runScenario(scenario: Scenario, content: Content): DayReport[] {
-  let state = createInitialState(scenario.seed, scenario.map, content);
+  const state = createInitialState(scenario.seed, scenario.map, content);
   const seen = new Set<EntityId>();
   const reports = [measure(state, content, seen)];
   for (let i = 0; i < scenario.ticks; i++) {
-    state = step(state, scenario.commands[state.tick] ?? [], content);
+    stepInPlace(state, scenario.commands[state.tick] ?? [], content);
     if (isDawn(state.tick, content) || i === scenario.ticks - 1) {
       reports.push(measure(state, content, seen));
     }

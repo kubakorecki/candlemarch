@@ -1,7 +1,7 @@
 // The Starting Camp that never splits firewood: it freezes in its first winter, warned first.
-// A run of about 9 s, so it has a file to itself and runs alongside the rest of the suite.
+// A run of about 7 s, so it runs under `pnpm test:scenarios`, not `pnpm test`.
 import { content } from '@candlemarch/content';
-import { type Alert, alerts, createInitialState, idsOf, step } from '@candlemarch/sim';
+import { type Alert, alerts, createInitialState, idsOf, stepInPlace } from '@candlemarch/sim';
 import { describe, expect, it } from 'vitest';
 import { scenarios } from './scenarios';
 
@@ -11,13 +11,13 @@ const winterDawn = 15 * dayTicks; // Dawn of day 16, winter's first
 describe('the Camp without firewood', () => {
   it('freezes in its first winter, with alerts first', { timeout: 60_000 }, () => {
     const { map, seed, ticks, commands } = scenarios.campNoFirewood;
-    let s = createInitialState(seed, map, content);
+    const s = createInitialState(seed, map, content);
     const population = idsOf(s.components.villager).length;
     // The tick each alert kind was first seen on, checked every 3 in-game seconds.
     const firstSeen = new Map<Alert['kind'], number>();
     let firstDeath: number | null = null;
     while (s.gameOver === null && s.tick < ticks) {
-      s = step(s, commands[s.tick] ?? [], content);
+      stepInPlace(s, commands[s.tick] ?? [], content);
       if (firstDeath === null && idsOf(s.components.villager).length < population) {
         firstDeath = s.tick;
       }

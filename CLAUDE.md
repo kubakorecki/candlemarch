@@ -44,12 +44,13 @@ Keep this section current whenever scripts change.
 
 - `pnpm install` — install dependencies
 - `pnpm dev` — run the client in the browser
-- `pnpm test` — run all tests
+- `pnpm test` — run all tests except the whole-year balance scenarios
+- `pnpm test:scenarios` — run the whole-year balance scenarios (`tooling/balance/*.scenario.test.ts`, several seconds each)
 - `pnpm typecheck` — type-check all packages
 - `pnpm lint` — Biome check
 - `pnpm format` — apply Biome formatting and safe fixes
 - `pnpm balance <scenario>` — run a headless balance scenario from `tooling/balance/scenarios.ts` (`meadow`, `camp`, `campNoFirewood`) and print population, deaths, Carrier utilization and stored goods per in-game day
-- `pnpm check` — typecheck + lint + test; run before calling any task done
+- `pnpm check` — typecheck + lint + test + test:scenarios; run before calling any task done
 
 ## Simulation rules
 

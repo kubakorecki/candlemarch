@@ -1,7 +1,8 @@
 import { content } from '@candlemarch/content';
-import { createInitialState, type MapDef } from '@candlemarch/sim';
+import { createInitialState, type MapDef, step, stepInPlace } from '@candlemarch/sim';
 import { describe, expect, it } from 'vitest';
 import { formatTable, measure, runScenario, type Scenario } from './harness';
+import { scenarios } from './scenarios';
 
 /** Days of 200 ticks, so a few days run in well under a second. */
 const shortDays = {
@@ -63,6 +64,17 @@ describe('balance harness', () => {
 
   it('is deterministic', () => {
     expect(runScenario(tiny, shortDays)).toEqual(runScenario(tiny, shortDays));
+  });
+
+  it('steps in place exactly as step does, through two short days of the Camp', () => {
+    const { map, seed, commands } = scenarios.camp;
+    let copied = createInitialState(seed, map, shortDays);
+    const inPlace = createInitialState(seed, map, shortDays);
+    for (let i = 0; i <= 2 * shortDays.calendar.dayTicks; i++) {
+      copied = step(copied, commands[copied.tick] ?? [], shortDays);
+      stepInPlace(inPlace, commands[inPlace.tick] ?? [], shortDays);
+    }
+    expect(JSON.stringify(inPlace)).toBe(JSON.stringify(copied));
   });
 
   it('counts villagers seen earlier and gone now as deaths', () => {
