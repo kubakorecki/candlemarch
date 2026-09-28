@@ -52,6 +52,23 @@ function campLayout({ firewood }: { firewood: boolean }): Record<number, Command
   };
 }
 
+/**
+ * A prepared nights map, all placed at Dawn of day 1 and built from the Stockpile's logs before
+ * the first Dusk: a palisade with a Gate in the middle across the gap in the wood, a watchtower
+ * 4 tiles inside it, whose range covers the Gate and whose door is a short walk from the Granary
+ * where its Watchman eats at Dusk, and a brazier lighting the yard between the Granary and the
+ * Huts. Walls first: they're what the first night needs most. The Huts stay dark.
+ */
+const nightsLayout: Record<number, Command[]> = {
+  [dawnOf(1)]: [
+    { type: 'layWall', building: 'palisade', from: { x: 17, y: 9 }, to: { x: 17, y: 9 } },
+    { type: 'layWall', building: 'gate', from: { x: 17, y: 10 }, to: { x: 17, y: 10 } },
+    { type: 'layWall', building: 'palisade', from: { x: 17, y: 11 }, to: { x: 17, y: 11 } },
+    { type: 'placeBuilding', building: 'watchtower', x: 13, y: 11 },
+    { type: 'placeBuilding', building: 'brazier', x: 8, y: 11 },
+  ],
+};
+
 export const scenarios = {
   /** The meadow for one in-game day, with a stockpile by the woodcutter's hut from the start. */
   meadow: {
@@ -76,6 +93,22 @@ export const scenarios = {
     seed: 1,
     ticks: dawnOf(21) + 1,
     commands: campLayout({ firewood: false }),
+  },
+  /** The nights map, prepared (`nightsLayout`), through five spring nights to Dawn of summer. */
+  nights: {
+    name: 'nights',
+    map: maps.nights,
+    seed: 1,
+    ticks: dawnOf(6) + 1,
+    commands: nightsLayout,
+  },
+  /** The same map left as it is: nothing between the Den and the Huts. */
+  nightsUnprepared: {
+    name: 'nightsUnprepared',
+    map: maps.nights,
+    seed: 1,
+    ticks: dawnOf(6) + 1,
+    commands: {},
   },
 } satisfies Record<string, Scenario>;
 

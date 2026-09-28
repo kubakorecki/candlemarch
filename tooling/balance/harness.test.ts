@@ -86,13 +86,31 @@ describe('balance harness', () => {
     expect(measure(state, content, seen)).toMatchObject({ population: 1, deaths: 1 });
   });
 
+  it('counts deaths by cause, from the death record', () => {
+    const state = createInitialState(1, tinyMap, content);
+    const none = { starvation: 0, freezing: 0, gloamling: 0, den: 0 };
+    expect(measure(state, content, new Set()).deathsBy).toEqual(none);
+    state.deaths.push(
+      { name: 'Ada', cause: 'gloamling', day: 1 },
+      { name: 'Roger', cause: 'gloamling', day: 2 },
+      { name: 'Alice', cause: 'den', day: 2 },
+    );
+    expect(measure(state, content, new Set()).deathsBy).toEqual({
+      ...none,
+      gloamling: 2,
+      den: 1,
+    });
+  });
+
   it('formats a table with a column per resource', () => {
     const lines = formatTable(runScenario(tiny, shortDays), shortDays).split('\n');
     expect(lines).toHaveLength(2 + 4);
     expect(lines[0]).toMatch(
-      /Tick\s+Date\s+Pop\s+Deaths\s+Busy\s+Logs\s+Firewood\s+Fish\s+Berries\s+Mushrooms\s+Meat\s+Hides/,
+      /Tick\s+Date\s+Pop\s+Deaths\s+Starved\s+Froze\s+Gloamling\s+Den\s+Busy\s+Logs\s+Firewood\s+Fish\s+Berries\s+Mushrooms\s+Meat\s+Hides/,
     );
-    // No Carrier has worked yet at tick 0: "-" for Busy.
-    expect(lines[2]).toMatch(/^\s*0\s+Y1 Spring 1\s+2\s+0\s+-\s+0\s+0\s+0\s+0\s+0\s+0\s+0$/);
+    // Nobody has died and no Carrier has worked yet at tick 0: "-" for Busy.
+    expect(lines[2]).toMatch(
+      /^\s*0\s+Y1 Spring 1\s+2\s+0\s+0\s+0\s+0\s+0\s+-\s+0\s+0\s+0\s+0\s+0\s+0\s+0$/,
+    );
   });
 });

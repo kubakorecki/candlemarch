@@ -4,6 +4,7 @@ import { branchingNetworkMap } from './branchingNetwork';
 import { campMap } from './camp';
 import { longHaulMap } from './longHaul';
 import { meadowMap } from './meadow';
+import { nightsMap } from './nights';
 import { shortHaulMap } from './shortHaul';
 
 export const maps = {
@@ -12,6 +13,7 @@ export const maps = {
   shortHaul: shortHaulMap,
   longHaul: longHaulMap,
   branchingNetwork: branchingNetworkMap,
+  nights: nightsMap,
 } satisfies Record<string, MapDef>;
 
 export type MapName = keyof typeof maps;

@@ -6,6 +6,7 @@ import {
   calendarAt,
   carrierUtilization,
   createInitialState,
+  type DeathCause,
   type EntityId,
   type GameState,
   idsOf,
@@ -33,6 +34,11 @@ export interface DayReport {
   population: number;
   /** Villagers seen earlier in the run who are gone now. */
   deaths: number;
+  /**
+   * Deaths so far by cause, from the game's death record. It also counts a Newcomer who arrived
+   * and died between two reports, whom `deaths` never saw.
+   */
+  deathsBy: Record<DeathCause, number>;
   /** Carrier utilization over the last in-game day (`carrierUtilization`), in %; null if no Carrier worked. */
   carriersBusy: number | null;
   /** Goods stored in stockpiles and building buffers. Goods in hands or on sites don't count. */
@@ -63,6 +69,9 @@ export function measure(state: GameState, content: Content, seen: Set<EntityId>)
     }
   }
 
+  const deathsBy: Record<DeathCause, number> = { starvation: 0, freezing: 0, gloamling: 0, den: 0 };
+  for (const d of state.deaths) deathsBy[d.cause] += 1;
+
   const time = calendarAt(state.tick, content);
   const season = content.calendar.seasons.find((s) => s.id === time.season)?.name ?? time.season;
   return {
@@ -70,6 +79,7 @@ export function measure(state: GameState, content: Content, seen: Set<EntityId>)
     date: `Y${time.year} ${season} ${time.dayOfSeason}`,
     population: alive.length,
     deaths: seen.size - alive.length,
+    deathsBy,
     carriersBusy: carrierUtilization(state, content),
     stock,
   };
@@ -89,17 +99,27 @@ export function runScenario(scenario: Scenario, content: Content): DayReport[] {
   return reports;
 }
 
+/** Table column for each cause of death. */
+const CAUSE_COLUMNS: Record<DeathCause, string> = {
+  starvation: 'Starved',
+  freezing: 'Froze',
+  gloamling: 'Gloamling',
+  den: 'Den',
+};
+
 /**
- * A plain-text table, one row per report: population, deaths, how busy the Carriers were over the
- * last day, and a column per resource.
+ * A plain-text table, one row per report: population, deaths and a column per cause, how busy the
+ * Carriers were over the last day, and a column per resource.
  */
 export function formatTable(reports: DayReport[], content: Content): string {
   const resources = Object.keys(content.resources) as ResourceId[];
+  const causes = Object.keys(CAUSE_COLUMNS) as DeathCause[];
   const header = [
     'Tick',
     'Date',
     'Pop',
     'Deaths',
+    ...causes.map((c) => CAUSE_COLUMNS[c]),
     'Busy',
     ...resources.map((r) => content.resources[r].name),
   ];
@@ -108,6 +128,7 @@ export function formatTable(reports: DayReport[], content: Content): string {
     r.date,
     String(r.population),
     String(r.deaths),
+    ...causes.map((c) => String(r.deathsBy[c])),
     r.carriersBusy === null ? '-' : `${r.carriersBusy}%`,
     ...resources.map((res) => String(r.stock[res])),
   ]);
