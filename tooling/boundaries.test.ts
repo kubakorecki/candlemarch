@@ -83,6 +83,19 @@ describe('package boundaries', () => {
     }
   });
 
+  it('the map-size benchmark imports sim, content and Node built-ins only (and vitest in tests)', () => {
+    for (const file of sourceFiles(join(root, 'tooling', 'benchmark'))) {
+      const allowed = ['@candlemarch/sim', '@candlemarch/content'];
+      if (file.endsWith('.test.ts')) allowed.push('vitest');
+      const text = readFileSync(file, 'utf8');
+      for (const match of text.matchAll(/from\s+'([^']+)'/g)) {
+        const spec = match[1] ?? '';
+        if (spec.startsWith('.') || spec.startsWith('node:')) continue;
+        expect(allowed, `${relative(root, file)} imports ${spec}`).toContain(spec);
+      }
+    }
+  });
+
   it('sim has no hidden inputs', () => {
     const forbidden = [/Math\.random/, /Date\.now/, /new Date\(/, /performance\.now/];
     for (const file of sourceFiles(join(root, 'packages', 'sim', 'src'))) {

@@ -45,7 +45,7 @@ export { bellOf, isBellRung } from './militia';
 export { canLayPath, lShapeTiles, roadNeighbours } from './roads';
 export { deserialize, serialize } from './save';
 export * from './state';
-export { step, stepInPlace } from './step';
+export { cloneState, step, stepInPlace } from './step';
 export { canPlaceStockpile, isStockpileGood, STOCKPILE_PRIORITIES } from './stockpiles';
 export { immigrationFoodNeeded, newcomerHome } from './systems/immigration';
 export { openPositions } from './systems/staffing';
