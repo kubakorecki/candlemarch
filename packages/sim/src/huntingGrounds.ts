@@ -2,6 +2,7 @@
 // ground; felling one drives the Game above the new ceiling away at once. Nothing recovers (M4).
 import type { BuildingId, Content } from '@candlemarch/content';
 import { destroyEntity, idsOf } from './entities';
+import { refreshShade } from './forage';
 import { inWorkRadius } from './gathering';
 import { buildingLayout } from './grid';
 import type { EntityId, GameState, HuntingGroundComponent, Rotation, Tile } from './state';
@@ -117,13 +118,15 @@ export function groundHealth(ground: HuntingGroundComponent, content: Content): 
 }
 
 /**
- * Removes tree `id` (it has been felled). In every Hunting ground it stood in, Game above the new
- * ceiling flees at once and is counted in the ground's `fled`.
+ * Removes tree `id` (it has been felled). Forage patches it shaded may wither. In every Hunting
+ * ground it stood in, Game above the new ceiling flees at once and is counted in the ground's
+ * `fled`.
  */
 export function fellTree(state: GameState, content: Content, id: EntityId): void {
   const at = state.components.tile[id];
   destroyEntity(state, id);
   if (!at) return;
+  refreshShade(state, content, at);
   for (const groundId of idsOf(state.components.huntingGround)) {
     const ground = state.components.huntingGround[groundId];
     if (!ground || !inGround(ground, at)) continue;

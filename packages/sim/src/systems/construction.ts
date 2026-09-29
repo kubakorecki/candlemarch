@@ -3,6 +3,7 @@
 import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
+import { mapChanged } from '../mapCache';
 import type { GameState } from '../state';
 import { fullHp } from '../walls';
 import { maxWorkers } from '../workers';
@@ -21,6 +22,7 @@ export function constructionSystem(state: GameState, content: Content): void {
     site.buildProgress += 1;
     if (site.buildProgress >= construction.buildTicks) {
       delete sites[id];
+      mapChanged(state); // a finished wall starts blocking
       building[id] = {
         type: site.type,
         rotation: site.rotation,

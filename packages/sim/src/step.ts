@@ -3,6 +3,7 @@ import type { Content } from '@candlemarch/content';
 import { applyCommand, type Command } from './commands';
 import { heroSystem } from './hero';
 import { homesSystem } from './homes';
+import { inheritMapCache } from './mapCache';
 import type { GameState } from './state';
 import { combatSystem } from './systems/combat';
 import { constructionSystem } from './systems/construction';
@@ -32,6 +33,7 @@ export function cloneState(state: GameState): GameState {
 /** Returns the state one tick later. Doesn't mutate `state`. See `stepInPlace` for the order. */
 export function step(state: GameState, commands: readonly Command[], content: Content): GameState {
   const next = cloneState(state);
+  inheritMapCache(state, next);
   stepInPlace(next, commands, content);
   return next;
 }

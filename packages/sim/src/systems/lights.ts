@@ -5,6 +5,7 @@ import type { Content } from '@candlemarch/content';
 import { isDawn, isDusk } from '../calendar';
 import { idsOf } from '../entities';
 import { lightDef, lightFuelIn } from '../lights';
+import { mapChanged } from '../mapCache';
 import type { GameState } from '../state';
 
 export function lightsSystem(state: GameState, content: Content): void {
@@ -20,4 +21,5 @@ export function lightsSystem(state: GameState, content: Content): void {
     if (lit) b.stock[light.fuel] = lightFuelIn(state, content, id) - light.burnPerNight;
     b.lit = lit;
   }
+  mapChanged(state); // the lit tiles Gloamlings path around
 }

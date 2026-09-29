@@ -7,10 +7,10 @@ import { idsOf } from '../entities';
 import { foodIds, isGranary } from '../granary';
 import { entityDoor, stockpileTileIndices, tileAt, tileIndex } from '../grid';
 import { lightDef } from '../lights';
-import { tileDistance, travelCosts } from '../pathfinding';
+import { tileDistance } from '../pathfinding';
 import type { EntityId, GameState, Store, Tile } from '../state';
 import { addToTile, amountOnTile, roomOnTile, takeFromTile } from '../stockpiles';
-import { isAt, stopAtNextTile, villagerTile, walkGrid, walkTo } from '../systems/movement';
+import { isAt, stopAtNextTile, villagerTile, walkCosts, walkTo } from '../systems/movement';
 import { isAtWork } from '../villagers';
 import { isHouse } from '../warmth';
 import {
@@ -401,10 +401,7 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
   const capacity = content.jobs[carrier.job].carryCapacity;
   const hereIndex = tileIndex(map, here.x, here.y);
   const supplies = listSupplies(state, content);
-  const grid = walkGrid(state, content);
-  const fromHere = travelCosts(grid, hereIndex);
-  // Walking costs from each pickup tile, computed when first needed.
-  const fromPickup: Record<number, Float64Array> = {};
+  const fromHere = walkCosts(state, content, hereIndex);
 
   for (const group of demandGroups(state, listDemands(state, content))) {
     const open = group.flatMap((demand) => {
@@ -420,19 +417,18 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
       .flatMap((s) => {
         const pickup = pickupFor(state, content, s, hereIndex);
         if (!pickup) return [];
-        const cost = fromHere[pickup.tile] as number;
+        const cost = fromHere.costTo(pickup.tile);
         return cost === Number.POSITIVE_INFINITY ? [] : [{ source: s.source, pickup, cost }];
       })
       .sort((a, b) => a.cost - b.cost || a.source - b.source);
 
     for (const { source, pickup } of sources) {
-      fromPickup[pickup.tile] ??= travelCosts(grid, pickup.tile);
-      const costs = fromPickup[pickup.tile] as Float64Array;
+      const costs = walkCosts(state, content, pickup.tile);
       const dropoffs = open
         .flatMap(({ demand, need }) => {
           const dropoff = dropoffFor(state, content, demand, pickup.tile);
           if (!dropoff) return [];
-          const cost = costs[dropoff.tile] as number;
+          const cost = costs.costTo(dropoff.tile);
           // Only take a haul whose drop-off is reachable from the pickup.
           return cost === Number.POSITIVE_INFINITY ? [] : [{ demand, need, dropoff, cost }];
         })

@@ -199,3 +199,33 @@ Columns: fps and frame times from `requestAnimationFrame` (ms; ">33ms" counts fr
 - `pnpm bench:maps [size...]` prints the sim and snapshot tables (about 12 minutes for all four sizes; 256² takes most of it).
 - The sim's "where tick time goes" shares come from V8's sampling profiler: a small script that builds `syntheticMap(size)` and runs `stepInPlace`, started with `node --import tsx --cpu-prof` from `tooling/`, with self time summed per function. The page's main-thread shares come from the DevTools protocol's `Profiler` domain over 30 s on the page. Neither script is committed.
 - The page lives on branch `prototype/m4-map-size-page`, off main. Check it out, run `pnpm dev`, and open `/prototype-map-size.html?size=256&speed=1` (sizes 64/128/192/256; speed 0 (paused), 1 or 3). The panel shows the last 2 s live, and the button runs the scripted pan/zoom. Add `&auto=1` to run it on load. The worker's `newGame` takes an optional `mapSize` there, and the snapshot carries its post time and stepping ms.
+
+## After the sim performance work (ticket 04)
+
+Measured 2026-09-29, same machine and Node, `pnpm bench:maps` (all four sizes). Budget (ADR-0004, 128²): `step` mean ≤ 5 ms, p95 ≤ 10 ms, no tick over 50 ms. Met: 4.40 ms mean, 5.49 ms p95, 39.6 ms max. Two earlier 128²-only runs during the work gave 4.58 / 5.95 / 21.4 ms, so the max moves around by run.
+
+| Map | Entities | Trees | Forage patches | Villagers | Buildings | Road tiles | Create (ms) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 64² | 1524 | 1357 | 36 | 50 | 44 | 64 | 24.16 |
+| 128² | 5440 | 5191 | 118 | 50 | 44 | 96 | 44.37 |
+| 192² | 13130 | 12716 | 284 | 50 | 44 | 128 | 129.14 |
+| 256² | 23539 | 22870 | 538 | 50 | 44 | 160 | 528.97 |
+
+| Map | `step` mean (ms) | `step` p95 | `step` max | Copy alone (ms) | Paired `step` (ms) | Paired `stepInPlace` (ms) | Copy share (paired) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 64² | 1.58 | 2.43 | 12.19 | 1.22 | 2.06 | 0.77 | 63% |
+| 128² | 4.40 | 5.49 | 39.61 | 3.95 | 4.91 | 0.84 | 83% |
+| 192² | 9.81 | 11.65 | 51.37 | 10.06 | 10.61 | 0.93 | 91% |
+| 256² | 17.89 | 22.32 | 66.86 | 17.13 | 18.57 | 1.08 | 94% |
+
+| Map | State (JSON) | Gzipped | Snapshot transfer mean (ms) | Transfer p95 | Transfer max | `structuredClone` (ms) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 64² | 141 KB | 15 KB | 1.76 | 1.95 | 1.95 | 1.51 |
+| 128² | 459 KB | 41 KB | 5.57 | 5.78 | 5.78 | 4.90 |
+| 192² | 1069 KB | 91 KB | 13.60 | 14.69 | 14.69 | 13.12 |
+| 256² | 1916 KB | 161 KB | 25.01 | 27.29 | 27.29 | 22.82 |
+
+- The tick itself (paired `stepInPlace`) is now about 1 ms at every size, down from about 13 ms at 128² and 62 ms at 256²: walk grids are cached until the map changes, walking costs are lazy searches kept per start tile, a walk to a goal it can't reach fails from the map's open regions without a search, forage-patch shade is kept in state, and `idsOf` no longer sorts.
+- What's left of `step` is the per-tick JSON copy: 83% at 128², 94% at 256². Ticket 14 moves the worker to `stepInPlace`, which drops it.
+- Worst ticks without the copy (profiled at 128², `stepInPlace`): Dawn, about 16 ms, when every Carrier and gatherer looks for work at once; everything else under 10 ms. Before, the ticks over 50 ms shared failed A* searches (foragers trying patches walled in by trees, each search covering the whole reachable map) and whole-map Dijkstras per idle Carrier.
+- `Create` went up from 334 to 529 ms at 256² (128²: 54 to 44 ms): `createInitialState` now works out every patch's shade, patches × trees, once.

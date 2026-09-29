@@ -53,6 +53,11 @@ export interface MapState {
 export interface MapObjectComponent {
   type: MapObjectId;
   amount: number;
+  /**
+   * Forage patches only: Withered, no standing tree shades it. Worked out when the map is made
+   * and kept up to date when a tree near it is felled (`refreshShade`). Absent on other objects.
+   */
+  withered?: boolean;
 }
 
 /**
@@ -369,6 +374,11 @@ export interface GameState {
   /** mulberry32 PRNG state. */
   rng: number;
   nextId: EntityId;
+  /**
+   * Goes up whenever what blocks walking, road speed or Light changes (`mapChanged`). Derived
+   * data about the map, such as walk grids, is cached until it moves on.
+   */
+  mapVersion: number;
   map: MapState;
   components: Components;
   logistics: LogisticsState;

@@ -3,9 +3,8 @@
 import type { Content } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { entityDoor, tileIndex } from './grid';
-import { type Grid, travelCosts } from './pathfinding';
 import type { EntityId, GameState, Tile } from './state';
-import { isAt, villagerTile, walkGrid } from './systems/movement';
+import { isAt, villagerTile, walkCosts } from './systems/movement';
 
 /** Places a House has, or 0 when `building` isn't a House (or doesn't exist). */
 export function housePlaces(state: GameState, content: Content, building: EntityId): number {
@@ -43,23 +42,22 @@ function freePlaces(state: GameState, content: Content): Record<EntityId, number
 }
 
 /**
- * The House with a free place in `free` nearest `from` by walking cost over `grid`, ties to the
+ * The House with a free place in `free` nearest `from` by walking cost, ties to the
  * lowest ID, or null when none can be walked to.
  */
 function nearestFree(
   state: GameState,
   content: Content,
-  grid: Grid,
   from: Tile,
   free: Record<EntityId, number>,
 ): EntityId | null {
-  const costs = travelCosts(grid, tileIndex(state.map, from.x, from.y));
+  const costs = walkCosts(state, content, tileIndex(state.map, from.x, from.y));
   let best: { house: EntityId; cost: number } | null = null;
   for (const house of idsOf(free)) {
     if ((free[house] ?? 0) <= 0) continue;
     const door = entityDoor(state, content, house);
     const cost = door
-      ? (costs[tileIndex(state.map, door.x, door.y)] as number)
+      ? costs.costTo(tileIndex(state.map, door.x, door.y))
       : Number.POSITIVE_INFINITY;
     if (cost !== Number.POSITIVE_INFINITY && (!best || cost < best.cost)) best = { house, cost };
   }
@@ -75,7 +73,7 @@ export function nearestHouseWithRoom(
   content: Content,
   from: Tile,
 ): EntityId | null {
-  return nearestFree(state, content, walkGrid(state, content), from, freePlaces(state, content));
+  return nearestFree(state, content, from, freePlaces(state, content));
 }
 
 /**
@@ -92,7 +90,6 @@ export function homesSystem(state: GameState, content: Content): void {
   }
 
   const free = freePlaces(state, content);
-  let grid: Grid | null = null;
   for (const id of idsOf(villager)) {
     const v = villager[id];
     if (!v || v.home !== null) continue;
@@ -100,8 +97,7 @@ export function homesSystem(state: GameState, content: Content): void {
     const from =
       v.workplace !== null ? entityDoor(state, content, v.workplace) : villagerTile(state, id);
     if (!from) continue;
-    grid ??= walkGrid(state, content);
-    const house = nearestFree(state, content, grid, from, free);
+    const house = nearestFree(state, content, from, free);
     if (house === null) continue;
     v.home = house;
     free[house] = (free[house] ?? 0) - 1;

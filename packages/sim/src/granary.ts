@@ -2,9 +2,8 @@
 import type { Content, ResourceId } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { entityDoor, tileIndex } from './grid';
-import { travelCosts } from './pathfinding';
 import type { EntityId, GameState } from './state';
-import { villagerTile, walkGrid } from './systems/movement';
+import { villagerTile, walkCosts } from './systems/movement';
 
 /** Whether `resource` is Food: stored in Granaries, never on Stockpiles. */
 export function isFood(content: Content, resource: ResourceId): boolean {
@@ -106,12 +105,12 @@ export function nearestGranaryWithMeal(
     (g) => isGranary(state, content, g) && hasMeal(state, content, g),
   );
   if (granaries.length === 0) return null;
-  const costs = travelCosts(walkGrid(state, content), tileIndex(state.map, here.x, here.y));
+  const costs = walkCosts(state, content, tileIndex(state.map, here.x, here.y));
   let best: { granary: EntityId; cost: number } | null = null;
   for (const granary of granaries) {
     const door = entityDoor(state, content, granary);
     const cost = door
-      ? (costs[tileIndex(state.map, door.x, door.y)] as number)
+      ? costs.costTo(tileIndex(state.map, door.x, door.y))
       : Number.POSITIVE_INFINITY;
     if (cost !== Number.POSITIVE_INFINITY && (!best || cost < best.cost)) best = { granary, cost };
   }

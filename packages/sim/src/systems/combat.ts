@@ -25,18 +25,26 @@ import { clearDen } from '../dens';
 import { destroyEntity, idsOf } from '../entities';
 import { entityDoor, inBounds, tileIndex } from '../grid';
 import { litGrid } from '../lights';
-import { findPath, type Grid, travelCosts } from '../pathfinding';
+import { mapChanged } from '../mapCache';
+import { type CostSearch, findPath } from '../pathfinding';
 import type { DeathCause, EntityId, GameState, Tile } from '../state';
 import { fullHp, isWall, isWallType } from '../walls';
 import { isOnWatch, towerFoe, watchOf } from '../watchtowers';
 import { dropWork } from '../workers';
-import { gloamlingGrid, isAt, rerouteTo, stopAtNextTile, villagerTile } from './movement';
+import {
+  gloamlingCosts,
+  gloamlingGrid,
+  isAt,
+  rerouteTo,
+  stopAtNextTile,
+  villagerTile,
+} from './movement';
 
 /**
- * Walking costs from a tile to every tile for a Gloamling, or with `throughWalls` as if no wall
- * segment stood (`gloamlingGrid`); worked out at most once a tick per tile.
+ * Walking costs from a tile for a Gloamling, or with `throughWalls` as if no wall segment stood
+ * (`gloamlingCosts`).
  */
-type CostsFrom = (tile: Tile, throughWalls?: boolean) => Float64Array;
+type CostsFrom = (tile: Tile, throughWalls?: boolean) => CostSearch;
 
 export function combatSystem(state: GameState, content: Content): void {
   const { villager, gloamling, hero } = state.components;
@@ -49,6 +57,7 @@ export function combatSystem(state: GameState, content: Content): void {
     for (const b of Object.values(state.components.building)) {
       if (b.hp !== null) b.hp = fullHp(content, b.type);
     }
+    mapChanged(state); // broken walls block again
   }
   for (const id of idsOf(hero)) {
     const h = hero[id];
@@ -68,21 +77,9 @@ export function combatSystem(state: GameState, content: Content): void {
     return;
   }
 
-  const grids: Partial<Record<'walls' | 'through', Grid>> = {};
   const lit = litGrid(state, content);
-  const cache = new Map<string, Float64Array>();
-  const costsFrom: CostsFrom = (tile, throughWalls = false) => {
-    const kind = throughWalls ? 'through' : 'walls';
-    const i = tileIndex(state.map, tile.x, tile.y);
-    const key = `${kind}${i}`;
-    let costs = cache.get(key);
-    if (!costs) {
-      grids[kind] ??= gloamlingGrid(state, content, throughWalls);
-      costs = travelCosts(grids[kind], i);
-      cache.set(key, costs);
-    }
-    return costs;
-  };
+  const costsFrom: CostsFrom = (tile, throughWalls = false) =>
+    gloamlingCosts(state, content, tileIndex(state.map, tile.x, tile.y), throughWalls);
   for (const id of gloamlings) pickTarget(state, content, id, lit, costsFrom);
   for (const id of gloamlings) chase(state, content, id);
   engage(state, content);
@@ -170,7 +167,7 @@ function pickTarget(
 /** Of `ids` (ascending), the one whose tile costs least in `costs`, ties to the lowest ID. */
 function nearestBy(
   ids: readonly EntityId[],
-  costs: Float64Array,
+  costs: CostSearch,
   tileOf: (id: EntityId) => Tile | null,
   state: GameState,
 ): EntityId | null {
@@ -178,7 +175,7 @@ function nearestBy(
   for (const id of ids) {
     const t = tileOf(id);
     if (!t) continue;
-    const cost = costs[tileIndex(state.map, t.x, t.y)] ?? Number.POSITIVE_INFINITY;
+    const cost = costs.costTo(tileIndex(state.map, t.x, t.y));
     if (cost !== Number.POSITIVE_INFINITY && (!best || cost < best.cost)) best = { id, cost };
   }
   return best?.id ?? null;
@@ -409,7 +406,10 @@ function batter(state: GameState, id: EntityId, building: EntityId, damage: numb
   const g = state.components.gloamling[id];
   if (!b || b.hp === null || !g) return;
   b.hp = Math.max(0, b.hp - damage);
-  if (b.hp === 0) g.target = null;
+  if (b.hp === 0) {
+    g.target = null;
+    mapChanged(state); // a broken wall stops blocking
+  }
 }
 
 /**

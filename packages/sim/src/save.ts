@@ -1,6 +1,7 @@
 // Save files are the serialized game state.
 import type { Content } from '@candlemarch/content';
 import { idsOf } from './entities';
+import { refreshShade } from './forage';
 import { createEmptyState } from './map';
 import { type Components, type GameState, type MapState, STATE_VERSION } from './state';
 import { fallbackVillagerName } from './villagers';
@@ -54,6 +55,15 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     if (b.hp === undefined || b.hp === null) b.hp = fullHp(content, b.type);
   }
   for (const site of Object.values(state.components.site)) site.rotation ??= 0;
+  // Saves from before forage patches kept their shade.
+  const { mapObject } = state.components;
+  if (
+    Object.values(mapObject).some(
+      (o) => content.mapObjects[o.type].forage && o.withered === undefined,
+    )
+  ) {
+    refreshShade(state, content);
+  }
   const { villager } = state.components;
   for (const id of idsOf(villager)) {
     const v = villager[id];

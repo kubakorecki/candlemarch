@@ -1,6 +1,6 @@
 # Sim performance: the code that scales badly with the map
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 02
 
@@ -23,3 +23,5 @@ The sim's share of the budget in `docs/adr/0004-valley-size-and-budget.md`. Wher
 ## Comments
 
 2026-09-29 — Rewritten after gate 02: this ticket is now the sim's share only. In-place stepping in the worker and split snapshots are ticket 14; the renderer is ticket 15.
+
+2026-09-29 — Done. Derived map data (blocked/speed/walk/Gloamling/lit grids, open regions, walking-cost searches) is cached off each state object in `sim/src/mapCache.ts` until a new `state.mapVersion` counter moves on (`mapChanged`); `step` hands the cache to its copy. Walking costs are lazy, exact Dijkstra searches (`costSearch`), kept per start tile, so an idle Carrier re-dispatching each tick costs next to nothing. A walk that can't reach its goal fails from 4-connected regions (`canReach`) without an A* search: that was what the worst ticks shared (foragers trying walled-in patches every 20 ticks, everyone at Dawn). Forage patches keep `withered` on the map object (`refreshShade`, called by `fellTree`; old saves work it out on load). `idsOf` no longer sorts. Same state tick for tick as before in every balance scenario and in synthetic 64² and 96² runs (hashes compared every 300 ticks, `step` and `stepInPlace`). Numbers appended to `benchmark.md`. The copy in `step` is now about 80% of a tick at 128²: ticket 14's in-place stepping is where the rest goes.

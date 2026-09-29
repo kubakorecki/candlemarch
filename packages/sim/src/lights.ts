@@ -8,6 +8,7 @@ import { calendarAt } from './calendar';
 import { idsOf } from './entities';
 import { entityLayout, inBounds, tileIndex } from './grid';
 import { isAtHome, residentsOf } from './homes';
+import { cached } from './mapCache';
 import type { EntityId, GameState } from './state';
 import { isHouse } from './warmth';
 
@@ -73,7 +74,9 @@ function coverGrid(state: GameState, content: Content, lit: (id: EntityId) => bo
 
 /** Tiles lit tonight, by tile index (1 = lit). Changes only at Dusk and Dawn. */
 export function litGrid(state: GameState, content: Content): Uint8Array {
-  return coverGrid(state, content, (id) => state.components.building[id]?.lit === true);
+  return cached(state, content, 'lit', () =>
+    coverGrid(state, content, (id) => state.components.building[id]?.lit === true),
+  );
 }
 
 /**

@@ -162,20 +162,91 @@ export function findPath(grid: Grid, start: number, goals: readonly number[]): n
 }
 
 /**
- * Walking cost from `start` to every tile, in the same units as `findPath` (sub-tile units at
- * off-road speed). Unreachable tiles cost `Infinity`. Blocked tiles are never entered.
+ * The open tiles in 4-connected regions: a region number per tile, from 1, and 0 on blocked
+ * tiles. A walker reaches exactly the regions it can step into from where it starts: a diagonal
+ * step needs both tiles beside it open, so it never joins two regions.
  */
-export function travelCosts(grid: Grid, start: number): Float64Array {
+export function regions(grid: Grid): Int32Array {
+  const { width, height, blocked } = grid;
+  const size = width * height;
+  const region = new Int32Array(size);
+  const stack: number[] = [];
+  let next = 0;
+  for (let first = 0; first < size; first++) {
+    if (blocked[first] === 1 || region[first] !== 0) continue;
+    next += 1;
+    region[first] = next;
+    stack.push(first);
+    while (stack.length > 0) {
+      const i = stack.pop() as number;
+      const x = i % width;
+      const around = [
+        x + 1 < width ? i + 1 : -1,
+        x > 0 ? i - 1 : -1,
+        i + width < size ? i + width : -1,
+        i - width,
+      ];
+      for (const n of around) {
+        if (n < 0 || blocked[n] === 1 || region[n] !== 0) continue;
+        region[n] = next;
+        stack.push(n);
+      }
+    }
+  }
+  return region;
+}
+
+/**
+ * Whether `findPath(grid, start, goals)` would find a way, told from `grid`'s `regions`
+ * without searching: some goal is open and in a region a first step from `start` enters (or
+ * `start`'s own). True for a `start` off the grid, which it can't tell.
+ */
+export function canReach(
+  grid: Grid,
+  region: Int32Array,
+  start: number,
+  goals: readonly number[],
+): boolean {
+  const size = grid.width * grid.height;
+  if (start < 0 || start >= size) return true; // off the grid: let `findPath` decide
+  const entered = new Set<number>();
+  if (grid.blocked[start] === 0) entered.add(region[start] as number);
+  forEachStep(grid, start, (next) => {
+    entered.add(region[next] as number);
+  });
+  return goals.some(
+    (g) => g >= 0 && g < size && grid.blocked[g] === 0 && entered.has(region[g] as number),
+  );
+}
+
+/** Walking costs from one tile, worked out only as far as the tiles asked for need. */
+export interface CostSearch {
+  /**
+   * Walking cost from the start to tile `index`, in the same units as `findPath` (sub-tile units
+   * at off-road speed); `Infinity` if it can't be reached (blocked tiles never are).
+   */
+  costTo(index: number): number;
+}
+
+/**
+ * A Dijkstra search from `start` that stops as soon as the tile asked for is settled and picks
+ * up where it left off for the next one. `start` itself may be blocked. The costs are exact, the
+ * same whatever order tiles are asked for in, so reusing a search changes no result.
+ */
+export function costSearch(grid: Grid, start: number): CostSearch {
   const size = grid.width * grid.height;
   const cost = new Float64Array(size).fill(Number.POSITIVE_INFINITY);
-  if (start < 0 || start >= size) return cost;
   const closed = new Uint8Array(size);
   const open: Node[] = [];
-  cost[start] = 0;
-  push(open, { f: 0, h: 0, index: start });
-  for (let node = pop(open); node !== undefined; node = pop(open)) {
+  if (start >= 0 && start < size) {
+    cost[start] = 0;
+    push(open, { f: 0, h: 0, index: start });
+  }
+  const settleNext = (): void => {
+    const node = pop(open);
+    if (node === undefined) return;
     const current = node.index;
-    if (closed[current] === 1) continue;
+    if (closed[current] === 1) return;
     closed[current] = 1;
     forEachStep(grid, current, (next, step) => {
       const g = (cost[current] as number) + step;
@@ -184,8 +255,14 @@ export function travelCosts(grid: Grid, start: number): Float64Array {
         push(open, { f: g, h: 0, index: next });
       }
     });
-  }
-  return cost;
+  };
+  return {
+    costTo(index) {
+      if (index < 0 || index >= size) return Number.POSITIVE_INFINITY;
+      while (closed[index] === 0 && open.length > 0) settleNext();
+      return closed[index] === 1 ? (cost[index] as number) : Number.POSITIVE_INFINITY;
+    },
+  };
 }
 
 /** Calls `visit` for each tile one step from `current`, in neighbour order, with its cost. */

@@ -3,7 +3,8 @@ import type { Content } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { blockedGrid, inBounds, tileAt, tileCenter, tileIndex, tileOfPoint } from '../grid';
 import { litGrid } from '../lights';
-import { findPath, type Grid } from '../pathfinding';
+import { cached, cachedCosts } from '../mapCache';
+import { type CostSearch, canReach, findPath, type Grid, regions } from '../pathfinding';
 import { maxSpeedPercent, speedPercentAt, speedPercentGrid } from '../roads';
 import { speedPercent } from '../speed';
 import {
@@ -38,7 +39,9 @@ export function walkGrid(state: GameState, content: Content, walker?: EntityId):
   if (walker !== undefined && state.components.gloamling[walker]) {
     return gloamlingGrid(state, content);
   }
-  return gridOver(state, content, blockedGrid(state, content));
+  return cached(state, content, 'walkGrid', () =>
+    gridOver(state, content, blockedGrid(state, content)),
+  );
 }
 
 /** A walking grid with `blocked` and the map's road speeds. */
@@ -48,7 +51,7 @@ function gridOver(state: GameState, content: Content, blocked: Uint8Array): Grid
     width: map.width,
     height: map.height,
     blocked,
-    speedPercent: speedPercentGrid(map, content),
+    speedPercent: cached(state, content, 'speedPercent', () => speedPercentGrid(map, content)),
     maxSpeedPercent: maxSpeedPercent(content),
   };
 }
@@ -56,9 +59,16 @@ function gridOver(state: GameState, content: Content, blocked: Uint8Array): Grid
 /**
  * The grid Gloamlings path over: Gates and tonight's lit tiles block walking too (Light is a wall,
  * ADR-0003). `throughWalls` lets them through every wall segment, to find the one in their way.
+ * Cached until the map changes, like `walkGrid`.
  */
 export function gloamlingGrid(state: GameState, content: Content, throughWalls = false): Grid {
-  const grid = gridOver(state, content, blockedGrid(state, content, true));
+  return cached(state, content, throughWalls ? 'gloamlingThroughWalls' : 'gloamling', () =>
+    buildGloamlingGrid(state, content, throughWalls),
+  );
+}
+
+function buildGloamlingGrid(state: GameState, content: Content, throughWalls: boolean): Grid {
+  const grid = gridOver(state, content, blockedGrid(state, content, true).slice());
   if (throughWalls) {
     for (const id of idsOf(state.components.building)) {
       const t = state.components.tile[id];
@@ -69,6 +79,52 @@ export function gloamlingGrid(state: GameState, content: Content, throughWalls =
     if (lit) grid.blocked[i] = 1;
   });
   return grid;
+}
+
+/**
+ * Walking costs for villagers and the Hero (`walkGrid`) from tile index `start`, kept until the
+ * map changes.
+ */
+export function walkCosts(state: GameState, content: Content, start: number): CostSearch {
+  return cachedCosts(state, content, 'walkGrid', walkGrid(state, content), start);
+}
+
+/** Walking costs for Gloamlings (`gloamlingGrid`) from tile index `start`, like `walkCosts`. */
+export function gloamlingCosts(
+  state: GameState,
+  content: Content,
+  start: number,
+  throughWalls = false,
+): CostSearch {
+  const grid = gloamlingGrid(state, content, throughWalls);
+  return cachedCosts(
+    state,
+    content,
+    throughWalls ? 'gloamlingThroughWalls' : 'gloamling',
+    grid,
+    start,
+  );
+}
+
+/**
+ * Whether walker `id` could walk from tile index `start` to one of `goals`, told without a search
+ * (`canReach`), so a walk that can't be made fails at once instead of searching everywhere.
+ */
+function canWalkTo(
+  state: GameState,
+  content: Content,
+  id: EntityId,
+  start: number,
+  goals: readonly number[],
+): boolean {
+  const grid = walkGrid(state, content, id);
+  const key = state.components.gloamling[id] ? 'gloamlingRegions' : 'walkRegions';
+  return canReach(
+    grid,
+    cached(state, content, key, () => regions(grid)),
+    start,
+    goals,
+  );
 }
 
 /**
@@ -88,6 +144,7 @@ export function walkTo(
     .filter((g) => inBounds(map, g.x, g.y))
     .map((g) => tileIndex(map, g.x, g.y));
   const start = tileIndex(map, here.x, here.y);
+  if (!canWalkTo(state, content, id, start, goalIndices)) return false;
   const tiles = findPath(walkGrid(state, content, id), start, goalIndices);
   if (tiles === null) return false;
   delete state.components.path[id];
@@ -112,6 +169,7 @@ export function rerouteTo(
   const goalIndices = goals
     .filter((g) => inBounds(map, g.x, g.y))
     .map((g) => tileIndex(map, g.x, g.y));
+  if (!canWalkTo(state, content, id, to, goalIndices)) return false;
   const rest = findPath(walkGrid(state, content, id), to, goalIndices);
   if (rest === null) return false;
   state.components.path[id] = {

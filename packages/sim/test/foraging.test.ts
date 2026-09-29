@@ -2,10 +2,12 @@
 // a tree shades them; a forager gathers from the nearest stocked patch in its hut's radius.
 import { describe, expect, it } from 'vitest';
 import { dawnTick, duskTick } from '../src/calendar';
-import { destroyEntity, idsOf } from '../src/entities';
+import { idsOf } from '../src/entities';
 import { isWithered } from '../src/forage';
 import { heroOrderAt } from '../src/hero';
+import { fellTree } from '../src/huntingGrounds';
 import { createInitialState, type MapDef } from '../src/map';
+import { deserialize, serialize } from '../src/save';
 import type { EntityId, GameState } from '../src/state';
 import { content, run } from './helpers';
 
@@ -83,12 +85,32 @@ describe('forage patches', () => {
 
   it('wither once every tree within 2 tiles is felled', () => {
     const s0 = createInitialState(1, grove, content);
-    destroyEntity(s0, TREE);
+    fellTree(s0, content, TREE);
     expect(isWithered(s0, content, SHADED_BUSH)).toBe(true);
     expect(isWithered(s0, content, SHADED_MUSHROOMS)).toBe(true);
     const summer = dawnOf(s0, 6);
     expect(amount(summer, SHADED_BUSH)).toBe(0);
     expect(amount(dawnOf(summer, 11), SHADED_MUSHROOMS)).toBe(0);
+  });
+
+  it('keep whether they have withered in state, for the client to read', () => {
+    const s0 = createInitialState(1, grove, content);
+    const withered = (s: GameState, id: EntityId) => s.components.mapObject[id]?.withered;
+    expect(withered(s0, BARE_BUSH)).toBe(true);
+    expect(withered(s0, SHADED_BUSH)).toBe(false);
+    expect(withered(s0, TREE)).toBeUndefined();
+    fellTree(s0, content, TREE);
+    expect(withered(s0, SHADED_BUSH)).toBe(true);
+    expect(withered(s0, SHADED_MUSHROOMS)).toBe(true);
+  });
+
+  it('get their shade worked out when a save from before it loads', () => {
+    const old = JSON.parse(serialize(createInitialState(1, grove, content)));
+    for (const obj of Object.values(old.components.mapObject))
+      delete (obj as { withered?: boolean }).withered;
+    const loaded = deserialize(JSON.stringify(old), content);
+    expect(loaded.components.mapObject[BARE_BUSH]?.withered).toBe(true);
+    expect(loaded.components.mapObject[SHADED_BUSH]?.withered).toBe(false);
   });
 
   it('stay when empty, unlike trees', () => {

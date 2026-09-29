@@ -2,6 +2,7 @@
 import type { BuildingDef, BuildingId, Content, TerrainId } from '@candlemarch/content';
 import { inDarkRing } from './dens';
 import { idsOf } from './entities';
+import { cached } from './mapCache';
 import {
   type EntityId,
   type GameState,
@@ -171,9 +172,16 @@ function blocksWalking(
 /**
  * Walk-blocking grid: 1 where a villager or the Hero can't walk. Terrain that isn't walkable, map
  * objects (trees) and building/site footprints block, but not a wall's site, a built Gate or a
- * wall battered down to 0 HP. `gatesBlock` makes Gates block too, for Gloamlings. Built fresh on each call; maps are small.
+ * wall battered down to 0 HP. `gatesBlock` makes Gates block too, for Gloamlings. Cached until
+ * the map changes (`mapChanged`), so don't write to it.
  */
 export function blockedGrid(state: GameState, content: Content, gatesBlock = false): Uint8Array {
+  return cached(state, content, gatesBlock ? 'blockedGates' : 'blocked', () =>
+    buildBlockedGrid(state, content, gatesBlock),
+  );
+}
+
+function buildBlockedGrid(state: GameState, content: Content, gatesBlock: boolean): Uint8Array {
   const { map } = state;
   const blocked = new Uint8Array(map.width * map.height);
   map.terrain.forEach((terrain, i) => {

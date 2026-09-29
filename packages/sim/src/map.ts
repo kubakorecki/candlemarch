@@ -12,6 +12,7 @@ import type {
 } from '@candlemarch/content';
 import { isMonsterRate, newDen } from './dens';
 import { createEntity } from './entities';
+import { refreshShade } from './forage';
 import { isFood } from './granary';
 import {
   canPlaceBuilding,
@@ -122,6 +123,7 @@ export function createEmptyState(seed: number): GameState {
     tick: 0,
     rng: seedRng(seed),
     nextId: 1,
+    mapVersion: 0,
     map: { width: 0, height: 0, terrain: [], roads: {}, entry: null },
     components: {
       tile: {},
@@ -196,6 +198,8 @@ export function createInitialState(
       }
     });
   });
+
+  refreshShade(state, content);
 
   if (map.entry) {
     const { x, y } = map.entry;

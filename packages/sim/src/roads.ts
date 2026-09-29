@@ -8,6 +8,7 @@ import {
   tileIndex,
   tilesUnderStockpiles,
 } from './grid';
+import { mapChanged } from './mapCache';
 import type { GameState, MapState, Tile } from './state';
 
 /** Walking speed off-road, as a percentage. Road speeds are relative to it. */
@@ -72,6 +73,7 @@ export function layPath(state: GameState, content: Content, from: Tile, to: Tile
   if (!canLayPath(state, content, from, to)) return;
   const { map } = state;
   for (const t of lShapeTiles(from, to)) map.roads[tileIndex(map, t.x, t.y)] = 'dirt_path';
+  mapChanged(state);
 }
 
 /** Removes every road tile along the L from `from` to `to`. Ignored if an end is off the map. */
@@ -79,6 +81,7 @@ export function removePath(state: GameState, from: Tile, to: Tile): void {
   if (!endsInBounds(state, from, to)) return;
   const { map } = state;
   for (const t of lShapeTiles(from, to)) delete map.roads[tileIndex(map, t.x, t.y)];
+  mapChanged(state);
 }
 
 /** Tile indices of the road tiles sharing an edge with tile `index`: +x, +y, −x, −y. */
