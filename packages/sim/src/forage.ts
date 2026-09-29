@@ -2,6 +2,7 @@
 // tree shades them. Whether a patch has withered is kept on it (`withered`), updated only when
 // the trees near it change, so nothing scans the map for shade each tick.
 import type { Content } from '@candlemarch/content';
+import { staticChanged } from './snapshot';
 import type { EntityId, GameState, Tile } from './state';
 
 /** Whether map object `id` is a forage patch. */
@@ -51,7 +52,10 @@ export function refreshShade(state: GameState, content: Content, near?: Tile): v
     if (near && Math.max(Math.abs(near.x - at.x), Math.abs(near.y - at.y)) > forage.shadeTiles) {
       continue;
     }
-    obj.withered = hasNoShade(state, content, id);
+    const withered = hasNoShade(state, content, id);
+    if (obj.withered === withered) continue;
+    obj.withered = withered;
+    staticChanged(state);
   }
 }
 

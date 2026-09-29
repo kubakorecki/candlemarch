@@ -1,5 +1,14 @@
-// Main-thread side of the sim worker: owns the clock, queues commands, keeps the latest snapshot.
-import type { Command, EntityId, GameState, MapName, Point } from '@candlemarch/sim';
+// Main-thread side of the sim worker: owns the clock, queues commands, keeps the latest snapshot
+// (the static layers last sent, joined with each moving part).
+import {
+  type Command,
+  type EntityId,
+  type GameState,
+  joinSnapshot,
+  type MapName,
+  type Point,
+  type StaticLayers,
+} from '@candlemarch/sim';
 import type { FromWorker, ToWorker } from '../protocol';
 import type { SaveSlot } from './autosave';
 import { type ClockState, type Speed, tickClock, tickFraction } from './clock';
@@ -16,6 +25,11 @@ export interface SimBridgeEvents {
 export class SimBridge {
   state: GameState | null = null;
   prevPositions: Record<EntityId, Point> = {};
+  /**
+   * The static layers last sent. `state` holds these same objects until the next change, so a
+   * renderer can tell they didn't change by identity.
+   */
+  layers: StaticLayers | null = null;
   speed: Speed = 1;
 
   private readonly worker: Worker;
@@ -92,9 +106,11 @@ export class SimBridge {
     switch (message.type) {
       case 'snapshot':
         this.inFlight = false;
-        this.state = message.state;
+        if (message.layers) this.layers = message.layers;
+        if (!this.layers) return; // can't happen: a game's first snapshot has them
+        this.state = joinSnapshot(message.moving, this.layers);
         this.prevPositions = message.prevPositions;
-        this.events.onSnapshot(message.state);
+        this.events.onSnapshot(this.state);
         return;
       case 'saved':
         this.events.onSaved(message.json, message.slot, message.tick);

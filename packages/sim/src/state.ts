@@ -379,6 +379,12 @@ export interface GameState {
    * data about the map, such as walk grids, is cached until it moves on.
    */
   mapVersion: number;
+  /**
+   * Goes up whenever a static layer changes (`staticChanged`): terrain, Roads, or any map object
+   * (added, removed, its `amount` or `withered`). The client is sent those layers only when it
+   * moves on (`snapshot.ts`).
+   */
+  staticVersion: number;
   map: MapState;
   components: Components;
   logistics: LogisticsState;

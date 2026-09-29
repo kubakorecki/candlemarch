@@ -4,6 +4,7 @@ import type { Content } from '@candlemarch/content';
 import { calendarAt, isDawn } from '../calendar';
 import { idsOf } from '../entities';
 import { isWithered } from '../forage';
+import { staticChanged } from '../snapshot';
 import type { GameState } from '../state';
 
 export function patchesSystem(state: GameState, content: Content): void {
@@ -16,6 +17,9 @@ export function patchesSystem(state: GameState, content: Content): void {
     const obj = mapObject[id];
     const forage = obj ? content.mapObjects[obj.type].forage : undefined;
     if (!obj || !forage) continue;
-    obj.amount = isWithered(state, content, id) ? 0 : forage.stock[season];
+    const amount = isWithered(state, content, id) ? 0 : forage.stock[season];
+    if (obj.amount === amount) continue;
+    obj.amount = amount;
+    staticChanged(state);
   }
 }

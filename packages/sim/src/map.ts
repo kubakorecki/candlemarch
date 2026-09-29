@@ -124,6 +124,7 @@ export function createEmptyState(seed: number): GameState {
     rng: seedRng(seed),
     nextId: 1,
     mapVersion: 0,
+    staticVersion: 0,
     map: { width: 0, height: 0, terrain: [], roads: {}, entry: null },
     components: {
       tile: {},

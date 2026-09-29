@@ -229,3 +229,29 @@ Measured 2026-09-29, same machine and Node, `pnpm bench:maps` (all four sizes). 
 - What's left of `step` is the per-tick JSON copy: 83% at 128², 94% at 256². Ticket 14 moves the worker to `stepInPlace`, which drops it.
 - Worst ticks without the copy (profiled at 128², `stepInPlace`): Dawn, about 16 ms, when every Carrier and gatherer looks for work at once; everything else under 10 ms. Before, the ticks over 50 ms shared failed A* searches (foragers trying patches walled in by trees, each search covering the whole reachable map) and whole-map Dijkstras per idle Carrier.
 - `Create` went up from 334 to 529 ms at 256² (128²: 54 to 44 ms): `createInitialState` now works out every patch's shade, patches × trees, once.
+
+## After in-place stepping and split snapshots (ticket 14)
+
+Measured 2026-09-29, same machine and Node, `pnpm bench:maps 128`. The timed tick is now `stepInPlace`, as the worker runs it (no per-tick copy), so "Tick" here is what ADR-0004's `step` budget (mean ≤ 5 ms, p95 ≤ 10 ms, no tick over 50 ms) now measures: 0.44 ms mean, 1.24 ms p95, 15.2 ms max. The paired columns still price `step`'s copy, which only tests pay now.
+
+| Map | Entities | Trees | Forage patches | Villagers | Buildings | Road tiles | Create (ms) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 128² | 5440 | 5191 | 118 | 50 | 44 | 96 | 67.39 |
+
+| Map | Tick mean (ms) | Tick p95 | Tick max | Copy alone (ms) | Paired `step` (ms) | Paired `stepInPlace` (ms) | Copy share (paired) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 128² | 0.44 | 1.24 | 15.22 | 3.91 | 4.86 | 0.82 | 83% |
+
+| Map | State (JSON) | Gzipped | Split (ms) | Join (ms) | Static-layer changes |
+| --- | --- | --- | --- | --- | --- |
+| 128² | 459 KB | 41 KB | 0.13 | 0.01 | 66 of 3600 ticks; layers in 66 of 1200 snapshots at 3× |
+
+| Map | Snapshot part | Size (JSON) | Transfer mean (ms) | Transfer p95 | Transfer max | `structuredClone` (ms) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 128² | whole state (before) | 461 KB | 5.62 | 5.83 | 5.83 | 4.81 |
+| 128² | moving part | 33 KB | 0.40 | 0.46 | 0.46 | 0.35 |
+| 128² | static layers | 428 KB | 5.18 | 5.41 | 5.41 | 4.43 |
+
+- The static layers are terrain, Roads, every map object and the map objects' tiles: 93% of the bytes. The moving part, posted every frame, is 33 KB and costs about 0.4 ms to post, down from 5.6 ms for the whole state.
+- The layers still go out whenever a map object changes, and every chop changes a tree's `amount` (the renderer draws a part-chopped tree). In the benchmark's village that is 66 ticks of a day's 3600, so at 3× about one snapshot in 18 (roughly three a second at 60 fps) also carries the 428 KB of layers, about 5 ms on each thread. That is over the 4 ms main-thread budget on those frames: ticket 15 should measure it in the browser. If it shows, the cheapest cuts are separate versions for terrain+Roads (130 KB) and map objects with their tiles (300 KB), so a chop resends only the second, or sending only the map objects that changed.
+- `movingPart` (the worker's split) is 0.13 ms and `joinSnapshot` (the main thread) 0.01 ms.

@@ -44,6 +44,7 @@ export { DEFAULT_MAP, type MapName, maps } from './maps';
 export { bellOf, isBellRung } from './militia';
 export { canLayPath, lShapeTiles, roadNeighbours } from './roads';
 export { deserialize, serialize } from './save';
+export { joinSnapshot, movingPart, type StaticLayers, staticLayers } from './snapshot';
 export * from './state';
 export { cloneState, step, stepInPlace } from './step';
 export { canPlaceStockpile, isStockpileGood, STOCKPILE_PRIORITIES } from './stockpiles';

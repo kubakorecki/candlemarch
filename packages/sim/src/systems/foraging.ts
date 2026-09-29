@@ -7,6 +7,7 @@ import { idsOf } from '../entities';
 import { canForage } from '../forage';
 import { gatherTargets, outputRoom, walkToNearest } from '../gathering';
 import { doorTile } from '../grid';
+import { staticChanged } from '../snapshot';
 import { workTicks } from '../speed';
 import type { GameState } from '../state';
 import { isAtWork } from '../villagers';
@@ -63,6 +64,7 @@ export function foragingSystem(state: GameState, content: Content): void {
         const def = content.mapObjects[patch.type];
         const amount = Math.min(def.yieldPerGather, patch.amount, job.carryCapacity);
         patch.amount -= amount;
+        staticChanged(state);
         v.carrying = { resource: def.resource, amount };
         tasks[id] = { kind: 'toHut' };
         walkTo(state, content, id, [door]);

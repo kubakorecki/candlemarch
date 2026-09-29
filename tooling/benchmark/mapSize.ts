@@ -1,5 +1,6 @@
-// Map-size benchmark: how the sim's tick, its per-tick deep copy, the save and the worker's
-// snapshot scale with the map. Numbers for the map-size gate; it makes no decision itself.
+// Map-size benchmark: how the sim's tick, `step`'s per-tick deep copy, the save and the worker's
+// split snapshot (moving part every frame, static layers when they change) scale with the map.
+// Numbers for the map-size gate and ADR-0004's budget; it makes no decision itself.
 import { performance } from 'node:perf_hooks';
 import { Worker } from 'node:worker_threads';
 import { gzipSync } from 'node:zlib';
@@ -9,7 +10,10 @@ import {
   createInitialState,
   type GameState,
   idsOf,
+  joinSnapshot,
+  movingPart,
   serialize,
+  staticLayers,
   step,
   stepInPlace,
 } from '@candlemarch/sim';
@@ -18,7 +22,10 @@ import { syntheticMap } from './syntheticMap';
 export interface BenchOptions {
   /** Ticks run before measuring, so villagers are at work. */
   warmupTicks: number;
-  /** Ticks timed one by one with `step`, as the worker runs them; a day takes in Dusk, night and Dawn. */
+  /**
+   * Ticks timed one by one with `stepInPlace`, as the worker runs them; a day takes in Dusk,
+   * night and Dawn.
+   */
   measuredTicks: number;
   /** Ticks run both with `step` and with `stepInPlace`, from the same state, to price the copy. */
   pairedTicks: number;
@@ -43,20 +50,41 @@ export interface MapSizeResult {
   roadTiles: number;
   /** `createInitialState`, ms. */
   createMs: number;
-  /** One tick with `step`, the copy included, over `measuredTicks`, ms. */
+  /** One tick with `stepInPlace`, as the worker runs it, over `measuredTicks`, ms. */
   tickMs: Timing;
+  measuredTicks: number;
+  /** Of `measuredTicks`, how many changed a static layer (`staticVersion` moved). */
+  staticTicks: number;
+  /** Snapshots that carried the static layers, of those a worker would post at 3× (3 ticks each). */
+  layerSnapshots: { sent: number; of: number };
   /** Mean ms a tick over `pairedTicks` ticks run with `step` (the copy plus the tick)... */
   stepMs: number;
   /** ...and over the same ticks run with `stepInPlace`. */
   inPlaceMs: number;
   /** `cloneState`, the JSON deep copy `step` makes, timed on its own, ms. */
   copyMs: number;
-  /** `serialize(state)`: the save, and roughly what a snapshot carries, in bytes. */
+  /** `serialize(state)`: the save, and what a whole snapshot would carry, in bytes. */
   stateBytes: number;
   gzipBytes: number;
-  /** A worker posting the snapshot message to the main thread until it's received, ms. */
+  /** The whole state posted as one snapshot, as before the split. */
+  whole: PostCost;
+  /** The snapshot's moving part, posted every frame. */
+  moving: PostCost;
+  /** The static layers, posted only when they changed. */
+  layers: PostCost;
+  /** `movingPart(state)` in the worker, ms. */
+  splitMs: number;
+  /** `joinSnapshot` on the main thread, ms. */
+  joinMs: number;
+}
+
+/** What posting one message from the worker to the main thread costs. */
+export interface PostCost {
+  /** Its JSON, bytes: roughly what the structured clone carries. */
+  bytes: number;
+  /** A worker posting it to the main thread until it's received, ms. */
   transferMs: Timing;
-  /** `structuredClone` of the snapshot message on one thread, ms: the copying part of a post. */
+  /** `structuredClone` of it on one thread, ms: the copying part of a post. */
   structuredCloneMs: number;
 }
 
@@ -125,12 +153,22 @@ export async function benchMapSize(
   const createMs = performance.now() - createStart;
 
   for (let i = 0; i < options.warmupTicks; i++) stepInPlace(state, [], content);
-  let current = state;
+  const current = state;
   const ticks: number[] = [];
+  let staticTicks = 0;
+  const layerSnapshots = { sent: 0, of: 0 };
+  let sentVersion = current.staticVersion;
   for (let i = 0; i < options.measuredTicks; i++) {
+    const before = current.staticVersion;
     const start = performance.now();
-    current = step(current, [], content);
+    stepInPlace(current, [], content);
     ticks.push(performance.now() - start);
+    if (current.staticVersion !== before) staticTicks += 1;
+    if (i % 3 === 2) {
+      layerSnapshots.of += 1;
+      if (current.staticVersion !== sentVersion) layerSnapshots.sent += 1;
+      sentVersion = current.staticVersion;
+    }
   }
 
   const { components } = current;
@@ -144,14 +182,18 @@ export async function benchMapSize(
   const inPlaceMs = meanMs(options.pairedTicks, () => stepInPlace(inPlace, [], content));
 
   const json = serialize(current);
-  // What the sim worker posts after each batch of ticks: `prevPositions` comes from the previous
-  // tick's state, a separate object that is cloned on its own.
-  const snapshot = {
-    type: 'snapshot',
-    state: current,
-    prevPositions: structuredClone(components.position),
-  };
-  const structuredCloneMs = meanMs(options.reps, () => structuredClone(snapshot));
+  // What the sim worker posts after each batch of ticks: `prevPositions` is copied before the
+  // batch's last tick. The whole state is what it posted before the split.
+  const prevPositions = structuredClone(components.position);
+  const moving = { type: 'snapshot', moving: movingPart(current), layers: null, prevPositions };
+  const layers = staticLayers(current);
+  const splitMs = meanMs(options.reps, () => movingPart(current));
+  const joinMs = meanMs(options.reps, () => joinSnapshot(moving.moving, layers));
+  const post = async (message: unknown): Promise<PostCost> => ({
+    bytes: Buffer.byteLength(JSON.stringify(message)),
+    transferMs: timing(await transferTimes(message, options.reps)),
+    structuredCloneMs: meanMs(options.reps, () => structuredClone(message)),
+  });
 
   return {
     size,
@@ -163,13 +205,19 @@ export async function benchMapSize(
     roadTiles: Object.keys(current.map.roads).length,
     createMs,
     tickMs: timing(ticks),
+    measuredTicks: options.measuredTicks,
+    staticTicks,
+    layerSnapshots,
     stepMs,
     inPlaceMs,
     copyMs,
     stateBytes: Buffer.byteLength(json),
     gzipBytes: gzipSync(json).length,
-    transferMs: timing(await transferTimes(snapshot, options.reps)),
-    structuredCloneMs,
+    whole: await post({ type: 'snapshot', state: current, prevPositions }),
+    moving: await post(moving),
+    layers: await post({ type: 'snapshot', moving: null, layers, prevPositions: null }),
+    splitMs,
+    joinMs,
   };
 }
 
@@ -211,9 +259,9 @@ export function formatResults(results: MapSizeResult[]): string {
     table(
       [
         'Map',
-        '`step` mean (ms)',
-        '`step` p95',
-        '`step` max',
+        'Tick mean (ms)',
+        'Tick p95',
+        'Tick max',
         'Copy alone (ms)',
         'Paired `step` (ms)',
         'Paired `stepInPlace` (ms)',
@@ -231,24 +279,44 @@ export function formatResults(results: MapSizeResult[]): string {
       ]),
     ),
     table(
-      [
-        'Map',
-        'State (JSON)',
-        'Gzipped',
-        'Snapshot transfer mean (ms)',
-        'Transfer p95',
-        'Transfer max',
-        '`structuredClone` (ms)',
-      ],
+      ['Map', 'State (JSON)', 'Gzipped', 'Split (ms)', 'Join (ms)', 'Static-layer changes'],
       results.map((r) => [
         tiles(r),
         kb(r.stateBytes),
         kb(r.gzipBytes),
-        ms(r.transferMs.mean),
-        ms(r.transferMs.p95),
-        ms(r.transferMs.max),
-        ms(r.structuredCloneMs),
+        ms(r.splitMs),
+        ms(r.joinMs),
+        `${r.staticTicks} of ${r.measuredTicks} ticks; ` +
+          `layers in ${r.layerSnapshots.sent} of ${r.layerSnapshots.of} snapshots at 3×`,
       ]),
+    ),
+    table(
+      [
+        'Map',
+        'Snapshot part',
+        'Size (JSON)',
+        'Transfer mean (ms)',
+        'Transfer p95',
+        'Transfer max',
+        '`structuredClone` (ms)',
+      ],
+      results.flatMap((r) =>
+        (
+          [
+            ['whole state (before)', r.whole],
+            ['moving part', r.moving],
+            ['static layers', r.layers],
+          ] as const
+        ).map(([part, cost]) => [
+          tiles(r),
+          part,
+          kb(cost.bytes),
+          ms(cost.transferMs.mean),
+          ms(cost.transferMs.p95),
+          ms(cost.transferMs.max),
+          ms(cost.structuredCloneMs),
+        ]),
+      ),
     ),
   ].join('\n\n');
 }

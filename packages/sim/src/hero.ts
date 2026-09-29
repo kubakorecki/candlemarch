@@ -24,6 +24,7 @@ import {
   reservedOnTile,
 } from './logistics/jobDispatch';
 import { inputRoom } from './logistics/supplyDemand';
+import { staticChanged } from './snapshot';
 import type { EntityId, GameState, HeroComponent, HeroTask, Tile } from './state';
 import { addToTile, amountOnTile, stockpileTakes, takeFromTile } from './stockpiles';
 import { isAt, rerouteTo, stopAtNextTile, villagerTile } from './systems/movement';
@@ -427,6 +428,7 @@ export function heroSystem(state: GameState, content: Content): void {
         return;
       }
       tree.amount -= amount;
+      staticChanged(state);
       hero.carrying = { resource: def.resource, amount: (hero.carrying?.amount ?? 0) + amount };
       if (tree.amount === 0) fellTree(state, content, order.tree);
       if (tree.amount === 0 || roomFor(content, hero, def.resource) <= 0) hero.order = null;

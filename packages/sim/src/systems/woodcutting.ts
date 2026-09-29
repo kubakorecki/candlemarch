@@ -6,6 +6,7 @@ import { idsOf } from '../entities';
 import { gatherTargets, outputRoom, walkToNearest } from '../gathering';
 import { doorTile } from '../grid';
 import { fellTree } from '../huntingGrounds';
+import { staticChanged } from '../snapshot';
 import { workTicks } from '../speed';
 import type { EntityId, GameState } from '../state';
 import { isAtWork } from '../villagers';
@@ -70,6 +71,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
         const def = content.mapObjects[tree.type];
         const amount = Math.min(def.yieldPerGather, tree.amount, job.carryCapacity);
         tree.amount -= amount;
+        staticChanged(state);
         v.carrying = { resource: def.resource, amount };
         if (tree.amount === 0) fellTree(state, content, task.tree);
         tasks[id] = { kind: 'toHut' };

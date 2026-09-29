@@ -19,7 +19,7 @@ const options = {
 };
 console.log(
   `Node ${process.version}, ${cpus()[0]?.model ?? 'unknown CPU'}. Warm-up ${options.warmupTicks} ticks, ` +
-    `then ${options.measuredTicks} ticks timed one by one; ` +
+    `then ${options.measuredTicks} ticks timed one by one with \`stepInPlace\`, as the worker runs them; ` +
     `${options.pairedTicks} ticks run both with \`step\` and \`stepInPlace\`; ${options.reps} repeats of the rest.\n`,
 );
 const results: MapSizeResult[] = [];
