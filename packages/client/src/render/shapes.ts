@@ -5,24 +5,24 @@ import type { Graphics } from 'pixi.js';
 import { gridToWorld, TILE_H, TILE_W, type Vec } from './iso';
 import { palette } from './palette';
 
-const INK = { width: 3, color: palette.ink, join: 'round', cap: 'round' } as const;
-const THIN_INK = { width: 2, color: palette.ink, join: 'round', cap: 'round' } as const;
+export const INK = { width: 3, color: palette.ink, join: 'round', cap: 'round' } as const;
+export const THIN_INK = { width: 2, color: palette.ink, join: 'round', cap: 'round' } as const;
 
 /** Wall and roof heights scale with the tile so art keeps its proportions if TILE_W changes. */
-const WALL_H = TILE_H * 0.9;
-const ROOF_H = TILE_H * 0.85;
+export const WALL_H = TILE_H * 0.9;
+export const ROOF_H = TILE_H * 0.85;
 /** Depth of the map's front edge. */
 const EDGE_H = TILE_H * 0.35;
 
-function flat(points: Vec[]): number[] {
+export function flat(points: Vec[]): number[] {
   return points.flatMap((p) => [p.x, p.y]);
 }
 
-function up(p: Vec, h: number): Vec {
+export function up(p: Vec, h: number): Vec {
   return { x: p.x, y: p.y - h };
 }
 
-function lerp(a: Vec, b: Vec, t: number): Vec {
+export function lerp(a: Vec, b: Vec, t: number): Vec {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
@@ -117,7 +117,12 @@ export function drawGround(
 }
 
 function groundShadow(g: Graphics, rx: number, ry: number): void {
-  g.ellipse(0, 0, rx, ry).fill({ color: palette.shadow, alpha: 0.35 });
+  groundShadowAt(g, 0, 0, rx, ry);
+}
+
+/** A soft shadow on the ground centred on (x, y). */
+export function groundShadowAt(g: Graphics, x: number, y: number, rx: number, ry: number): void {
+  g.ellipse(x, y, rx, ry).fill({ color: palette.shadow, alpha: 0.35 });
 }
 
 /** A tree, drawn around (0, 0) = the centre of its tile on the ground. */
@@ -353,46 +358,15 @@ export function doorFace(layout: BuildingLayout): DoorFace {
 }
 
 /** North and west walls face away from the isometric camera. */
-function isBackFace(face: DoorFace): boolean {
+export function isBackFace(face: DoorFace): boolean {
   return face === 'north' || face === 'west';
-}
-
-/**
- * Grid offset from the door tile's centre to the goods pile beside it: one tile along the wall,
- * turning with the door. A south door has its pile to the west.
- */
-const PILE_BESIDE: Record<DoorFace, Vec> = {
-  south: { x: -0.8, y: 0.1 },
-  west: { x: -0.1, y: -0.8 },
-  north: { x: 0.8, y: -0.1 },
-  east: { x: 0.1, y: 0.8 },
-};
-
-/** Door rectangle on the front-left (south) or front-right (east) wall. */
-function drawDoor(g: Graphics, layout: BuildingLayout, face: DoorFace): void {
-  const { origin, size, door } = layout;
-  let a: Vec;
-  let b: Vec;
-  if (face === 'south') {
-    a = gridToWorld(door.x + 0.25, origin.y + size.h);
-    b = gridToWorld(door.x + 0.75, origin.y + size.h);
-  } else if (face === 'east') {
-    a = gridToWorld(origin.x + size.w, door.y + 0.75);
-    b = gridToWorld(origin.x + size.w, door.y + 0.25);
-  } else {
-    return;
-  }
-  const doorH = WALL_H * 0.7;
-  g.poly(flat([a, b, up(b, doorH), up(a, doorH)]))
-    .fill(palette.door)
-    .stroke(THIN_INK);
 }
 
 /**
  * A doorstep on the ground at `door`: where a door on a hidden back wall opens, and where a site's
  * door will be. Its long side runs along the wall.
  */
-function drawDoorstep(g: Graphics, door: Vec, face: DoorFace): void {
+export function drawDoorstep(g: Graphics, door: Vec, face: DoorFace): void {
   const along = face === 'north' || face === 'south';
   const w = along ? 0.5 : 0.3;
   const h = along ? 0.3 : 0.5;
@@ -405,121 +379,6 @@ function drawDoorstep(g: Graphics, door: Vec, face: DoorFace): void {
   const at = nearWall[face];
   g.poly(flat(diamond(door.x + at.x, door.y + at.y, w, h)))
     .fill(palette.door)
-    .stroke(THIN_INK);
-}
-
-/** Wall height of a building `size` tiles across: bigger buildings stand a little taller. */
-function wallHeight(size: { w: number; h: number }): number {
-  return WALL_H * (0.8 + 0.2 * Math.max(size.w, size.h));
-}
-
-/**
- * World corners of a House's window: mid-wall on the front-right (east) wall, or on the front-left
- * (south) wall when the door is on the east one.
- */
-export function houseWindow(layout: BuildingLayout): [Vec, Vec, Vec, Vec] {
-  const { origin, size } = layout;
-  const wallH = wallHeight(size);
-  const half = 0.16;
-  let a: Vec;
-  let b: Vec;
-  if (doorFace(layout) === 'east') {
-    const mid = origin.x + size.w / 2;
-    a = gridToWorld(mid - half, origin.y + size.h);
-    b = gridToWorld(mid + half, origin.y + size.h);
-  } else {
-    const mid = origin.y + size.h / 2;
-    a = gridToWorld(origin.x + size.w, mid + half);
-    b = gridToWorld(origin.x + size.w, mid - half);
-  }
-  const sill = wallH * 0.3;
-  const lintel = wallH * 0.68;
-  return [up(a, sill), up(b, sill), up(b, lintel), up(a, lintel)];
-}
-
-/**
- * A finished building in world coordinates: an iso box with a pyramid roof and a door on the wall
- * it faces, or a doorstep on the ground when that wall is at the back. `stock` draws a pile beside
- * the door (the output buffer); `window` adds a House's window (`houseWindow`), unlit.
- */
-export function drawBuilding(
-  g: Graphics,
-  layout: BuildingLayout,
-  stock: ResourceAmount | null,
-  window = false,
-): void {
-  g.clear();
-  const { origin, size } = layout;
-  const face = doorFace(layout);
-  const back = isBackFace(face);
-  const drawPile = () => {
-    if (!stock || stock.amount <= 0) return;
-    const beside = PILE_BESIDE[face];
-    const at = gridToWorld(layout.door.x + 0.5 + beside.x, layout.door.y + 0.5 + beside.y);
-    drawGoodsPile(g, stock.resource, at.x, at.y, stock.amount);
-  };
-  // A pile behind the building goes first so the walls hide what they should.
-  if (back) drawPile();
-
-  const [top, right, bottom, left] = diamond(origin.x, origin.y, size.w, size.h);
-  const centre = lerp(top, bottom, 0.5);
-  const span = Math.max(size.w, size.h);
-  const wallH = wallHeight(size);
-  const roofH = ROOF_H * (0.7 + 0.3 * span);
-  const apex = up(centre, wallH + roofH);
-
-  g.poly(flat([top, right, bottom, left])).fill({ color: palette.shadow, alpha: 0.3 });
-  g.poly(flat([left, bottom, up(bottom, wallH), up(left, wallH)]))
-    .fill(palette.wallLight)
-    .stroke(INK);
-  g.poly(flat([bottom, right, up(right, wallH), up(bottom, wallH)]))
-    .fill(palette.wallDark)
-    .stroke(INK);
-  drawDoor(g, layout, face);
-  if (window) {
-    g.poly(flat(houseWindow(layout)))
-      .fill(palette.window)
-      .stroke(THIN_INK);
-  }
-
-  // Roof, with a little overhang: back faces first, then the two visible ones.
-  const eave = (p: Vec) => up(lerp(centre, p, 1.12), wallH - 4);
-  const [et, er, eb, el] = [eave(top), eave(right), eave(bottom), eave(left)];
-  g.poly(flat([el, et, apex]))
-    .fill(palette.roofDark)
-    .stroke(INK);
-  g.poly(flat([et, er, apex]))
-    .fill(palette.roof)
-    .stroke(INK);
-  g.poly(flat([el, eb, apex]))
-    .fill(palette.roof)
-    .stroke(INK);
-  g.poly(flat([eb, er, apex]))
-    .fill(palette.roofDark)
-    .stroke(INK);
-
-  if (back) drawBackDoorMark(g, layout.door, face);
-  else drawPile();
-}
-
-/**
- * A door on a hidden back wall: its doorstep and a small door standing on the door tile, drawn
- * over the building so it stays readable.
- */
-function drawBackDoorMark(g: Graphics, door: Vec, face: DoorFace): void {
-  drawDoorstep(g, door, face);
-  const s = TILE_H / 64;
-  const c = gridToWorld(door.x + 0.5, door.y + 0.5);
-  const w = 7 * s;
-  const h = 22 * s;
-  g.roundRect(c.x - w, c.y - h, w * 2, h, w)
-    .fill(palette.door)
-    .stroke(THIN_INK);
-  g.rect(c.x - w, c.y - h / 2, w * 2, h / 2).fill(palette.door);
-  g.moveTo(c.x - w, c.y - h / 2)
-    .lineTo(c.x - w, c.y)
-    .lineTo(c.x + w, c.y)
-    .lineTo(c.x + w, c.y - h / 2)
     .stroke(THIN_INK);
 }
 
@@ -796,19 +655,6 @@ export function drawWallSite(
   drawGoodsPile(g, 'logs', pile.x, pile.y, delivered);
 }
 
-/** A villager, drawn around (0, 0) = their feet. */
-export function drawVillager(g: Graphics, bodyColor: number): void {
-  g.clear();
-  const s = TILE_H / 64;
-  groundShadow(g, 11 * s, 5 * s);
-  g.roundRect(-8 * s, -30 * s, 16 * s, 28 * s, 7 * s)
-    .fill(bodyColor)
-    .stroke(INK);
-  g.circle(0, -38 * s, 8 * s)
-    .fill(palette.skin)
-    .stroke(INK);
-}
-
 /**
  * The hero, drawn around (0, 0) = their feet: taller than a villager, in a flared cloak with a
  * gold circlet, so it reads apart from villagers at a glance.
@@ -899,18 +745,6 @@ export function drawGlow(g: Graphics, x: number, y: number, radius: number): voi
   for (let i = RINGS; i >= 1; i--) {
     g.circle(x, y, (radius * i) / RINGS).fill({ color: palette.glow, alpha: 0.12 });
   }
-}
-
-/**
- * A lit House window: the pane in `palette.windowLit` and a small glow around it, with no lit
- * ground, so it never reads as the pool of Light a torch casts.
- */
-export function drawWindowLight(g: Graphics, layout: BuildingLayout): void {
-  const pane = houseWindow(layout);
-  const [a, , c] = pane;
-  const centre = lerp(a, c, 0.5);
-  drawGlow(g, centre.x, centre.y, TILE_H * 0.45);
-  g.poly(flat(pane)).fill(palette.windowLit);
 }
 
 /** A torch or brazier: what `drawLight` draws and where its flame burns. */
@@ -1145,7 +979,7 @@ export function drawBoostedMark(g: Graphics, layout: BuildingLayout): void {
 export function drawCarriedGoods(g: Graphics, resource: ResourceId): void {
   g.clear();
   const s = TILE_H / 64;
-  PIECES[resource].draw(g, 0, -52 * s, s);
+  PIECES[resource].draw(g, 0, -56 * s, s);
 }
 
 /** The goods in the hero's hands, stacked over its head, drawn relative to its feet. */

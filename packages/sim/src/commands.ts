@@ -21,7 +21,7 @@ import {
   STOCKPILE_PRIORITIES,
 } from './stockpiles';
 import { layWall } from './walls';
-import { reassignWorker, setWorkerLimit, unassignWorker } from './workers';
+import { reassignWorker, releaseWorkers, setWorkerLimit, unassignWorker } from './workers';
 
 export type Command =
   | {
@@ -33,6 +33,8 @@ export type Command =
       rotation?: Rotation;
     }
   | { type: 'cancelConstruction'; siteId: EntityId }
+  /** Removes a built building at once. Its workers become Carriers; its goods are lost. */
+  | { type: 'demolishBuilding'; id: EntityId }
   | { type: 'layPath'; from: Tile; to: Tile }
   | { type: 'removePath'; from: Tile; to: Tile }
   /** Lays wall segments (`palisade` or `gate`) along the L from `from` to `to`, like a path. */
@@ -66,6 +68,15 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     case 'cancelConstruction': {
       // Delivered materials are lost: there is no storage to return them to yet.
       if (state.components.site[command.siteId]) destroyEntity(state, command.siteId);
+      return;
+    }
+    case 'demolishBuilding': {
+      // Its goods and building materials are lost, like a cancelled site's. Its residents, hauls
+      // to or from it, the hero's order for it and Gloamlings going for it let go of it by
+      // themselves.
+      if (!state.components.building[command.id]) return;
+      releaseWorkers(state, content, command.id);
+      destroyEntity(state, command.id);
       return;
     }
     case 'layPath': {

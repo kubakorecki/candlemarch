@@ -12,7 +12,8 @@ describe('the nights map, unprepared', () => {
     expect(last?.date).toBe('Y1 Summer 1');
     // Every death is on the record by cause, including a Newcomer's who came and died between
     // two Dawns.
-    expect(last?.deathsBy.gloamling).toBeGreaterThanOrEqual(3);
+    // Residents broken in on fight back, so a House of two sees off a lone spring Gloamling.
+    expect(last?.deathsBy.gloamling).toBeGreaterThanOrEqual(2);
     expect(last?.deathsBy).toMatchObject({ starvation: 0, freezing: 0, den: 0 });
   });
 });

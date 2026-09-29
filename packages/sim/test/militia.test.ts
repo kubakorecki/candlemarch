@@ -2,6 +2,7 @@
 // and fight Gloamlings near it; ringing again or Dawn stands them down.
 import { describe, expect, it } from 'vitest';
 import { dawnTick, duskTick } from '../src/calendar';
+import { isIndoors } from '../src/combat';
 import type { Command } from '../src/commands';
 import { canPlaceBuilding, tileCenter, tileOfPoint } from '../src/grid';
 import { createInitialState, type MapDef } from '../src/map';
@@ -209,6 +210,15 @@ describe('a night at the bell', () => {
     const home = settle(run(rung, 1, { [rung.tick]: RING }));
     expect(tileOf(home, 3)).toEqual({ x: 2, y: 1 });
     expect(home.components.villager[3]?.routine).toBe('asleep');
+    expect(isIndoors(home, content, 3)).toBe(true);
+  });
+
+  it('brings them out of doors while it rings', () => {
+    const quiet = asleepAt(1);
+    expect(isIndoors(quiet, content, 3)).toBe(true);
+    const rung = run(quiet, 1, { [quiet.tick]: RING });
+    expect(rung.components.villager[3]?.routine).toBe('asleep');
+    expect(isIndoors(rung, content, 3)).toBe(false);
   });
 });
 

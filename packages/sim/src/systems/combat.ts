@@ -1,7 +1,7 @@
 // Night combat, resolved on its own. Each tick every Gloamling picks what to go for and walks
 // there; a villager a Gloamling reaches drops its work and hits back; then everyone in reach and
 // off cooldown hits, in entity-ID order, so the same fight always ends the same way. Gloamlings
-// batter House doors and the walls in their way. Villagers, the Hero, doors and walls are back to
+// batter House doors (the sleepers inside come out and fight) and the walls in their way. Villagers, the Hero, doors and walls are back to
 // full HP at Dawn; a Knocked-out Hero gets up at full HP once its time is up. By day or night the
 // Hero hits a Den it's ordered to attack, and every Den stings whoever stands next to it.
 import type { Content } from '@candlemarch/content';
@@ -12,6 +12,7 @@ import {
   chebyshev,
   heroFoe,
   inReach,
+  isBrokenInOn,
   isEngaged,
   isLivedInHouse,
   isOutInTheOpen,
@@ -23,7 +24,6 @@ import { killVillager } from '../deaths';
 import { clearDen } from '../dens';
 import { destroyEntity, idsOf } from '../entities';
 import { entityDoor, inBounds, tileIndex } from '../grid';
-import { isAtHome, residentsOf } from '../homes';
 import { litGrid } from '../lights';
 import { findPath, type Grid, travelCosts } from '../pathfinding';
 import type { DeathCause, EntityId, GameState, Tile } from '../state';
@@ -292,7 +292,7 @@ function engage(state: GameState, content: Content): void {
 
 /**
  * Everyone in reach of its foe and off cooldown hits once, in entity-ID order: a Gloamling its
- * target, a villager fighting or in the militia its foe (`villagerFoe`), a Watchman in its tower
+ * target, a villager fighting, in the militia or broken in on its foe (`villagerFoe`), a Watchman in its tower
  * the tower's foe (`towerFoe`, timed by the Watchman's `readyAt`), the Hero its foe (`heroFoe`),
  * a Den everyone it stings (`stungBy`). Whoever drops to 0 HP is gone (or Knocked out) before its
  * turn comes.
@@ -301,7 +301,11 @@ function resolveHits(state: GameState, content: Content): void {
   const { villager, gloamling, hero, den } = state.components;
   const fighters = [
     ...idsOf(villager).filter(
-      (id) => villager[id]?.fighting || villager[id]?.militia || isOnWatch(state, content, id),
+      (id) =>
+        villager[id]?.fighting ||
+        villager[id]?.militia ||
+        isOnWatch(state, content, id) ||
+        isBrokenInOn(state, content, id),
     ),
     ...idsOf(hero),
     ...idsOf(gloamling),
@@ -333,7 +337,7 @@ function resolveHits(state: GameState, content: Content): void {
       const battered = batteredBy(state, content, id);
       if (battered !== null) {
         g.readyAt = state.tick + cooldownTicks;
-        batter(state, content, id, battered, damage);
+        batter(state, id, battered, damage);
         continue;
       }
       if (state.components.building[g.target] || !inReach(state, id, g.target, reachTiles)) {
@@ -352,7 +356,6 @@ function resolveHits(state: GameState, content: Content): void {
       hurt(state, content, shot, watch.damage);
       continue;
     }
-    if (!(v.fighting || v.militia)) continue;
     const foe = villagerFoe(state, content, id);
     if (foe === null || !inReach(state, id, foe, content.combat.villager.reachTiles)) continue;
     v.readyAt = state.tick + content.combat.villager.cooldownTicks;
@@ -398,24 +401,15 @@ function hurt(
 
 /**
  * Gloamling `id` hits `building` (a House's door or a wall segment) for `damage`. At 0 HP it's
- * broken until Dawn: a House's lowest-ID resident asleep at Home dies, a wall stops blocking, and
- * the Gloamling picks a new target.
+ * broken until Dawn: a House's residents asleep inside are out in the open (`isBrokenInOn`) and
+ * fight, a wall stops blocking, and the Gloamling picks a new target.
  */
-function batter(
-  state: GameState,
-  content: Content,
-  id: EntityId,
-  building: EntityId,
-  damage: number,
-): void {
+function batter(state: GameState, id: EntityId, building: EntityId, damage: number): void {
   const b = state.components.building[building];
   const g = state.components.gloamling[id];
   if (!b || b.hp === null || !g) return;
   b.hp = Math.max(0, b.hp - damage);
-  if (b.hp > 0) return;
-  g.target = null;
-  const victim = residentsOf(state, building).find((v) => isAtHome(state, content, v));
-  if (victim !== undefined) killVillager(state, content, victim, 'gloamling');
+  if (b.hp === 0) g.target = null;
 }
 
 /**

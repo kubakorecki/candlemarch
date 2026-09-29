@@ -13,8 +13,8 @@ import { fullHp } from './walls';
 import { isOnWatch, towerFoe } from './watchtowers';
 
 /**
- * Whether `id` is a villager out in the open (not asleep at Home, nor a Watchman in its tower) or
- * the Hero, unless it's Knocked out.
+ * Whether `id` is a villager out in the open (not indoors, nor a Watchman in its tower) or the
+ * Hero, unless it's Knocked out.
  */
 export function isOutInTheOpen(state: GameState, content: Content, id: EntityId): boolean {
   if (state.components.hero[id]) return !isKnockedOut(state, id);
@@ -22,7 +22,32 @@ export function isOutInTheOpen(state: GameState, content: Content, id: EntityId)
   if (!v) return false;
   if (v.militia) return true;
   if (isOnWatch(state, content, id)) return false;
-  return !(v.routine === 'asleep' && isAtHome(state, content, id));
+  return !isIndoors(state, content, id);
+}
+
+/**
+ * Whether villager `id` is inside its Home, out of sight: asleep there, not called out by the
+ * bell, and its door not broken in by a Gloamling.
+ */
+export function isIndoors(state: GameState, content: Content, id: EntityId): boolean {
+  return isAsleepAtHome(state, content, id) && !isBrokenInOn(state, content, id);
+}
+
+/**
+ * Whether villager `id` was asleep at Home when a Gloamling broke its door in: it's out in the
+ * open and fights any Gloamling in its reach until Dawn.
+ */
+export function isBrokenInOn(state: GameState, content: Content, id: EntityId): boolean {
+  const home = state.components.villager[id]?.home ?? null;
+  return (
+    home !== null && isAsleepAtHome(state, content, id) && state.components.building[home]?.hp === 0
+  );
+}
+
+/** Whether villager `id` is asleep at its Home's door and not called out by the bell. */
+function isAsleepAtHome(state: GameState, content: Content, id: EntityId): boolean {
+  const v = state.components.villager[id];
+  return !!v && !v.militia && v.routine === 'asleep' && isAtHome(state, content, id);
 }
 
 /** Whether `house` is a House somebody lives in. */
@@ -89,14 +114,22 @@ export function militiaTarget(state: GameState, content: Content, id: EntityId):
 
 /**
  * The Gloamling villager `id` hits: one attacking it (`opponentOf`), else, while the Militia bell
- * has called it, the nearest in its reach within the bell's range. Null when there's none.
+ * has called it, the nearest in its reach within the bell's range, else, broken in on
+ * (`isBrokenInOn`), the nearest in its reach. Null when there's none.
  */
 export function villagerFoe(state: GameState, content: Content, id: EntityId): EntityId | null {
   const attacker = opponentOf(state, content, id);
-  if (attacker !== null || !state.components.villager[id]?.militia) return attacker;
+  if (attacker !== null) return attacker;
   const { reachTiles } = content.combat.villager;
-  const near = gloamlingsNearBell(state, content).filter((g) => inReach(state, id, g, reachTiles));
-  return nearestTo(state, id, near);
+  const reached = (gloamlings: EntityId[]) =>
+    nearestTo(
+      state,
+      id,
+      gloamlings.filter((g) => inReach(state, id, g, reachTiles)),
+    );
+  if (state.components.villager[id]?.militia) return reached(gloamlingsNearBell(state, content));
+  if (isBrokenInOn(state, content, id)) return reached(idsOf(state.components.gloamling));
+  return null;
 }
 
 /** Whether Hero `id` is Knocked out. */

@@ -110,7 +110,7 @@ export const TOOLS: readonly {
     label: 'Demolish',
     key: 'd',
     drag: false,
-    hint: 'Click a stockpile or construction site to remove it.',
+    hint: 'Click a building, stockpile or construction site to remove it. Its goods are lost.',
   },
 ];
 

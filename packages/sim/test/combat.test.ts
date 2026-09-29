@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { workSpeedPercent } from '../src/aura';
 import { dawnTick, duskTick } from '../src/calendar';
-import { healthBars } from '../src/combat';
+import { healthBars, isIndoors } from '../src/combat';
 import type { Command } from '../src/commands';
 import { idsOf } from '../src/entities';
 import { tileCenter, tileOfPoint } from '../src/grid';
@@ -122,10 +122,10 @@ describe('Gloamling targets', () => {
       expect(doorHp(houseAtDusk())).toBe(60);
     });
 
-    it('breaks it with 15 hits of 4, 20 ticks apart, killing the lowest-ID resident', () => {
+    it('breaks it with 15 hits of 4, 20 ticks apart, and nobody dies with it', () => {
       let s = run(houseAtDusk(), 1);
       const hits: { tick: number; hp: number | null | undefined }[] = [];
-      while (s.components.villager[3] && s.tick < duskTick(1, content) + 1000) {
+      while ((doorHp(s) ?? 0) > 0 && s.tick < duskTick(1, content) + 1000) {
         const before = doorHp(s);
         s = run(s, 1);
         if (doorHp(s) !== before) hits.push({ tick: s.tick, hp: doorHp(s) });
@@ -134,14 +134,38 @@ describe('Gloamling targets', () => {
       expect(hits.slice(1).map((h, i) => h.tick - (hits[i]?.tick ?? 0))).toEqual(
         Array(14).fill(20),
       );
-      expect(s.components.villager[3]).toBeUndefined();
-      expect(s.components.villager[4]).toBeDefined();
+      expect(s.deaths).toEqual([]);
+      expect([3, 4].map((id) => s.components.villager[id]?.hp)).toEqual([20, 20]);
+    });
+
+    it('keeps its residents indoors until the door breaks, then brings them out', () => {
+      const asleep = runUntil(run(houseAtDusk(), 1), (x) => (doorHp(x) ?? 60) < 60, 1000);
+      expect([3, 4].map((id) => isIndoors(asleep, content, id))).toEqual([true, true]);
+      const broken = runUntil(asleep, (x) => doorHp(x) === 0, 1000);
+      expect(broken.components.villager[3]?.routine).toBe('asleep');
+      expect([3, 4].map((id) => isIndoors(broken, content, id))).toEqual([false, false]);
+    });
+
+    it('then its residents fight the Gloamling off together', () => {
+      const broken = runUntil(run(houseAtDusk(), 1), (x) => doorHp(x) === 0, 1000);
+      // It goes for the lowest-ID resident; both hit it, 6 a round against its 20 HP.
+      const next = run(broken, 1);
+      expect(targetOf(next)).toBe(3);
+      const after = runUntil(next, (x) => idsOf(x.components.gloamling).length === 0, 400);
+      expect(after.deaths).toEqual([]);
+      expect(after.components.villager[3]?.hp).toBeLessThan(20);
+      expect(after.components.villager[4]?.hp).toBe(20);
+      // A broken door is no target until Dawn, and they sleep on where they stand.
+      const calm = run(after, 1);
+      expect(doorHp(calm)).toBe(0);
+      expect(calm.components.villager[3]).toMatchObject({ routine: 'asleep', fighting: false });
+    });
+
+    it('a lone resident broken in on loses to it', () => {
+      const alone = fieldAtDusk([{ x: 12, y: 4 }], { buildings: [{ type: 'hut', x: 12, y: 3 }] });
+      const s = runUntil(run(alone, 1), (x) => !x.components.villager[3], 1000);
+      expect(doorHp(s)).toBe(0);
       expect(s.deaths.map((d) => d.cause)).toEqual(['gloamling']);
-      // A broken door is no target until Dawn: the Gloamling moves on, and nobody else dies.
-      const later = run(s, 200);
-      expect(targetOf(later)).toBeNull();
-      expect(later.components.villager[4]?.hp).toBe(20);
-      expect(later.deaths).toHaveLength(1);
     });
 
     it('heals the door to full at Dawn', () => {

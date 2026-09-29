@@ -16,6 +16,7 @@ import {
   isBrokenWall,
   isColdHouse,
   isDarkLight,
+  isIndoors,
   isKnockedOut,
   isRiverFrozen,
   isWithered,
@@ -29,6 +30,7 @@ import {
   workplaceStatus,
 } from '@candlemarch/sim';
 import { Application, Container, Graphics, Text } from 'pixi.js';
+import { drawBuilding, drawWindowLight } from './buildingArt';
 import {
   type CameraView,
   depthOf,
@@ -47,7 +49,6 @@ import {
   drawBerryBush,
   drawBoostedMark,
   drawBrokenWall,
-  drawBuilding,
   drawCache,
   drawCarriedGoods,
   drawChoppingBlock,
@@ -80,17 +81,16 @@ import {
   drawSite,
   drawTileGhost,
   drawTree,
-  drawVillager,
   drawVillagerStatus,
   drawWaitingIcon,
   drawWallSite,
   drawWatchtower,
-  drawWindowLight,
   HEAT_LEVELS,
   type HeatTile,
   type RoadTile,
   type WallArms,
 } from './shapes';
+import { drawVillager, drawVillagerTool } from './villagerArt';
 
 /** A tree, building or construction site, redrawn only when what it shows changes. */
 interface StaticView {
@@ -100,17 +100,6 @@ interface StaticView {
   /** Summary of the drawn data; a different key means redraw. */
   key: string;
 }
-
-/** Body colour per Job. */
-export const JOB_COLORS: Record<JobId, number> = {
-  carrier: palette.carrier,
-  woodcutter: palette.woodcutter,
-  woodsplitter: palette.woodsplitter,
-  fisher: palette.fisher,
-  forager: palette.forager,
-  hunter: palette.hunter,
-  watchman: palette.watchman,
-};
 
 /** Outline and word colour for each Hunting ground health. */
 export const HEALTH_COLORS: Record<GroundHealth, number> = {
@@ -144,8 +133,10 @@ interface VillagerView {
   /** Selection ring on the ground under the feet. */
   ring: Graphics;
   body: Graphics;
-  /** The Job `body` is coloured for, so it's redrawn when a Carrier is drafted. */
+  /** The Job `body` is dressed for, so it's redrawn when a Carrier is drafted. */
   bodyJob: JobId;
+  /** The Job's tool in hand, hidden while the axe swings. */
+  tool: Graphics;
   /** What the villager carries, over its head. */
   load: Graphics;
   /** The resource `load` shows, so it's redrawn only when that changes. */
@@ -469,7 +460,7 @@ export class WorldRenderer {
           drawLight(view.graphics, layout, b.type, fuel);
         } else if (def.bell) drawBell(view.graphics, layout, ringing);
         else if (def.watch) drawWatchtower(view.graphics, layout);
-        else drawBuilding(view.graphics, layout, output, def.residents !== undefined);
+        else drawBuilding(view.graphics, layout, b.type, output);
         if (status) {
           const c = gridToWorld(at.x + size.w / 2, at.y + size.h / 2);
           drawStatusIcon(view.graphics, status, c.x, c.y - TILE_H * 2.4);
@@ -704,7 +695,7 @@ export class WorldRenderer {
     let hit: EntityId | null = null;
     let front = -Infinity;
     for (const [id, view] of this.villagers) {
-      if (view.node.zIndex > front && hitsNode(view.node, sx, sy)) {
+      if (view.node.visible && view.node.zIndex > front && hitsNode(view.node, sx, sy)) {
         hit = id;
         front = view.node.zIndex;
       }
@@ -794,6 +785,9 @@ export class WorldRenderer {
       if (!v || !to) continue;
       seen.add(id);
       const view = this.villagerView(id, v.job);
+      // Asleep inside its House: out of sight until it wakes or a Gloamling breaks the door.
+      view.node.visible = !isIndoors(state, this.content, id);
+      if (!view.node.visible) continue;
       const from = prevPositions[id] ?? to;
       const g = interpolate(from, to, alpha);
       const w = gridToWorld(g.x, g.y);
@@ -825,6 +819,7 @@ export class WorldRenderer {
       // Chopping a tree, or working a recipe (only splitting logs so far).
       const swinging = woodcutter[id]?.kind === 'chopping' || crafter[id]?.kind === 'working';
       view.axe.visible = swinging;
+      view.tool.visible = !swinging;
       if (swinging) view.axe.rotation = -0.4 + Math.abs(Math.sin(timeMs / 160)) * 1.3;
     }
     for (const [id, view] of this.villagers) {
@@ -1082,7 +1077,9 @@ export class WorldRenderer {
       drawSelectionRing(ring);
       ring.visible = id === this.selectedVillager;
       const body = new Graphics();
-      drawVillager(body, JOB_COLORS[job]);
+      drawVillager(body, job);
+      const tool = new Graphics();
+      drawVillagerTool(tool, job);
       const axe = new Graphics();
       drawAxe(axe);
       axe.position.set(9, -18);
@@ -1090,13 +1087,14 @@ export class WorldRenderer {
       const load = new Graphics();
       load.visible = false;
       const status = new Graphics();
-      node.addChild(ring, body, axe, load, status);
+      node.addChild(ring, body, tool, axe, load, status);
       this.objects.addChild(node);
       view = {
         node,
         ring,
         body,
         bodyJob: job,
+        tool,
         load,
         loadDrawn: null,
         axe,
@@ -1106,7 +1104,8 @@ export class WorldRenderer {
       this.villagers.set(id, view);
     }
     if (view.bodyJob !== job) {
-      drawVillager(view.body, JOB_COLORS[job]);
+      drawVillager(view.body, job);
+      drawVillagerTool(view.tool, job);
       view.bodyJob = job;
     }
     return view;

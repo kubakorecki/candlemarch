@@ -1136,16 +1136,18 @@ function workersView(state: GameState): WorkersView {
   return { carriers, workers: rows.length - carriers, rows };
 }
 
-/** Removes the stockpile or construction site on `tile`, stockpile first. */
+/** Removes the stockpile, construction site or building on `tile`, in that order. */
 function demolishCommand(state: GameState, tile: Tile): Command | null {
   const pile = stockpileAt(state, tile);
   if (pile !== null) return { type: 'removeStockpile', id: pile };
-  for (const id of idsOf(state.components.site)) {
+  const on = (id: EntityId) => {
     const layout = entityLayout(state, content, id);
-    if (layout && covers(layout.origin, layout.size.w, layout.size.h, tile)) {
-      return { type: 'cancelConstruction', siteId: id };
-    }
-  }
+    return layout !== null && covers(layout.origin, layout.size.w, layout.size.h, tile);
+  };
+  const site = idsOf(state.components.site).find(on);
+  if (site !== undefined) return { type: 'cancelConstruction', siteId: site };
+  const building = idsOf(state.components.building).find(on);
+  if (building !== undefined) return { type: 'demolishBuilding', id: building };
   return null;
 }
 

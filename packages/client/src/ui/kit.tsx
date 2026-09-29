@@ -4,7 +4,7 @@ import { type BuildingDef, content, type JobId, type ResourceId } from '@candlem
 import { isStockpileGood } from '@candlemarch/sim';
 import type { ReactNode } from 'react';
 import { hex } from '../render/palette';
-import { JOB_COLORS } from '../render/WorldRenderer';
+import { JOB_COLORS } from '../render/villagerArt';
 import { Icon, type IconName } from './icons';
 
 export type Tone = 'dire' | 'warn' | 'muted';

@@ -90,6 +90,11 @@ function release(state: GameState, content: Content, id: EntityId): void {
   assignJob(state, content, id, 'carrier', null);
 }
 
+/** Makes every worker at `building` a Carrier, from where it stands. Leaves worker limits alone. */
+export function releaseWorkers(state: GameState, content: Content, building: EntityId): void {
+  for (const id of workersAt(state, building)) release(state, content, id);
+}
+
 /** Lowers `building`'s worker limit by one, so staffing doesn't fill the position just left. */
 function lowerLimit(state: GameState, building: EntityId | null): void {
   const b = building === null ? undefined : state.components.building[building];
