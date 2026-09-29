@@ -85,6 +85,7 @@ These keep the game testable, saveable and replayable. Treat them as non-negotia
 - Direction: polished, cartoony, slightly dark, for adults. References: Don't Starve, Hollow Knight, Graveyard Keeper. **Not pixel art.**
 - Placeholders: simple shapes drawn in code or SVG, with bold dark outlines and flat, desaturated earthy fills.
 - Define the palette once in a single module and use it everywhere.
+- HUD (panels, menus, dialogs): the Vellum design system in `docs/agents/design-system.md`. Read it before touching `packages/client/src/ui/`.
 - Isometric tiles are 2:1. Keep tile size in one constant so it can change. Final art will likely be authored at 256×128 per tile.
 
 ## Testing

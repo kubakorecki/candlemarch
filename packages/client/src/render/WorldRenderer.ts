@@ -102,7 +102,7 @@ interface StaticView {
 }
 
 /** Body colour per Job. */
-const JOB_COLORS: Record<JobId, number> = {
+export const JOB_COLORS: Record<JobId, number> = {
   carrier: palette.carrier,
   woodcutter: palette.woodcutter,
   woodsplitter: palette.woodsplitter,
@@ -889,7 +889,7 @@ export class WorldRenderer {
       const before = last?.components.huntingGround[id];
       if (!g || !before || g.fled <= before.fled) continue;
       const c = gridToWorld(g.x + g.w / 2, g.y + g.h / 2);
-      const label = this.groundText(`${g.fled - before.fled} fled`, palette.hudText);
+      const label = this.groundText(`${g.fled - before.fled} fled`, palette.uiText);
       label.position.set(c.x, c.y - TILE_H * 0.6);
       this.puffLabels.addChild(label);
       this.activePuffs.push({ x: c.x, y: c.y, startMs: null, label });
@@ -1035,7 +1035,7 @@ export class WorldRenderer {
           fontFamily: 'Georgia, "Times New Roman", serif',
           fontSize: 20,
           fontWeight: 'bold',
-          fill: palette.hudText,
+          fill: palette.uiText,
           stroke: { color: palette.ink, width: 5 },
         },
       });

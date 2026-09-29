@@ -1,7 +1,8 @@
 // Glue between the sim worker, the renderer, input and the React HUD. Holds UI-only state
 // (speed, build mode); everything about the world comes from sim snapshots.
-import { type BuildingId, content, type ResourceId } from '@candlemarch/content';
+import { type BuildingId, content, type JobId, type ResourceId } from '@candlemarch/content';
 import {
+  type AlertData,
   type AlertSeverity,
   alerts,
   bellOf,
@@ -57,128 +58,14 @@ import {
   winterText,
   workplaceStatusText,
 } from './alertText';
-import { dateLabel, SAVE_SLOTS, type SaveSlot, slotDateLabel } from './autosave';
+import { type DayTrack, dayTrack } from './almanac';
+import { SAVE_SLOTS, type SaveSlot, seasonName, slotDateLabel } from './autosave';
 import type { Speed } from './clock';
+import { stockpileGoods } from './ledger';
 import { SimBridge } from './SimBridge';
+import { TOOLS, type ToolId, toolDef } from './tools';
 
 const NEW_GAME_SEED = 1;
-
-export type ToolId = BuildingId | 'path' | 'removePath' | 'stockpile' | 'demolish';
-
-/** HUD tools in toolbar order, with their keyboard shortcut. `drag` tools act on press-drag-release. */
-export const TOOLS: readonly {
-  id: ToolId;
-  label: string;
-  key: string;
-  drag: boolean;
-  hint: string;
-}[] = [
-  {
-    id: 'hut',
-    label: 'Hut',
-    key: 'b',
-    drag: false,
-    hint: 'Click to place. Shift-click places more.',
-  },
-  {
-    id: 'woodcutters_hut',
-    label: "Woodcutter's hut",
-    key: 'w',
-    drag: false,
-    hint: 'Click to place. Shift-click places more.',
-  },
-  {
-    id: 'granary',
-    label: 'Granary',
-    key: 'g',
-    drag: false,
-    hint: 'Click to place. Villagers eat here at Dusk. Shift-click places more.',
-  },
-  {
-    id: 'chopping_block',
-    label: 'Chopping block',
-    key: 'c',
-    drag: false,
-    hint: 'Click to place. Shift-click places more.',
-  },
-  {
-    id: 'foragers_hut',
-    label: "Forager's hut",
-    key: 'o',
-    drag: false,
-    hint: 'Click to place near berry bushes and mushroom patches. Shift-click places more.',
-  },
-  {
-    id: 'hunters_lodge',
-    label: "Hunter's lodge",
-    key: 'h',
-    drag: false,
-    hint: 'Click to place near a Hunting ground. Shift-click places more.',
-  },
-  {
-    id: 'fishers_hut',
-    label: "Fisher's hut",
-    key: 'f',
-    drag: false,
-    hint: 'Click to place with its door on the riverbank. Shift-click places more.',
-  },
-  {
-    id: 'torch',
-    label: 'Torch',
-    key: 'l',
-    drag: false,
-    hint: 'Click to place. Burns firewood each night; Gloamlings never step into its Light.',
-  },
-  {
-    id: 'brazier',
-    label: 'Brazier',
-    key: 'z',
-    drag: false,
-    hint: 'Click to place. More Light than a torch, for more firewood each night.',
-  },
-  {
-    id: 'bell',
-    label: 'Militia bell',
-    key: 'k',
-    drag: false,
-    hint: 'Click to place. One per village; ring it to call every villager to arms.',
-  },
-  {
-    id: 'watchtower',
-    label: 'Watchtower',
-    key: 'y',
-    drag: false,
-    hint: 'Click to place. Its Watchman stands in it all night and shoots Gloamlings in range.',
-  },
-  {
-    id: 'palisade',
-    label: 'Palisade',
-    key: 'p',
-    drag: true,
-    hint: 'Drag to lay an L-shaped palisade. It blocks villagers and Gloamlings alike.',
-  },
-  {
-    id: 'gate',
-    label: 'Gate',
-    key: 'n',
-    drag: true,
-    hint: "Drag to lay Gates, or click for one. Villagers and the hero walk through; Gloamlings don't.",
-  },
-  { id: 'path', label: 'Path', key: 'r', drag: true, hint: 'Drag to lay an L-shaped path.' },
-  { id: 'removePath', label: 'Remove path', key: 'x', drag: true, hint: 'Drag to remove path.' },
-  { id: 'stockpile', label: 'Stockpile', key: 's', drag: true, hint: 'Drag a rectangle.' },
-  {
-    id: 'demolish',
-    label: 'Demolish',
-    key: 'd',
-    drag: false,
-    hint: 'Click a stockpile or construction site to remove it.',
-  },
-];
-
-function toolDef(id: ToolId) {
-  return TOOLS.find((t) => t.id === id);
-}
 
 /** A building placed with a click (not a wall, which is dragged). */
 function isBuilding(id: ToolId): id is BuildingId {
@@ -194,6 +81,7 @@ function isWallTool(id: ToolId): id is BuildingId {
 export interface VillagerInfo {
   name: string;
   job: string;
+  jobId: JobId;
   /** The Workplace's name, or null without one. */
   workplace: string | null;
   /** The Home's name, or null when Homeless. */
@@ -210,6 +98,7 @@ export interface WorkerRow {
   id: EntityId;
   name: string;
   job: string;
+  jobId: JobId;
   /** The Workplace's name, or null for a Carrier. */
   workplace: string | null;
   /** Workplaces with a free position, by name. */
@@ -225,6 +114,8 @@ export interface WorkersView {
 /** What the patch panel shows for the selected forage patch. */
 export interface PatchInfo {
   name: string;
+  /** What it grows. */
+  resource: ResourceId;
   /** "3 berries", or "Nothing to gather". */
   stock: string;
   /** "No shade: needs a tree within 2 tiles to regrow" once withered, otherwise null. */
@@ -244,10 +135,13 @@ export interface GroundInfo {
 
 /** What the building panel shows for the selected Workplace. */
 export interface BuildingInfo {
+  type: BuildingId;
   name: string;
+  /** Its output buffers: what it holds of each resource, and how much fits. */
+  holds: { resource: ResourceId; amount: number; capacity: number }[];
   /** Hunting grounds its hunters reach; empty unless it hunts. */
   grounds: GroundInfo[];
-  workers: { id: EntityId; name: string }[];
+  workers: { id: EntityId; name: string; job: string; jobId: JobId }[];
   workerLimit: number;
   maxWorkers: number;
   /** Why it's idle, e.g. "Waiting for logs", or null while it works. */
@@ -263,8 +157,11 @@ export interface LoadSlotView {
   date: string | null;
 }
 
+export type AlertKind = AlertData['kind'];
+
 /** One line of the alert list. Clicking it moves the camera to `target`. */
 export interface AlertView {
+  kind: AlertKind;
   severity: AlertSeverity;
   text: string;
   target: Tile | null;
@@ -277,13 +174,17 @@ export interface HudState {
   ready: boolean;
   speed: Speed;
   tool: ToolId | null;
-  /** Logs in the woodcutter's hut output buffer, and its capacity. */
-  hutLogs: number;
-  hutCapacity: number;
-  /** The date, e.g. "Spring, day 3", and the year. */
-  date: string;
+  /** Days since the game began, the season's name, the day within it and the year. */
+  day: number;
+  season: string;
+  dayOfSeason: number;
   year: number;
-  isNight: boolean;
+  /** Where the day is between two Dawns, and what to call that time. */
+  dayTrack: DayTrack;
+  /** Villagers alive. */
+  villagers: number;
+  /** Goods on Stockpiles, by resource. */
+  goods: Partial<Record<ResourceId, number>>;
   /** Villagers with no Home. */
   homeless: number;
   /** Villagers who missed their last Meal. */
@@ -292,8 +193,9 @@ export interface HudState {
   cold: number;
   /** Food in every Granary. */
   food: number;
-  /** Carrier utilization over the last day, e.g. "64%". */
+  /** Carrier utilization over the last day, e.g. "64%", and as a number (null: no Carrier worked). */
   carriersBusy: string;
+  carriersBusyPercent: number | null;
   /** The road heat-map is showing. */
   heatMap: boolean;
   /** "Winter in N days" through autumn, else null. */
@@ -358,16 +260,19 @@ export class Game {
     ready: false,
     speed: 1,
     tool: null,
-    hutLogs: 0,
-    hutCapacity: 0,
-    date: '',
+    day: 1,
+    season: '',
+    dayOfSeason: 1,
     year: 1,
-    isNight: false,
+    dayTrack: { phase: 'day', progress: 0, duskAt: 1 },
+    villagers: 0,
+    goods: {},
     homeless: 0,
     hungry: 0,
     cold: 0,
     food: 0,
     carriersBusy: utilizationText(null),
+    carriersBusyPercent: null,
     heatMap: false,
     winter: null,
     alerts: [],
@@ -431,9 +336,8 @@ export class Game {
   selectTool(tool: ToolId): void {
     this.dragStart = null;
     this.clearSelection();
-    const hint = toolDef(tool)?.hint ?? '';
-    const turn = isBuilding(tool) ? ' Q/E turns it.' : '';
-    this.setHud({ tool, message: `${hint}${turn} Esc or right-click cancels.` });
+    // The build menu shows the tool's hint.
+    this.setHud({ tool, message: null });
     this.updateGhost();
   }
 
@@ -648,24 +552,28 @@ export class Game {
       this.selectHero(false); // a new game or a load without a hero
     }
 
-    const { building } = state.components;
-    const hut = Object.values(building).find((b) => b.type === 'woodcutters_hut');
-    const buffer = content.buildings.woodcutters_hut.outputBuffer?.[0];
     const time = calendarAt(state.tick, content);
+    const villagers = Object.values(state.components.villager);
+    const busy = carrierUtilization(state, content);
+    const track = dayTrack(state.tick, content);
+    const goods = stockpileGoods(state);
     this.setHud({
       ready: true,
-      hutLogs: hut && buffer ? (hut.stock[buffer.resource] ?? 0) : 0,
-      hutCapacity: buffer?.capacity ?? 0,
       heroLoad: heroLoadLabel(state),
       heroKnockout: heroKnockoutLabel(state),
-      date: dateLabel(time, content),
+      day: time.day,
+      season: seasonName(time.season, content),
+      dayOfSeason: time.dayOfSeason,
       year: time.year,
-      isNight: time.isNight,
-      homeless: Object.values(state.components.villager).filter((v) => v.home === null).length,
-      hungry: Object.values(state.components.villager).filter((v) => v.missedMeals > 0).length,
-      cold: Object.values(state.components.villager).filter((v) => v.coldNights > 0).length,
+      dayTrack: sameJson(track, this.hud.dayTrack) ? this.hud.dayTrack : track,
+      villagers: villagers.length,
+      goods: sameJson(goods, this.hud.goods) ? this.hud.goods : goods,
+      homeless: villagers.filter((v) => v.home === null).length,
+      hungry: villagers.filter((v) => v.missedMeals > 0).length,
+      cold: villagers.filter((v) => v.coldNights > 0).length,
       food: villageFood(state, content),
-      carriersBusy: utilizationText(carrierUtilization(state, content)),
+      carriersBusy: utilizationText(busy),
+      carriersBusyPercent: busy,
       gameOver: state.gameOver && gameOverText(state.gameOver),
       monsterRate: state.monsterRate,
     });
@@ -677,6 +585,7 @@ export class Game {
   /** Alerts, the winter countdown and the death log. Lists only change when their text does. */
   private refreshAlerts(state: GameState): void {
     const list: AlertView[] = alerts(state, content).map((alert) => ({
+      kind: alert.kind,
       severity: alert.severity,
       text: alertText(alert),
       target: alert.target,
@@ -1112,6 +1021,7 @@ function patchInfo(state: GameState, id: EntityId): PatchInfo | null {
   const food = content.resources[def.resource].name.toLowerCase();
   return {
     name: def.name,
+    resource: def.resource,
     stock: obj.amount > 0 && !withered ? `${obj.amount} ${food}` : 'Nothing to gather',
     noShade: withered
       ? `No shade: needs a tree within ${def.forage.shadeTiles} tiles to regrow`
@@ -1184,11 +1094,20 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
   const { villager } = state.components;
   const status = workplaceStatus(state, content, id);
   return {
+    type: b.type,
     name: buildingNames(state)[id] ?? content.buildings[b.type].name,
+    holds: (content.buildings[b.type].outputBuffer ?? []).map(({ resource, capacity }) => ({
+      resource,
+      amount: b.stock[resource] ?? 0,
+      capacity,
+    })),
     grounds: content.buildings[b.type].hunts
       ? groundsInReach(state, content, id).flatMap((g) => groundInfo(state, g) ?? [])
       : [],
-    workers: workersAt(state, id).map((w) => ({ id: w, name: villager[w]?.name ?? '' })),
+    workers: workersAt(state, id).flatMap((w) => {
+      const v = villager[w];
+      return v ? [{ id: w, name: v.name, job: content.jobs[v.job].name, jobId: v.job }] : [];
+    }),
     workerLimit: b.workerLimit,
     maxWorkers: maxWorkers(content, b.type),
     status: status && workplaceStatusText(status),
@@ -1208,6 +1127,7 @@ function workersView(state: GameState): WorkersView {
       id,
       name: v.name,
       job: content.jobs[v.job].name,
+      jobId: v.job,
       workplace: v.workplace === null ? null : (names[v.workplace] ?? null),
       targets: reassignTargets(state, content, id).map((b) => ({ id: b, name: names[b] ?? '' })),
     });
@@ -1240,6 +1160,7 @@ function villagerInfo(state: GameState, id: EntityId): VillagerInfo | null {
   return {
     name: v.name,
     job: content.jobs[v.job].name,
+    jobId: v.job,
     workplace: v.workplace === null ? null : (names[v.workplace] ?? null),
     home: v.home === null ? null : (names[v.home] ?? null),
     tired: v.tired,

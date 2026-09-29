@@ -115,14 +115,27 @@ export const palette = {
   valid: 0x9dbf73,
   invalid: 0xc4584a,
 
-  hudBg: 0x2a241d,
-  hudPanel: 0x3a3128,
-  hudText: 0xefe4cc,
-  hudMuted: 0xb3a58b,
-  hudAccent: 0xd9a55b,
-  // Alert severities in the HUD list.
-  alertRed: 0xd4614f,
-  alertAmber: 0xd9a55b,
+  // HUD, the Vellum look (docs/agents/design-system.md): umber lacquer panels, gilt hairlines, vellum
+  // text. Red and amber are kept for alerts; gilt marks what's on or in hand.
+  uiUmber: 0x14110e,
+  uiLacquer: 0x1d1813,
+  uiCard: 0x221c16,
+  uiRaised: 0x2b2319,
+  uiText: 0xe6dcc6,
+  uiTextBright: 0xf3e6d8,
+  uiTextSoft: 0xd3c7b0,
+  uiTextDim: 0xc9b8a6,
+  uiMuted: 0xa89a82,
+  uiDisabled: 0x5e5446,
+  uiGilt: 0xc9a25a,
+  uiGiltLit: 0xe8cf86,
+  uiDire: 0x9b3a2e,
+  uiDireLine: 0xd9695a,
+  uiDireText: 0xe88b7c,
+  uiDireInk: 0xf0d8cc,
+  uiWarn: 0xe3b066,
+  uiWarnLine: 0xd9a04e,
+  uiShade: 0x0b0907,
   // Road heat-map: unused, then from light to heavy Carrier traffic.
   heatNone: 0x8a8378,
   heat1: 0xd6c47e,
@@ -137,20 +150,38 @@ export function hex(color: number): string {
   return `#${color.toString(16).padStart(6, '0')}`;
 }
 
-/** Exposes the HUD colours to CSS as `--hud-*` variables on the document root. */
+/** HUD colours exposed to CSS, as `--<name>` variables: `uiGiltLit` becomes `--ui-gilt-lit`. */
+const CSS_COLOURS = [
+  'background',
+  'thriving',
+  'thinning',
+  'scarce',
+  'empty',
+  'uiUmber',
+  'uiLacquer',
+  'uiCard',
+  'uiRaised',
+  'uiText',
+  'uiTextBright',
+  'uiTextSoft',
+  'uiTextDim',
+  'uiMuted',
+  'uiDisabled',
+  'uiGilt',
+  'uiGiltLit',
+  'uiDire',
+  'uiDireLine',
+  'uiDireText',
+  'uiDireInk',
+  'uiWarn',
+  'uiWarnLine',
+  'uiShade',
+] as const satisfies readonly PaletteKey[];
+
+/** Exposes the HUD colours to CSS as variables on the document root (see `CSS_COLOURS`). */
 export function applyPaletteToCss(root: HTMLElement): void {
-  root.style.setProperty('--ink', hex(palette.ink));
-  root.style.setProperty('--background', hex(palette.background));
-  root.style.setProperty('--hud-bg', hex(palette.hudBg));
-  root.style.setProperty('--hud-panel', hex(palette.hudPanel));
-  root.style.setProperty('--hud-text', hex(palette.hudText));
-  root.style.setProperty('--hud-muted', hex(palette.hudMuted));
-  root.style.setProperty('--hud-accent', hex(palette.hudAccent));
-  root.style.setProperty('--hud-invalid', hex(palette.invalid));
-  root.style.setProperty('--thriving', hex(palette.thriving));
-  root.style.setProperty('--thinning', hex(palette.thinning));
-  root.style.setProperty('--scarce', hex(palette.scarce));
-  root.style.setProperty('--empty', hex(palette.empty));
-  root.style.setProperty('--alert-red', hex(palette.alertRed));
-  root.style.setProperty('--alert-amber', hex(palette.alertAmber));
+  for (const key of CSS_COLOURS) {
+    const name = key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+    root.style.setProperty(`--${name}`, hex(palette[key]));
+  }
 }

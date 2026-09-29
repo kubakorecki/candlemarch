@@ -2,6 +2,7 @@
 import { DEFAULT_MAP, DEFAULT_MONSTER_RATE, type MapName, maps } from '@candlemarch/sim';
 import { useState, useSyncExternalStore } from 'react';
 import type { Game } from '../game/Game';
+import { SectionHead } from './kit';
 
 const MAP_NAMES = Object.keys(maps) as MapName[];
 
@@ -12,31 +13,42 @@ export function NewGamePanel({ game }: { game: Game }) {
   const monstersNow = hud.monsterRate > 0;
 
   return (
-    <div className="panel new-game">
-      <div className="title">New game</div>
-      <label className="row">
-        <span className="muted">Map</span>
-        <select value={map} onChange={(e) => setMap(e.target.value as MapName)}>
-          {MAP_NAMES.map((name) => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="row">
-        <span className="muted">Monsters</span>
-        <input type="checkbox" checked={monsters} onChange={(e) => setMonsters(e.target.checked)} />
-      </label>
-      <button type="button" onClick={() => game.newGame(map, monsters ? DEFAULT_MONSTER_RATE : 0)}>
-        Start
-      </button>
-      <button
-        type="button"
-        onClick={() => game.setMonsterRate(monstersNow ? 0 : DEFAULT_MONSTER_RATE)}
-      >
-        {monstersNow ? 'Monsters off now' : 'Monsters on now'}
-      </button>
+    <div className="hud">
+      <section className="panel new-game" aria-label="New game (dev)">
+        <SectionHead title="New game" aside="dev" />
+        <label className="fact">
+          <span>Map</span>
+          <select value={map} onChange={(e) => setMap(e.target.value as MapName)}>
+            {MAP_NAMES.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="fact">
+          <span>Monsters</span>
+          <input
+            type="checkbox"
+            checked={monsters}
+            onChange={(e) => setMonsters(e.target.checked)}
+          />
+        </label>
+        <button
+          type="button"
+          className="btn primary"
+          onClick={() => game.newGame(map, monsters ? DEFAULT_MONSTER_RATE : 0)}
+        >
+          Start
+        </button>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => game.setMonsterRate(monstersNow ? 0 : DEFAULT_MONSTER_RATE)}
+        >
+          {monstersNow ? 'Monsters off now' : 'Monsters on now'}
+        </button>
+      </section>
     </div>
   );
 }
