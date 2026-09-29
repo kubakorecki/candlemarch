@@ -1,6 +1,6 @@
 # Gate: pick the map size and performance budget
 
-Status: ready-for-human
+Status: resolved
 Type: prototype
 Blocked by: 01
 
@@ -17,3 +17,7 @@ Record as an ADR (hard to reverse, real trade-off), update the spec's open quest
 ## Done when
 
 - ADR written; the spec's "Map size?" question is closed.
+
+## Comments
+
+2026-09-29 — Decided in a `/grill-with-docs` session together with ticket 03, from the benchmark report (the owner didn't try the page in a real window). The Valley is 128², a content number. Budget, at 128² on the M1 Pro: `step` mean ≤ 5 ms, p95 ≤ 10 ms, no tick over 50 ms; the client runs 60 fps at 3× while panning, frame p95 ≤ 20 ms, main-thread snapshot handling ≤ 4 ms. The worker steps in place, and snapshots split into a moving part and static layers sent only when changed; no general diffs. Recorded in `docs/adr/0004-valley-size-and-budget.md`; the spec's "Map size?" is closed. Ticket 04 is rewritten as the sim's share, and the snapshot and renderer work are split out as tickets 14 and 15.

@@ -15,11 +15,12 @@ A `/grill-with-docs` session, held after the Hamlet playtest. Record answers in 
 3. **Furniture:** consumed once per house, or does it wear out?
 4. **Mills:** what a "hill" is on the grid; watermill in winter (the river freezes).
 5. **Caravan invitations:** visit schedule, stay length, how to win a master over.
-6. **Rescue:** which POIs hold masters; how the hero rescues them (with or without combat).
+6. **Rescue:** which masters wait in Ruins (M4 left the hook there); how the hero rescues them (with or without combat).
 7. **Recommendation:** which masters recommend whom, and when.
 8. **Traits:** the v1 pool (Drunkard, Proud, Early riser, Pious, …) and each effect in numbers; 1–2 per master, rolled with the PRNG.
 9. **Crown tribute:** amount, due date, what penalties missing it brings, how "revoking privileges" works.
 10. **Cobblestone roads and handcarts** under the chosen logistics model: cost, speed, capacity, who uses them.
+11. **Bridges** (from the M4 design session, where Fords are the only river crossings): cost, length, whether Gloamlings cross them, and whether a Bridge can be closed at night.
 
 ## Done when
 

@@ -160,9 +160,105 @@ _Avoid_: Rot, decay
 
 ### Land
 
+**Valley**:
+The whole generated map: a rim of Mountain with one river through it, entered through one gap in the rim.
+_Avoid_: World, level
+
+**Terrain**:
+The ground of a tile: Meadow, Rock, Mountain, Swamp or River. Trees, Forage patches and Deposits stand on it; they aren't Terrain.
+_Avoid_: Tile type, biome
+
+**Meadow**:
+Open ground that villagers walk on and build on.
+_Avoid_: Grass, field (a field is farmland)
+
+**Forest**:
+Tiles with standing trees. Not a Terrain: a tile stops being Forest when its tree is felled.
+_Avoid_: Woods, woodland, forest terrain
+
+**Rock**:
+Stony ground at the foot of the Mountains. Walkable but slow, and nothing is built on it except a quarry. Stone Deposits sit on it.
+_Avoid_: Stone (the resource), crag
+
+**Mountain**:
+Ground nobody can walk on or build on. It forms the Valley's rim; iron Deposits sit on its faces.
+_Avoid_: Cliff, hill
+
+**Swamp**:
+Wet, slow ground that can't be built on until it is Drained.
+_Avoid_: Marsh, bog
+
+**Drain**:
+Construction laid over Swamp tiles the way a Road is laid. When finished, the tile becomes Meadow for good.
+_Avoid_: Ditch, draining
+
+**Ford**:
+A shallow stretch of River that villagers, the Hero and Gloamlings wade across slowly. Nothing is built on it.
+_Avoid_: Crossing, shallows
+
+**Deposit**:
+A map object holding a fixed amount of stone, clay or iron ore. What is dug out never comes back.
+_Avoid_: Node, vein (as a term), ore patch
+
+**Reserve**:
+Forest tiles the player paints so woodcutters never fell there. Foragers and hunters still work in it.
+_Avoid_: Foraging area, preserve, protected forest
+
+**Side valley**:
+The part of the Valley behind the Pass, where the iron Deposits and the Abandoned mine are.
+_Avoid_: Back valley, second valley
+
+**Pass**:
+The gap through the Mountain rim into the Side valley. It is snowed in, and nobody walks through it until a Pass road is built.
+_Avoid_: Gap, col
+
+**Pass road**:
+Construction laid through the Pass the way a Road is laid. Once built, the Pass stays open all year.
+_Avoid_: Mountain road
+
+**Stump**:
+What a felled tree leaves on its tile. After a long while it sprouts a Sapling, unless a building or Road is put on the tile.
+_Avoid_: Clearing
+
+**Sapling**:
+A young tree, planted by a forester or sprouted from a Stump. It can't be felled and doesn't block walking. It counts as a standing tree (for shade, Game and Forest) only once it matures.
+_Avoid_: Young tree, seedling
+
+**Point of interest (POI)**:
+A handcrafted spot the generator places in the Valley: Ruins, an Abandoned mine, a Shrine or a Den.
+_Avoid_: Landmark, site (a site is construction)
+
+**Ruins**:
+A POI the Hero Searches by day. It leaves a Cache and may hide a trapped master.
+_Avoid_: Dungeon, tomb
+
+**Abandoned mine**:
+A POI on a Mountain face marking an iron Deposit, with a Den at its mouth.
+_Avoid_: Old mine, cave
+
+**Shrine**:
+A roadside POI. No Den buds near it.
+_Avoid_: Chapel (a building), altar
+
+**Fog**:
+What hides the Valley from the player. A tile is unrevealed (black), Revealed, or In sight. Fog changes what the player knows and where they may build, never what happens in the world. It can be switched off per game.
+_Avoid_: Fog of war (in code and tickets), shroud, darkness
+
+**Revealed**:
+A tile the player has seen at least once. It stays Revealed and shows ground, trees and buildings as last seen, but nothing that moves unless it is also In sight. Only Revealed tiles can be built on.
+_Avoid_: Explored, discovered, scouted
+
+**In sight**:
+A tile the Hero, a villager, a building, a manned watchtower or Light can see right now. Gloamlings show only on these.
+_Avoid_: Visible, lit (Light is its own term)
+
+**Search**:
+The Hero's order at a POI: stand on it for a while by day to find what it holds.
+_Avoid_: Explore, scout, loot (as a verb)
+
 **Hunting ground**:
-A region of forest holding Game. Felling its trees lowers how much Game it can hold, and the surplus flees.
-_Avoid_: Game region, hunting area
+A connected stretch of Forest holding Game. Felling its trees lowers how much Game it can hold, and the surplus flees. Game slowly regrows toward that limit, but a ground hunted empty stays empty for seasons.
+_Avoid_: Game region, forest region, hunting area
 
 **Game**:
 The animals in a Hunting ground, counted as one number. Hunts take them; logging drives them away.

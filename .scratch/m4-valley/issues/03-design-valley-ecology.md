@@ -1,6 +1,6 @@
 # Design session: valley generation, POIs and ecology
 
-Status: ready-for-human
+Status: resolved
 Type: grilling
 Blocked by: 02
 
@@ -23,3 +23,7 @@ A `/grill-with-docs` session for the M4 rules. Record answers in `docs/spec.md` 
 ## Done when
 
 - Every question has an answer in the spec, and the dependent tickets are updated.
+
+## Comments
+
+2026-09-29 — Answers are in `docs/spec.md`, World and map (Terrain, The Valley, Deposits, Points of interest, Fog, Forest ecology), plus new terms in `CONTEXT.md`. Beyond the listed questions, the session added **Fog** (three states, lives in the sim: `docs/adr/0005-fog-lives-in-the-sim.md`), **Fords** (the river would otherwise cut every Valley in two; bridges go to M6), Stumps that regrow, and a Hero who wades the snowed-in Pass. Tickets 04–12 are rewritten and promoted; 14–18 are new. Parked for M5: what happens when a Deposit runs out (spec Open questions).

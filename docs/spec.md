@@ -1,6 +1,6 @@
 # Candlemarch — Design Spec v0.1
 
-Last updated: 2026-09-27
+Last updated: 2026-09-29
 
 A medieval-fantasy village builder where the fun is designing a settlement that runs itself. This is a living spec: it will change after every design round.
 
@@ -47,16 +47,69 @@ flowchart LR
 Each game is a procedurally generated valley seeded with handcrafted points of interest. *(Decided: mix of procedural and handcrafted.)*
 
 - **View:** isometric, square tile grid. *(Decided)*
-- **Terrain:** meadow, forest, rock and mountain, river, swamp. Terrain gates expansion: a swamp needs draining, a snowed-in pass needs a road. *(Decided)*
-- **Points of interest (handcrafted, placed by the generator):** ruins with loot, an abandoned mine, a roadside shrine, monster dens. *(Proposed)*
+- **Size** *(Decided at the M4 gate, [ADR-0004](adr/0004-valley-size-and-budget.md))*: the Valley is 128 × 128 tiles. It's a content number, so the playtest can move it. Hand-made maps stay for tests and debugging.
+- **Terrain gates expansion** *(Decided)*: a Swamp needs Draining, a snowed-in Pass needs a Pass road.
 - **Resources deplete and regrow.** Forests and game recover slowly; ore and stone do not. *(Decided)*
 - **Rotating buildings:** a building is placed in one of four orientations: the layout it is designed with, then quarter turns clockwise (a south door faces west, north, then east). A turn swaps its width and height, and every placement rule (a fisher's hut's door on the riverbank, say) is checked on the turned layout, so a fisher's hut fits either bank of a river. `Q` and `E` turn the placement preview. *(Proposed)*
 
-**Forest ecology** *(Decided: logging and foraging compete; Proposed: the mechanics)*
+**Terrain** *(Decided in design session M4-03; numbers Proposed)*. Forest isn't a Terrain: it's tiles with standing trees, and a tile stops being Forest when its tree is felled. Trees and Forage patches stand on Meadow.
 
-- A forest tile is either **logged** or **foraged**, never both. Logging removes trees; foraging (berries, mushrooms) needs them standing.
-- A **forester's lodge** replants trees in its radius. Young trees take about a year to mature.
-- Game animals live in forest regions with a population that drops with hunting and recovers slowly. **Overhunting** empties a region for seasons.
+| Terrain | Walk | Build | Walking speed | Notes |
+| --- | --- | --- | --- | --- |
+| Meadow | yes | yes | 100% | Replaces "grass" |
+| Rock | yes | only a quarry (M5) | 80% | At the foot of the Mountains; stone Deposits sit on it |
+| Mountain | no | no | — | The Valley's rim; iron Deposits sit on its faces |
+| Swamp | yes | not until Drained | 50% | Beside the river's slow bends |
+| River | no | no | — | Freezes in winter but stays impassable |
+| Ford | yes | no | 50% | A shallow stretch of River; Gloamlings wade it too |
+| Pass snow | the Hero only, at 30% | no | — | Until a Pass road is built |
+
+- **Drain:** laid over Swamp tiles the way a Road is laid, one construction site per tile (2 logs, 200 build ticks). When finished, the tile becomes Meadow for good.
+- **Pass road:** laid through the Pass the way a Road is laid (6 logs, 600 build ticks per tile). A finished tile is open to everyone all year. Dirt paths can't be laid on Pass snow. Before the road, the Hero alone wades the snow, so the player can scout the Side valley, clear its Den and Search its POIs before paying for the road. The road is also what lets the Side valley's Gloamlings through.
+- **Crossing the river:** Fords only, until **bridges** arrive as an upgrade in M6, next to cobblestone roads.
+
+**The Valley** *(Decided in design session M4-03; numbers Proposed, for 128²)*
+
+- **Shape:** a Mountain rim all around. One river crosses the Valley from edge to edge, off-centre, with 2–3 Fords. One entry, a gap in the rim on an edge, holds the entry tile where Newcomers arrive; it isn't a Pass. Forest grows in noise-shaped patches, Swamp lies beside the river's slow bends, and Rock outcrops sit at the foot of the Mountains.
+- **Side valley:** a pocket behind the Pass through the rim. It holds both iron Deposits, the Abandoned mine and at least one Den, so the Pass road is what opens M5's metal chain.
+- **The Camp** (the Starting Camp: Granary, Stockpile, settlers and Hero) starts within 10 tiles of the entry. The generator guarantees near it:
+    - 24 × 24 tiles of buildable Meadow at the Camp, with no Swamp;
+    - at least 150 trees within 15 tiles, forming at least one Hunting ground;
+    - at least 6 Forage patches within 20 tiles;
+    - a Riverbank within 20 tiles and a Ford within 30;
+    - a stone Deposit and a clay Deposit within 30 tiles;
+    - no Den within 40 tiles.
+- **Per Valley:** 3 Dens at the start (each at least 40 tiles from the Camp, at least one in the Side valley), 2 Ruins, 1 Shrine (on the way from the entry toward the Pass), 1 Abandoned mine (Side valley), 5 stone, 4 clay and 2 iron Deposits, 2–4 Swamp patches.
+- **Same seed, same Valley.** The generator uses only the seeded PRNG. If a guarantee fails, it retries with a seed derived from the first. The player doesn't choose where the Camp starts in v1 (see the backlog).
+
+**Deposits** *(Decided in design session M4-03; amounts come with M5's quarry, clay pit and mine)*: map objects holding a fixed amount of stone (on Rock), clay (on a Riverbank) or iron ore (on a Mountain face). The M4 generator places them; M5 works them. What is dug out never comes back. What happens when they run out is an open question.
+
+**Points of interest** *(Decided in design session M4-03; numbers Proposed)*: handcrafted stamps the generator places. What a POI holds is unknown until it's Searched.
+
+- **Ruins:** the Hero **Searches** them by standing on the tile for 200 ticks by day. A searched Ruins leaves a Cache (M4: 15 firewood and 6 hides, each ±30% from the PRNG; M5 adds iron bars, tools and coin to the table) and can't be Searched again. Hook: Ruins can hold a trapped master (M6 rescue invitations).
+- **Abandoned mine:** on a Mountain face in the Side valley, over an iron Deposit, with a Den at its mouth. In M5 a mine placed on it costs less.
+- **Shrine:** no Den buds within 12 tiles of it. Hook for the Pious trait (M6). It gives no Light, since ADR-0003 keeps Light expensive.
+- **Den:** M3's Den, placed by the generator.
+
+**Fog** *(Decided in design session M4-03, [ADR-0005](adr/0005-fog-lives-in-the-sim.md); numbers Proposed)*
+
+- A tile is unrevealed (black), **Revealed** (seen at least once: ground, trees and buildings drawn as last seen, dimmed, and nothing that moves), or **In sight** (live).
+- Fog changes what the player knows and where they may build, never what the world does: Gloamlings, Dens and villagers act as if it weren't there.
+    - Buildings, Roads, Drains, Pass roads and Reserves go only on Revealed tiles.
+    - Dens and POIs show once their tile is Revealed, including Dens that bud in the dark. Gloamlings show only In sight.
+    - The Hero can be ordered into Fog.
+- **Sight** (Chebyshev tiles, day / night): Hero 8 / 4 (the Ranger's "sees further at night" hooks in here in M7); villager 4 / 2; finished building 3 / 1; watchtower with its Watchman 8 / 8; Light: its lit tiles at night.
+- At the start, everything within 12 tiles of the Camp is Revealed, plus the entry.
+- **Fog setting:** per game, in state, like the Monster rate. It's chosen at New game (dev panel for now) and changed mid-game by a dev command. Off means every tile is Revealed and In sight. Switching it back on keeps what's already Revealed. It defaults to on for generated Valleys and off for hand-made maps. M7 moves it into the sandbox settings.
+
+**Forest ecology** *(Decided: logging and foraging compete; mechanics Decided in design session M4-03, numbers Proposed)*
+
+- **Reserve:** the player paints Forest tiles as a Reserve, and woodcutters never fell there. Foragers, hunters and foresters still work in it. It's painted and erased like a Dirt path, free and instant. It doesn't block building (the tree still has to go first). The woodcutter's hut placement preview shows Reserve tiles in its radius. This is how "a forest tile is either logged or foraged, never both" works: foraging never harms trees, so foragers need no rule.
+- **Forester's lodge:** plants Saplings on empty Meadow in its radius. A Sapling matures into a tree in about a year.
+- **Stumps:** a felled tree leaves a Stump, which sprouts a Sapling after a year. A clear-cut therefore heals on the same ground in about two years, with no creep onto new land. A building or Road on the tile removes the Stump. The forester is the fast way to grow Forest, and the only way to grow it somewhere new.
+- A **Sapling** can't be felled and doesn't block walking. It counts as a standing tree (shade for Forage patches, a Hunting ground's ceiling, Forest) only once it matures.
+- **Hunting grounds:** each is a connected stretch of Forest of at most 250 tiles. The generator splits bigger stretches and names each ground from a list. Max Game is 1 per 10 trees at the start.
+- **Recovery:** while 0 < Game < ceiling, a ground gains 1 animal every 2 days. A ground hunted to 0 stays empty for 2 full seasons, then 2 animals return. Maturing Saplings raise the ceiling again.
 - Result: the player sets aside forest reserves for food instead of clear-cutting.
 
 **Before full ecology (M2)** *(Decided in design session M2-01; numbers Proposed)*. M4 adds regrowth and recovery on top of these rules.
@@ -280,7 +333,7 @@ The player controls one hero, an RTS-style unit who kickstarts the village and t
 - Gathers and hauls by hand in the first days, before carriers exist.
 - Gives a production bonus to buildings nearby or to one chain (an aura).
 - Fights monsters and bandits, and leads the militia.
-- Explores points of interest and rescues masters.
+- Searches points of interest and rescues masters. It alone can wade a snowed-in Pass.
 
 **Heroes in v1** *(Proposed: two, to prove the system; more in v1.x)*
 
@@ -320,7 +373,7 @@ Combat is light and automatic: the player positions and prepares, units fight on
 - **Gloamling:** v1's one monster. Small, shadowy, many-eyed, comes in packs. 20 HP, 4 damage every 20 ticks at an adjacent tile, villager walking speed, sight 12 tiles.
 - **Combat:** integer HP, damage per hit and a cooldown in ticks. A fighter hits its target when in reach and off cooldown. Within a tick, hits resolve in entity-ID order; targets are the nearest by walking distance, ties to the lowest ID. Villagers: 20 HP, 3 damage every 20 ticks, back to full HP at Dawn. A villager a Gloamling reaches fights back, militia or not.
 - **Targets:** a Gloamling goes for the nearest villager out in the open (not asleep at Home), the Hero, or, with neither in sight, the nearest lived-in House. It batters the House's door (60 HP); when the door breaks, the residents asleep inside come out and fight it (and any other Gloamling that reaches them) until Dawn. *(Decided by the owner, replacing "kills one resident and moves on")* It picks again when its target dies, is Knocked out or steps into Light. Doors heal at Dawn, so nothing needs repairing. Watchtowers can't be attacked.
-- **Dens:** a map object. At each Dusk a Den spawns Gloamlings on its tile: spring 1, summer 2, autumn 3, winter 4. Once a season it **buds**: a new Den 6–10 tiles closer to the nearest building, on a dark tile at least 12 tiles from any building, at most 5 Dens. Nothing can be built within 6 tiles of a Den, so it always keeps a dark ring. At Dawn every Gloamling still out vanishes.
+- **Dens:** a map object. At each Dusk a Den spawns Gloamlings on its tile: spring 1, summer 2, autumn 3, winter 4. Once a season it **buds**: a new Den 6–10 tiles closer to the nearest building, on a dark tile at least 12 tiles from any building and from any Shrine (M4), at most 5 Dens. Nothing can be built within 6 tiles of a Den, so it always keeps a dark ring. At Dawn every Gloamling still out vanishes.
 - **Clearing a Den** (Hero only in M3; militia later): a Den has 80 HP and stings anything adjacent for 5 every 20 ticks. At 0 it's removed and leaves a cache of 4 hides and 6 firewood. No Den buds within 15 tiles of a cleared one for 10 days.
 - **Light:** torch (1×1, 1 log, radius 2, 1 firewood a night, holds 3) and brazier (1×1, 4 logs, radius 4, 2 firewood a night, holds 6), Chebyshev radius. Each burns its night's firewood at Dusk; one that can't stays dark all night. Carriers fill them after Houses and before Stockpiles, and their firewood counts toward the chopping block's target. House windows give no Light.
 - **Palisades:** segments laid like a Road (2 logs, 40 build ticks, 100 HP). A **Gate** (4 logs, 80 build ticks) lets villagers and the Hero through, but not Gloamlings. A Gloamling that can't reach its target batters the palisade in its way; damage heals at Dawn.
@@ -482,7 +535,7 @@ Milestone 0 is one resource gathered, carried and turned into a building. *(Deci
 
 1. ~~Logistics prototypes A and B, then pick one.~~ Done: job dispatch (ADR-0001).
 2. Hero playtesting on top of the chosen logistics.
-3. Map-size prototype.
+3. ~~Map-size prototype.~~ Done: a 128² Valley (ADR-0004).
 
 ## Open questions
 
@@ -492,7 +545,8 @@ These stay open until prototypes and playtests answer them. Everything tagged Pr
 - [x] Logistics: job dispatch (ADR-0001), after an A/B playtest against flag relay.
 - [ ] Economy: should tools wear out?
 - [ ] Hero role in the automation loop? Decided by playtest.
-- [ ] Map size? Decided by prototype.
+- [x] Map size: 128² with a performance budget (ADR-0004).
+- [ ] Deposits: when a non-renewable Deposit runs out, can the village get stone or ore some other way? For the M5 design session.
 - [ ] Art: confirm cutout animation and a 256×128 base tile.
 - [x] Hero control: mouse, RTS style, no WASD.
 - [x] Master invitations: notice board, which also hosts side quests.

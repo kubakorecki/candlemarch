@@ -15,7 +15,7 @@ Done when a player can start a configured sandbox game, pick a hero, and play fr
 From `docs/spec.md` (Progression; Game modes; Heroes; Villagers):
 
 - Guildhall: Town rank building (coin, cut stone, bricks, tools, 50 residents, all tier-2 needs met).
-- Sandbox settings: map seed, hero, winter harshness, monster rate. Rank goals give structure; play never ends.
+- Sandbox settings: map seed, hero, winter harshness, monster rate, Fog. Rank goals give structure; play never ends.
 - Heroes: Ranger and Smith-lord; a new perk at each village rank.
 - Graveyard (v1 stretch).
 - A player-facing main menu replaces the dev New-game panel.

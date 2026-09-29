@@ -6,7 +6,7 @@ Blocked by: 01, m4-valley/12
 
 ## What
 
-- A player-facing main menu: New game (seed, hero, winter harshness, monster rate), Load, Continue (autosave).
+- A player-facing main menu: New game (seed, hero, winter harshness, monster rate, Fog), Load, Continue (autosave).
 - Settings are stored in state and read by the systems they affect.
 - The dev New-game panel stays behind a dev flag.
 
@@ -22,3 +22,5 @@ Blocked by: 01, m4-valley/12
 ## Comments
 
 2026-09-28 — M3 design session: the Monster rate already exists in state from `m3-nights/03` (0–100, 0 is off, set at New game and by a dev command). This ticket turns it into player-facing levels rather than adding it.
+
+2026-09-29 — M4 design session: the Fog on/off setting exists in state from `m4-valley/16` (set at New game and by a dev command). This ticket puts it in the menu.
