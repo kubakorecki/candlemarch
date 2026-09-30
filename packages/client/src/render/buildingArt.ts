@@ -637,15 +637,15 @@ function drawHutWindow(g: Graphics, layout: BuildingLayout, box: Box): void {
 // ---------------------------------------------------------------- Woodcutter's hut
 
 /**
- * A Woodcutter's hut: a long log house under a dark bark roof, a lean-to woodshed stacked with
+ * A Woodcutter's hut: a small log house under a dark bark roof, a lean-to woodshed stacked with
  * logs on one side with an axe leant on it, and a two-man saw hung by the door.
  */
 function drawWoodcuttersHut(g: Graphics, layout: BuildingLayout): void {
   const face = doorFace(layout);
   const wall = propWall(face);
-  const box = bodyBox(layout, 0.1, 0.46);
-  const eave = wallHeight(layout.size) * 0.78;
-  const roof = gable(box, hutAxis(face), eave, ROOF_H * 1.05, 0.1);
+  const box = bodyBox(layout, HUT_PAD, 0.34);
+  const eave = HUT_EAVE * 0.9;
+  const roof = gable(box, hutAxis(face), eave, ROOF_H * 0.8, 0.1);
   drawGableBack(g, roof, BARK);
   drawWall(g, box, 'south', roof.south, LOGS);
   drawWall(g, box, 'east', roof.east, LOGS);
@@ -662,7 +662,7 @@ function drawWoodcuttersHut(g: Graphics, layout: BuildingLayout): void {
 function drawWoodshed(g: Graphics, box: Box, wall: FrontWall, eave: number): void {
   const high = eave * 0.72;
   const low = eave * 0.42;
-  const depth = 0.36;
+  const depth = 0.26;
   // Back of the stack in shadow, then the log ends in rows.
   g.poly(
     flat([
@@ -672,11 +672,11 @@ function drawWoodshed(g: Graphics, box: Box, wall: FrontWall, eave: number): voi
       wallPoint(box, wall, 0.08, 0.02, low),
     ]),
   ).fill(palette.shadow);
-  const r = 4.2 * S;
+  const r = 3.8 * S;
   for (let row = 0; (row + 1) * 2 * r <= low + 1; row++) {
     const z = r + row * 2 * r * 0.9;
-    const shift = row % 2 === 0 ? 0 : 0.04;
-    for (let u = 0.12 + shift; u <= 0.88; u += 0.085) {
+    const shift = row % 2 === 0 ? 0 : 0.065;
+    for (let u = 0.14 + shift; u <= 0.88; u += 0.13) {
       const p = wallPoint(box, wall, u, depth - 0.06, z);
       g.circle(p.x, p.y, r)
         .fill(palette.logEnd)

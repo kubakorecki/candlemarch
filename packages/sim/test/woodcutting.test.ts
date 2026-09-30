@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Command } from '../src/commands';
 import { idsOf } from '../src/entities';
+import { entityLayout } from '../src/grid';
 import { createInitialState, type MapDef } from '../src/map';
 import { meadowMap } from '../src/maps/meadow';
-import type { GameState } from '../src/state';
+import type { GameState, Rotation } from '../src/state';
 import { content, run, runUntil, totalLogs, woodcuttersHutStock } from './helpers';
 
 /** Two trees (6 logs), a woodcutter's hut and a carrier. */
@@ -89,5 +90,42 @@ describe('woodcutting', () => {
     // Nothing else happens afterwards: no crash, no wandering, no phantom logs.
     const later = run(done, 500);
     expect(settled(later)).toEqual(settled(done));
+  });
+});
+
+describe("the woodcutter's hut", () => {
+  /** Open meadow with trees in the corners, a Stockpile holding the hut's logs and one Carrier. */
+  const clearing: MapDef = {
+    name: 'clearing',
+    rows: ['T.........T', ...Array(9).fill('...........'), 'T.........T'],
+    stockpiles: [{ x: 0, y: 5, w: 1, h: 1, goods: [{ resource: 'logs', amount: 6 }] }],
+    buildings: [],
+    villagers: [{ job: 'carrier', x: 1, y: 5 }],
+  };
+
+  it('is one tile with its door straight ahead, on every turn, and works', () => {
+    const doors: Record<Rotation, { x: number; y: number }> = {
+      0: { x: 5, y: 6 },
+      1: { x: 4, y: 5 },
+      2: { x: 5, y: 4 },
+      3: { x: 6, y: 5 },
+    };
+    for (const rotation of [0, 1, 2, 3] as const) {
+      const place: Command = {
+        type: 'placeBuilding',
+        building: 'woodcutters_hut',
+        x: 5,
+        y: 5,
+        rotation,
+      };
+      const s0 = run(createInitialState(1, clearing, content), 1, { 0: [place] });
+      const site = idsOf(s0.components.site)[0] as number;
+      expect(entityLayout(s0, content, site), `turn ${rotation}`).toMatchObject({
+        tiles: [{ x: 5, y: 5 }],
+        door: doors[rotation],
+      });
+      const working = runUntil(s0, (s) => woodcuttersHutStock(s) > 0, 5000);
+      expect(woodcuttersHutStock(working), `turn ${rotation}`).toBeGreaterThan(0);
+    }
   });
 });

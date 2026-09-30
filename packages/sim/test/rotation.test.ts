@@ -19,8 +19,8 @@ function layoutOf(def: BuildingDef, origin: { x: number; y: number }, rotation: 
 
 describe('building layout', () => {
   it('turns a 2×2 building a quarter turn clockwise at a time', () => {
-    // Woodcutter's hut: 2×2, door south of its right-hand column.
-    const def = content.buildings.woodcutters_hut;
+    // Granary: 2×2, door south of its right-hand column.
+    const def = content.buildings.granary;
     const origin = { x: 5, y: 5 };
     const square = [
       { x: 5, y: 5 },

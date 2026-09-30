@@ -4,8 +4,8 @@ export const buildings: Record<BuildingId, BuildingDef> = {
   woodcutters_hut: {
     id: 'woodcutters_hut',
     name: "Woodcutter's hut",
-    size: { w: 2, h: 2 },
-    door: { x: 1, y: 2 },
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
     placeable: true,
     employs: [{ job: 'woodcutter', count: 1 }],
     gathers: ['tree'],

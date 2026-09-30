@@ -34,7 +34,7 @@ export const meadowMap: MapDef = {
     '........................',
   ],
   entry: { x: 0, y: 14 },
-  buildings: [{ type: 'woodcutters_hut', x: 8, y: 11 }],
+  buildings: [{ type: 'woodcutters_hut', x: 9, y: 12 }],
   villagers: [{ job: 'carrier', x: 7, y: 14 }],
   hero: { x: 15, y: 18 },
 };

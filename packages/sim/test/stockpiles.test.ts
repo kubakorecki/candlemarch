@@ -11,11 +11,11 @@ import { step } from '../src/step';
 import { canPlaceStockpile } from '../src/stockpiles';
 import { content, run, runUntil } from './helpers';
 
-// Woodcutter's hut at (0,0) with its door at (1,2), a tree at (6,0), and one carrier.
+// Woodcutter's hut at (1,1) with its door at (1,2), a tree at (6,0), and one carrier.
 const yard: MapDef = {
   name: 'yard',
   rows: ['......T.....', ...Array(7).fill('............')],
-  buildings: [{ type: 'woodcutters_hut', x: 0, y: 0 }],
+  buildings: [{ type: 'woodcutters_hut', x: 1, y: 1 }],
   villagers: [{ job: 'carrier', x: 1, y: 3 }],
 };
 

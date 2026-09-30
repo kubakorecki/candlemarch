@@ -36,14 +36,14 @@ function treeAt(s: GameState, x: number, y: number): number {
 const idle = (s: GameState) => s.tick > 0 && hero(s)?.order === null;
 
 /**
- * A woodcutter's hut at (1,5) (door (2,7)) with no trees to chop, a woodcutter's hut site at
- * (7,1) (costs 6 logs, door (8,3)), two carriers and the hero at (4,3).
+ * A woodcutter's hut at (2,6) (door (2,7)) with no trees to chop, a woodcutter's hut site at
+ * (8,2) (costs 6 logs, door (8,3)), two carriers and the hero at (4,3).
  */
 const yard: MapDef = {
   name: 'yard',
   rows: Array.from({ length: 9 }, () => '............'),
-  buildings: [{ type: 'woodcutters_hut', x: 1, y: 5 }],
-  sites: [{ type: 'woodcutters_hut', x: 7, y: 1 }],
+  buildings: [{ type: 'woodcutters_hut', x: 2, y: 6 }],
+  sites: [{ type: 'woodcutters_hut', x: 8, y: 2 }],
   villagers: [
     { job: 'carrier', x: 5, y: 7 },
     { job: 'carrier', x: 6, y: 7 },

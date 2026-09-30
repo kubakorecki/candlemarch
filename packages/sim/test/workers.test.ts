@@ -12,13 +12,13 @@ import { openPositions } from '../src/systems/staffing';
 import { maxWorkers, reassignTargets } from '../src/workers';
 import { content, run, runUntil } from './helpers';
 
-// A woodcutter's hut at (0,0) (door (1,2)), a chopping block at (4,0) (door (4,1)), trees down
+// A woodcutter's hut at (1,1) (door (1,2)), a chopping block at (4,0) (door (4,1)), trees down
 // the east edge and one carrier.
 const yard: MapDef = {
   name: 'yard',
   rows: Array.from({ length: 8 }, (_, y) => (y < 4 ? '.........T' : '..........')),
   buildings: [
-    { type: 'woodcutters_hut', x: 0, y: 0 },
+    { type: 'woodcutters_hut', x: 1, y: 1 },
     { type: 'chopping_block', x: 4, y: 0 },
   ],
   villagers: [{ job: 'carrier', x: 2, y: 5 }],
@@ -37,7 +37,7 @@ const bigHutContent: Content = {
 };
 
 /** The yard's woodcutter's hut alone, for `bigHutContent`. */
-const bigHutYard: MapDef = { ...yard, buildings: [{ type: 'woodcutters_hut', x: 0, y: 0 }] };
+const bigHutYard: MapDef = { ...yard, buildings: [{ type: 'woodcutters_hut', x: 1, y: 1 }] };
 
 function buildingOf(s: GameState, type: string): EntityId {
   return idsOf(s.components.building).find(

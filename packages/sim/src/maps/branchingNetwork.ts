@@ -1,7 +1,7 @@
 import type { MapDef } from '../map';
 
 /**
- * Branching network, 32×20. Two woodcutter's huts, at (3,4) and (26,4), have their doors (4,6)
+ * Branching network, 32×20. Two woodcutter's huts, at (4,5) and (27,5), have their doors (4,6)
  * and (27,6) on a road along row 6. From (16,6) a road runs south to (16,16), next to a 3×3
  * stockpile at (17,15). From (16,11) on the way, a branch runs west to the door (10,11) of a hut
  * site at (10,10). Five Carriers.
@@ -33,8 +33,8 @@ export const branchingNetworkMap: MapDef = {
   ],
   entry: { x: 16, y: 19 },
   buildings: [
-    { type: 'woodcutters_hut', x: 3, y: 4 },
-    { type: 'woodcutters_hut', x: 26, y: 4 },
+    { type: 'woodcutters_hut', x: 4, y: 5 },
+    { type: 'woodcutters_hut', x: 27, y: 5 },
   ],
   sites: [{ type: 'hut', x: 10, y: 10 }],
   stockpiles: [{ x: 17, y: 15, w: 3, h: 3 }],

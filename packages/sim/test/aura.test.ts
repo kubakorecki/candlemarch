@@ -24,7 +24,7 @@ function grove(hero: { x: number; y: number }): MapDef {
       '..........',
       '..........',
     ],
-    buildings: [{ type: 'woodcutters_hut', x: 1, y: 2 }],
+    buildings: [{ type: 'woodcutters_hut', x: 2, y: 3 }],
     villagers: [],
     hero,
   };

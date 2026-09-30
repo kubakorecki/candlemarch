@@ -57,12 +57,12 @@ describe('createInitialState', () => {
   });
 });
 
-// Woodcutter's hut at (0,0) with its door (1,2) on a path along row 2 to (6,2), next to a 2×2
+// Woodcutter's hut at (1,1) with its door (1,2) on a path along row 2 to (6,2), next to a 2×2
 // stockpile at (7,1). A hut site at (3,1) has its door (3,2) on the path too.
 const yard: MapDef = {
   name: 'yard',
   rows: ['..........', '..........', '.======...', '..........'],
-  buildings: [{ type: 'woodcutters_hut', x: 0, y: 0 }],
+  buildings: [{ type: 'woodcutters_hut', x: 1, y: 1 }],
   sites: [{ type: 'hut', x: 3, y: 1 }],
   stockpiles: [{ x: 7, y: 1, w: 2, h: 2 }],
   villagers: [{ job: 'carrier', x: 9, y: 3 }],

@@ -127,14 +127,14 @@ describe('production', () => {
 });
 
 /**
- * A woodcutter's hut at (0,0) with 4 logs in its buffer and no trees, so they're all there is; a
+ * A woodcutter's hut at (1,1) with 4 logs in its buffer and no trees, so they're all there is; a
  * chopping block at (6,0) with its door at (6,1); a 2×1 stockpile at (1,6); one carrier.
  */
 const depot: MapDef = {
   name: 'depot',
   rows: Array(8).fill('..........'),
   buildings: [
-    { type: 'woodcutters_hut', x: 0, y: 0 },
+    { type: 'woodcutters_hut', x: 1, y: 1 },
     { type: 'chopping_block', x: 6, y: 0 },
   ],
   stockpiles: [{ x: 1, y: 6, w: 2, h: 1 }],
