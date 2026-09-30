@@ -7,6 +7,7 @@ import { isDeposit } from './deposits';
 import { idsOf } from './entities';
 import { isInSight, isRevealed } from './fog';
 import { isForagePatch } from './forage';
+import { isGrowing } from './forest';
 import {
   blockedGrid,
   entityDoor,
@@ -260,7 +261,7 @@ function deliverTask(
   return { kind: 'deliver', target, resource, tile, amount };
 }
 
-/** The tree, building, site, stockpile or cache covering `tile`, if any. */
+/** The tree, building, site, stockpile or cache covering `tile`, if any (not a Sapling). */
 function thingAt(state: GameState, content: Content, tile: Tile): EntityId | null {
   const cache = cacheAt(state, tile);
   if (cache !== null) return cache;
@@ -268,7 +269,11 @@ function thingAt(state: GameState, content: Content, tile: Tile): EntityId | nul
   const same = (t: Tile) => t.x === tile.x && t.y === tile.y;
   for (const id of idsOf(state.components.tile)) {
     const origin = state.components.tile[id] as Tile;
-    if (mapObject[id] && same(origin)) return id;
+    // Something growing (a Sapling) is walked over, not worked.
+    if (mapObject[id] && same(origin)) {
+      if (isGrowing(state, content, id)) continue;
+      return id;
+    }
     const placed = building[id] ?? site[id];
     if (placed && footprint(content.buildings[placed.type], origin, placed.rotation).some(same)) {
       return id;
@@ -291,11 +296,15 @@ function gloamlingAt(state: GameState, tile: Tile): EntityId | null {
 }
 
 /**
- * Whether the hero may chop map object `id`: trees only. Forage patches are the forager's, and
- * nobody works Deposits yet.
+ * Whether the hero may chop map object `id`: trees only. Forage patches are the forager's, nobody
+ * works Deposits yet, and a Sapling can't be felled.
  */
 function isTree(state: GameState, content: Content, id: EntityId): boolean {
-  return !isForagePatch(state, content, id) && !isDeposit(state, content, id);
+  return (
+    !isForagePatch(state, content, id) &&
+    !isDeposit(state, content, id) &&
+    !isGrowing(state, content, id)
+  );
 }
 
 /**

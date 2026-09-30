@@ -57,11 +57,13 @@ export function assignJob(
   delete state.components.fisher[id];
   delete state.components.forager[id];
   delete state.components.hunter[id];
+  delete state.components.forester[id];
   const type = workplace === null ? undefined : state.components.building[workplace]?.type;
   if (job === 'woodcutter') state.components.woodcutter[id] = { kind: 'idle', retryAt: 0 };
   else if (job === 'fisher') state.components.fisher[id] = { kind: 'idle', retryAt: 0 };
   else if (job === 'forager') state.components.forager[id] = { kind: 'idle', retryAt: 0 };
   else if (job === 'hunter') state.components.hunter[id] = { kind: 'idle', retryAt: 0 };
+  else if (job === 'forester') state.components.forester[id] = { kind: 'idle', retryAt: 0 };
   else if (type && content.buildings[type].recipes) {
     state.components.crafter[id] = { kind: 'idle', retryAt: 0 };
   }

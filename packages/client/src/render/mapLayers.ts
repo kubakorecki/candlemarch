@@ -22,6 +22,7 @@ import {
   drawLand,
   drawMapOutline,
   drawMushroomPatch,
+  drawSapling,
   drawStoneDeposit,
   drawTree,
   drawWater,
@@ -163,6 +164,9 @@ function drawMapObject(g: Graphics, obj: DrawnObject, content: Content): void {
   switch (obj.type) {
     case 'tree':
       drawTree(g, obj.amount, content.mapObjects.tree.amount);
+      break;
+    case 'sapling':
+      drawSapling(g, obj.stage);
       break;
     case 'berry_bush':
       drawBerryBush(g, obj.amount, obj.withered);

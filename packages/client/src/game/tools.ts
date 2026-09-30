@@ -61,6 +61,13 @@ export const TOOLS: readonly {
     hint: 'Click to place with its door on the riverbank. Shift-click places more.',
   },
   {
+    id: 'foresters_lodge',
+    label: "Forester's lodge",
+    key: 'i',
+    drag: false,
+    hint: 'Click to place. Its forester plants Saplings on open meadow nearby, which grow into trees in about a year. Shift-click places more.',
+  },
+  {
     id: 'torch',
     label: 'Torch',
     key: 'l',

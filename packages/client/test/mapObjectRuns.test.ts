@@ -67,6 +67,21 @@ describe('map object runs', () => {
     expect(withered.map((key) => tilesOf(runs, key))).toEqual([['4,5']]);
   });
 
+  it('reports the run of a Sapling whose stage changed, and of one grown into a tree', () => {
+    const runs = new MapObjectRuns();
+    const { mapObject, tile } = trees([[1, 3, 5, 10]]);
+    mapObject[2] = { type: 'sapling', amount: 0, growsAt: 900, stage: 0 };
+    tile[2] = { x: 6, y: 5 };
+    runs.update(mapObject, tile);
+    mapObject[2] = { type: 'sapling', amount: 0, growsAt: 900, stage: 1 };
+    const staged = [...runs.update(mapObject, tile)];
+    expect(staged.map((key) => tilesOf(runs, key))).toEqual([['6,5']]);
+    expect(runs.objectsIn(staged[0] as string)[0]?.stage).toBe(1);
+    mapObject[2] = { type: 'tree', amount: 3 };
+    const grown = [...runs.update(mapObject, tile)];
+    expect(runs.objectsIn(grown[0] as string)[0]).toMatchObject({ type: 'tree', stage: 0 });
+  });
+
   it('reports the run of a removed object, and an emptied run with nothing in it', () => {
     const runs = new MapObjectRuns();
     const before = trees([

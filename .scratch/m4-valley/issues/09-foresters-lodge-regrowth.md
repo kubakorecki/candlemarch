@@ -1,6 +1,6 @@
 # Forester's lodge and tree regrowth
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: m2-camp-winter/02, m1-roads-logistics/06
 
@@ -20,3 +20,5 @@ Blocked by: m2-camp-winter/02, m1-roads-logistics/06
 ## Comments
 
 2026-09-29 — Design session 03: a Sapling counts as a standing tree only once mature, and the forester plants only on empty Meadow. Stumps that regrow by themselves are ticket 18.
+
+2026-09-30 — Done: `foresters_lodge` with a `forester` (sim `forest.ts`, `systems/forestry.ts`, `systems/growth.ts`), `sapling` growing into a tree in 20 days (3 drawing stages), walked over, unfellable, no shade or Game until grown; client tool (key I, Gathering), sapling art, forester's spade. Beyond the issue: the forester plants only on even x and y tiles (spacing 2, so grown plantings leave walkways) and never on doors, the entry, Dens or caches; a building, wall, groundwork, Stockpile or Dirt path placed on a Sapling clears it; Den budding skips Sapling tiles. See `docs/decisions.md`.

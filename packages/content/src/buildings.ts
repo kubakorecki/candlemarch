@@ -75,6 +75,20 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 200, // 10 s
     },
   },
+  foresters_lodge: {
+    id: 'foresters_lodge',
+    name: "Forester's lodge",
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [{ job: 'forester', count: 1 }],
+    workRadius: 6,
+    plants: { object: 'sapling', on: 'meadow', spacing: 2, plantTicks: 100 }, // 5 s a Sapling
+    construction: {
+      cost: [{ resource: 'logs', amount: 6 }],
+      buildTicks: 200, // 10 s
+    },
+  },
   hut: {
     id: 'hut',
     name: 'Hut',

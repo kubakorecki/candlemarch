@@ -13,6 +13,8 @@ export interface DrawnObject {
   type: MapObjectId;
   amount: number;
   withered: boolean;
+  /** A Sapling's growth stage; 0 for anything else. */
+  stage: number;
   x: number;
   y: number;
 }
@@ -28,7 +30,7 @@ export class MapObjectRuns {
 
   /**
    * Brings the drawn objects in line with a map-object store and its tiles, and returns the runs
-   * whose look changed: an object added, removed, moved, or its amount or withering changed. A run
+   * whose look changed: an object added, removed, moved, or its type, amount, withering or growth stage changed. A run
    * left empty is returned too, with no objects in it. Objects on tiles `shown` says no to (under
    * Fog, unrevealed ones) count as absent.
    */
@@ -50,12 +52,14 @@ export class MapObjectRuns {
       const at = tile[id];
       if (!at || !shown(at.x, at.y)) continue;
       const withered = obj.withered === true;
+      const stage = obj.stage ?? 0;
       const was = this.drawn.get(id);
       if (
         was &&
         was.type === obj.type &&
         was.amount === obj.amount &&
         was.withered === withered &&
+        was.stage === stage &&
         was.x === at.x &&
         was.y === at.y
       ) {
@@ -63,7 +67,7 @@ export class MapObjectRuns {
       }
       if (was) this.remove(id, was, dirty);
       const run = runKey(at.x, at.y);
-      this.drawn.set(id, { type: obj.type, amount: obj.amount, withered, x: at.x, y: at.y });
+      this.drawn.set(id, { type: obj.type, amount: obj.amount, withered, stage, x: at.x, y: at.y });
       let ids = this.members.get(run);
       if (!ids) {
         ids = new Set();

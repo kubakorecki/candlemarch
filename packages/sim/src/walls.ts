@@ -3,6 +3,7 @@
 // Gloamlings have battered to 0 HP blocks nobody until it heals at Dawn.
 import type { BuildingId, Content } from '@candlemarch/content';
 import { createEntity } from './entities';
+import { clearGrowth } from './forest';
 import { canPlaceBuilding, inBounds, tileIndex } from './grid';
 import { lShapeTiles } from './roads';
 import type { EntityId, GameState, Tile } from './state';
@@ -87,6 +88,7 @@ export function layWall(
 ): void {
   const line = wallLine(state, content, type, from, to);
   if (!line) return;
+  clearGrowth(state, content, line);
   for (const t of line) {
     const id = createEntity(state);
     state.components.tile[id] = { x: t.x, y: t.y };

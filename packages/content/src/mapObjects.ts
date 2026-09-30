@@ -36,6 +36,16 @@ export const mapObjects: Record<MapObjectId, MapObjectDef> = {
       shadeTiles: 2,
     },
   },
+  // Planted by a forester. Nothing gathers it: the gather numbers are unused.
+  sapling: {
+    id: 'sapling',
+    name: 'Sapling',
+    resource: 'logs',
+    amount: 0,
+    gatherTicks: 40,
+    yieldPerGather: 1,
+    grows: { into: 'tree', days: 20, stages: 3 }, // about a year of 4 seasons × 5 days
+  },
   // Deposits: nothing works them until M5, which tunes these placeholder amounts and times.
   stone_deposit: {
     id: 'stone_deposit',

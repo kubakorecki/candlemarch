@@ -4,6 +4,7 @@
 import type { BuildingId, Content, GroundworkDef } from '@candlemarch/content';
 import { createEntity, destroyEntity, idsOf } from './entities';
 import { allRevealed } from './fog';
+import { clearGrowth, isGrowing } from './forest';
 import { blockedGrid, entityLayout, inBounds, tileIndex } from './grid';
 import { mapChanged } from './mapCache';
 import { lShapeTiles } from './roads';
@@ -15,12 +16,14 @@ export function groundworkOf(content: Content, type: BuildingId): GroundworkDef 
   return content.buildings[type]?.groundwork;
 }
 
-/** Tile indices under every building's and site's footprint, and under every map object. */
+/** Tile indices under every building's and site's footprint, and under every map object but a Sapling. */
 function takenTiles(state: GameState, content: Content): Set<number> {
   const { map } = state;
   const taken = new Set<number>();
   for (const id of idsOf(state.components.tile)) {
     if (state.components.mapObject[id]) {
+      // Something growing (a Sapling) gives way to groundwork.
+      if (isGrowing(state, content, id)) continue;
       const t = state.components.tile[id];
       if (t) taken.add(tileIndex(map, t.x, t.y));
       continue;
@@ -102,6 +105,7 @@ export function layGroundwork(
 ): void {
   const line = groundworkLine(state, content, type, from, to);
   if (!line) return;
+  clearGrowth(state, content, line);
   for (const t of line) {
     const id = createEntity(state);
     state.components.tile[id] = { x: t.x, y: t.y };

@@ -151,6 +151,7 @@ export function createEmptyState(seed: number): GameState {
       fisher: {},
       forager: {},
       hunter: {},
+      forester: {},
       huntingGround: {},
       den: {},
       gloamling: {},

@@ -2,6 +2,7 @@
 import type { Content, ResourceAmount, ResourceId } from '@candlemarch/content';
 import { createEntity, destroyEntity } from './entities';
 import { allRevealed } from './fog';
+import { clearGrowth } from './forest';
 import {
   blockedGrid,
   doorTiles,
@@ -64,6 +65,7 @@ export function placeStockpile(
   h: number,
 ): void {
   if (!canPlaceStockpile(state, content, x, y, w, h)) return;
+  clearGrowth(state, content, rectTiles({ x, y }, w, h));
   const id = createEntity(state);
   state.components.tile[id] = { x, y };
   state.components.stockpile[id] = { size: { w, h }, priority: 'normal', refuses: [], goods: {} };

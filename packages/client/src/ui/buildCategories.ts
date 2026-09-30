@@ -18,7 +18,7 @@ export const BUILD_CATEGORIES: readonly BuildCategory[] = [
     id: 'gathering',
     label: 'Gathering',
     icon: 'axe',
-    tools: ['woodcutters_hut', 'foragers_hut', 'hunters_lodge', 'fishers_hut'],
+    tools: ['woodcutters_hut', 'foragers_hut', 'hunters_lodge', 'fishers_hut', 'foresters_lodge'],
   },
   { id: 'workshops', label: 'Workshops', icon: 'block', tools: ['chopping_block'] },
   {
@@ -44,6 +44,7 @@ export const TOOL_ICONS: Record<ToolId, IconName> = {
   foragers_hut: 'basket',
   hunters_lodge: 'bow',
   fishers_hut: 'fish',
+  foresters_lodge: 'sapling',
   chopping_block: 'block',
   torch: 'torch',
   brazier: 'brazier',

@@ -1,6 +1,7 @@
 // Roads: the per-tile road layer, laying and removing paths, and road speed.
 import type { Content } from '@candlemarch/content';
 import { allRevealed } from './fog';
+import { clearGrowth } from './forest';
 import {
   blockedGrid,
   inBounds,
@@ -73,6 +74,7 @@ export function canLayPath(state: GameState, content: Content, from: Tile, to: T
 /** Lays a dirt path along the L from `from` to `to`, or nothing if any tile of it is invalid. */
 export function layPath(state: GameState, content: Content, from: Tile, to: Tile): void {
   if (!canLayPath(state, content, from, to)) return;
+  clearGrowth(state, content, lShapeTiles(from, to));
   const { map } = state;
   let laid = false;
   for (const t of lShapeTiles(from, to)) {

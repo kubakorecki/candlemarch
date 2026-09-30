@@ -25,6 +25,7 @@ describe('content validation', () => {
       expect(resources).toHaveProperty(obj.resource);
       // A forage patch may start empty (mushrooms in spring); anything else would vanish at once.
       if (obj.forage) expectNonNegativeInt(obj.amount, `${obj.id}.amount`);
+      else if (obj.grows) expect(obj.amount, `${obj.id} growing holds nothing`).toBe(0);
       else expectPositiveInt(obj.amount, `${obj.id}.amount`);
       expectPositiveInt(obj.gatherTicks, `${obj.id}.gatherTicks`);
       expectPositiveInt(obj.yieldPerGather, `${obj.id}.yieldPerGather`);
@@ -43,6 +44,31 @@ describe('content validation', () => {
       expectPositiveInt(obj.forage.shadeTiles, `${obj.id}.forage.shadeTiles`);
       // A game starts on the first season's first day: the patch starts with that season's stock.
       expect(obj.amount, `${obj.id} starts with ${first}'s stock`).toBe(obj.forage.stock[first]);
+    }
+  });
+
+  it('growing things grow into map objects that exist, over whole days and stages', () => {
+    const growing = Object.values(mapObjects).filter((obj) => obj.grows);
+    expect(growing.map((g) => g.id)).toEqual(['sapling']);
+    for (const obj of growing) {
+      const { grows } = obj;
+      if (!grows) continue;
+      expect(mapObjects, `${obj.id}.grows.into`).toHaveProperty(grows.into);
+      expect(grows.into, `${obj.id} grows into itself`).not.toBe(obj.id);
+      expectPositiveInt(grows.days, `${obj.id}.grows.days`);
+      expectPositiveInt(grows.stages, `${obj.id}.grows.stages`);
+      expect(obj.forage ?? obj.deposit, `${obj.id} forages or is a Deposit`).toBeUndefined();
+    }
+  });
+
+  it('what a building plants is something growing, on terrain that exists', () => {
+    for (const b of Object.values(buildings)) {
+      if (!b.plants) continue;
+      expect(mapObjects[b.plants.object].grows, `${b.id} plants ${b.plants.object}`).toBeDefined();
+      expect(terrain, `${b.id}.plants.on`).toHaveProperty(b.plants.on);
+      expectPositiveInt(b.plants.spacing, `${b.id}.plants.spacing`);
+      expectPositiveInt(b.plants.plantTicks, `${b.id}.plants.plantTicks`);
+      expect(b.workRadius, `${b.id} plants without a radius`).toBeDefined();
     }
   });
 

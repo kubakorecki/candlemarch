@@ -339,6 +339,56 @@ export function drawTree(g: Graphics, amount: number, fullAmount: number): void 
   g.stroke({ ...THIN_INK, alpha: 0.6 });
 }
 
+/**
+ * A Sapling, drawn like `drawTree` but small, taller at each `stage` (0 a twig with two leaves, 1
+ * a whip with a tuft, 2 a young tree with a thin crown). It stands in a ring of turned earth.
+ */
+export function drawSapling(g: Graphics, stage: number): void {
+  const s = TILE_H / 64;
+  g.ellipse(0, 0, 10 * s, 5 * s)
+    .fill(palette.dirt)
+    .stroke(THIN_INK);
+  if (stage <= 0) {
+    g.moveTo(0, 0)
+      .lineTo(0, -12 * s)
+      .stroke({ width: 2.5 * s, color: palette.ink });
+    g.moveTo(0, 0)
+      .lineTo(0, -12 * s)
+      .stroke({ width: 1.2 * s, color: palette.trunk });
+    g.ellipse(-4 * s, -12 * s, 4 * s, 2.2 * s)
+      .fill(palette.canopyLight)
+      .stroke(THIN_INK);
+    g.ellipse(4 * s, -14 * s, 4 * s, 2.2 * s)
+      .fill(palette.canopy)
+      .stroke(THIN_INK);
+    return;
+  }
+  const height = stage === 1 ? 20 : 28;
+  const r = stage === 1 ? 7 : 11;
+  groundShadow(g, (r + 6) * s, (r / 2 + 3) * s);
+  g.poly(
+    flat([
+      { x: -2 * s, y: 0 },
+      { x: -1.5 * s, y: -height * s },
+      { x: 1.5 * s, y: -height * s },
+      { x: 2 * s, y: 0 },
+    ]),
+  )
+    .fill(palette.trunk)
+    .stroke(THIN_INK);
+  if (stage >= 2) {
+    g.circle(-6 * s, -(height + 2) * s, r * 0.8 * s)
+      .fill(palette.canopyDark)
+      .stroke(INK);
+    g.circle(6 * s, -(height + 3) * s, r * 0.8 * s)
+      .fill(palette.canopy)
+      .stroke(INK);
+  }
+  g.circle(0, -(height + r * 0.6) * s, r * s)
+    .fill(palette.canopyLight)
+    .stroke(INK);
+}
+
 /** A berry bush, drawn like `drawTree`: berries while it has some, bare and dry once withered. */
 export function drawBerryBush(g: Graphics, amount: number, withered: boolean): void {
   const s = TILE_H / 64;

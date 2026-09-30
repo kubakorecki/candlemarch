@@ -21,6 +21,7 @@ export const JOB_COLORS: Record<JobId, number> = {
   fisher: palette.fisher,
   forager: palette.forager,
   hunter: palette.hunter,
+  forester: palette.forester,
   watchman: palette.watchman,
 };
 
@@ -270,8 +271,8 @@ function drawHead(g: Graphics, job: JobId): void {
 
 /**
  * The tool a villager holds for its Job, drawn over its body: the woodcutter's axe on its shoulder,
- * the woodsplitter's maul, the fisher's rod, the forager's basket, the hunter's bow, the watchman's
- * spear. Carriers carry nothing but their pack. Hidden while the villager swings its axe at work.
+ * the woodsplitter's maul, the fisher's rod, the forager's basket, the hunter's bow, the forester's
+ * spade, the watchman's spear. Carriers carry nothing but their pack. Hidden while the villager swings its axe at work.
  */
 export function drawVillagerTool(g: Graphics, job: JobId): void {
   g.clear();
@@ -335,6 +336,12 @@ export function drawVillagerTool(g: Graphics, job: JobId): void {
     g.circle(-hx, hy, 2.8 * S)
       .fill(palette.skin)
       .stroke({ ...THIN_INK, width: 1.5 * S });
+  } else if (job === 'forester') {
+    // A spade on the shoulder, its blade up behind the head.
+    pole(g, hx, hy + 2 * S, 12 * S, -50 * S, 2.5 * S, palette.log);
+    g.poly([8 * S, -52 * S, 17 * S, -49 * S, 18 * S, -60 * S, 12 * S, -63 * S])
+      .fill(palette.axeHead)
+      .stroke(THIN_INK);
   } else if (job === 'watchman') {
     // A spear stood upright beside it, gripped in the right hand.
     pole(g, hx + 1 * S, 0, hx + 1 * S, -56 * S, 2.5 * S, palette.torchPole);

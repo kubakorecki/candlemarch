@@ -117,7 +117,8 @@ function openTiles(state: GameState, content: Content): boolean[] {
       !inCalmArea(state, content, { x: i % map.width, y: Math.floor(i / map.width) }),
   );
   if (map.entry) open[tileIndex(map, map.entry.x, map.entry.y)] = false;
-  for (const id of idsOf(state.components.den)) {
+  // Dens, and map objects walked over (Saplings), which will grow into trees.
+  for (const id of [...idsOf(state.components.den), ...idsOf(state.components.mapObject)]) {
     const t = state.components.tile[id];
     if (t) open[tileIndex(map, t.x, t.y)] = false;
   }

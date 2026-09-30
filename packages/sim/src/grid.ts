@@ -185,7 +185,7 @@ function blocksWalking(
 
 /**
  * Walk-blocking grid: 1 where a villager or the Hero can't walk. Terrain that isn't walkable
- * (unless a Road is laid over it), map objects (trees) and building/site footprints block, but not
+ * (unless a Road is laid over it), map objects (trees; not Saplings) and building/site footprints block, but not
  * a wall's site, a built Gate, a wall battered down to 0 HP or a groundwork site (a Drain, a Pass
  * road). `gatesBlock` makes Gates block too, for Gloamlings. Cached until the map changes
  * (`mapChanged`), so don't write to it.
@@ -220,7 +220,9 @@ function buildBlockedGrid(
   });
   for (const id of idsOf(state.components.mapObject)) {
     const t = state.components.tile[id];
-    if (t) blocked[tileIndex(map, t.x, t.y)] = 1;
+    const obj = state.components.mapObject[id];
+    // Something growing (a Sapling) is walked over.
+    if (t && obj && !content.mapObjects[obj.type].grows) blocked[tileIndex(map, t.x, t.y)] = 1;
   }
   for (const id of idsOf(state.components.tile)) {
     if (!blocksWalking(state, content, id, gatesBlock)) continue;

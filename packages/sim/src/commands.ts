@@ -3,7 +3,8 @@ import type { BuildingId, Content, ResourceId } from '@candlemarch/content';
 import { isMonsterRate } from './dens';
 import { createEntity, destroyEntity } from './entities';
 import { setFog } from './fog';
-import { canPlaceBuilding } from './grid';
+import { clearGrowth } from './forest';
+import { buildingLayout, canPlaceBuilding } from './grid';
 import { layGroundwork } from './groundwork';
 import { type HeroOrder, orderHero } from './hero';
 import { ringBell } from './militia';
@@ -66,6 +67,8 @@ export function applyCommand(state: GameState, command: Command, content: Conten
       if (!isRotation(rotation) || !canPlaceBuilding(state, content, building, x, y, rotation)) {
         return;
       }
+      const layout = buildingLayout(content.buildings[building], { x, y }, rotation);
+      clearGrowth(state, content, [...layout.tiles, layout.door]);
       const id = createEntity(state);
       state.components.tile[id] = { x, y };
       state.components.site[id] = { type: building, rotation, delivered: {}, buildProgress: 0 };

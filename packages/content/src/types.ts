@@ -19,7 +19,8 @@ export type MapObjectId =
   | 'mushroom_patch'
   | 'stone_deposit'
   | 'clay_deposit'
-  | 'iron_deposit';
+  | 'iron_deposit'
+  | 'sapling';
 export type BuildingId =
   | 'drain'
   | 'pass_road'
@@ -29,6 +30,7 @@ export type BuildingId =
   | 'fishers_hut'
   | 'foragers_hut'
   | 'hunters_lodge'
+  | 'foresters_lodge'
   | 'granary'
   | 'torch'
   | 'brazier'
@@ -43,6 +45,7 @@ export type JobId =
   | 'fisher'
   | 'forager'
   | 'hunter'
+  | 'forester'
   | 'watchman';
 export type RoadId = 'dirt_path' | 'pass_road';
 export type HeroId = 'placeholder';
@@ -130,6 +133,22 @@ export interface MapObjectDef {
   forage?: ForageDef;
   /** Makes it a Deposit: what is dug out never comes back. Says where it may stand. */
   deposit?: DepositDef;
+  /**
+   * Makes it something growing (a Sapling): nobody gathers it (its `amount` is 0), it doesn't
+   * block walking, and a building, Road or Stockpile put on its tile clears it. It turns into
+   * `into` after `days`.
+   */
+  grows?: GrowsDef;
+}
+
+/**
+ * How something growing grows: it turns into `into` at the first Dawn `days` days after it
+ * appeared, drawn meanwhile in `stages` steps (0 up to `stages` − 1, evenly over the days).
+ */
+export interface GrowsDef {
+  into: MapObjectId;
+  days: number;
+  stages: number;
 }
 
 /**
@@ -150,6 +169,18 @@ export interface ForageDef {
   stock: Record<SeasonId, number>;
   shadedBy: MapObjectId;
   shadeTiles: number;
+}
+
+/**
+ * What a forester's lodge plants: `object` on empty `on` terrain, only on tiles whose x and y are
+ * both multiples of `spacing`, so the rows between stay open to walk through once the trees are
+ * grown. A planting takes `plantTicks` of work.
+ */
+export interface PlantsDef {
+  object: MapObjectId;
+  on: TerrainId;
+  spacing: number;
+  plantTicks: number;
 }
 
 export interface JobDef {
@@ -446,6 +477,8 @@ export interface BuildingDef {
    * if the roll succeeds, brings `catch` back to the output buffer.
    */
   hunts?: { huntTicks: number; catch: ResourceAmount[] };
+  /** Its workers plant `object` (a Sapling) on tiles within its work radius (see `PlantsDef`). */
+  plants?: PlantsDef;
   /** Its door must be on a riverbank tile. */
   doorOnRiverbank?: boolean;
   /** Where its workers drop what they produce, if anything: a capacity per resource. */

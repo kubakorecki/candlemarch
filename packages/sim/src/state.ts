@@ -71,6 +71,13 @@ export interface MapObjectComponent {
    * and kept up to date when a tree near it is felled (`refreshShade`). Absent on other objects.
    */
   withered?: boolean;
+  /**
+   * Something growing only (a Sapling): the tick from which it grows into the next thing, which
+   * happens at the first Dawn at or after it (`systems/growth.ts`). Absent on other objects.
+   */
+  growsAt?: number;
+  /** Something growing with drawing stages (a Sapling): the stage it's drawn at, from 0. */
+  stage?: number;
 }
 
 /**
@@ -259,6 +266,12 @@ export type ForagerTask =
   | { kind: 'gathering'; patch: EntityId; ticksLeft: number }
   | { kind: 'toHut' };
 
+/** A forester: walks to an empty tile in its lodge's radius and plants a Sapling there. */
+export type ForesterTask =
+  | { kind: 'idle'; retryAt: number }
+  | { kind: 'toPlot'; plot: Tile }
+  | { kind: 'planting'; plot: Tile; ticksLeft: number };
+
 /** A hunter: walks into a Hunting ground in its lodge's radius, hunts, and brings back its bag. */
 export type HunterTask =
   | { kind: 'idle'; retryAt: number }
@@ -343,6 +356,7 @@ export interface Components {
   fisher: Store<FisherTask>;
   forager: Store<ForagerTask>;
   hunter: Store<HunterTask>;
+  forester: Store<ForesterTask>;
   huntingGround: Store<HuntingGroundComponent>;
   den: Store<DenComponent>;
   gloamling: Store<GloamlingComponent>;
