@@ -27,7 +27,13 @@ import {
 } from './grid';
 import { addHuntingGround } from './huntingGrounds';
 import { seedRng } from './rng';
-import { DEFAULT_MONSTER_RATE, type GameState, type Rotation, STATE_VERSION } from './state';
+import {
+  DEFAULT_MONSTER_RATE,
+  type GameState,
+  type Rotation,
+  STATE_VERSION,
+  type Tile,
+} from './state';
 import {
   addToTile,
   canPlaceStockpile,
@@ -69,8 +75,14 @@ export interface MapDef {
   villagers: { job: JobId; x: number; y: number }[];
   /** Where the hero starts, if the map has one. */
   hero?: { x: number; y: number };
-  /** Hunting grounds: named rectangles of forest, by origin tile and size, starting full of Game. */
-  huntingGrounds?: { name: string; x: number; y: number; w: number; h: number; maxGame: number }[];
+  /**
+   * Hunting grounds, starting full of Game: named rectangles of forest by origin tile and size, or
+   * (as the Valley generator gives them) any set of tiles.
+   */
+  huntingGrounds?: (
+    | { name: string; x: number; y: number; w: number; h: number; maxGame: number }
+    | { name: string; tiles: Tile[]; maxGame: number }
+  )[];
 }
 
 /**
@@ -349,6 +361,10 @@ export function createInitialState(
   }
 
   for (const g of map.huntingGrounds ?? []) {
+    if ('tiles' in g) {
+      addHuntingGround(state, content, g.name, g.tiles, g.maxGame);
+      continue;
+    }
     const { name, x, y, w, h, maxGame } = g;
     if (x < 0 || y < 0 || w < 1 || h < 1 || x + w > width || y + h > height) {
       throw new Error(

@@ -313,6 +313,109 @@ export interface FogDef {
   };
 }
 
+/** A whole-number range, both ends included. */
+export interface IntRange {
+  min: number;
+  max: number;
+}
+
+/**
+ * The procedural Valley (spec, World and map: "The Valley", "Forest ecology"). Every distance is
+ * in tiles, Chebyshev; every share is a whole percent. The generator lays the Valley out with the
+ * entry on the west edge and the Side valley in the south-east corner, then turns or mirrors the
+ * whole map, so those two just say how the parts sit relative to each other.
+ */
+export interface ValleyDef {
+  /** Tiles a side. */
+  size: number;
+  /** Seeds tried (the first, then ones derived from it) before generation gives up. */
+  attempts: number;
+  /** The Mountain rim round the map: thickness from value noise over cells of `cellTiles`. */
+  rim: { thickness: IntRange; cellTiles: number };
+  /**
+   * The entry: a gap `gapTiles` wide through the rim, somewhere between `alongPercent` of the way
+   * along its edge. The rim stays at most `nearThickness` thick near it, so the Camp fits.
+   */
+  entry: { gapTiles: number; alongPercent: IntRange; nearThickness: number };
+  /**
+   * The Starting Camp, within `entryTiles` of the entry: a Granary holding `granaryStock`, a 2×2
+   * Stockpile holding `stockpileGoods`, `carriers` Homeless Carriers and the Hero.
+   */
+  camp: {
+    entryTiles: number;
+    granaryStock: ResourceAmount[];
+    stockpileGoods: ResourceAmount[];
+    carriers: number;
+  };
+  /** What the generator guarantees near the Camp; a Valley missing one is thrown away. */
+  guarantees: {
+    /** A square this many tiles a side of clear, buildable Meadow (no Swamp) round the Camp. */
+    clearTiles: number;
+    trees: { withinTiles: number; count: number };
+    forage: { withinTiles: number; count: number };
+    riverbankTiles: number;
+    fordTiles: number;
+    /** A stone and a clay Deposit this close. */
+    depositTiles: number;
+    /** No Den this close. */
+    denTiles: number;
+  };
+  /**
+   * The river, edge to edge: `widthTiles` wide, winding up to `meanderTiles` either way over cells
+   * of `cellTiles`, its bank `campBankTiles` from the Camp; `fords` Fords `fordWidthTiles` wide,
+   * `fordSpacingTiles` apart.
+   */
+  river: {
+    widthTiles: number;
+    meanderTiles: number;
+    cellTiles: number;
+    campBankTiles: number;
+    fords: IntRange;
+    fordWidthTiles: number;
+    fordSpacingTiles: number;
+  };
+  /**
+   * The Side valley: a corner pocket `widthTiles` × `heightTiles` from the map's edge, walled off by
+   * Mountain `wallThickness` thick, through which the Pass (Pass snow, `passWidthTiles` wide) leads.
+   */
+  sideValley: {
+    widthTiles: number;
+    heightTiles: number;
+    wallThickness: IntRange;
+    passWidthTiles: number;
+  };
+  /**
+   * Forest: where value noise over cells of `cellTiles` passes `thresholdPercent`, trees stand on
+   * `treePercent` of the Meadow and Forage patches on `foragePercent`. The Camp's own wood, beside
+   * it, stands at `campTreePercent`.
+   */
+  forest: {
+    cellTiles: number;
+    thresholdPercent: number;
+    treePercent: number;
+    campTreePercent: number;
+    foragePercent: number;
+  };
+  /** Swamp patches beside the river's slow bends, each a noisy blob of these radii. */
+  swamp: { patches: IntRange; radiusTiles: IntRange };
+  /** Rock outcrops: Meadow within `footTiles` of a Mountain where noise passes `thresholdPercent`. */
+  rock: { footTiles: number; thresholdPercent: number; cellTiles: number };
+  /** Deposits per Valley (both iron in the Side valley), at least `spacingTiles` apart. */
+  deposits: { stone: number; clay: number; iron: number; spacingTiles: number };
+  /** Dens at the start, `sideValley` of them in the Side valley, `spacingTiles` apart. */
+  dens: { count: number; sideValley: number; spacingTiles: number };
+  /**
+   * Hunting grounds: each connected stretch of Forest, split so none has more than `maxTiles`;
+   * a stretch under `minTiles` holds none. Max Game is 1 per `treesPerGame` trees.
+   */
+  huntingGrounds: {
+    maxTiles: number;
+    minTiles: number;
+    treesPerGame: number;
+    names: readonly string[];
+  };
+}
+
 /**
  * Monster Dens (M3). At each Dusk a Den spawns `spawnsPerDusk` Gloamlings for the season, scaled by
  * the game's Monster rate. At the start of each season each Den buds a new Den closer to the
@@ -539,6 +642,7 @@ export interface Content {
   dens: DensDef;
   combat: CombatDef;
   fog: FogDef;
+  valley: ValleyDef;
   /** First names new villagers are drawn from. */
   villagerNames: readonly string[];
 }

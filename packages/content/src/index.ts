@@ -17,6 +17,7 @@ import { resources } from './resources';
 import { roads } from './roads';
 import { terrain } from './terrain';
 import type { Content } from './types';
+import { valley } from './valley';
 import { villagerNames } from './villagerNames';
 
 export type * from './types';
@@ -39,5 +40,6 @@ export const content: Content = {
   dens,
   combat,
   fog,
+  valley,
   villagerNames,
 };

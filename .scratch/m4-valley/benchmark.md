@@ -347,3 +347,18 @@ Measured 2026-09-30, same machine and Node, `pnpm bench:maps 128` and `pnpm benc
 ## Fog in the client (ticket 17)
 
 Measured 2026-09-30, headless Chrome 154 over CDP (no visible window available), 1512×860, the synthetic 128² map loaded from a save with Fog on and again with it off, 3×, zoomed out so the Fog's edges are on screen, 12 s of panning. rAF intervals: 60.0 fps, mean 16.67 ms, p95 16.7–16.8 ms, max 16.8 ms, no frame over 33 ms, Fog on and off alike. Main thread about 80% idle either way; the Fog's own work (working out the field and uploading the texture when the Revealed or In-sight tiles change) came to 42 ms of the 12 s profile, about 0.06 ms a frame on average (`fogField` 33 ms of it).
+
+## A generated Valley (ticket 06)
+
+Measured 2026-09-30, same machine and Node: `pnpm bench:maps 128 valley` (Fog off) and `pnpm bench:maps --fog valley`, back to back. `valley` is the Valley for seed 1 (`valley:<seed>` picks another), run as a new game starts: the Starting Camp alone (a Granary, a Stockpile, 5 Carriers and the Hero), so nobody works yet and the Carriers idle. The synthetic 128² map keeps its 50-villager village, so it stays the harder test of the tick; the Valley is the one to compare map size and snapshots against.
+
+| 128² | Entities | Trees | Other map objects | Create (ms) | Tick mean (ms) | Tick p95 | Tick max | State (JSON) | Static layers | Moving part |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Synthetic, Fog off | 5440 | 5191 | 149 | 79.3 | 0.49 | 1.42 | 17.56 | 481 KB | 450 KB | 33 KB |
+| Valley 1, Fog off | 4496 | 4183 | 264 | 29.0 | 0.04 | 0.05 | 6.35 | 437 KB | 430 KB | 7 KB |
+| Valley 1, Fog on | 4496 | 4183 | 264 | 33.0 | 0.04 | 0.06 | 7.10 | 438 KB | 430 KB | 8 KB |
+
+- "Other map objects" are every map object that isn't a tree at the end of the run: Forage patches, and in the Valley also its 11 Deposits; the synthetic map's felled trees are Stumps by then.
+- The Valley has fewer trees than the synthetic map (its forest covers less of the land, and the rim, river and Side valley take their share), so its state and first snapshot are a little smaller: 430 KB of static layers, 5.0 ms to post, against 450 KB and 5.3 ms.
+- With nobody working, no static layer changes in the measured day (no chopping), and a tick is 0.04 ms; the worst tick (6–7 ms) wasn't profiled. Fog adds about 1 KB to the moving part (the In-sight bits) and nothing measurable to the tick.
+- Generating the Valley takes about 15 ms in Node (100 seeds: about 1.5 s, a retry with a derived seed about 1 time in 100); `createInitialState` on it about 25–30 ms, most of it the forage shade worked out once.

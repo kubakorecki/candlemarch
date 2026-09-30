@@ -9,8 +9,10 @@ import {
   cloneState,
   createInitialState,
   type GameState,
+  generateValley,
   idsOf,
   joinSnapshot,
+  type MapDef,
   movingPart,
   sentStaticLayers,
   serialize,
@@ -44,7 +46,8 @@ export interface Timing {
 }
 
 export interface MapSizeResult {
-  size: number;
+  /** The map's row label: `128²` for a synthetic map, `valley 1 (128²)` for a generated one. */
+  label: string;
   entities: number;
   trees: number;
   /** Berry bushes and mushroom patches. */
@@ -149,12 +152,34 @@ async function transferTimes(snapshot: unknown, reps: number): Promise<number[]>
 }
 
 /** Builds the synthetic `size` map, runs it, and measures it. */
-export async function benchMapSize(
+export function benchMapSize(
   size: number,
   content: Content,
   options: BenchOptions,
 ): Promise<MapSizeResult> {
-  const map = syntheticMap(size);
+  return benchMap(`${size}²`, syntheticMap(size), content, options);
+}
+
+/**
+ * Generates the Valley for `seed`, runs it as a new game starts (the Starting Camp alone), and
+ * measures it.
+ */
+export function benchValley(
+  seed: number,
+  content: Content,
+  options: BenchOptions,
+): Promise<MapSizeResult> {
+  const size = content.valley.size;
+  return benchMap(`valley ${seed} (${size}²)`, generateValley(seed, content), content, options);
+}
+
+/** Runs `map` and measures it, under the row label `label`. */
+async function benchMap(
+  label: string,
+  map: MapDef,
+  content: Content,
+  options: BenchOptions,
+): Promise<MapSizeResult> {
   const createStart = performance.now();
   const state: GameState = createInitialState(1, map, content, 100, options.fog);
   const createMs = performance.now() - createStart;
@@ -216,7 +241,7 @@ export async function benchMapSize(
   });
 
   return {
-    size,
+    label,
     entities: current.nextId - 1,
     trees: Object.values(components.mapObject).filter((o) => o.type === 'tree').length,
     patches: Object.values(components.mapObject).filter((o) => o.type !== 'tree').length,
@@ -255,7 +280,7 @@ export async function benchMapSize(
 const ms = (n: number) => n.toFixed(2);
 const kb = (n: number) => `${Math.round(n / 1024)} KB`;
 
-/** Markdown tables of `results`, one row per size. */
+/** Markdown tables of `results`, one row per map. */
 export function formatResults(results: MapSizeResult[]): string {
   const table = (header: string[], rows: string[][]) =>
     [
@@ -263,7 +288,7 @@ export function formatResults(results: MapSizeResult[]): string {
       `| ${header.map(() => '---').join(' | ')} |`,
       ...rows.map((row) => `| ${row.join(' | ')} |`),
     ].join('\n');
-  const tiles = (r: MapSizeResult) => `${r.size}²`;
+  const tiles = (r: MapSizeResult) => r.label;
   return [
     table(
       [

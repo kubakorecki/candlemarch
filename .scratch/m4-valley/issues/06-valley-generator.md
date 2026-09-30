@@ -1,6 +1,6 @@
 # Procedural valley generator
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 02, 03, 05, 11
 
@@ -29,3 +29,7 @@ POIs other than Dens come in ticket 07; Fog in ticket 16.
 - Headless tests: the same seed gives an identical Valley; the guarantees and counts hold across 100 seeds; every walkable tile of the main valley is reachable from the entry; generation at 128² takes under 1 s in Node.
 - `pnpm bench:maps` reports a generated Valley. Its numbers are appended to `.scratch/m4-valley/benchmark.md`, for comparison with the synthetic map.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-30 — Done. `generateValley(seed, content)` in `sim/src/valley/` returns a `Valley`: a `MapDef` (`createInitialState` builds it as it is) plus `layoutSeed`, `camp`, `sideValley` and `pass` tile indices for ticket 07. Numbers in `content.valley` (`ValleyDef`). Hand-made maps may now give Hunting grounds as tile sets too. `pnpm bench:maps valley[:seed]` runs a generated Valley; numbers in `benchmark.md`. Tests: `sim/test/valley.test.ts` (same seed → same Valley; shape, counts, guarantees, reach and grounds over seeds 1–100; the sim's own regions on one seed), `tooling/benchmark/valley.test.ts` (under 1 s; about 15 ms). Beyond the issue: the layout is turned or mirrored (one of 8) so the entry can be on any edge; the generator also guarantees every Forage patch and Deposit has a reachable side tile; a forest stretch under 20 tiles holds no ground. Not checked: the spec's 2–4 Swamp patches (attempted; blobs may touch). Decisions in docs/decisions.md.

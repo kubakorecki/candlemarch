@@ -429,6 +429,62 @@ describe('content validation', () => {
     expectPositiveInt(cleared.calmDays, 'dens.cleared.calmDays');
   });
 
+  it('the Valley uses whole numbers, ranges that can be met, and enough names', () => {
+    const { valley } = content;
+    const ranges = [
+      valley.rim.thickness,
+      valley.entry.alongPercent,
+      valley.river.fords,
+      valley.sideValley.wallThickness,
+      valley.swamp.patches,
+      valley.swamp.radiusTiles,
+    ];
+    for (const range of ranges) {
+      expectPositiveInt(range.min, 'valley range min');
+      expect(range.min <= range.max, `valley range ${range.min}–${range.max}`).toBe(true);
+    }
+    const numbers = [
+      valley.size,
+      valley.attempts,
+      valley.rim.cellTiles,
+      valley.entry.gapTiles,
+      valley.entry.nearThickness,
+      valley.camp.entryTiles,
+      valley.camp.carriers,
+      ...Object.values(valley.guarantees).flatMap((g) =>
+        typeof g === 'number' ? [g] : Object.values(g),
+      ),
+      ...Object.values(valley.river).filter((n) => typeof n === 'number'),
+      valley.sideValley.widthTiles,
+      valley.sideValley.heightTiles,
+      valley.sideValley.passWidthTiles,
+      ...Object.values(valley.forest),
+      ...Object.values(valley.rock),
+      ...Object.values(valley.deposits),
+      ...Object.values(valley.dens),
+      valley.huntingGrounds.maxTiles,
+      valley.huntingGrounds.minTiles,
+      valley.huntingGrounds.treesPerGame,
+    ];
+    for (const n of numbers) expectPositiveInt(n as number, 'valley number');
+    const { forest } = valley;
+    expect(forest.foragePercent + Math.max(forest.treePercent, forest.campTreePercent) <= 100).toBe(
+      true,
+    );
+    expect(valley.dens.sideValley <= valley.dens.count, 'Side valley Dens').toBe(true);
+    expect(valley.huntingGrounds.minTiles <= valley.huntingGrounds.maxTiles).toBe(true);
+    for (const { resource, amount } of [
+      ...valley.camp.granaryStock,
+      ...valley.camp.stockpileGoods,
+    ]) {
+      expect(resources, 'valley.camp').toHaveProperty(resource);
+      expectPositiveInt(amount, `valley.camp ${resource}`);
+    }
+    const names = valley.huntingGrounds.names;
+    expect(new Set(names).size, 'distinct Hunting ground names').toBe(names.length);
+    expect(names.every((name) => name.trim() === name && name.length > 0)).toBe(true);
+  });
+
   it('fighters use positive whole numbers', () => {
     const { gloamling, villager, hero, den } = content.combat;
     for (const [name, f] of Object.entries({ gloamling, villager, hero, den })) {
