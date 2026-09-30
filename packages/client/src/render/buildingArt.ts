@@ -12,7 +12,7 @@ import { palette } from './palette';
 import {
   type DoorFace,
   doorFace,
-  drawDoorstep,
+  doorway,
   drawGlow,
   drawGoodsPile,
   flat,
@@ -90,12 +90,11 @@ function wallPoint(box: Box, wall: FrontWall, u: number, out: number, z: number)
 
 /** Where the door sits along a front wall (0–1), or null when it's on another wall. */
 function doorAlong(layout: BuildingLayout, box: Box, wall: FrontWall): number | null {
-  const face = doorFace(layout);
-  const { door } = layout;
+  const { face, sill } = doorway(layout);
   if (face !== wall) return null;
   return wall === 'south'
-    ? (door.x + 0.5 - box.x0) / (box.x1 - box.x0)
-    : (box.y1 - (door.y + 0.5)) / (box.y1 - box.y0);
+    ? (sill.x - box.x0) / (box.x1 - box.x0)
+    : (box.y1 - sill.y) / (box.y1 - box.y0);
 }
 
 /** The top of a wall: (t along it 0–1, height) points, left to right. */
@@ -218,7 +217,7 @@ function drawCorners(g: Graphics, box: Box, south: Profile, east: Profile, z0 = 
   drawLogEnds(g, { x: box.x1, y: box.y0 }, z0, topAt(east, 1), 1);
 }
 
-/** A plank door on a front wall, from `z0` up `h`; a door on a back wall is left to `drawBackDoor`. */
+/** A plank door on a front wall, from `z0` up `h`; a door on a back wall is hidden (`drawDoorstones`). */
 function drawDoor(g: Graphics, layout: BuildingLayout, box: Box, z0: number, h: number): void {
   const face = doorFace(layout);
   if (isBackFace(face)) return;
@@ -246,23 +245,31 @@ function drawDoor(g: Graphics, layout: BuildingLayout, box: Box, z0: number, h: 
 }
 
 /**
- * A door on a hidden back wall: its doorstep and a small door standing on the door tile, drawn
- * over the building so it stays readable.
+ * The way in, on the ground: a flat doorstep against the door's wall and two stepping stones out
+ * across the door tile. Drawn before the building, so a door on a hidden back wall shows as the
+ * stones leading round behind it.
  */
-function drawBackDoor(g: Graphics, door: Vec, face: DoorFace): void {
-  drawDoorstep(g, door, face);
-  const c = gridToWorld(door.x + 0.5, door.y + 0.5);
-  const w = 7 * S;
-  const h = 22 * S;
-  g.roundRect(c.x - w, c.y - h, w * 2, h, w)
-    .fill(palette.door)
-    .stroke(THIN_INK);
-  g.rect(c.x - w, c.y - h / 2, w * 2, h / 2).fill(palette.door);
-  g.moveTo(c.x - w, c.y - h / 2)
-    .lineTo(c.x - w, c.y)
-    .lineTo(c.x + w, c.y)
-    .lineTo(c.x + w, c.y - h / 2)
-    .stroke(THIN_INK);
+function drawDoorstones(g: Graphics, layout: BuildingLayout): void {
+  const { sill, out } = doorway(layout);
+  // `a` along the wall, `o` out from it, in tiles from the sill.
+  const ground = (a: number, o: number): Vec =>
+    gridToWorld(sill.x - out.y * a + out.x * o, sill.y + out.x * a + out.y * o);
+  const step = [ground(-0.17, -0.1), ground(0.17, -0.1), ground(0.17, 0.2), ground(-0.17, 0.2)];
+  g.poly(flat(step)).fill(palette.stone).stroke(THIN_INK);
+  const edge = [ground(-0.17, 0.2), ground(0.17, 0.2)] as const;
+  g.moveTo(edge[0].x, edge[0].y)
+    .lineTo(edge[1].x, edge[1].y)
+    .stroke({ width: 2 * S, color: palette.stoneDark });
+  for (const [a, o, r] of [
+    [0.05, 0.42, 0.11],
+    [-0.04, 0.7, 0.1],
+  ] as const) {
+    const stone = Array.from({ length: 10 }, (_, i) => {
+      const t = (i / 10) * Math.PI * 2;
+      return ground(a + Math.cos(t) * r * 1.2, o + Math.sin(t) * r);
+    });
+    g.poly(flat(stone)).fill(palette.stone).stroke(THIN_INK);
+  }
 }
 
 /** How a roof is covered: its lit and shaded colours, and shingle rows or thatch straws. */
@@ -497,6 +504,7 @@ export function drawBuilding(
   const { origin, size } = layout;
   const c = gridToWorld(origin.x + size.w / 2, origin.y + size.h / 2);
   groundShadowAt(g, c.x, c.y, size.w * TILE_H * 0.62, size.h * TILE_H * 0.31);
+  drawDoorstones(g, layout);
   if (type === 'hut') drawHut(g, layout);
   else if (type === 'woodcutters_hut') drawWoodcuttersHut(g, layout);
   else if (type === 'fishers_hut') drawFishersHut(g, layout);
@@ -504,8 +512,7 @@ export function drawBuilding(
   else if (type === 'hunters_lodge') drawHuntersLodge(g, layout);
   else if (type === 'granary') drawGranary(g, layout);
   else drawCabin(g, layout);
-  if (back) drawBackDoor(g, layout.door, face);
-  else drawPile();
+  if (!back) drawPile();
 }
 
 /** A plain log cabin under a hip roof. */
@@ -986,7 +993,8 @@ function drawForagersHut(g: Graphics, layout: BuildingLayout): void {
 
   // Door, on the curve where it faces.
   if (!isBackFace(face)) {
-    const phi = face === 'south' ? Math.PI / 2 : 0;
+    const { out } = doorway(layout);
+    const phi = Math.atan2(out.y, out.x);
     const w = 0.34;
     const dh = WALL_H * 0.56;
     const door = [

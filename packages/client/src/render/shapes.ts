@@ -698,14 +698,44 @@ export function doorFace(layout: BuildingLayout): DoorFace {
   return 'east';
 }
 
+/** Grid direction out through a wall facing each way. */
+const OUTWARD: Record<DoorFace, Vec> = {
+  south: { x: 0, y: 1 },
+  west: { x: -1, y: 0 },
+  north: { x: 0, y: -1 },
+  east: { x: 1, y: 0 },
+};
+
+/**
+ * Where a building's door is: the wall it's on (`face`), the grid point on the footprint's edge
+ * mid-way along the door tile (`sill`), and the grid direction out through it (`out`). Building art
+ * draws its door and doorstep from this, so they follow the sim's door tile on every turn.
+ */
+export interface Doorway {
+  face: DoorFace;
+  sill: Vec;
+  out: Vec;
+}
+
+export function doorway(layout: BuildingLayout): Doorway {
+  const face = doorFace(layout);
+  const out = OUTWARD[face];
+  const { door } = layout;
+  return {
+    face,
+    sill: { x: door.x + 0.5 - out.x * 0.5, y: door.y + 0.5 - out.y * 0.5 },
+    out: { ...out },
+  };
+}
+
 /** North and west walls face away from the isometric camera. */
 export function isBackFace(face: DoorFace): boolean {
   return face === 'north' || face === 'west';
 }
 
 /**
- * A doorstep on the ground at `door`: where a door on a hidden back wall opens, and where a site's
- * door will be. Its long side runs along the wall.
+ * A doorstep on the ground at `door`, where a site's or a placement ghost's door will be. Its long
+ * side runs along the wall. (A finished building draws its own, `drawDoorstones` in buildingArt.ts.)
  */
 export function drawDoorstep(g: Graphics, door: Vec, face: DoorFace): void {
   const along = face === 'north' || face === 'south';
@@ -1180,7 +1210,7 @@ export function drawLight(
 
 /**
  * A watchtower: four leaning stilts with a cross brace, a railed lookout platform and a peaked
- * roof, all in timber.
+ * roof, all in timber, and a ladder up on its door's side (behind the stilts when that faces away).
  */
 export function drawWatchtower(g: Graphics, layout: BuildingLayout): void {
   g.clear();
@@ -1189,6 +1219,8 @@ export function drawWatchtower(g: Graphics, layout: BuildingLayout): void {
   const c = gridToWorld(origin.x + 0.5, origin.y + 0.5);
   g.ellipse(c.x, c.y, 26 * s, 11 * s).fill({ color: palette.shadow, alpha: 0.3 });
   const deck = c.y - 78 * s;
+  const back = isBackFace(doorFace(layout));
+  if (back) drawLadder(g, layout, 78 * s);
   // Stilts: feet spread on the tile, tops drawn in under the platform.
   const feet = [
     { x: -22, y: 0 },
@@ -1206,6 +1238,7 @@ export function drawWatchtower(g: Graphics, layout: BuildingLayout): void {
     .moveTo(c.x + 20 * s, c.y - 6 * s)
     .lineTo(c.x - 14 * s, deck + 20 * s)
     .stroke({ width: 3 * s, color: palette.stake, cap: 'round' });
+  if (!back) drawLadder(g, layout, 78 * s);
   // Platform: a flat diamond with a rail round it.
   const w = 20 * s;
   const h = 9 * s;
@@ -1237,6 +1270,33 @@ export function drawWatchtower(g: Graphics, layout: BuildingLayout): void {
   g.moveTo(c.x, eaves - 24 * s)
     .lineTo(c.x, eaves + 8 * s)
     .stroke({ width: 2 * s, color: palette.roofDark });
+}
+
+/** A watchtower's ladder, from its door tile's side of the tile up to the platform `deck` high. */
+function drawLadder(g: Graphics, layout: BuildingLayout, deck: number): void {
+  const s = TILE_H / 64;
+  const { origin } = layout;
+  const { out } = doorway(layout);
+  const cx = origin.x + 0.5;
+  const cy = origin.y + 0.5;
+  // `a` along the door's side, `o` out from the tile's middle, `z` up.
+  const point = (a: number, o: number, z: number): Vec =>
+    up(gridToWorld(cx - out.y * a + out.x * o, cy + out.x * a + out.y * o), z);
+  const left = [point(-0.08, 0.4, 0), point(-0.08, 0.16, deck + 6 * s)] as const;
+  const right = [point(0.08, 0.4, 0), point(0.08, 0.16, deck + 6 * s)] as const;
+  const rails = [left, right];
+  const rungs = Array.from({ length: 6 }, (_, i) => {
+    const f = (i + 0.7) / 6.5;
+    return [lerp(left[0], left[1], f), lerp(right[0], right[1], f)] as const;
+  });
+  for (const [p, q] of [...rungs, ...rails]) {
+    g.moveTo(p.x, p.y).lineTo(q.x, q.y);
+  }
+  g.stroke({ width: 5 * s, color: palette.ink, cap: 'round' });
+  for (const [p, q] of [...rungs, ...rails]) {
+    g.moveTo(p.x, p.y).lineTo(q.x, q.y);
+  }
+  g.stroke({ width: 2.5 * s, color: palette.torchPole, cap: 'round' });
 }
 
 /**

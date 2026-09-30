@@ -1,6 +1,6 @@
 # Building art fits on every turn
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 02, 03
 
@@ -15,3 +15,5 @@ Doors and windows float off the walls (owner's screenshot: the woodcutter's hut 
 - `pnpm check` passes.
 
 ## Comments
+
+- 2026-09-30 — Checked every placeable building (Hut, woodcutter's, forager's and fisher's huts, hunter's and forester's lodges, Granary, chopping block, torch, brazier, bell, watchtower; palisades and gates, which don't turn) on turns 0–3 in the running client. Front (south/east) doors, windows and props already sat on their walls; the floating pieces were the back-door doorstep and small door drawn over the building for north/west doors. Those are gone: a back door isn't drawn (its wall can't be seen); every building now lays a doorstep and stepping stones across its door tile under its walls (`doorway(layout)` in shapes.ts, pinned for every building and turn in `client/test/rotation.test.ts`), and the watchtower has a ladder on its door's side. The forager's baskets and hunter's hide frame stay on their own tile beside the yard on every turn. A back door's stones can be hidden behind a big building (the Granary turned twice); logged in docs/decisions.md.
