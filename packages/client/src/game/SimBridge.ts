@@ -1,6 +1,7 @@
 // Main-thread side of the sim worker: owns the clock, queues commands, keeps the latest snapshot
 // (the static layers last sent, joined with each moving part).
 import {
+  applyStaticPatch,
   type Command,
   type EntityId,
   type GameState,
@@ -26,8 +27,9 @@ export class SimBridge {
   state: GameState | null = null;
   prevPositions: Record<EntityId, Point> = {};
   /**
-   * The static layers last sent. `state` holds these same objects until the next change, so a
-   * renderer can tell they didn't change by identity.
+   * The static layers, as last sent or patched. `state` holds these same objects until the next
+   * change, and a patch replaces only the layers it changes, so a renderer can tell what didn't
+   * change by identity.
    */
   layers: StaticLayers | null = null;
   speed: Speed = 1;
@@ -108,6 +110,7 @@ export class SimBridge {
         this.inFlight = false;
         if (message.layers) this.layers = message.layers;
         if (!this.layers) return; // can't happen: a game's first snapshot has them
+        if (message.patch) this.layers = applyStaticPatch(this.layers, message.patch);
         this.state = joinSnapshot(message.moving, this.layers);
         this.prevPositions = message.prevPositions;
         this.events.onSnapshot(this.state);

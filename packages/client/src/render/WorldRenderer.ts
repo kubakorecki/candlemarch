@@ -19,7 +19,6 @@ import {
   isIndoors,
   isKnockedOut,
   isRiverFrozen,
-  isWithered,
   lightSources,
   type Point,
   type Rotation,
@@ -35,18 +34,23 @@ import {
   type CameraView,
   depthOf,
   gridToWorld,
+  overlaps,
+  type Rect,
   TILE_H,
+  TILE_W,
+  tileAreaBounds,
   tileCenterWorld,
   unitsToGrid,
+  viewRect,
   worldOriginOnScreen,
 } from './iso';
+import { GroundLayer, MapObjectLayer } from './mapLayers';
 import type { NightLook } from './night';
 import { palette } from './palette';
 import {
   drawAuraRadius,
   drawAxe,
   drawBell,
-  drawBerryBush,
   drawBoostedMark,
   drawBrokenWall,
   drawCache,
@@ -60,7 +64,6 @@ import {
   drawGloamling,
   drawGloamlingEyes,
   drawGoodsStack,
-  drawGround,
   drawHealthBar,
   drawHeatMap,
   drawHero,
@@ -70,7 +73,6 @@ import {
   drawLight,
   drawLightPool,
   drawMissingIcon,
-  drawMushroomPatch,
   drawNoFirewoodIcon,
   drawOutputFullIcon,
   drawPalisade,
@@ -80,7 +82,6 @@ import {
   drawSelectionRing,
   drawSite,
   drawTileGhost,
-  drawTree,
   drawVillagerStatus,
   drawWaitingIcon,
   drawWallSite,
@@ -92,14 +93,33 @@ import {
 } from './shapes';
 import { drawVillager, drawVillagerTool } from './villagerArt';
 
-/** A tree, building or construction site, redrawn only when what it shows changes. */
+/** A building, site, Den, cache or stockpile tile, redrawn only when what it shows changes. */
 interface StaticView {
   node: Container;
   graphics: Graphics;
   label?: Text;
   /** Summary of the drawn data; a different key means redraw. */
   key: string;
+  /** World area it may draw in, for culling. */
+  bounds: Rect;
 }
+
+/** How far art may reach over a static's footprint: the tallest building and its status icon. */
+const STATIC_ABOVE = TILE_H * 5;
+
+/** World area a static on the `w`×`h` tiles from (x, y) may draw in: art, icons and site labels. */
+function staticBounds(x: number, y: number, w: number, h: number): Rect {
+  const b = tileAreaBounds(x, y, w, h, STATIC_ABOVE);
+  return { ...b, minX: b.minX - TILE_W / 2, maxX: b.maxX + TILE_W / 2 };
+}
+
+/** World area a walker standing on world point (x, y) may draw in: figure, icons, bars. */
+function walkerBounds(x: number, y: number): Rect {
+  return { minX: x - TILE_W / 2, minY: y - TILE_H * 3, maxX: x + TILE_W / 2, maxY: y + TILE_H / 2 };
+}
+
+/** World pixels round the screen still counted as on it, so nothing pops in at the edge. */
+const VIEW_MARGIN = TILE_W / 2;
 
 /** Outline and word colour for each Hunting ground health. */
 export const HEALTH_COLORS: Record<GroundHealth, number> = {
@@ -247,8 +267,9 @@ export type PlacementGhost =
 
 export class WorldRenderer {
   readonly app = new Application();
-  private readonly world = new Container();
-  private readonly ground = new Graphics();
+  /** Its own render group, so panning and zooming move it on the GPU without touching its children. */
+  private readonly world = new Container({ isRenderGroup: true });
+  private readonly ground = new GroundLayer();
   private readonly roads = new Graphics();
   /** The road heat-map overlay, while it's on. */
   private readonly heat = new Graphics();
@@ -268,7 +289,14 @@ export class WorldRenderer {
   /** Den dark rings on the ground, while a building is being placed. */
   private readonly darkRing = new Graphics();
   private darkRingKey = '';
-  private readonly objects = new Container({ sortableChildren: true });
+  /**
+   * Everything depth-sorted: trees (a row run each), buildings, villagers. Its own render group, so
+   * its re-sorting as walkers move doesn't rebuild the ground's.
+   */
+  private readonly objects = new Container({ sortableChildren: true, isRenderGroup: true });
+  private readonly mapObjects: MapObjectLayer;
+  /** The world area on screen (with `VIEW_MARGIN`), as of the last `applyCamera`. */
+  private view: Rect = { minX: -Infinity, minY: -Infinity, maxX: Infinity, maxY: Infinity };
   private readonly ghost = new Graphics();
   /** Darkness over the whole screen: white, tinted by the night look and multiplied in. */
   private readonly night = new Graphics({ blendMode: 'multiply' });
@@ -292,11 +320,13 @@ export class WorldRenderer {
   private heroSelected = false;
   private selectedVillager: EntityId | null = null;
   private lastState: GameState | null = null;
-  private groundKey = '';
+  private drawnRoads: GameState['map']['roads'] | null = null;
   private roadsKey = '';
   private pileGroundKey = '';
 
-  constructor(private readonly content: Content) {}
+  constructor(private readonly content: Content) {
+    this.mapObjects = new MapObjectLayer(this.objects, content);
+  }
 
   async init(parent: HTMLElement): Promise<void> {
     await this.app.init({
@@ -308,7 +338,7 @@ export class WorldRenderer {
     });
     parent.appendChild(this.app.canvas);
     this.world.addChild(
-      this.ground,
+      this.ground.node,
       this.roads,
       this.heat,
       this.pileGround,
@@ -346,29 +376,47 @@ export class WorldRenderer {
     this.eyes.scale.set(camera.zoom);
     this.healthBars.position.set(origin.x, origin.y);
     this.healthBars.scale.set(camera.zoom);
+    this.cull(viewRect(camera, this.screenWidth, this.screenHeight));
   }
 
-  /** Brings trees, buildings and sites in line with a new snapshot. */
+  /** Hides the ground chunks, tree runs and statics outside `rect` (walkers: `drawWalkers`). */
+  private cull(rect: Rect): void {
+    const view = {
+      minX: rect.minX - VIEW_MARGIN,
+      minY: rect.minY - VIEW_MARGIN,
+      maxX: rect.maxX + VIEW_MARGIN,
+      maxY: rect.maxY + VIEW_MARGIN,
+    };
+    this.view = view;
+    this.ground.cull(view);
+    this.mapObjects.cull(view);
+    for (const s of this.statics.values()) s.node.visible = overlaps(s.bounds, view);
+  }
+
+  /**
+   * Brings the world in line with a new snapshot. The static layers (ground, Roads, trees and
+   * forage patches) are the same objects from snapshot to snapshot until they change, so they're
+   * only looked at when they're new, and then only what changed is redrawn.
+   */
   syncStatics(state: GameState): void {
     const { map } = state;
-    // Terrain is in the key: a new game or a load can bring a same-sized map with other terrain.
-    const frozen = isRiverFrozen(state.tick, this.content);
-    const groundKey = `${map.width}x${map.height}:${frozen}:${map.terrain.join()}`;
-    if (groundKey !== this.groundKey) {
-      drawGround(this.ground, map.width, map.height, map.terrain, frozen);
-      this.groundKey = groundKey;
-    }
-
+    this.ground.sync({
+      width: map.width,
+      height: map.height,
+      terrain: map.terrain,
+      frozen: isRiverFrozen(state.tick, this.content),
+    });
     this.syncRoads(state);
     this.syncHeat(state);
 
     const seen = new Set<string>();
     const { tile, mapObject, building, site, den, cache } = state.components;
+    this.mapObjects.sync(mapObject, tile);
 
     for (const id of idsOf(den)) {
       const at = tile[id];
       if (!at) continue;
-      const view = this.staticView(`den:${id}`, seen);
+      const view = this.staticView(`den:${id}`, seen, staticBounds(at.x, at.y, 1, 1));
       const key = `den@${at.x},${at.y}`;
       if (view.key !== key) {
         drawDen(view.graphics);
@@ -387,30 +435,10 @@ export class WorldRenderer {
         const amount = stock[resource] ?? 0;
         return amount > 0 ? [{ resource, amount }] : [];
       });
-      const view = this.staticView(`cache:${id}`, seen);
+      const view = this.staticView(`cache:${id}`, seen, staticBounds(at.x, at.y, 1, 1));
       const key = `cache@${at.x},${at.y}:${JSON.stringify(goods)}`;
       if (view.key !== key) {
         drawCache(view.graphics, goods);
-        view.key = key;
-        const c = tileCenterWorld(at.x, at.y);
-        view.node.position.set(c.x, c.y);
-        view.node.zIndex = depthOf(at.x + 0.5, at.y + 0.5);
-      }
-    }
-
-    for (const id of idsOf(mapObject)) {
-      const obj = mapObject[id];
-      const at = tile[id];
-      if (!obj || !at) continue;
-      const full = this.content.mapObjects[obj.type].amount;
-      const withered = isWithered(state, this.content, id);
-      const view = this.staticView(`tree:${id}`, seen);
-      const key = `${obj.type}@${at.x},${at.y}:${obj.amount}:${withered}`;
-      if (view.key !== key) {
-        if (obj.type === 'berry_bush') drawBerryBush(view.graphics, obj.amount, withered);
-        else if (obj.type === 'mushroom_patch') {
-          drawMushroomPatch(view.graphics, obj.amount, withered);
-        } else drawTree(view.graphics, obj.amount, full);
         view.key = key;
         const c = tileCenterWorld(at.x, at.y);
         view.node.position.set(c.x, c.y);
@@ -427,7 +455,7 @@ export class WorldRenderer {
       if (def.wall) {
         const arms = wallArms(walls, at);
         const broken = isBrokenWall(state, this.content, id);
-        const view = this.staticView(`building:${id}`, seen);
+        const view = this.staticView(`building:${id}`, seen, staticBounds(at.x, at.y, 1, 1));
         const key = `${b.type}@${at.x},${at.y}:${JSON.stringify(arms)}:${broken}`;
         if (view.key !== key) {
           const layout = buildingLayout(def, at, b.rotation);
@@ -452,7 +480,11 @@ export class WorldRenderer {
       const cold = isColdHouse(state, this.content, id) || isDarkLight(state, this.content, id);
       const fuel = def.light ? (b.stock[def.light.fuel] ?? 0) : 0;
       const ringing = def.bell !== undefined && isBellRung(state);
-      const view = this.staticView(`building:${id}`, seen);
+      const view = this.staticView(
+        `building:${id}`,
+        seen,
+        staticBounds(at.x, at.y, size.w, size.h),
+      );
       const key = `${b.type}@${at.x},${at.y}r${b.rotation}:${input?.amount}:${output?.resource}${output?.amount}:${JSON.stringify(status)}:${cold}:${fuel}:${ringing}`;
       if (view.key !== key) {
         if (b.type === 'chopping_block') drawChoppingBlock(view.graphics, layout, input, output);
@@ -487,7 +519,7 @@ export class WorldRenderer {
         0,
       );
       const progress = s.buildProgress / construction.buildTicks;
-      const view = this.staticView(`site:${id}`, seen);
+      const view = this.staticView(`site:${id}`, seen, staticBounds(at.x, at.y, size.w, size.h));
       // Redraw posts in 10% steps; the label updates every change.
       const key = `${s.type}@${at.x},${at.y}r${s.rotation}:${delivered}:${Math.floor(progress * 10)}`;
       if (this.content.buildings[s.type].wall) {
@@ -602,6 +634,8 @@ export class WorldRenderer {
       const from = prevPositions[id] ?? to;
       const g = interpolate(from, to, alpha);
       const w = gridToWorld(g.x, g.y);
+      node.visible = overlaps(walkerBounds(w.x, w.y), this.view);
+      if (!node.visible) continue;
       const walking = from.x !== to.x || from.y !== to.y;
       const sway = walking ? 0 : Math.sin(timeMs / 300 + id) * 2 * (TILE_H / 64);
       const hop = walking ? Math.abs(Math.sin(timeMs / 70 + id)) * 4 * (TILE_H / 64) : 0;
@@ -744,6 +778,8 @@ export class WorldRenderer {
     const from = prevPositions[id] ?? to;
     const g = interpolate(from, to, alpha);
     const w = gridToWorld(g.x, g.y);
+    view.node.visible = overlaps(walkerBounds(w.x, w.y), this.view);
+    if (!view.node.visible) return;
     const walking = from.x !== to.x || from.y !== to.y;
     const bob = walking ? Math.abs(Math.sin(timeMs / 90)) * 3 : 0;
     view.node.position.set(w.x, w.y);
@@ -785,12 +821,14 @@ export class WorldRenderer {
       if (!v || !to) continue;
       seen.add(id);
       const view = this.villagerView(id, v.job);
-      // Asleep inside its House: out of sight until it wakes or a Gloamling breaks the door.
-      view.node.visible = !isIndoors(state, this.content, id);
-      if (!view.node.visible) continue;
       const from = prevPositions[id] ?? to;
       const g = interpolate(from, to, alpha);
       const w = gridToWorld(g.x, g.y);
+      // Off-screen, or asleep inside its House: out of sight until it wakes or a Gloamling breaks
+      // the door.
+      view.node.visible =
+        overlaps(walkerBounds(w.x, w.y), this.view) && !isIndoors(state, this.content, id);
+      if (!view.node.visible) continue;
       const walking = from.x !== to.x || from.y !== to.y;
       const bob = walking ? Math.abs(Math.sin(timeMs / 90)) * 3 : 0;
       view.node.position.set(w.x, w.y - bob);
@@ -951,7 +989,9 @@ export class WorldRenderer {
 
   private syncRoads(state: GameState): void {
     const { map } = state;
-    const key = Object.keys(map.roads).join(',');
+    if (map.roads === this.drawnRoads) return;
+    this.drawnRoads = map.roads;
+    const key = `${map.width}:${Object.keys(map.roads).join(',')}`;
     if (key === this.roadsKey) return;
     this.roadsKey = key;
     const has = (x: number, y: number) =>
@@ -983,7 +1023,7 @@ export class WorldRenderer {
         const i = Number(k);
         const x = i % width;
         const y = Math.floor(i / width);
-        const view = this.staticView(`pileTile:${i}`, seen);
+        const view = this.staticView(`pileTile:${i}`, seen, staticBounds(x, y, 1, 1));
         const key = `${x},${y}:${goods.resource}:${goods.amount}`;
         if (view.key !== key) {
           drawGoodsStack(view.graphics, goods);
@@ -1008,7 +1048,7 @@ export class WorldRenderer {
     this.app.destroy(true, { children: true });
   }
 
-  private staticView(key: string, seen: Set<string>): StaticView {
+  private staticView(key: string, seen: Set<string>, bounds: Rect): StaticView {
     seen.add(key);
     let view = this.statics.get(key);
     if (!view) {
@@ -1016,9 +1056,11 @@ export class WorldRenderer {
       const graphics = new Graphics();
       node.addChild(graphics);
       this.objects.addChild(node);
-      view = { node, graphics, key: '' };
+      view = { node, graphics, key: '', bounds };
       this.statics.set(key, view);
+      node.visible = overlaps(bounds, this.view);
     }
+    view.bounds = bounds;
     return view;
   }
 

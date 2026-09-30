@@ -5,9 +5,17 @@ import { dawnTick } from '../src/calendar';
 import { applyCommand, type Command } from '../src/commands';
 import { fellTree } from '../src/huntingGrounds';
 import { createInitialState, type MapDef } from '../src/map';
-import { joinSnapshot, movingPart, staticLayers } from '../src/snapshot';
+import {
+  applyStaticPatch,
+  joinSnapshot,
+  movingPart,
+  sentStaticLayers,
+  staticChanged,
+  staticLayers,
+  staticPatch,
+} from '../src/snapshot';
 import type { GameState } from '../src/state';
-import { step } from '../src/step';
+import { step, stepInPlace } from '../src/step';
 import { content, run } from './helpers';
 
 /** A tree at (1,1), ID 1; open grass elsewhere. */
@@ -157,5 +165,71 @@ describe('split snapshots', () => {
     movingPart(s);
     staticLayers(s);
     expect(JSON.stringify(s)).toBe(before);
+  });
+});
+
+describe('static patches', () => {
+  /** What a posted message carries: a copy, sharing nothing with the state. */
+  const posted = <T>(value: T): T => JSON.parse(JSON.stringify(value));
+
+  it('carry the client from the layers first sent to the latest, over a working grove', () => {
+    const s = createInitialState(1, grove, content);
+    const { tile } = s.components;
+    const loneTree = Number(
+      Object.keys(s.components.mapObject).find((id) => tile[Number(id)]?.x === 13),
+    );
+    const commandsAt: Record<number, Command[]> = {
+      5: [{ type: 'orderHero', order: 'gather', tree: loneTree }],
+      40: [{ type: 'layPath', from: { x: 9, y: 9 }, to: { x: 14, y: 9 } }],
+      900: [{ type: 'removePath', from: { x: 12, y: 9 }, to: { x: 14, y: 9 } }],
+    };
+    let client = posted(staticLayers(s));
+    const sent = sentStaticLayers(s);
+    let patches = 0;
+    for (let i = 0; i < 3000; i++) {
+      stepInPlace(s, commandsAt[s.tick] ?? [], content);
+      if (s.staticVersion === sent.version) continue;
+      client = applyStaticPatch(client, posted(staticPatch(sent, s)));
+      patches += 1;
+      expect(client).toEqual(staticLayers(s));
+    }
+    expect(patches).toBeGreaterThan(10);
+    // Trees were felled, and a Road laid and taken up, through patches too.
+    expect(Object.keys(client.mapObject).length).toBeLessThan(15);
+  });
+
+  it('carry only what changed: a chopped tree, and no terrain or Roads', () => {
+    const s = createInitialState(1, glade, content);
+    const client = posted(staticLayers(s));
+    const sent = sentStaticLayers(s);
+    const tree = s.components.mapObject[TREE];
+    if (!tree) throw new Error('no tree');
+    tree.amount -= 1;
+    staticChanged(s);
+    const patch = staticPatch(sent, s);
+    expect(patch).toEqual({
+      version: s.staticVersion,
+      terrain: null,
+      roads: null,
+      mapObject: { [TREE]: tree },
+      mapObjectTile: { [TREE]: { x: 1, y: 1 } },
+      removed: [],
+    });
+    // The client keeps the layers that didn't change as the same objects.
+    const next = applyStaticPatch(client, posted(patch));
+    expect(next.terrain).toBe(client.terrain);
+    expect(next.roads).toBe(client.roads);
+    expect(next.mapObject).not.toBe(client.mapObject);
+    expect(next.mapObject[TREE]?.amount).toBe(tree.amount);
+  });
+
+  it('carry a felled tree as removed', () => {
+    const s = createInitialState(1, glade, content);
+    const client = posted(staticLayers(s));
+    const sent = sentStaticLayers(s);
+    fellTree(s, content, TREE);
+    const patch = staticPatch(sent, s);
+    expect(patch.removed).toEqual([TREE]);
+    expect(applyStaticPatch(client, posted(patch))).toEqual(staticLayers(s));
   });
 });

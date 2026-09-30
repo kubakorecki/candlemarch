@@ -1,8 +1,9 @@
 // Snapshots for the client, split in two: the static layers (terrain, Roads, map objects), which
 // change seldom and hold most of the bytes, and the moving part (everything else). The sim bumps
-// `state.staticVersion` whenever a static layer changes, so the worker sends those layers only
-// when the version has moved on since it last sent them. ADR-0004.
-import type { GameState, MapObjectComponent, MapState, Store, Tile } from './state';
+// `state.staticVersion` whenever a static layer changes, so the worker sends those layers whole
+// once per game and afterwards, when the version moves on, only a patch of what changed.
+// ADR-0004.
+import type { EntityId, GameState, MapObjectComponent, MapState, Store, Tile } from './state';
 
 /**
  * Records that a static layer changed: terrain, a Road, or a map object (added, removed, its
@@ -38,6 +39,126 @@ export function staticLayers(state: GameState): StaticLayers {
     version: state.staticVersion,
     terrain: state.map.terrain,
     roads: state.map.roads,
+    mapObject,
+    mapObjectTile,
+  };
+}
+
+/**
+ * What changed in the static layers since they were last sent: terrain and Roads whole, or null
+ * when unchanged, and only the map objects added or changed (with their tiles) or removed. A chop
+ * changes one tree, so its patch is a few bytes where the whole layers are hundreds of KB.
+ */
+export interface StaticPatch {
+  /** The `staticVersion` it brings the layers up to. */
+  version: number;
+  terrain: MapState['terrain'] | null;
+  roads: MapState['roads'] | null;
+  mapObject: Store<MapObjectComponent>;
+  mapObjectTile: Store<Tile>;
+  removed: EntityId[];
+}
+
+/**
+ * A copy of `state`'s static layers sharing nothing with it: what a client holds once they're
+ * sent, kept by the sender to work out patches against (`staticPatch`).
+ */
+export function sentStaticLayers(state: GameState): StaticLayers {
+  const layers = staticLayers(state);
+  const mapObject: Store<MapObjectComponent> = {};
+  const mapObjectTile: Store<Tile> = {};
+  for (const key in layers.mapObject) {
+    const id = Number(key);
+    mapObject[id] = { ...(layers.mapObject[id] as MapObjectComponent) };
+    const at = layers.mapObjectTile[id];
+    if (at) mapObjectTile[id] = { ...at };
+  }
+  return {
+    version: layers.version,
+    terrain: [...layers.terrain],
+    roads: { ...layers.roads },
+    mapObject,
+    mapObjectTile,
+  };
+}
+
+/** Whether two flat records hold the same fields and values. */
+function sameFields<T extends object>(a: T, b: T): boolean {
+  const keys = Object.keys(a) as (keyof T)[];
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every((k) => a[k] === b[k]);
+}
+
+function sameTerrain(a: MapState['terrain'], b: MapState['terrain']): boolean {
+  return a.length === b.length && a.every((t, i) => t === b[i]);
+}
+
+/**
+ * What changed in `state`'s static layers since `sent` (from `sentStaticLayers`), which it brings
+ * up to date. Shares objects with `state`, like `staticLayers`: post it before `state` steps on.
+ */
+export function staticPatch(sent: StaticLayers, state: GameState): StaticPatch {
+  const { terrain, roads } = state.map;
+  const { mapObject, tile } = state.components;
+  const patch: StaticPatch = {
+    version: state.staticVersion,
+    terrain: null,
+    roads: null,
+    mapObject: {},
+    mapObjectTile: {},
+    removed: [],
+  };
+  if (!sameTerrain(sent.terrain, terrain)) {
+    patch.terrain = terrain;
+    sent.terrain = [...terrain];
+  }
+  if (!sameFields(sent.roads, roads)) {
+    patch.roads = roads;
+    sent.roads = { ...roads };
+  }
+  for (const key in sent.mapObject) {
+    const id = Number(key);
+    if (mapObject[id] !== undefined) continue;
+    patch.removed.push(id);
+    delete sent.mapObject[id];
+    delete sent.mapObjectTile[id];
+  }
+  for (const key in mapObject) {
+    const id = Number(key);
+    const obj = mapObject[id] as MapObjectComponent;
+    const at = tile[id];
+    const was = sent.mapObject[id];
+    const wasAt = sent.mapObjectTile[id];
+    if (was && sameFields(was, obj) && wasAt?.x === at?.x && wasAt?.y === at?.y) continue;
+    patch.mapObject[id] = obj;
+    sent.mapObject[id] = { ...obj };
+    if (at) {
+      patch.mapObjectTile[id] = at;
+      sent.mapObjectTile[id] = { ...at };
+    }
+  }
+  sent.version = state.staticVersion;
+  return patch;
+}
+
+/**
+ * `layers` brought up to date by `patch`. Layers the patch leaves alone stay the same objects, so
+ * a renderer can skip them by identity; changed ones are new objects.
+ */
+export function applyStaticPatch(layers: StaticLayers, patch: StaticPatch): StaticLayers {
+  let { mapObject, mapObjectTile } = layers;
+  if (Object.keys(patch.mapObject).length > 0 || patch.removed.length > 0) {
+    mapObject = { ...mapObject, ...patch.mapObject };
+    mapObjectTile = { ...mapObjectTile, ...patch.mapObjectTile };
+    for (const id of patch.removed) {
+      delete mapObject[id];
+      delete mapObjectTile[id];
+    }
+  }
+  return {
+    version: patch.version,
+    terrain: patch.terrain ?? layers.terrain,
+    roads: patch.roads ?? layers.roads,
     mapObject,
     mapObjectTile,
   };

@@ -9,29 +9,37 @@ import {
   maps,
   movingPart,
   type Point,
+  type StaticLayers,
+  sentStaticLayers,
   serialize,
   staticLayers,
+  staticPatch,
   stepInPlace,
 } from '@candlemarch/sim';
 import { isAutosaveTick, type SaveSlot } from '../game/autosave';
 import type { FromWorker, ToWorker } from '../protocol';
 
 let state: GameState | null = null;
-/** The `staticVersion` of the static layers last sent, or null when the game's first is due. */
-let sentStaticVersion: number | null = null;
+/** A copy of the static layers as the main thread holds them, or null when the game's first is due. */
+let sent: StaticLayers | null = null;
 
 function send(message: FromWorker): void {
   postMessage(message);
 }
 
-/** Posts `current` split: the static layers go along only when they changed since last sent. */
+/**
+ * Posts `current` split: the static layers go along whole in a game's first snapshot, and after
+ * that as a patch of what changed, only when they changed since last sent.
+ */
 function sendSnapshot(current: GameState, prevPositions: Record<EntityId, Point>): void {
-  const changed = current.staticVersion !== sentStaticVersion;
-  sentStaticVersion = current.staticVersion;
+  const first = sent === null;
+  if (!sent) sent = sentStaticLayers(current);
+  const changed = current.staticVersion !== sent.version;
   send({
     type: 'snapshot',
     moving: movingPart(current),
-    layers: changed ? staticLayers(current) : null,
+    layers: first ? staticLayers(current) : null,
+    patch: changed ? staticPatch(sent, current) : null,
     prevPositions,
   });
 }
@@ -52,7 +60,7 @@ function save(current: GameState, slot: SaveSlot): void {
 
 function start(next: GameState): void {
   state = next;
-  sentStaticVersion = null;
+  sent = null;
   sendSnapshot(state, state.components.position);
 }
 

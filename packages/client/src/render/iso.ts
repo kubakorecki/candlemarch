@@ -83,6 +83,45 @@ export function screenToTile(
   return { x: Math.floor(g.x), y: Math.floor(g.y) };
 }
 
+/** An axis-aligned rectangle in world pixels, for culling. */
+export interface Rect {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+/** The world area the screen shows for this camera. */
+export function viewRect(camera: CameraView, screenW: number, screenH: number): Rect {
+  const halfW = screenW / 2 / camera.zoom;
+  const halfH = screenH / 2 / camera.zoom;
+  return {
+    minX: camera.x - halfW,
+    minY: camera.y - halfH,
+    maxX: camera.x + halfW,
+    maxY: camera.y + halfH,
+  };
+}
+
+/**
+ * World bounds of the `w`×`h` tiles from (x, y): their diamond on the ground, plus `above` pixels
+ * over its top corner for whatever stands on them.
+ */
+export function tileAreaBounds(x: number, y: number, w: number, h: number, above: number): Rect {
+  const top = gridToWorld(x, y);
+  return {
+    minX: gridToWorld(x, y + h).x,
+    minY: top.y - above,
+    maxX: gridToWorld(x + w, y).x,
+    maxY: gridToWorld(x + w, y + h).y,
+  };
+}
+
+/** Whether two rects share any area (touching counts). */
+export function overlaps(a: Rect, b: Rect): boolean {
+  return a.minX <= b.maxX && b.minX <= a.maxX && a.minY <= b.maxY && b.minY <= a.maxY;
+}
+
 /** Draw order: things further "down" the screen (larger gx + gy) draw on top. */
 export function depthOf(gx: number, gy: number): number {
   return gx + gy;

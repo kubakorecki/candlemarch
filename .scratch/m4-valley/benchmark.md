@@ -255,3 +255,79 @@ Measured 2026-09-29, same machine and Node, `pnpm bench:maps 128`. The timed tic
 - The static layers are terrain, Roads, every map object and the map objects' tiles: 93% of the bytes. The moving part, posted every frame, is 33 KB and costs about 0.4 ms to post, down from 5.6 ms for the whole state.
 - The layers still go out whenever a map object changes, and every chop changes a tree's `amount` (the renderer draws a part-chopped tree). In the benchmark's village that is 66 ticks of a day's 3600, so at 3× about one snapshot in 18 (roughly three a second at 60 fps) also carries the 428 KB of layers, about 5 ms on each thread. That is over the 4 ms main-thread budget on those frames: ticket 15 should measure it in the browser. If it shows, the cheapest cuts are separate versions for terrain+Roads (130 KB) and map objects with their tiles (300 KB), so a chop resends only the second, or sending only the map objects that changed.
 - `movingPart` (the worker's split) is 0.13 ms and `joinSnapshot` (the main thread) 0.01 ms.
+
+## After the renderer work (ticket 15)
+
+Measured 2026-09-30, same machine, Chrome 154 headless (ANGLE Metal on the M1 Pro GPU, 1512×860 at 2× device pixels), driven over the DevTools protocol, with the page from `prototype/m4-map-size-page` redone on top of this ticket in a throwaway worktree (not committed: same synthetic map, same scripted five phases of 6 s after the map loads plus 4 s). Budget (ADR-0004, 128², 3× while panning and zooming): 60 fps, frame p95 ≤ 20 ms, main-thread snapshot handling ≤ 4 ms. Met: 60.0 fps in every phase, frame p95 19.0–19.7 ms, snapshot handling 0.9–1.1 ms mean, p95 ≤ 1.8 ms, worst 4.3 ms (one snapshot in 1650).
+
+What changed: the static layers are redrawn only when they're new objects, and then only what changed (ground: a terrain compare; trees: a per-object diff); trees and forage patches are drawn a row run (one diagonal, 16 tiles) to a `Graphics` instead of one each; the ground in 16×16-tile chunks; everything off-screen is culled; `world` and `objects` are Pixi render groups; and after a game's first snapshot the worker sends a patch of what changed in the static layers instead of all 428 KB of them (135 B mean at 128²).
+
+Columns as before, plus: `rAF p95` = p95 of the `requestAnimationFrame` timestamps' deltas (the frame's vsync), next to `p95` of `performance.now()` in the callback; `snapshot` = main-thread ms per snapshot, now including deserializing the message (timed on first access to `event.data`), joining and `Game.onSnapshot`; `with a patch` = snapshots that carried a static patch (before: the whole layers); `deserialize` split by those and the rest.
+
+**128², 3×** (the budget)
+
+| Phase | fps | Frame mean | p95 | Max | rAF p95 | Frames >33 ms | xfer mean | xfer max | snapshot mean | snapshot p95 | snapshot max | with a patch | snapshot (patch) | deserialize (patch) | deserialize (other) | worker mean |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| still, zoom 0.6 | 60.0 | 16.7 | 19.2 | 21.3 | 16.7 | 0 | 1.7 | 5.4 | 1.1 | 1.5 | 4.3 | 5/330 | 2.9 | 0.3 | 0.3 | 0.7 |
+| pan, zoom 0.6 | 60.0 | 16.7 | 19.5 | 24.3 | 16.8 | 0 | 1.0 | 6.0 | 1.1 | 1.8 | 2.3 | 6/330 | 1.8 | 0.2 | 0.3 | 1.0 |
+| pan, zoom 0.25 (out) | 60.0 | 16.7 | 19.7 | 23.6 | 16.7 | 0 | 1.9 | 5.6 | 0.9 | 1.4 | 2.0 | 9/330 | 1.4 | 0.3 | 0.3 | 0.7 |
+| pan, zoom 1.5 (in) | 60.0 | 16.7 | 19.0 | 24.3 | 16.7 | 0 | 0.8 | 5.9 | 1.1 | 1.8 | 2.2 | 11/330 | 1.4 | 0.3 | 0.3 | 1.0 |
+| zooming 0.25–2.5 | 60.0 | 16.7 | 19.7 | 22.2 | 16.7 | 0 | 0.9 | 4.9 | 1.0 | 1.6 | 2.2 | 11/330 | 1.5 | 0.3 | 0.3 | 1.6 |
+
+**128², 1×**
+
+| Phase | fps | Frame mean | p95 | Max | rAF p95 | Frames >33 ms | xfer mean | xfer max | snapshot mean | snapshot p95 | snapshot max | with a patch | snapshot (patch) | deserialize (patch) | deserialize (other) | worker mean |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| still, zoom 0.6 | 60.0 | 16.7 | 19.4 | 23.5 | 16.7 | 0 | 0.6 | 3.8 | 1.1 | 1.9 | 3.3 | 2/110 | 2.8 | 0.3 | 0.2 | 2.3 |
+| pan, zoom 0.6 | 60.0 | 16.7 | 19.4 | 22.4 | 16.8 | 0 | 0.6 | 3.0 | 1.2 | 1.8 | 2.4 | 2/110 | 2.1 | 0.3 | 0.3 | 2.0 |
+| pan, zoom 0.25 (out) | 60.0 | 16.7 | 18.8 | 22.4 | 16.8 | 0 | 2.0 | 4.7 | 1.1 | 1.5 | 1.9 | 1/110 | 1.9 | 0.3 | 0.3 | 0.9 |
+| pan, zoom 1.5 (in) | 60.0 | 16.7 | 19.0 | 24.7 | 16.8 | 0 | 0.7 | 3.4 | 1.3 | 1.9 | 3.9 | 3/110 | 3.3 | 0.4 | 0.3 | 1.3 |
+| zooming 0.25–2.5 | 60.0 | 16.7 | 19.5 | 21.1 | 16.8 | 0 | 1.3 | 4.4 | 1.3 | 1.9 | 3.0 | 0/110 | 0.0 | 0.0 | 0.4 | 0.9 |
+
+**128², paused**
+
+| Phase | fps | Frame mean | p95 | Max | rAF p95 | Frames >33 ms | xfer mean | xfer max | snapshot mean | snapshot p95 | snapshot max | with a patch | snapshot (patch) | deserialize (patch) | deserialize (other) | worker mean |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| still, zoom 0.6 | 60.0 | 16.7 | 19.8 | 22.3 | 16.7 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0/0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| pan, zoom 0.6 | 60.0 | 16.7 | 19.1 | 20.3 | 16.7 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0/0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| pan, zoom 0.25 (out) | 60.0 | 16.7 | 18.0 | 21.1 | 16.7 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0/0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| pan, zoom 1.5 (in) | 60.0 | 16.7 | 18.6 | 21.5 | 16.7 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0/0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| zooming 0.25–2.5 | 60.0 | 16.7 | 19.1 | 22.1 | 16.8 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0/0 | 0.0 | 0.0 | 0.0 | 0.0 |
+
+**64², 3×**
+
+| Phase | fps | Frame mean | p95 | Max | rAF p95 | Frames >33 ms | xfer mean | xfer max | snapshot mean | snapshot p95 | snapshot max | with a patch | snapshot (patch) | deserialize (patch) | deserialize (other) | worker mean |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| still, zoom 0.6 | 60.0 | 16.7 | 20.5 | 22.0 | 16.8 | 0 | 1.3 | 6.1 | 0.9 | 1.6 | 2.3 | 7/330 | 1.6 | 0.2 | 0.3 | 0.9 |
+| pan, zoom 0.6 | 60.0 | 16.7 | 20.3 | 22.8 | 16.7 | 0 | 1.4 | 6.1 | 1.1 | 1.6 | 2.8 | 12/329 | 1.6 | 0.3 | 0.3 | 0.8 |
+| pan, zoom 0.25 (out) | 60.0 | 16.7 | 19.9 | 21.6 | 16.8 | 0 | 1.9 | 7.4 | 1.0 | 1.5 | 2.3 | 11/330 | 1.3 | 0.3 | 0.3 | 0.8 |
+| pan, zoom 1.5 (in) | 60.0 | 16.7 | 19.3 | 22.3 | 16.8 | 0 | 1.0 | 3.8 | 1.0 | 1.7 | 2.8 | 12/329 | 1.2 | 0.3 | 0.3 | 0.7 |
+| zooming 0.25–2.5 | 60.0 | 16.7 | 19.8 | 22.6 | 16.8 | 0 | 1.0 | 4.7 | 1.0 | 1.5 | 2.2 | 10/330 | 1.3 | 0.3 | 0.3 | 1.5 |
+
+**Before this ticket, same session: 128², 3×** (commit `01e4a77`, static layers resent whole)
+
+| Phase | fps | Frame mean | p95 | Max | rAF p95 | Frames >33 ms | xfer mean | xfer max | snapshot mean | snapshot p95 | snapshot max | with a patch | snapshot (layers) | deserialize (layers) | deserialize (other) | worker mean |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| still, zoom 0.6 | 60.0 | 16.7 | 18.2 | 21.5 | 16.8 | 0 | 11.0 | 16.1 | 3.8 | 4.6 | 6.4 | 5/329 | 5.9 | 2.4 | 0.2 | 0.5 |
+| pan, zoom 0.6 | 53.7 | 18.6 | 21.3 | 23.8 | 33.4 | 0 | 13.8 | 18.0 | 4.0 | 5.4 | 9.1 | 6/295 | 6.6 | 2.8 | 0.2 | 0.5 |
+| pan, zoom 0.25 (out) | 54.3 | 18.4 | 21.8 | 26.2 | 33.3 | 0 | 13.7 | 19.4 | 4.0 | 6.1 | 11.0 | 9/299 | 7.1 | 2.5 | 0.2 | 0.4 |
+| pan, zoom 1.5 (in) | 55.5 | 18.0 | 20.5 | 23.6 | 33.3 | 0 | 13.6 | 39.8 | 3.9 | 5.9 | 8.1 | 11/303 | 6.3 | 2.6 | 0.2 | 0.5 |
+| zooming 0.25–2.5 | 54.9 | 18.2 | 20.8 | 28.3 | 33.3 | 0 | 12.9 | 17.5 | 4.1 | 5.8 | 8.7 | 11/301 | 6.6 | 2.5 | 0.2 | 1.0 |
+
+**Before this ticket, same session: 128², paused**
+
+| Phase | fps | Frame mean | p95 | Max | rAF p95 | Frames >33 ms | xfer mean | xfer max | snapshot mean | snapshot p95 | snapshot max | with a patch | snapshot (layers) | deserialize (layers) | deserialize (other) | worker mean |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| still, zoom 0.6 | 60.0 | 16.7 | 17.6 | 19.6 | 16.8 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0/0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| pan, zoom 0.6 | 60.0 | 16.7 | 18.2 | 20.3 | 16.7 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0/0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| pan, zoom 0.25 (out) | 60.0 | 16.7 | 18.1 | 31.0 | 16.8 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0/0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| pan, zoom 1.5 (in) | 60.0 | 16.7 | 17.8 | 21.6 | 16.7 | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0/0 | 0.0 | 0.0 | 0.0 | 0.0 |
+| zooming 0.25–2.5 | 59.6 | 16.8 | 18.0 | 56.5 | 16.8 | 1 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0/0 | 0.0 | 0.0 | 0.0 | 0.0 |
+
+- **Frame rate.** 60 fps in every phase at 128² and 64², running or paused, and no frame over 33 ms. The rAF timestamps' p95 is one vsync (16.7–16.8 ms) everywhere, so no frame was dropped; before, at 3×, it was two (33.3 ms) while panning, with 54–56 fps.
+- **Frame p95 (callback time).** 18.0–20.5 ms, against 17.4–18.2 ms before when paused. It's pacing noise in headless Chrome, not work: the main thread is 85% idle at 128² 3× (before: nearly all busy in Pixi's per-frame walk), and adding a busy loop of 8–12 ms to every frame brings the paused p95 down to 17.0–17.4 ms. The old renderer's heavy frames kept the callback on a steadier beat. A visible window on the owner's display wasn't available; there the p95 should sit nearer 16.7.
+- **Snapshot handling.** About 1 ms a snapshot (0.3 ms of it deserializing the 33 KB moving part), down from about 4 ms (3.8–4.1 mean, worst 11 ms). A snapshot with a static patch costs 1.4–2.9 ms mean against 5.9–7.1 before, when the whole layers came along (2.4–2.8 ms of deserializing alone). Main-thread profile, 128² 3×: 85% idle; per frame about 1.3 ms (Pixi render, `drawWalkers`, culling), per snapshot about 1 ms (`syncStatics`, alerts, panels).
+- **First sight of new ground.** Pixi builds a `Graphics`' geometry the first time it's drawn and frees it after a minute unused. Culled chunks and runs keep theirs, and new ones are drawn once before culling, so a pan never builds geometry mid-frame (it did in a first version: 36 ms frames).
+- One frame of 193 ms in one run (with the snapshot transfer stalled the same 193 ms) had no main-thread work under it in the profile; it didn't recur.
+- `pnpm bench:maps 128` now reports the patches: 66 of 3600 ticks change a static layer; a patch in 66 of 1200 snapshots at 3×, 135 B mean, 259 B max, 0.66 ms for the worker to work out (it compares terrain, Roads and every map object with the copy it keeps of what it sent). The static layers (428 KB, 5.3 ms transfer) now go only in a game's first snapshot.
+- No visible change: screenshots of the paused synthetic maps at 64² and 128², six camera views each (zoom 0.25–2.5, centre and corners), match the old renderer but for 0–94 pixels of 960,000 at canopy outlines (sub-pixel differences from drawing trees through a transform). A game run at 3× for 40 s, then paused, draws the same trees, ground and buildings as the same save loaded fresh; only walking villagers differ (interpolation).

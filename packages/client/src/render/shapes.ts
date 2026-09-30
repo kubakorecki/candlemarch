@@ -36,22 +36,44 @@ export function diamond(x: number, y: number, w = 1, h = 1): [Vec, Vec, Vec, Vec
   ];
 }
 
+/** A rectangle of tiles: the ground is drawn a chunk at a time, so off-screen chunks can be culled. */
+export interface TileChunk {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/** What the ground layers need to know about the map. `terrain` is row-major, as in the sim. */
+export interface GroundMap {
+  width: number;
+  height: number;
+  terrain: readonly TerrainId[];
+  frozen: boolean;
+}
+
+function isRiverAt(map: GroundMap, x: number, y: number): boolean {
+  return (
+    x >= 0 &&
+    y >= 0 &&
+    x < map.width &&
+    y < map.height &&
+    map.terrain[y * map.width + x] === 'river'
+  );
+}
+
+/** Off the map is neither river nor land: the map's own edge gets its outline instead. */
+function isLandAt(map: GroundMap, x: number, y: number): boolean {
+  return x >= 0 && y >= 0 && x < map.width && y < map.height && !isRiverAt(map, x, y);
+}
+
 /**
- * The whole map: checkered grass tiles, faint grid lines, an earthen front edge, and river tiles
- * as flat water outlined in ink where they meet land, or pale cracked ice when `frozen`.
- * `terrain` is row-major, as in the sim.
+ * The ground is drawn in layers, each a chunk at a time, in this order across the whole map:
+ * `drawGroundEdge` (the earthen front edge), `drawGrass`, `drawGridLines`, `drawWater`,
+ * `drawShore`, then `drawMapOutline`. Checkered grass, faint grid lines, and river tiles as flat
+ * water outlined in ink where they meet land, or pale cracked ice when frozen.
  */
-export function drawGround(
-  g: Graphics,
-  width: number,
-  height: number,
-  terrain: readonly TerrainId[],
-  frozen: boolean,
-): void {
-  const onMap = (x: number, y: number) => x >= 0 && y >= 0 && x < width && y < height;
-  const isRiver = (x: number, y: number) => onMap(x, y) && terrain[y * width + x] === 'river';
-  // Off the map is neither: the map's own edge gets its outline at the end.
-  const isLand = (x: number, y: number) => onMap(x, y) && !isRiver(x, y);
+export function drawGroundEdge(g: Graphics, width: number, height: number): void {
   g.clear();
   const [, right, bottom, left] = diamond(0, 0, width, height);
   // Front edges, so the map reads as a slab of land.
@@ -61,58 +83,92 @@ export function drawGround(
   g.poly(flat([bottom, right, up(right, -EDGE_H), up(bottom, -EDGE_H)]))
     .fill(palette.door)
     .stroke(INK);
+}
 
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
+/** Checkered grass under every tile of `chunk` (water goes over it). */
+export function drawGrass(g: Graphics, chunk: TileChunk): void {
+  g.clear();
+  for (let y = chunk.y; y < chunk.y + chunk.h; y++) {
+    for (let x = chunk.x; x < chunk.x + chunk.w; x++) {
       g.poly(flat(diamond(x, y))).fill((x + y) % 2 === 0 ? palette.grass : palette.grassAlt);
     }
   }
-  for (let i = 0; i <= width; i++) {
-    const a = gridToWorld(i, 0);
-    const b = gridToWorld(i, height);
+}
+
+/**
+ * The faint grid lines along `chunk`'s tiles: each chunk draws the lines along its north and west
+ * sides and those between its tiles; the chunks on the map's south and east edges add the edge.
+ */
+export function drawGridLines(g: Graphics, chunk: TileChunk, width: number, height: number): void {
+  g.clear();
+  const x1 = chunk.x + chunk.w;
+  const y1 = chunk.y + chunk.h;
+  for (let i = chunk.x; i <= (x1 === width ? x1 : x1 - 1); i++) {
+    const a = gridToWorld(i, chunk.y);
+    const b = gridToWorld(i, y1);
     g.moveTo(a.x, a.y).lineTo(b.x, b.y);
   }
-  for (let j = 0; j <= height; j++) {
-    const a = gridToWorld(0, j);
-    const b = gridToWorld(width, j);
+  for (let j = chunk.y; j <= (y1 === height ? y1 : y1 - 1); j++) {
+    const a = gridToWorld(chunk.x, j);
+    const b = gridToWorld(x1, j);
     g.moveTo(a.x, a.y).lineTo(b.x, b.y);
   }
   g.stroke({ width: 1, color: palette.grassLine, alpha: 0.35 });
+}
 
-  // Water over the grid lines, then an ink edge on every side that borders land.
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      if (isRiver(x, y)) g.poly(flat(diamond(x, y))).fill(frozen ? palette.ice : palette.river);
+/** River tiles in `chunk`: flat water, or ice with a crack across each tile. */
+export function drawWater(g: Graphics, chunk: TileChunk, map: GroundMap): void {
+  g.clear();
+  let any = false;
+  for (let y = chunk.y; y < chunk.y + chunk.h; y++) {
+    for (let x = chunk.x; x < chunk.x + chunk.w; x++) {
+      if (!isRiverAt(map, x, y)) continue;
+      g.poly(flat(diamond(x, y))).fill(map.frozen ? palette.ice : palette.river);
+      any = true;
     }
   }
-  if (frozen) {
-    // A crack across each ice tile, bent differently tile to tile so the sheet doesn't look tiled.
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        if (!isRiver(x, y)) continue;
-        const bend = ((x * 7 + y * 3) % 5) / 10 + 0.3;
-        const a = gridToWorld(x + 0.2, y + bend);
-        const b = gridToWorld(x + 0.5, y + 1 - bend);
-        const c = gridToWorld(x + 0.8, y + 0.5);
-        g.moveTo(a.x, a.y).lineTo(b.x, b.y).lineTo(c.x, c.y);
-      }
+  if (!map.frozen || !any) return;
+  // A crack across each ice tile, bent differently tile to tile so the sheet doesn't look tiled.
+  for (let y = chunk.y; y < chunk.y + chunk.h; y++) {
+    for (let x = chunk.x; x < chunk.x + chunk.w; x++) {
+      if (!isRiverAt(map, x, y)) continue;
+      const bend = ((x * 7 + y * 3) % 5) / 10 + 0.3;
+      const a = gridToWorld(x + 0.2, y + bend);
+      const b = gridToWorld(x + 0.5, y + 1 - bend);
+      const c = gridToWorld(x + 0.8, y + 0.5);
+      g.moveTo(a.x, a.y).lineTo(b.x, b.y).lineTo(c.x, c.y);
     }
-    g.stroke({ width: 1.5, color: palette.iceCrack, alpha: 0.8 });
   }
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      if (!isRiver(x, y)) continue;
+  g.stroke({ width: 1.5, color: palette.iceCrack, alpha: 0.8 });
+}
+
+/** An ink edge on every side of a river tile in `chunk` that borders land. */
+export function drawShore(g: Graphics, chunk: TileChunk, map: GroundMap): void {
+  g.clear();
+  let any = false;
+  for (let y = chunk.y; y < chunk.y + chunk.h; y++) {
+    for (let x = chunk.x; x < chunk.x + chunk.w; x++) {
+      if (!isRiverAt(map, x, y)) continue;
       const [top, right, bottom, left] = diamond(x, y);
       const sides: [boolean, Vec, Vec][] = [
-        [isLand(x, y - 1), top, right],
-        [isLand(x + 1, y), right, bottom],
-        [isLand(x, y + 1), bottom, left],
-        [isLand(x - 1, y), left, top],
+        [isLandAt(map, x, y - 1), top, right],
+        [isLandAt(map, x + 1, y), right, bottom],
+        [isLandAt(map, x, y + 1), bottom, left],
+        [isLandAt(map, x - 1, y), left, top],
       ];
-      for (const [shore, a, b] of sides) if (shore) g.moveTo(a.x, a.y).lineTo(b.x, b.y);
+      for (const [shore, a, b] of sides) {
+        if (!shore) continue;
+        g.moveTo(a.x, a.y).lineTo(b.x, b.y);
+        any = true;
+      }
     }
   }
-  g.stroke(INK);
+  if (any) g.stroke(INK);
+}
+
+/** The ink outline round the whole map, over everything else on the ground. */
+export function drawMapOutline(g: Graphics, width: number, height: number): void {
+  g.clear();
   g.poly(flat(diamond(0, 0, width, height))).stroke(INK);
 }
 
@@ -125,9 +181,11 @@ export function groundShadowAt(g: Graphics, x: number, y: number, rx: number, ry
   g.ellipse(x, y, rx, ry).fill({ color: palette.shadow, alpha: 0.35 });
 }
 
-/** A tree, drawn around (0, 0) = the centre of its tile on the ground. */
+/**
+ * A tree, drawn around (0, 0) = the centre of its tile on the ground. Map objects add to `g`
+ * without clearing it, so a row of them can share one Graphics (see `mapObjectRuns.ts`).
+ */
 export function drawTree(g: Graphics, amount: number, fullAmount: number): void {
-  g.clear();
   const s = TILE_H / 64; // art scale
   const fullness = 0.75 + 0.25 * (amount / fullAmount);
   groundShadow(g, 30 * s, 14 * s);
@@ -159,7 +217,6 @@ export function drawTree(g: Graphics, amount: number, fullAmount: number): void 
 
 /** A berry bush, drawn like `drawTree`: berries while it has some, bare and dry once withered. */
 export function drawBerryBush(g: Graphics, amount: number, withered: boolean): void {
-  g.clear();
   const s = TILE_H / 64;
   groundShadow(g, 26 * s, 11 * s);
   const dark = withered ? palette.witheredDark : palette.bush;
@@ -197,7 +254,6 @@ export function drawBerryBush(g: Graphics, amount: number, withered: boolean): v
 
 /** A mushroom patch, drawn like `drawTree`: caps while it has some, bare dry litter otherwise. */
 export function drawMushroomPatch(g: Graphics, amount: number, withered: boolean): void {
-  g.clear();
   const s = TILE_H / 64;
   g.ellipse(0, 0, 30 * s, 13 * s)
     .fill(withered ? palette.withered : palette.litter)

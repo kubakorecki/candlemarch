@@ -12,8 +12,10 @@ import {
   idsOf,
   joinSnapshot,
   movingPart,
+  sentStaticLayers,
   serialize,
   staticLayers,
+  staticPatch,
   step,
   stepInPlace,
 } from '@candlemarch/sim';
@@ -55,8 +57,11 @@ export interface MapSizeResult {
   measuredTicks: number;
   /** Of `measuredTicks`, how many changed a static layer (`staticVersion` moved). */
   staticTicks: number;
-  /** Snapshots that carried the static layers, of those a worker would post at 3× (3 ticks each). */
+  /** Snapshots that carried a static patch, of those a worker would post at 3× (3 ticks each). */
   layerSnapshots: { sent: number; of: number };
+  /** Those patches' JSON size, bytes (mean, max), and `staticPatch` in the worker, mean ms. */
+  patchBytes: { mean: number; max: number };
+  patchMs: number;
   /** Mean ms a tick over `pairedTicks` ticks run with `step` (the copy plus the tick)... */
   stepMs: number;
   /** ...and over the same ticks run with `stepInPlace`. */
@@ -157,7 +162,9 @@ export async function benchMapSize(
   const ticks: number[] = [];
   let staticTicks = 0;
   const layerSnapshots = { sent: 0, of: 0 };
-  let sentVersion = current.staticVersion;
+  const sent = sentStaticLayers(current);
+  const patchSizes: number[] = [];
+  let patchTotalMs = 0;
   for (let i = 0; i < options.measuredTicks; i++) {
     const before = current.staticVersion;
     const start = performance.now();
@@ -166,8 +173,13 @@ export async function benchMapSize(
     if (current.staticVersion !== before) staticTicks += 1;
     if (i % 3 === 2) {
       layerSnapshots.of += 1;
-      if (current.staticVersion !== sentVersion) layerSnapshots.sent += 1;
-      sentVersion = current.staticVersion;
+      if (current.staticVersion !== sent.version) {
+        layerSnapshots.sent += 1;
+        const patchStart = performance.now();
+        const patch = staticPatch(sent, current);
+        patchTotalMs += performance.now() - patchStart;
+        patchSizes.push(Buffer.byteLength(JSON.stringify(patch)));
+      }
     }
   }
 
@@ -185,7 +197,13 @@ export async function benchMapSize(
   // What the sim worker posts after each batch of ticks: `prevPositions` is copied before the
   // batch's last tick. The whole state is what it posted before the split.
   const prevPositions = structuredClone(components.position);
-  const moving = { type: 'snapshot', moving: movingPart(current), layers: null, prevPositions };
+  const moving = {
+    type: 'snapshot',
+    moving: movingPart(current),
+    layers: null,
+    patch: null,
+    prevPositions,
+  };
   const layers = staticLayers(current);
   const splitMs = meanMs(options.reps, () => movingPart(current));
   const joinMs = meanMs(options.reps, () => joinSnapshot(moving.moving, layers));
@@ -208,6 +226,11 @@ export async function benchMapSize(
     measuredTicks: options.measuredTicks,
     staticTicks,
     layerSnapshots,
+    patchBytes: {
+      mean: patchSizes.reduce((sum, b) => sum + b, 0) / Math.max(1, patchSizes.length),
+      max: Math.max(0, ...patchSizes),
+    },
+    patchMs: patchTotalMs / Math.max(1, patchSizes.length),
     stepMs,
     inPlaceMs,
     copyMs,
@@ -215,7 +238,13 @@ export async function benchMapSize(
     gzipBytes: gzipSync(json).length,
     whole: await post({ type: 'snapshot', state: current, prevPositions }),
     moving: await post(moving),
-    layers: await post({ type: 'snapshot', moving: null, layers, prevPositions: null }),
+    layers: await post({
+      type: 'snapshot',
+      moving: null,
+      layers,
+      patch: null,
+      prevPositions: null,
+    }),
     splitMs,
     joinMs,
   };
@@ -287,7 +316,9 @@ export function formatResults(results: MapSizeResult[]): string {
         ms(r.splitMs),
         ms(r.joinMs),
         `${r.staticTicks} of ${r.measuredTicks} ticks; ` +
-          `layers in ${r.layerSnapshots.sent} of ${r.layerSnapshots.of} snapshots at 3×`,
+          `a patch in ${r.layerSnapshots.sent} of ${r.layerSnapshots.of} snapshots at 3×, ` +
+          `${Math.round(r.patchBytes.mean)} B mean, ${r.patchBytes.max} B max, ` +
+          `${ms(r.patchMs)} ms to work out`,
       ]),
     ),
     table(
@@ -305,7 +336,7 @@ export function formatResults(results: MapSizeResult[]): string {
           [
             ['whole state (before)', r.whole],
             ['moving part', r.moving],
-            ['static layers', r.layers],
+            ['static layers (first snapshot)', r.layers],
           ] as const
         ).map(([part, cost]) => [
           tiles(r),
