@@ -218,6 +218,30 @@ export interface AlertsDef {
   lowFoodDays: number;
 }
 
+/** How far a sight source sees, in tiles (Chebyshev), by day and by night. */
+export interface SightDef {
+  day: number;
+  night: number;
+}
+
+/**
+ * Fog (spec, World and map; ADR-0005): what the player has seen. Only where they may build
+ * depends on it; nothing in the world does.
+ */
+export interface FogDef {
+  /** At the start, every tile within this many tiles (Chebyshev) of the Camp is Revealed. */
+  startRevealTiles: number;
+  /** Sight of each kind of source. Lights see their lit tiles at night. */
+  sight: {
+    hero: SightDef;
+    villager: SightDef;
+    /** A finished building, round its footprint. */
+    building: SightDef;
+    /** A watchtower with its Watchman, round its footprint, instead of `building`. */
+    mannedWatchtower: SightDef;
+  };
+}
+
 /**
  * Monster Dens (M3). At each Dusk a Den spawns `spawnsPerDusk` Gloamlings for the season, scaled by
  * the game's Monster rate. At the start of each season each Den buds a new Den closer to the
@@ -420,6 +444,7 @@ export interface Content {
   alerts: AlertsDef;
   dens: DensDef;
   combat: CombatDef;
+  fog: FogDef;
   /** First names new villagers are drawn from. */
   villagerNames: readonly string[];
 }

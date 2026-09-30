@@ -33,6 +33,8 @@ export interface BenchOptions {
   pairedTicks: number;
   /** Repeats for the copy and the snapshot. */
   reps: number;
+  /** Plays the map with Fog on. */
+  fog: boolean;
 }
 
 export interface Timing {
@@ -154,7 +156,7 @@ export async function benchMapSize(
 ): Promise<MapSizeResult> {
   const map = syntheticMap(size);
   const createStart = performance.now();
-  const state: GameState = createInitialState(1, map, content);
+  const state: GameState = createInitialState(1, map, content, 100, options.fog);
   const createMs = performance.now() - createStart;
 
   for (let i = 0; i < options.warmupTicks; i++) stepInPlace(state, [], content);

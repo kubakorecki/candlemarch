@@ -47,7 +47,20 @@ export interface MapState {
   roads: Record<number, RoadId>;
   /** Tile on the map's edge where Newcomers arrive, or null on a map nobody immigrates to. */
   entry: Tile | null;
+  /**
+   * Fog: the tiles the player has seen at least once (`TileBits`). Kept while Fog is off, when
+   * every tile counts as Revealed anyway (`fog.ts`). A static layer.
+   */
+  revealed: TileBits;
+  /** Fog: the tiles in sight right now (`TileBits`); empty while Fog is off. */
+  inSight: TileBits;
 }
+
+/**
+ * One flag per tile, packed 32 to a number: tile index `i` is bit `i % 32` of number
+ * `floor(i / 32)`. Numbers past the end count as 0. Read and set with `hasTile`/`setTile` (`fog.ts`).
+ */
+export type TileBits = number[];
 
 /** A tree or other gatherable object standing on a tile. */
 export interface MapObjectComponent {
@@ -399,6 +412,11 @@ export interface GameState {
    * off: no spawns, no budding, and Gloamlings out vanish at once.
    */
   monsterRate: number;
+  /**
+   * Fog on or off for this game (`fog.ts`). Off means every tile counts as Revealed and In sight.
+   * It changes only what the player sees and where they may build.
+   */
+  fog: boolean;
   /** One per Den cleared in the last `calmDays` days, oldest first; dropped at the Dawn it ends. */
   calms: CalmArea[];
 }

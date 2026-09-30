@@ -4,6 +4,7 @@ import { buildings } from './buildings';
 import { calendar } from './calendar';
 import { combat } from './combat';
 import { dens } from './dens';
+import { fog } from './fog';
 import { heroes } from './heroes';
 import { hunting } from './hunting';
 import { immigration } from './immigration';
@@ -37,5 +38,6 @@ export const content: Content = {
   alerts,
   dens,
   combat,
+  fog,
   villagerNames,
 };

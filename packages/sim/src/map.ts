@@ -33,6 +33,7 @@ import {
   placeStockpile,
   roomOnTile,
 } from './stockpiles';
+import { revealCamp, updateSight } from './systems/fog';
 import { spawnVillager } from './villagers';
 import { fullHp } from './walls';
 import { maxWorkers } from './workers';
@@ -125,7 +126,7 @@ export function createEmptyState(seed: number): GameState {
     nextId: 1,
     mapVersion: 0,
     staticVersion: 0,
-    map: { width: 0, height: 0, terrain: [], roads: {}, entry: null },
+    map: { width: 0, height: 0, terrain: [], roads: {}, entry: null, revealed: [], inSight: [] },
     components: {
       tile: {},
       mapObject: {},
@@ -151,12 +152,15 @@ export function createEmptyState(seed: number): GameState {
     gameOver: null,
     traffic: [],
     monsterRate: DEFAULT_MONSTER_RATE,
+    fog: false,
     calms: [],
   };
 }
 
 /**
- * A new game on `map` with Monster rate `monsterRate` (0–100). Entities are created in this order:
+ * A new game on `map` with Monster rate `monsterRate` (0–100) and Fog on or off (`fog`; off
+ * unless asked, as for every hand-made map). Everything within `fog.startRevealTiles` of what the
+ * map starts with, and the entry, starts Revealed, whether Fog is on or not. Entities are created in this order:
  * map objects and Dens (row-major), buildings with their employees (spawned at the door), sites,
  * stockpiles, free villagers, the hero, then Hunting grounds. Throws if the map is malformed or
  * anything on it couldn't be placed there.
@@ -166,6 +170,7 @@ export function createInitialState(
   map: MapDef,
   content: Content,
   monsterRate: number = DEFAULT_MONSTER_RATE,
+  fog = false,
 ): GameState {
   const height = map.rows.length;
   const width = map.rows[0]?.length ?? 0;
@@ -174,7 +179,7 @@ export function createInitialState(
 
   const state = createEmptyState(seed);
   state.monsterRate = monsterRate;
-  state.map = { width, height, terrain: [], roads: {}, entry: null };
+  state.map = { width, height, terrain: [], roads: {}, entry: null, revealed: [], inSight: [] };
 
   map.rows.forEach((row, y) => {
     if (row.length !== width) throw new Error(`map ${map.name}: row ${y} has length ${row.length}`);
@@ -315,6 +320,11 @@ export function createInitialState(
     ground.startTrees = standingTrees(state, content, ground);
     state.components.huntingGround[createEntity(state)] = ground;
   }
+
+  // Placement above ignores Fog: it's switched on once the map stands.
+  revealCamp(state, content);
+  state.fog = fog;
+  if (fog) updateSight(state, content);
 
   return state;
 }

@@ -1,6 +1,7 @@
 // Stockpiles: placing and removing them, and the goods on their tiles.
 import type { Content, ResourceAmount, ResourceId } from '@candlemarch/content';
 import { createEntity, destroyEntity } from './entities';
+import { allRevealed } from './fog';
 import {
   blockedGrid,
   doorTiles,
@@ -35,7 +36,10 @@ export function canPlaceStockpile(
   const doors = doorTiles(state, content);
   const piles = tilesUnderStockpiles(state);
   const caches = tilesUnderCaches(state);
-  return rectTiles({ x, y }, w, h).every((t) => {
+  const tiles = rectTiles({ x, y }, w, h);
+  // Only on tiles the player has seen (Fog).
+  if (!allRevealed(state, tiles)) return false;
+  return tiles.every((t) => {
     const i = tileIndex(map, t.x, t.y);
     const terrain = map.terrain[i];
     return (

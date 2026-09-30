@@ -1,6 +1,6 @@
 # Fog in the sim
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: none
 
@@ -37,3 +37,7 @@ Rules in `docs/spec.md`, World and map ("Fog"), and `docs/adr/0005-fog-lives-in-
   - save/load keeps Revealed tiles.
 - The sim budget still holds at 128² with Fog on.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-09-30 — Done. `state.fog` (5th argument of `createInitialState`, default off; `setFog` command), `map.revealed` and `map.inSight` as bit-packed `TileBits`, `sim/src/fog.ts` (`isRevealed`, `isInSight`, the build rule) and `systems/fog.ts` (`fogSystem`, 22nd in the tick, before traffic). Revealed is a static layer (`StaticLayers`/`StaticPatch.revealed`); In sight rides in the moving part. Beyond the issue: Stockpiles also need Revealed tiles; the start area is Revealed even with Fog off; tiles seen while Fog is off aren't Revealed; old saves load with every tile Revealed (all in `docs/decisions.md`). `pnpm bench:maps --fog 128`: tick 0.48 ms mean, 1.26 ms p95 (`.scratch/m4-valley/benchmark.md`). The client's New game panel doesn't pass Fog yet (the worker's `newGame` has no field for it): ticket 17 adds the dev switch.

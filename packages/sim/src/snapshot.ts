@@ -1,4 +1,5 @@
-// Snapshots for the client, split in two: the static layers (terrain, Roads, map objects), which
+// Snapshots for the client, split in two: the static layers (terrain, Roads, map objects, the
+// Revealed tiles), which
 // change seldom and hold most of the bytes, and the moving part (everything else). The sim bumps
 // `state.staticVersion` whenever a static layer changes, so the worker sends those layers whole
 // once per game and afterwards, when the version moves on, only a patch of what changed.
@@ -6,8 +7,8 @@
 import type { EntityId, GameState, MapObjectComponent, MapState, Store, Tile } from './state';
 
 /**
- * Records that a static layer changed: terrain, a Road, or a map object (added, removed, its
- * `amount` or `withered`). Call it after every such change, and only then.
+ * Records that a static layer changed: terrain, a Road, a map object (added, removed, its
+ * `amount` or `withered`), or a tile Revealed. Call it after every such change, and only then.
  */
 export function staticChanged(state: GameState): void {
   state.staticVersion += 1;
@@ -19,6 +20,8 @@ export interface StaticLayers {
   version: number;
   terrain: MapState['terrain'];
   roads: MapState['roads'];
+  /** Fog: the tiles Revealed (`TileBits`), whether Fog is on or not; the moving part says. */
+  revealed: MapState['revealed'];
   mapObject: Store<MapObjectComponent>;
   /** The `tile` of each map object. */
   mapObjectTile: Store<Tile>;
@@ -39,14 +42,15 @@ export function staticLayers(state: GameState): StaticLayers {
     version: state.staticVersion,
     terrain: state.map.terrain,
     roads: state.map.roads,
+    revealed: state.map.revealed,
     mapObject,
     mapObjectTile,
   };
 }
 
 /**
- * What changed in the static layers since they were last sent: terrain and Roads whole, or null
- * when unchanged, and only the map objects added or changed (with their tiles) or removed. A chop
+ * What changed in the static layers since they were last sent: terrain, Roads and the Revealed
+ * tiles whole, or null when unchanged, and only the map objects added or changed (with their tiles) or removed. A chop
  * changes one tree, so its patch is a few bytes where the whole layers are hundreds of KB.
  */
 export interface StaticPatch {
@@ -54,6 +58,7 @@ export interface StaticPatch {
   version: number;
   terrain: MapState['terrain'] | null;
   roads: MapState['roads'] | null;
+  revealed: MapState['revealed'] | null;
   mapObject: Store<MapObjectComponent>;
   mapObjectTile: Store<Tile>;
   removed: EntityId[];
@@ -77,6 +82,7 @@ export function sentStaticLayers(state: GameState): StaticLayers {
     version: layers.version,
     terrain: [...layers.terrain],
     roads: { ...layers.roads },
+    revealed: [...layers.revealed],
     mapObject,
     mapObjectTile,
   };
@@ -89,7 +95,7 @@ function sameFields<T extends object>(a: T, b: T): boolean {
   return keys.every((k) => a[k] === b[k]);
 }
 
-function sameTerrain(a: MapState['terrain'], b: MapState['terrain']): boolean {
+function sameList<T>(a: readonly T[], b: readonly T[]): boolean {
   return a.length === b.length && a.every((t, i) => t === b[i]);
 }
 
@@ -98,23 +104,28 @@ function sameTerrain(a: MapState['terrain'], b: MapState['terrain']): boolean {
  * up to date. Shares objects with `state`, like `staticLayers`: post it before `state` steps on.
  */
 export function staticPatch(sent: StaticLayers, state: GameState): StaticPatch {
-  const { terrain, roads } = state.map;
+  const { terrain, roads, revealed } = state.map;
   const { mapObject, tile } = state.components;
   const patch: StaticPatch = {
     version: state.staticVersion,
     terrain: null,
     roads: null,
+    revealed: null,
     mapObject: {},
     mapObjectTile: {},
     removed: [],
   };
-  if (!sameTerrain(sent.terrain, terrain)) {
+  if (!sameList(sent.terrain, terrain)) {
     patch.terrain = terrain;
     sent.terrain = [...terrain];
   }
   if (!sameFields(sent.roads, roads)) {
     patch.roads = roads;
     sent.roads = { ...roads };
+  }
+  if (!sameList(sent.revealed, revealed)) {
+    patch.revealed = revealed;
+    sent.revealed = [...revealed];
   }
   for (const key in sent.mapObject) {
     const id = Number(key);
@@ -159,14 +170,15 @@ export function applyStaticPatch(layers: StaticLayers, patch: StaticPatch): Stat
     version: patch.version,
     terrain: patch.terrain ?? layers.terrain,
     roads: patch.roads ?? layers.roads,
+    revealed: patch.revealed ?? layers.revealed,
     mapObject,
     mapObjectTile,
   };
 }
 
 /**
- * Everything in `state` but its static layers: a `GameState` whose terrain, Roads and map objects
- * are empty and whose `tile` store leaves out the map objects' tiles. Shallow: it shares every
+ * Everything in `state` but its static layers: a `GameState` whose terrain, Roads, Revealed tiles
+ * and map objects are empty and whose `tile` store leaves out the map objects' tiles. Shallow: it shares every
  * other object with `state`, so post it or copy it before `state` steps on.
  */
 export function movingPart(state: GameState): GameState {
@@ -178,7 +190,7 @@ export function movingPart(state: GameState): GameState {
   }
   return {
     ...state,
-    map: { ...state.map, terrain: [], roads: {} },
+    map: { ...state.map, terrain: [], roads: {}, revealed: [] },
     components: { ...state.components, mapObject: {}, tile: movingTile },
   };
 }
@@ -187,7 +199,12 @@ export function movingPart(state: GameState): GameState {
 export function joinSnapshot(moving: GameState, layers: StaticLayers): GameState {
   return {
     ...moving,
-    map: { ...moving.map, terrain: layers.terrain, roads: layers.roads },
+    map: {
+      ...moving.map,
+      terrain: layers.terrain,
+      roads: layers.roads,
+      revealed: layers.revealed,
+    },
     components: {
       ...moving.components,
       mapObject: layers.mapObject,

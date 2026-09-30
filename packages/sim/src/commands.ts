@@ -2,6 +2,7 @@
 import type { BuildingId, Content, ResourceId } from '@candlemarch/content';
 import { isMonsterRate } from './dens';
 import { createEntity, destroyEntity } from './entities';
+import { setFog } from './fog';
 import { canPlaceBuilding } from './grid';
 import { type HeroOrder, orderHero } from './hero';
 import { ringBell } from './militia';
@@ -50,7 +51,9 @@ export type Command =
   /** Rings the Militia bell: calls the village to arms, or stands it down if it's ringing. */
   | { type: 'ringBell' }
   /** Dev: set the Monster rate (0–100). 0 turns nights off; Gloamlings out vanish at once. */
-  | { type: 'setMonsterRate'; rate: number };
+  | { type: 'setMonsterRate'; rate: number }
+  /** Dev: turn Fog on or off. What's Revealed is kept either way. */
+  | { type: 'setFog'; on: boolean };
 
 /** Applies one command. Commands that aren't valid right now are ignored. */
 export function applyCommand(state: GameState, command: Command, content: Content): void {
@@ -139,6 +142,10 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'setMonsterRate': {
       if (isMonsterRate(command.rate)) state.monsterRate = command.rate;
+      return;
+    }
+    case 'setFog': {
+      if (typeof command.on === 'boolean') setFog(state, command.on);
       return;
     }
   }

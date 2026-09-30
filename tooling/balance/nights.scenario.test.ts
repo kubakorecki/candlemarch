@@ -2,7 +2,15 @@
 // the Gate every night and the watchtower shoots it there. A run of about 4 s, so it runs under
 // `pnpm test:scenarios`, not `pnpm test`.
 import { content } from '@candlemarch/content';
-import { calendarAt, createInitialState, duskTick, idsOf, stepInPlace } from '@candlemarch/sim';
+import {
+  calendarAt,
+  createInitialState,
+  duskTick,
+  type GameState,
+  idsOf,
+  isRevealed,
+  stepInPlace,
+} from '@candlemarch/sim';
 import { describe, expect, it } from 'vitest';
 import { scenarios } from './scenarios';
 
@@ -30,5 +38,34 @@ describe('the nights map, prepared', () => {
     // Fair losses: one villager at most.
     expect(s.deaths.length).toBeLessThanOrEqual(1);
     expect(idsOf(s.components.villager).length).toBeGreaterThanOrEqual(population - 1);
+  });
+});
+
+describe('the nights map under Fog', () => {
+  /** The prepared nights run to its end, with Fog on or off. */
+  function play(fog: boolean): GameState {
+    const { map, seed, ticks, commands } = scenarios.nights;
+    const s = createInitialState(seed, map, content, 100, fog);
+    while (s.tick < ticks) stepInPlace(s, commands[s.tick] ?? [], content);
+    return s;
+  }
+
+  /** `s` without what only Fog changes: what the player has seen, and the static layers' count. */
+  function world(s: GameState): unknown {
+    const { fog: _, staticVersion: __, ...rest } = s;
+    return { ...rest, map: { ...s.map, revealed: [], inSight: [] } };
+  }
+
+  it('gives the same nights, deaths and all, with Fog on as with it off', {
+    timeout: 60_000,
+  }, () => {
+    const off = play(false);
+    const on = play(true);
+    expect(on.deaths).toEqual(off.deaths);
+    expect(world(on)).toEqual(world(off));
+    // Fog was on, and did hide something: the Den's tile was never Revealed.
+    const [den] = idsOf(on.components.den);
+    const denTile = on.components.tile[den as number];
+    expect(denTile && isRevealed(on, denTile)).toBe(false);
   });
 });

@@ -50,7 +50,7 @@ Keep this section current whenever scripts change.
 - `pnpm lint` — Biome check
 - `pnpm format` — apply Biome formatting and safe fixes
 - `pnpm balance <scenario>` — run a headless balance scenario from `tooling/balance/scenarios.ts` (`meadow`, `camp`, `campNoFirewood`, `nights`, `nightsUnprepared`) and print population, deaths (with a column per cause), Carrier utilization and stored goods per in-game day
-- `pnpm bench:maps [size...]` — benchmark the sim on synthetic maps (default 64, 128, 192, 256 tiles a side; minutes at 256): ms per tick, the per-tick JSON copy, state size, worker→main snapshot transfer. Prints Markdown tables
+- `pnpm bench:maps [--fog] [size...]` — benchmark the sim on synthetic maps (default 64, 128, 192, 256 tiles a side; minutes at 256; `--fog` plays them with Fog on): ms per tick, the per-tick JSON copy, state size, worker→main snapshot transfer. Prints Markdown tables
 - `pnpm check` — typecheck + lint + test + test:scenarios; run before calling any task done
 
 ## Simulation rules

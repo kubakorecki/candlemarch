@@ -9,6 +9,7 @@ import { combatSystem } from './systems/combat';
 import { constructionSystem } from './systems/construction';
 import { densSystem } from './systems/dens';
 import { fishingSystem } from './systems/fishing';
+import { fogSystem } from './systems/fog';
 import { foragingSystem } from './systems/foraging';
 import { haulingSystem } from './systems/hauling';
 import { huntingSystem } from './systems/hunting';
@@ -71,7 +72,9 @@ export function step(state: GameState, commands: readonly Command[], content: Co
  * 19. hauling (job dispatch)
  * 20. construction, by day only
  * 21. staffing: workplaces below their worker limit draft idle carriers
- * 22. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
+ * 22. fog: while Fog is on, the tiles In sight are worked out again when a source moved to
+ *    another tile or its reach changed, and are Revealed for good
+ * 23. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
  * then `tick` increments.
  */
 export function stepInPlace(next: GameState, commands: readonly Command[], content: Content): void {
@@ -96,6 +99,7 @@ export function stepInPlace(next: GameState, commands: readonly Command[], conte
   haulingSystem(next, content);
   constructionSystem(next, content);
   staffingSystem(next, content);
+  fogSystem(next, content);
   trafficSystem(next, content);
   next.tick += 1;
 }

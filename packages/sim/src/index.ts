@@ -16,6 +16,7 @@ export { type HealthBar, healthBars, isIndoors, isKnockedOut } from './combat';
 export type { Command } from './commands';
 export { darkRingTiles, denAt } from './dens';
 export { idsOf } from './entities';
+export { hasTile, isInSight, isRevealed } from './fog';
 export { isForagePatch, isWithered } from './forage';
 export { foodIds, villageFood } from './granary';
 export {

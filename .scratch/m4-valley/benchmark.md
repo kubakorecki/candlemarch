@@ -331,3 +331,15 @@ Columns as before, plus: `rAF p95` = p95 of the `requestAnimationFrame` timestam
 - One frame of 193 ms in one run (with the snapshot transfer stalled the same 193 ms) had no main-thread work under it in the profile; it didn't recur.
 - `pnpm bench:maps 128` now reports the patches: 66 of 3600 ticks change a static layer; a patch in 66 of 1200 snapshots at 3×, 135 B mean, 259 B max, 0.66 ms for the worker to work out (it compares terrain, Roads and every map object with the copy it keeps of what it sent). The static layers (428 KB, 5.3 ms transfer) now go only in a game's first snapshot.
 - No visible change: screenshots of the paused synthetic maps at 64² and 128², six camera views each (zoom 0.25–2.5, centre and corners), match the old renderer but for 0–94 pixels of 960,000 at canopy outlines (sub-pixel differences from drawing trees through a transform). A game run at 3× for 40 s, then paused, draws the same trees, ground and buildings as the same save loaded fresh; only walking villagers differ (interpolation).
+
+## Fog in the sim (ticket 16)
+
+Measured 2026-09-30, same machine and Node, `pnpm bench:maps 128` and `pnpm bench:maps --fog 128`, back to back. Budget (ADR-0004, 128²): tick mean ≤ 5 ms, p95 ≤ 10 ms, no tick over 50 ms. Met with Fog on: 0.48 ms mean, 1.26 ms p95, 14.9 ms max.
+
+| 128² | Tick mean (ms) | Tick p95 | Tick max | Paired `step` (ms) | Paired `stepInPlace` (ms) | State (JSON) | Moving part | Static-layer changes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Fog off | 0.45 | 1.25 | 15.33 | 4.89 | 0.81 | 461 KB | 33 KB | 66 of 3600 ticks, 151 B mean patch |
+| Fog on | 0.48 | 1.26 | 14.87 | 5.33 | 1.20 | 462 KB | 34 KB | 66 of 3600 ticks, 151 B mean patch |
+
+- The sight is worked out again only when a source changed tile or reach; a tick that doesn't still builds the key (about 100 sources), which is the ~0.03 ms. `step` (tests only) works it out every tick, since its copy has no remembered key: that's the paired columns' difference.
+- The Revealed and In-sight tiles cost 2 KB each at 128² (512 numbers). The synthetic village stays inside the area Revealed at the start, so Fog adds no static-layer changes here; a Hero walking into the dark sends the Revealed tiles whole (2 KB) on each tick it Reveals something.

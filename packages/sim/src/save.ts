@@ -1,6 +1,7 @@
 // Save files are the serialized game state.
 import type { Content } from '@candlemarch/content';
 import { idsOf } from './entities';
+import { allTiles } from './fog';
 import { refreshShade } from './forage';
 import { createEmptyState } from './map';
 import { type Components, type GameState, type MapState, STATE_VERSION } from './state';
@@ -55,6 +56,8 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     if (b.hp === undefined || b.hp === null) b.hp = fullHp(content, b.type);
   }
   for (const site of Object.values(state.components.site)) site.rotation ??= 0;
+  // Saves from before Fog: played without it, so the player has seen the whole map.
+  if (loaded.map?.revealed === undefined) state.map.revealed = allTiles(state.map);
   // Saves from before forage patches kept their shade.
   const { mapObject } = state.components;
   if (

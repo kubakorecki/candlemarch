@@ -55,11 +55,26 @@ const grove: MapDef = {
   hero: { x: 1, y: 8 },
 };
 
-/** The static layers as the issue lists them, read straight off the state. */
+/**
+ * 60×9 grass, the Hero at (2,4) and nothing else, played with Fog on: the Camp Reveals x 0–14, and
+ * the Hero Reveals more as it walks east.
+ */
+const moor: MapDef = {
+  name: 'moor',
+  rows: Array.from({ length: 9 }, () => '.'.repeat(60)),
+  buildings: [],
+  villagers: [],
+  hero: { x: 2, y: 4 },
+};
+const walkEast: Record<number, Command[]> = {
+  5: [{ type: 'orderHero', order: 'move', x: 58, y: 4 }],
+};
+
+/** The static layers as the issues list them, read straight off the state. */
 function staticJson(s: GameState): string {
   const { mapObject, tile } = s.components;
   const objectTiles = Object.keys(mapObject).map((id) => tile[Number(id)]);
-  return JSON.stringify([s.map.terrain, s.map.roads, mapObject, objectTiles]);
+  return JSON.stringify([s.map.terrain, s.map.roads, mapObject, objectTiles, s.map.revealed]);
 }
 
 describe('the static layers version', () => {
@@ -79,6 +94,23 @@ describe('the static layers version', () => {
     expect(laid).toBeGreaterThan(before);
     applyCommand(s, { type: 'removePath', ...path }, content);
     expect(s.staticVersion).toBeGreaterThan(laid);
+  });
+
+  it('moves on exactly the ticks that Reveal tiles, with Fog on', () => {
+    let s = createInitialState(1, moor, content, 100, true);
+    let bumps = 0;
+    for (let i = 0; i < 600; i++) {
+      const next = step(s, walkEast[s.tick] ?? [], content);
+      const changed = staticJson(next) !== staticJson(s);
+      const bumped = next.staticVersion !== s.staticVersion;
+      if (changed !== bumped) {
+        throw new Error(`tick ${s.tick}: layers changed ${changed}, version moved ${bumped}`);
+      }
+      if (bumped) bumps += 1;
+      s = next;
+    }
+    // The Hero Revealed a tile column at a time on its way (else it proves nothing).
+    expect(bumps).toBeGreaterThan(30);
   });
 
   it("stays put over a tick that doesn't change a static layer", () => {
@@ -159,6 +191,15 @@ describe('split snapshots', () => {
     expect(joinSnapshot(movingPart(s1), layers)).toEqual(s1);
   });
 
+  it('leave the Revealed tiles out of the moving part, and keep the tiles In sight in it', () => {
+    const s = run(createInitialState(1, moor, content, 100, true), 1);
+    const moving = movingPart(s);
+    expect(moving.map.revealed).toEqual([]);
+    expect(moving.map.inSight).toBe(s.map.inSight);
+    expect(staticLayers(s).revealed).toBe(s.map.revealed);
+    expect(joinSnapshot(moving, staticLayers(s))).toEqual(s);
+  });
+
   it("doesn't touch the state it splits", () => {
     const s = createInitialState(1, grove, content);
     const before = JSON.stringify(s);
@@ -198,6 +239,26 @@ describe('static patches', () => {
     expect(Object.keys(client.mapObject).length).toBeLessThan(15);
   });
 
+  it('carry the Revealed tiles as the Hero walks into Fog, and nothing else', () => {
+    const s = createInitialState(1, moor, content, 100, true);
+    let client = posted(staticLayers(s));
+    const sent = sentStaticLayers(s);
+    let patches = 0;
+    for (let i = 0; i < 600; i++) {
+      stepInPlace(s, walkEast[s.tick] ?? [], content);
+      if (s.staticVersion === sent.version) continue;
+      const patch = posted(staticPatch(sent, s));
+      expect(patch).toMatchObject({ terrain: null, roads: null, mapObject: {}, removed: [] });
+      expect(patch.revealed).not.toBeNull();
+      const next = applyStaticPatch(client, patch);
+      expect(next.terrain).toBe(client.terrain);
+      client = next;
+      patches += 1;
+      expect(client).toEqual(staticLayers(s));
+    }
+    expect(patches).toBeGreaterThan(30);
+  });
+
   it('carry only what changed: a chopped tree, and no terrain or Roads', () => {
     const s = createInitialState(1, glade, content);
     const client = posted(staticLayers(s));
@@ -211,6 +272,7 @@ describe('static patches', () => {
       version: s.staticVersion,
       terrain: null,
       roads: null,
+      revealed: null,
       mapObject: { [TREE]: tree },
       mapObjectTile: { [TREE]: { x: 1, y: 1 } },
       removed: [],
@@ -219,6 +281,7 @@ describe('static patches', () => {
     const next = applyStaticPatch(client, posted(patch));
     expect(next.terrain).toBe(client.terrain);
     expect(next.roads).toBe(client.roads);
+    expect(next.revealed).toBe(client.revealed);
     expect(next.mapObject).not.toBe(client.mapObject);
     expect(next.mapObject[TREE]?.amount).toBe(tree.amount);
   });

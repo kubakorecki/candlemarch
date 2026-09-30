@@ -1,5 +1,6 @@
 // Roads: the per-tile road layer, laying and removing paths, and road speed.
 import type { Content } from '@candlemarch/content';
+import { allRevealed } from './fog';
 import {
   blockedGrid,
   inBounds,
@@ -56,7 +57,10 @@ export function canLayPath(state: GameState, content: Content, from: Tile, to: T
   const blocked = blockedGrid(state, content);
   const piles = tilesUnderStockpiles(state);
   const palisades = palisadeTiles(state, content);
-  return lShapeTiles(from, to).every((t) => {
+  const tiles = lShapeTiles(from, to);
+  // Only on tiles the player has seen (Fog).
+  if (!allRevealed(state, tiles)) return false;
+  return tiles.every((t) => {
     const i = tileIndex(map, t.x, t.y);
     const terrain = map.terrain[i];
     return (

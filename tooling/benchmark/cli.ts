@@ -5,9 +5,13 @@ import { benchMapSize, formatResults, type MapSizeResult } from './mapSize';
 
 const DEFAULT_SIZES = [64, 128, 192, 256];
 
-const sizes = process.argv.slice(2).map(Number);
+const args = process.argv.slice(2);
+const fog = args.includes('--fog');
+const sizes = args.filter((a) => a !== '--fog').map(Number);
 if (sizes.some((s) => !Number.isInteger(s) || s < 48)) {
-  console.error('Usage: pnpm bench:maps [size...], each size a whole number of tiles, at least 48');
+  console.error(
+    'Usage: pnpm bench:maps [--fog] [size...], each size a whole number of tiles, at least 48',
+  );
   process.exit(1);
 }
 
@@ -16,11 +20,13 @@ const options = {
   measuredTicks: content.calendar.dayTicks,
   pairedTicks: 200,
   reps: 20,
+  fog,
 };
 console.log(
   `Node ${process.version}, ${cpus()[0]?.model ?? 'unknown CPU'}. Warm-up ${options.warmupTicks} ticks, ` +
     `then ${options.measuredTicks} ticks timed one by one with \`stepInPlace\`, as the worker runs them; ` +
-    `${options.pairedTicks} ticks run both with \`step\` and \`stepInPlace\`; ${options.reps} repeats of the rest.\n`,
+    `${options.pairedTicks} ticks run both with \`step\` and \`stepInPlace\`; ${options.reps} repeats of the rest. ` +
+    `Fog ${fog ? 'on' : 'off'}.\n`,
 );
 const results: MapSizeResult[] = [];
 for (const size of sizes.length > 0 ? sizes : DEFAULT_SIZES) {
