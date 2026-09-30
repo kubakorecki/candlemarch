@@ -103,12 +103,12 @@ describe('spoilage at Dawn', () => {
     const block = s.components.building[CHOPPING_BLOCK];
     if (block) {
       block.input = { logs: 4 };
-      block.stock = { firewood: 4 };
+      block.stock = { firewood: content.logistics.yardCapacity }; // full: no split starts
     }
     const spoiled = run(s, 1, {}, logsAreFood);
     expect(stockOf(spoiled, FISHERS_HUT).fish).toBe(3);
     expect(spoiled.components.building[CHOPPING_BLOCK]?.input.logs).toBe(2);
-    expect(stockOf(spoiled, CHOPPING_BLOCK).firewood).toBe(4);
+    expect(stockOf(spoiled, CHOPPING_BLOCK).firewood).toBe(content.logistics.yardCapacity);
   });
 
   it("doesn't take Food in a villager's or the hero's hands", () => {

@@ -1,6 +1,6 @@
 // Bottom left: the workers view and whatever is selected (a building, villager, Stockpile, forage
 // patch, point of interest or Hunting ground), one inspector panel each.
-import { content, type PoiId } from '@candlemarch/content';
+import { content, type PoiId, type ResourceId } from '@candlemarch/content';
 import { STOCKPILE_PRIORITIES, type StockpilePriority } from '@candlemarch/sim';
 import type { ReactNode } from 'react';
 import type {
@@ -103,6 +103,34 @@ function employsLine(building: BuildingInfo): string | undefined {
   return jobs ? `Employs ${jobs}` : undefined;
 }
 
+/**
+ * What a Workplace's yard holds against what fits, all its outputs together; a line per output
+ * when it makes more than one.
+ */
+function YardFacts({ yard }: { yard: NonNullable<BuildingInfo['yard']> }) {
+  const name = (resource: ResourceId) => content.resources[resource].name.toLowerCase();
+  const only = yard.goods.length === 1 ? yard.goods[0] : undefined;
+  return (
+    <div className="stack">
+      <div className="fact">
+        <span>Yard</span>
+        <span>
+          {yard.amount} / {yard.capacity}
+          {only && ` ${name(only.resource)}`}
+        </span>
+      </div>
+      <Fill amount={yard.amount} capacity={yard.capacity} />
+      {!only &&
+        yard.goods.map((g) => (
+          <div key={g.resource} className="fact">
+            <span>{content.resources[g.resource].name}</span>
+            <span>{g.amount}</span>
+          </div>
+        ))}
+    </div>
+  );
+}
+
 function BuildingPanel({
   building,
   hud,
@@ -121,17 +149,7 @@ function BuildingPanel({
         game={game}
       />
       {building.status && <Callout tone="warn" title={building.status} />}
-      {building.holds.map((hold) => (
-        <div key={hold.resource} className="stack">
-          <div className="fact">
-            <span>Holds</span>
-            <span>
-              {hold.amount} / {hold.capacity} {content.resources[hold.resource].name.toLowerCase()}
-            </span>
-          </div>
-          <Fill amount={hold.amount} capacity={hold.capacity} />
-        </div>
-      ))}
+      {building.yard && <YardFacts yard={building.yard} />}
       {building.bell && hud.bell && (
         <div className="fact">
           <span>{hud.bell.ringing ? 'The militia is out' : 'Quiet'}</span>

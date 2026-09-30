@@ -724,15 +724,14 @@ export function drawDoorstep(g: Graphics, door: Vec, face: DoorFace): void {
 }
 
 /**
- * A chopping block: a stump with an axe in it, wood chips where its worker stands at the door, the
- * firewood (`output`) piled on the door side and the logs waiting to be split (`input`) behind.
- * The axe handle leans towards the door.
+ * A chopping block: a stump with an axe in it, wood chips where its worker stands at the door and
+ * the logs waiting to be split (`input`) behind. Its firewood is in its yard. The axe handle leans
+ * towards the door.
  */
 export function drawChoppingBlock(
   g: Graphics,
   layout: BuildingLayout,
   input: ResourceAmount | null,
-  output: ResourceAmount | null,
 ): void {
   g.clear();
   const s = TILE_H / 64;
@@ -742,13 +741,10 @@ export function drawChoppingBlock(
   const dir = { x: door.x - origin.x, y: door.y - origin.y };
   const toward = (t: number): Vec =>
     gridToWorld(origin.x + 0.5 + dir.x * t, origin.y + 0.5 + dir.y * t);
-  const piles: { at: Vec; goods: ResourceAmount }[] = [];
-  if (output && output.amount > 0) piles.push({ at: toward(0.42), goods: output });
-  if (input && input.amount > 0) piles.push({ at: toward(-0.42), goods: input });
+  const pile = input && input.amount > 0 ? { at: toward(-0.42), goods: input } : null;
   const drawPiles = (front: boolean) => {
-    for (const p of piles) {
-      if (p.at.y > c.y === front)
-        drawGoodsPile(g, p.goods.resource, p.at.x, p.at.y, p.goods.amount);
+    if (pile && pile.at.y > c.y === front) {
+      drawGoodsPile(g, pile.goods.resource, pile.at.x, pile.at.y, pile.goods.amount);
     }
   };
 
@@ -1384,14 +1380,19 @@ export function drawAxe(g: Graphics): void {
     .stroke(THIN_INK);
 }
 
-/** Placement preview: footprint tinted valid/invalid, plus the door tile outlined. */
+/** Placement preview: the building tinted valid/invalid, its yard fainter, the door tile outlined. */
 export function drawPlacementGhost(g: Graphics, layout: BuildingLayout, valid: boolean): void {
   g.clear();
   const color = valid ? palette.valid : palette.invalid;
-  const { origin, size, door } = layout;
+  const { origin, size, door, yard } = layout;
   g.poly(flat(diamond(origin.x, origin.y, size.w, size.h)))
     .fill({ color, alpha: 0.45 })
     .stroke(INK);
+  if (yard) {
+    g.poly(flat(diamond(yard.x, yard.y)))
+      .fill({ color, alpha: 0.3 })
+      .stroke(THIN_INK);
+  }
   drawDoorstep(g, door, doorFace(layout));
   g.poly(flat(diamond(door.x, door.y)))
     .fill({ color, alpha: 0.15 })
@@ -1483,6 +1484,19 @@ export function drawPileGround(g: Graphics, x: number, y: number, w: number, h: 
 export function drawGoodsStack(g: Graphics, goods: ResourceAmount): void {
   g.clear();
   drawGoodsPile(g, goods.resource, 0, 6, goods.amount);
+}
+
+/**
+ * Goods in a Workplace yard, drawn around (0, 0) = the tile centre like a stockpile tile's: a pile
+ * per output held, the first at the back.
+ */
+export function drawYardGoods(g: Graphics, goods: readonly ResourceAmount[]): void {
+  g.clear();
+  const held = goods.filter((x) => x.amount > 0);
+  held.forEach((x, i) => {
+    const offset = (i - (held.length - 1) / 2) * TILE_H * 0.44;
+    drawGoodsPile(g, x.resource, 0, 6 + offset, x.amount);
+  });
 }
 
 /** A warning bubble centred on (x, y): a worker, struck through. */

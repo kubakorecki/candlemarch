@@ -4,6 +4,7 @@ import {
   boostedWorkplaces,
   buildingLayout,
   type EntityId,
+  entityLayout,
   foodIds,
   type GameState,
   type GroundHealth,
@@ -101,6 +102,7 @@ import {
   drawWaitingIcon,
   drawWallSite,
   drawWatchtower,
+  drawYardGoods,
   HEAT_LEVELS,
   type HeatTile,
   type RoadTile,
@@ -234,19 +236,6 @@ function granaryPile(
     if (amount > 0 && (!best || amount > best.amount)) best = { resource, amount };
   }
   return best && { resource: best.resource, amount: Math.min(best.amount, GRANARY_PILE_MAX) };
-}
-
-/** What a Workplace shows beside its door: its output of which it holds most (first on ties). */
-function outputPile(
-  slots: readonly { resource: ResourceId }[] | undefined,
-  stock: Partial<Record<ResourceId, number>>,
-): ResourceAmount | null {
-  let best: ResourceAmount | null = null;
-  for (const { resource } of slots ?? []) {
-    const amount = stock[resource] ?? 0;
-    if (!best || amount > best.amount) best = { resource, amount };
-  }
-  return best;
 }
 
 /** Draws the icon for why a Workplace is idle, centred on (x, y). */
@@ -558,10 +547,7 @@ export class WorldRenderer {
       const { size } = layout;
       const buffered = (resource: ResourceId | undefined, amounts: typeof b.stock) =>
         resource ? { resource, amount: amounts[resource] ?? 0 } : null;
-      const output =
-        def.foodCapacity !== undefined
-          ? granaryPile(this.content, b.stock)
-          : outputPile(def.outputBuffer, b.stock);
+      const output = def.foodCapacity !== undefined ? granaryPile(this.content, b.stock) : null;
       const input = buffered(def.inputBuffer?.[0]?.resource, b.input);
       const status = workplaceStatus(state, this.content, id);
       const cold = isColdHouse(state, this.content, id) || isDarkLight(state, this.content, id);
@@ -575,7 +561,7 @@ export class WorldRenderer {
       );
       const key = `${b.type}@${at.x},${at.y}r${b.rotation}:${input?.amount}:${output?.resource}${output?.amount}:${JSON.stringify(status)}:${cold}:${fuel}:${ringing}`;
       if (view.key !== key) {
-        if (b.type === 'chopping_block') drawChoppingBlock(view.graphics, layout, input, output);
+        if (b.type === 'chopping_block') drawChoppingBlock(view.graphics, layout, input);
         else if (b.type === 'torch' || b.type === 'brazier') {
           drawLight(view.graphics, layout, b.type, fuel);
         } else if (def.bell) drawBell(view.graphics, layout, ringing);
@@ -592,6 +578,8 @@ export class WorldRenderer {
         view.key = key;
         view.node.zIndex = depthOf(at.x + size.w - 0.5, at.y + size.h - 0.5);
       }
+      if (layout.yard)
+        this.syncYard(id, layout.yard, def.outputBuffer?.resources ?? [], b.stock, seen, shown);
     }
 
     for (const id of idsOf(site)) {
@@ -1177,11 +1165,43 @@ export class WorldRenderer {
     drawRoads(this.roads, tiles);
   }
 
-  /** Bare dirt under each stockpile, and a stack per tile that grows with its amount. */
+  /** The goods in Workplace `id`'s yard at `yard`: a pile per output it holds. */
+  private syncYard(
+    id: EntityId,
+    yard: Tile,
+    resources: readonly ResourceId[],
+    stock: Partial<Record<ResourceId, number>>,
+    seen: Set<string>,
+    shown: (x: number, y: number, w: number, h: number) => boolean,
+  ): void {
+    const goods = resources.map((resource) => ({ resource, amount: stock[resource] ?? 0 }));
+    const view = this.staticView(
+      `yard:${id}`,
+      seen,
+      staticBounds(yard.x, yard.y, 1, 1),
+      shown(yard.x, yard.y, 1, 1),
+    );
+    const key = `${yard.x},${yard.y}:${goods.map((g) => g.amount).join(',')}`;
+    if (view.key === key) return;
+    drawYardGoods(view.graphics, goods);
+    view.key = key;
+    const c = tileCenterWorld(yard.x, yard.y);
+    view.node.position.set(c.x, c.y);
+    view.node.zIndex = depthOf(yard.x + 0.5, yard.y + 0.5);
+  }
+
+  /**
+   * Bare dirt under each stockpile and each Workplace yard (built or a site's), and a stack per
+   * stockpile tile that grows with its amount.
+   */
   private syncStockpiles(state: GameState, seen: Set<string>): void {
     const { tile, stockpile } = state.components;
     const width = state.map.width;
     const rects: string[] = [];
+    for (const id of [...idsOf(state.components.building), ...idsOf(state.components.site)]) {
+      const yard = entityLayout(state, this.content, id)?.yard;
+      if (yard) rects.push(`${yard.x},${yard.y},1,1`);
+    }
     for (const id of idsOf(stockpile)) {
       const pile = stockpile[id];
       const at = tile[id];

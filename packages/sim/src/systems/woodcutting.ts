@@ -4,7 +4,7 @@
 import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
-import { gatherTargets, outputRoom, walkToNearest } from '../gathering';
+import { gatherTargets, walkToNearest } from '../gathering';
 import { doorTile } from '../grid';
 import { fellTree } from '../huntingGrounds';
 import { inReserve } from '../reserves';
@@ -12,6 +12,7 @@ import { staticChanged } from '../snapshot';
 import { workTicks } from '../speed';
 import type { EntityId, GameState } from '../state';
 import { isAtWork } from '../villagers';
+import { outputRoom } from '../yards';
 import { isAt, walkTo } from './movement';
 
 export function woodcuttingSystem(state: GameState, content: Content): void {

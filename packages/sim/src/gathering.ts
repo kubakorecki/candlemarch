@@ -1,24 +1,12 @@
-// Gatherers (woodcutters, foragers): what their Workplace's output buffer has room for, how far
-// they may go, and walking to the nearest map object worth gathering.
-import type { Content, ResourceId } from '@candlemarch/content';
+// Gatherers (woodcutters, foragers): how far they may go, and walking to the nearest map object
+// worth gathering.
+import type { Content } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { blockedGrid, standingTiles, tileIndex } from './grid';
 import { tileDistance } from './pathfinding';
 import type { EntityId, GameState, Tile } from './state';
 import { villagerTile, walkTo } from './systems/movement';
-
-/** Units of `resource` building `id`'s output buffer still has room for; 0 without a slot for it. */
-export function outputRoom(
-  state: GameState,
-  content: Content,
-  id: EntityId,
-  resource: ResourceId,
-): number {
-  const b = state.components.building[id];
-  const slot = b && content.buildings[b.type].outputBuffer?.find((s) => s.resource === resource);
-  if (!b || !slot) return 0;
-  return Math.max(0, slot.capacity - (b.stock[resource] ?? 0));
-}
+import { outputRoom } from './yards';
 
 /**
  * Whether `tile` is within building `id`'s work radius: at most `workRadius` tiles from its
@@ -42,7 +30,7 @@ export function inWorkRadius(
 
 /**
  * Map objects the workers of building `hutId` could gather from now, in ID order: of a type it
- * gathers, `canGather`, within its work radius, and yielding something its output buffer has room
+ * gathers, `canGather`, within its work radius, and yielding a whole gather its yard has room
  * for.
  */
 export function gatherTargets(
@@ -57,10 +45,10 @@ export function gatherTargets(
   return idsOf(mapObject).filter((t) => {
     const obj = mapObject[t];
     if (!obj || !gathers.includes(obj.type) || !canGather(t)) return false;
-    const resource = content.mapObjects[obj.type].resource;
+    const { resource, yieldPerGather } = content.mapObjects[obj.type];
     return (
       inWorkRadius(state, content, hutId, tile[t] as Tile) &&
-      outputRoom(state, content, hutId, resource) > 0
+      outputRoom(state, content, hutId, resource) >= yieldPerGather
     );
   });
 }

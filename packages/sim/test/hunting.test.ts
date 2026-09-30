@@ -214,10 +214,10 @@ describe('the hunter', () => {
     expect(s.components.position[2]).toEqual(s0.components.position[2]);
   });
 
-  it("waits while the lodge's buffer has no room for a catch", () => {
+  it("waits while the lodge's yard has no room for a whole catch", () => {
     const s0 = createInitialState(1, camp, content);
     const lodge = s0.components.building[LODGE];
-    if (lodge) lodge.stock = { meat: 5 }; // capacity 8: no room for 4 more
+    if (lodge) lodge.stock = { meat: 6 }; // the yard holds 10: no room for 4 meat and a hide
     const s = run(s0, 600);
     expect(s.components.hunter[HUNTER]?.kind).toBe('idle');
     expect(s.components.position[HUNTER]).toEqual(s0.components.position[HUNTER]);

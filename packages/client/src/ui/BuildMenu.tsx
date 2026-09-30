@@ -98,6 +98,7 @@ function Details({ tool }: { tool: Tool }) {
           <div>
             <span className="muted">Size</span>
             {building.size.w}×{building.size.h}
+            {building.outputBuffer && ', and a yard'}
           </div>
           {employs && (
             <div>

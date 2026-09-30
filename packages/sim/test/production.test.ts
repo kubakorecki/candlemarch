@@ -30,6 +30,7 @@ function yardWithLogs(logs: number): GameState {
   return s;
 }
 
+const CAP = content.logistics.yardCapacity;
 const firewood = (s: GameState) => s.components.building[blockOf(s)]?.stock.firewood ?? 0;
 const logsIn = (s: GameState) => s.components.building[blockOf(s)]?.input.logs ?? 0;
 
@@ -60,17 +61,20 @@ describe('production', () => {
     expect(firewood(done)).toBe(2);
   });
 
-  it('stops while the output buffer has no room for a batch, and resumes when it has', () => {
-    // Capacity 4 holds two batches of 2; the third log waits.
-    const full = run(yardWithLogs(3), 400);
-    expect(firewood(full)).toBe(4);
+  it('stops while the yard has no room for a batch, and resumes when it has', () => {
+    // Room for two batches of 2 in the yard; the third log waits.
+    const s0 = yardWithLogs(3);
+    const b0 = s0.components.building[blockOf(s0)];
+    if (b0) b0.stock.firewood = CAP - 4;
+    const full = run(s0, 400);
+    expect(firewood(full)).toBe(CAP);
     expect(logsIn(full)).toBe(1);
 
     // Room for one batch again, as if a carrier took some.
     const block = full.components.building[blockOf(full)];
-    if (block) block.stock.firewood = 2;
+    if (block) block.stock.firewood = CAP - 2;
     const resumed = run(full, 100);
-    expect(firewood(resumed)).toBe(4);
+    expect(firewood(resumed)).toBe(CAP);
     expect(logsIn(resumed)).toBe(0);
   });
 
@@ -162,7 +166,7 @@ const onPile = (s: GameState, resource: 'logs' | 'firewood') =>
     .reduce((n, g) => n + (g.resource === resource ? g.amount : 0), 0);
 
 /** A tick of the depot run at which the woodsplitter is splitting a log. */
-const SPLITTING_AT = 760;
+const SPLITTING_AT = 580;
 
 describe('production logistics', () => {
   it('brings logs to a construction site before the chopping block', () => {
@@ -196,7 +200,7 @@ describe('production logistics', () => {
     const block = s0.components.building[blockOf(s0)];
     if (block) {
       block.input.logs = 4;
-      block.stock.firewood = 4;
+      block.stock.firewood = CAP;
     }
     const first = runUntil(s0, (s) => carrierHaul(s) !== undefined, 50);
     const pile = idsOf(first.components.stockpile)[0];

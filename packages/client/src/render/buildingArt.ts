@@ -474,7 +474,8 @@ function wallHeight(size: { w: number; h: number }): number {
 
 /**
  * A finished building in world coordinates, drawn as its own kind of timber house (a generic log
- * cabin for any kind without art yet). `stock` is piled beside the door (the output buffer).
+ * cabin for any kind without art yet). `stock` is piled beside the door (a Granary's Food; a
+ * Workplace's goods are in its yard, drawn apart).
  */
 export function drawBuilding(
   g: Graphics,

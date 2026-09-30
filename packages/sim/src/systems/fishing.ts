@@ -1,5 +1,6 @@
 // Fishers: stand at their hut's door on the riverbank and fish, putting each catch straight into
-// the hut's output buffer. Fish never run out; nothing is caught while the river is frozen.
+// the hut's yard (its output buffer). Fish never run out; nothing is caught while the river is
+// frozen.
 
 import type { Content } from '@candlemarch/content';
 import { isRiverFrozen } from '../calendar';
@@ -8,6 +9,7 @@ import { doorTile } from '../grid';
 import { workTicks } from '../speed';
 import type { GameState } from '../state';
 import { isAtWork } from '../villagers';
+import { fitsInYard } from '../yards';
 import { isAt, walkTo } from './movement';
 
 export function fishingSystem(state: GameState, content: Content): void {
@@ -23,8 +25,9 @@ export function fishingSystem(state: GameState, content: Content): void {
     const origin = tile[hutId];
     if (!hut || !origin) continue;
     const def = content.buildings[hut.type];
-    const buffer = def.outputBuffer?.[0]; // a fishing building has one output: its catch
-    if (!def.fishes || !buffer) continue;
+    const fish = def.outputBuffer?.resources[0]; // a fishing building has one output: its catch
+    if (!def.fishes || !fish) continue;
+    const haul = [{ resource: fish, amount: def.fishes.yieldPerCatch }];
     const idle = () => {
       tasks[id] = { kind: 'idle', retryAt: state.tick + content.jobs[v.job].idleRetryTicks };
     };
@@ -37,9 +40,8 @@ export function fishingSystem(state: GameState, content: Content): void {
           if (!walkTo(state, content, id, [door])) idle();
           break;
         }
-        const stock = hut.stock[buffer.resource] ?? 0;
-        if (frozen || stock + def.fishes.yieldPerCatch > buffer.capacity) {
-          idle(); // frozen river, or buffer full: wait for a carrier to take something
+        if (frozen || !fitsInYard(state, content, hutId, haul)) {
+          idle(); // frozen river, or yard full: wait for a carrier to take something
           break;
         }
         // A hero's aura near the hut when the catch starts speeds up the whole catch.
@@ -54,8 +56,7 @@ export function fishingSystem(state: GameState, content: Content): void {
         }
         task.ticksLeft -= 1;
         if (task.ticksLeft > 0) break;
-        const stock = hut.stock[buffer.resource] ?? 0;
-        hut.stock[buffer.resource] = stock + def.fishes.yieldPerCatch;
+        hut.stock[fish] = (hut.stock[fish] ?? 0) + def.fishes.yieldPerCatch;
         tasks[id] = { kind: 'idle', retryAt: state.tick };
         break;
       }

@@ -161,6 +161,7 @@ describe('content validation', () => {
 
   it('logistics numbers are positive integers', () => {
     expectPositiveInt(content.logistics.stockpileTileCapacity, 'stockpileTileCapacity');
+    expectPositiveInt(content.logistics.yardCapacity, 'yardCapacity');
   });
 
   it('the calendar has whole-tick days with a night shorter than the day', () => {
@@ -280,9 +281,8 @@ describe('content validation', () => {
         expect(mapObjects, `${b.id}.gathers`).toHaveProperty(obj);
       }
       if (b.workRadius !== undefined) expectPositiveInt(b.workRadius, `${b.id}.workRadius`);
-      for (const slot of b.outputBuffer ?? []) {
-        expect(resources, `${b.id}.outputBuffer`).toHaveProperty(slot.resource);
-        expectPositiveInt(slot.capacity, `${b.id}.outputBuffer.${slot.resource}`);
+      for (const resource of b.outputBuffer?.resources ?? []) {
+        expect(resources, `${b.id}.outputBuffer`).toHaveProperty(resource);
       }
       for (const cost of b.construction?.cost ?? []) {
         expect(resources, `${b.id} cost`).toHaveProperty(cost.resource);
@@ -326,11 +326,14 @@ describe('content validation', () => {
           ).toBeGreaterThanOrEqual(input.amount);
         }
         for (const output of recipes[id].outputs) {
-          const slot = b.outputBuffer?.find((s) => s.resource === output.resource);
-          expect(slot?.capacity ?? 0, `${b.id} holds ${id}'s output`).toBeGreaterThanOrEqual(
-            output.amount,
+          expect(b.outputBuffer?.resources, `${b.id} holds ${id}'s output`).toContain(
+            output.resource,
           );
         }
+        const batch = recipes[id].outputs.reduce((sum, o) => sum + o.amount, 0);
+        expect(batch, `${b.id}'s yard holds a batch of ${id}`).toBeLessThanOrEqual(
+          content.logistics.yardCapacity,
+        );
       }
     }
   });
@@ -346,6 +349,24 @@ describe('content validation', () => {
       // The door must touch the footprint, including diagonally.
       const touches = x >= -1 && x <= b.size.w && y >= -1 && y <= b.size.h;
       expect(touches, `${b.id} door not adjacent`).toBe(true);
+    }
+  });
+
+  it('a Workplace with an output has a yard: a tile touching its side, beside the door', () => {
+    for (const b of Object.values(buildings)) {
+      if (!b.outputBuffer) continue;
+      expect(b.outputBuffer.resources.length, `${b.id} makes something`).toBeGreaterThan(0);
+      expect(b.employs.length, `${b.id} employs someone`).toBeGreaterThan(0);
+      const { x, y } = b.outputBuffer.yard;
+      const { w, h } = b.size;
+      // Outside the body, sharing a side with it (not only a corner), and not the door.
+      const dx = Math.max(0, -x, x - (w - 1));
+      const dy = Math.max(0, -y, y - (h - 1));
+      expect(dx + dy, `${b.id} yard beside the building`).toBe(1);
+      expect({ x, y }, `${b.id} yard not the door`).not.toEqual(b.door);
+      // Next to the door tile, including diagonally.
+      const nearDoor = Math.max(Math.abs(x - b.door.x), Math.abs(y - b.door.y)) === 1;
+      expect(nearDoor, `${b.id} yard beside the door`).toBe(true);
     }
   });
 
@@ -371,9 +392,9 @@ describe('content validation', () => {
     for (const b of Object.values(buildings)) {
       for (const obj of b.gathers ?? []) {
         const resource = mapObjects[obj].resource;
-        const slot = b.outputBuffer?.find((s) => s.resource === resource);
-        expect(slot?.capacity ?? 0, `${b.id} holds ${resource}`).toBeGreaterThanOrEqual(
-          mapObjects[obj].yieldPerGather,
+        expect(b.outputBuffer?.resources, `${b.id} holds ${resource}`).toContain(resource);
+        expect(mapObjects[obj].yieldPerGather, `${b.id}'s yard holds a gather`).toBeLessThanOrEqual(
+          content.logistics.yardCapacity,
         );
       }
     }
@@ -386,9 +407,9 @@ describe('content validation', () => {
       expectPositiveInt(b.fishes.yieldPerCatch, `${b.id}.fishes.yieldPerCatch`);
       expect(b.doorOnRiverbank, `${b.id}.doorOnRiverbank`).toBe(true);
       expect(b.employs.length, `${b.id} employs someone`).toBeGreaterThan(0);
-      expect(b.outputBuffer?.length, `${b.id} has one output`).toBe(1);
-      expect(b.outputBuffer?.[0]?.capacity ?? 0, `${b.id} holds a catch`).toBeGreaterThanOrEqual(
-        b.fishes.yieldPerCatch,
+      expect(b.outputBuffer?.resources.length, `${b.id} has one output`).toBe(1);
+      expect(b.fishes.yieldPerCatch, `${b.id}'s yard holds a catch`).toBeLessThanOrEqual(
+        content.logistics.yardCapacity,
       );
     }
   });
@@ -403,9 +424,12 @@ describe('content validation', () => {
       for (const c of b.hunts.catch) {
         expect(resources, `${b.id}.hunts.catch`).toHaveProperty(c.resource);
         expectPositiveInt(c.amount, `${b.id}.hunts.catch.${c.resource}`);
-        const slot = b.outputBuffer?.find((s) => s.resource === c.resource);
-        expect(slot?.capacity ?? 0, `${b.id} holds ${c.resource}`).toBeGreaterThanOrEqual(c.amount);
+        expect(b.outputBuffer?.resources, `${b.id} holds ${c.resource}`).toContain(c.resource);
       }
+      const bag = b.hunts.catch.reduce((sum, c) => sum + c.amount, 0);
+      expect(bag, `${b.id}'s yard holds a whole catch`).toBeLessThanOrEqual(
+        content.logistics.yardCapacity,
+      );
     }
   });
 

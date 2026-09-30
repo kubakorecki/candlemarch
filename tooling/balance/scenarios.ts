@@ -35,7 +35,7 @@ function campLayout({ firewood }: { firewood: boolean }): Record<number, Command
       { type: 'placeBuilding', building: 'fishers_hut', x: 13, y: 18 },
     ],
     [dawnOf(2)]: [
-      { type: 'placeBuilding', building: 'hunters_lodge', x: 14, y: 12 },
+      { type: 'placeBuilding', building: 'hunters_lodge', x: 13, y: 12 },
       { type: 'placeStockpile', x: 9, y: 11, w: 3, h: 2 },
     ],
     [dawnOf(5)]: [

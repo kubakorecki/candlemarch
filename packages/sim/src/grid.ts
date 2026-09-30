@@ -91,15 +91,20 @@ export function isRiverbank(state: GameState, content: Content, tile: Tile): boo
   ].some((n) => terrainAt(state.map, n) === 'river');
 }
 
-/** Where a placed building stands: its size and tiles, and the tile in front of its door. */
+/**
+ * Where a placed building stands: its body, its footprint tiles, the tile in front of its door and
+ * its yard.
+ */
 export interface BuildingLayout {
-  /** Smallest x and y of the footprint. */
+  /** Smallest x and y of the body (the building without its yard). */
   origin: Tile;
-  /** Size in tiles after turning: a quarter turn swaps `w` and `h`. */
+  /** Size of the body in tiles after turning: a quarter turn swaps `w` and `h`. */
   size: { w: number; h: number };
-  /** Footprint tiles, row by row. */
+  /** Footprint tiles: the body's row by row, then the yard's. */
   tiles: Tile[];
   door: Tile;
+  /** A Workplace's yard, where its output piles up (`outputBuffer`), or null without one. */
+  yard: Tile | null;
 }
 
 /**
@@ -114,16 +119,23 @@ export function buildingLayout(
 ): BuildingLayout {
   let { w, h } = def.size;
   let door = { x: def.door.x, y: def.door.y };
+  const yardAt = def.outputBuffer?.yard;
+  let yard = yardAt ? { x: yardAt.x, y: yardAt.y } : null;
   for (let turn = 0; turn < rotation; turn++) {
     // Clockwise with y pointing south: the w×h box becomes h×w and (x, y) goes to (h−1−y, x).
     door = { x: h - 1 - door.y, y: door.x };
+    if (yard) yard = { x: h - 1 - yard.y, y: yard.x };
     [w, h] = [h, w];
   }
+  const yardTile = yard && { x: origin.x + yard.x, y: origin.y + yard.y };
+  const tiles = rectTiles(origin, w, h);
+  if (yardTile) tiles.push(yardTile);
   return {
     origin: { x: origin.x, y: origin.y },
     size: { w, h },
-    tiles: rectTiles(origin, w, h),
+    tiles,
     door: { x: origin.x + door.x, y: origin.y + door.y },
+    yard: yardTile,
   };
 }
 

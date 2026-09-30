@@ -1,10 +1,9 @@
 // Hunters: walk into the nearest Hunting ground their lodge hunts that has Game, hunt, roll
 // for a catch with the seeded PRNG, and walk back to the lodge, with the catch or empty-handed.
 
-import type { Content, ResourceAmount } from '@candlemarch/content';
+import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
-import { outputRoom } from '../gathering';
 import { blockedGrid, doorTile, tileIndex } from '../grid';
 import { groundTilesInReach, huntChancePermille, lodgeGrounds, loseGame } from '../huntingGrounds';
 import { tileDistance } from '../pathfinding';
@@ -12,6 +11,7 @@ import { randomInt } from '../rng';
 import { workTicks } from '../speed';
 import type { EntityId, GameState, Tile } from '../state';
 import { isAtWork } from '../villagers';
+import { fitsInYard } from '../yards';
 import { isAt, villagerTile, walkTo } from './movement';
 
 /**
@@ -50,16 +50,6 @@ function walkToGround(
   return null;
 }
 
-/** Whether lodge `lodgeId`'s output buffer has room for every part of `bag`. */
-function hasRoomFor(
-  state: GameState,
-  content: Content,
-  lodgeId: EntityId,
-  bag: readonly ResourceAmount[],
-): boolean {
-  return bag.every((c) => outputRoom(state, content, lodgeId, c.resource) >= c.amount);
-}
-
 export function huntingSystem(state: GameState, content: Content): void {
   const { hunter: tasks, villager, building, huntingGround, path, tile } = state.components;
   const night = isNight(state.tick, content);
@@ -79,8 +69,8 @@ export function huntingSystem(state: GameState, content: Content): void {
     switch (task.kind) {
       case 'idle': {
         if (state.tick < task.retryAt) break;
-        // Buffer too full for a catch, or no Game in reach: wait and look again.
-        const ground = hasRoomFor(state, content, lodgeId, def.hunts.catch)
+        // Yard too full for a whole catch, or no Game in reach: wait and look again.
+        const ground = fitsInYard(state, content, lodgeId, def.hunts.catch)
           ? walkToGround(state, content, id, lodgeId)
           : null;
         if (ground === null) {
@@ -118,7 +108,7 @@ export function huntingSystem(state: GameState, content: Content): void {
           break;
         }
         // Wait at the door for room, except after Dusk: then the catch goes in even if it's full.
-        if (!hasRoomFor(state, content, lodgeId, task.bag) && !night) break;
+        if (!fitsInYard(state, content, lodgeId, task.bag) && !night) break;
         for (const c of task.bag)
           lodge.stock[c.resource] = (lodge.stock[c.resource] ?? 0) + c.amount;
         tasks[id] = { kind: 'idle', retryAt: state.tick };

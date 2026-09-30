@@ -228,6 +228,8 @@ export interface RoadDef {
 export interface LogisticsDef {
   /** Units one stockpile tile holds. */
   stockpileTileCapacity: number;
+  /** Units a Workplace yard holds, all its outputs together (`BuildingDef.outputBuffer`). */
+  yardCapacity: number;
 }
 
 export interface SeasonDef {
@@ -614,8 +616,12 @@ export interface BuildingDef {
   plants?: PlantsDef;
   /** Its door must be on a riverbank tile. */
   doorOnRiverbank?: boolean;
-  /** Where its workers drop what they produce, if anything: a capacity per resource. */
-  outputBuffer?: { resource: ResourceId; capacity: number }[];
+  /**
+   * What its workers produce, if anything, and its yard: the 1×1 tile of the building beside its
+   * door where they drop it (an offset from the origin outside `size`, turning with the building).
+   * The yard holds `logistics.yardCapacity` of `resources` in total; Carriers pick up at the door.
+   */
+  outputBuffer?: { resources: ResourceId[]; yard: { x: number; y: number } };
   /** Recipes its workers work through, in order of preference. Makes the building a workshop. */
   recipes?: RecipeId[];
   /** What a workshop holds of each of its recipes' inputs. Carriers fill it. */

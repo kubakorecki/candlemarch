@@ -172,13 +172,12 @@ function pickupTask(
   const building = state.components.building[source];
   if (building) {
     const door = entityDoor(state, content, source);
-    const slot = content.buildings[building.type].outputBuffer?.find(
-      ({ resource }) =>
-        unclaimedAt(state, source, resource, null) > 0 && roomFor(content, hero, resource) > 0,
+    const resource = content.buildings[building.type].outputBuffer?.resources.find(
+      (r) => unclaimedAt(state, source, r, null) > 0 && roomFor(content, hero, r) > 0,
     );
-    if (!slot || !door) return null;
+    if (!resource || !door) return null;
     const tile = tileIndex(state.map, door.x, door.y);
-    return { kind: 'pickup', source, resource: slot.resource, tile };
+    return { kind: 'pickup', source, resource, tile };
   }
   const cacheTile = state.components.cache[source] ? state.components.tile[source] : undefined;
   for (const resource of Object.keys(content.resources) as ResourceId[]) {

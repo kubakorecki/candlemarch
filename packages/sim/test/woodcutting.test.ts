@@ -37,10 +37,10 @@ function treesLeft(s: GameState): number {
 }
 
 describe('woodcutting', () => {
-  it('fills the output buffer up to its capacity, then waits', () => {
+  it('fills the yard up to its capacity, then waits', () => {
     // No construction site, so nothing takes logs away.
     const end = run(createInitialState(1, meadowMap, content), 2000);
-    expect(woodcuttersHutStock(end)).toBe(4);
+    expect(woodcuttersHutStock(end)).toBe(content.logistics.yardCapacity);
     const w = woodcutter(end);
     expect(w.task?.kind).toBe('idle');
     expect(w.villager?.carrying).toBeNull();
@@ -103,12 +103,18 @@ describe("the woodcutter's hut", () => {
     villagers: [{ job: 'carrier', x: 1, y: 5 }],
   };
 
-  it('is one tile with its door straight ahead, on every turn, and works', () => {
+  it('is one tile with its door straight ahead and its yard beside it, on every turn, and works', () => {
     const doors: Record<Rotation, { x: number; y: number }> = {
       0: { x: 5, y: 6 },
       1: { x: 4, y: 5 },
       2: { x: 5, y: 4 },
       3: { x: 6, y: 5 },
+    };
+    const yards: Record<Rotation, { x: number; y: number }> = {
+      0: { x: 6, y: 5 },
+      1: { x: 5, y: 6 },
+      2: { x: 4, y: 5 },
+      3: { x: 5, y: 4 },
     };
     for (const rotation of [0, 1, 2, 3] as const) {
       const place: Command = {
@@ -121,8 +127,10 @@ describe("the woodcutter's hut", () => {
       const s0 = run(createInitialState(1, clearing, content), 1, { 0: [place] });
       const site = idsOf(s0.components.site)[0] as number;
       expect(entityLayout(s0, content, site), `turn ${rotation}`).toMatchObject({
-        tiles: [{ x: 5, y: 5 }],
+        size: { w: 1, h: 1 },
+        tiles: [{ x: 5, y: 5 }, yards[rotation]],
         door: doors[rotation],
+        yard: yards[rotation],
       });
       const working = runUntil(s0, (s) => woodcuttersHutStock(s) > 0, 5000);
       expect(woodcuttersHutStock(working), `turn ${rotation}`).toBeGreaterThan(0);

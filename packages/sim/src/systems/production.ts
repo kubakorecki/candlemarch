@@ -1,7 +1,7 @@
 // Workshops: a crafter at the door takes a recipe's inputs from the input buffer, works, and puts
 // its outputs in the output buffer. It waits while inputs are missing or the outputs won't fit.
 
-import type { Content, RecipeId, ResourceId } from '@candlemarch/content';
+import type { Content, RecipeId, ResourceAmount, ResourceId } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { doorTile } from '../grid';
 import { lightDef, lightFuelIn } from '../lights';
@@ -9,6 +9,7 @@ import { workTicks } from '../speed';
 import type { EntityId, GameState } from '../state';
 import { isAtWork } from '../villagers';
 import { fuelIn } from '../warmth';
+import { fitsInYard } from '../yards';
 import { isAt, walkTo } from './movement';
 
 /**
@@ -38,26 +39,26 @@ export function isPaused(state: GameState, content: Content, building: EntityId)
   return target !== undefined && villageStock(state, content, target.resource) >= target.amount;
 }
 
-/** Units of `resource` that crafters working at `building` will put in its output buffer. */
-function outputInProgress(
+/** What crafters working at `building` will put in its yard once their batches finish. */
+function outputsInProgress(
   state: GameState,
   content: Content,
   building: EntityId,
-  resource: ResourceId,
-): number {
+): ResourceAmount[] {
   const { crafter, villager } = state.components;
-  let total = 0;
+  const result: ResourceAmount[] = [];
   for (const id of idsOf(crafter)) {
     const task = crafter[id];
     if (task?.kind !== 'working' || villager[id]?.workplace !== building) continue;
-    for (const out of content.recipes[task.recipe].outputs) {
-      if (out.resource === resource) total += out.amount;
-    }
+    result.push(...content.recipes[task.recipe].outputs);
   }
-  return total;
+  return result;
 }
 
-/** What stops `recipe` starting at workshop `building` now: inputs it lacks, outputs with no room. */
+/**
+ * What stops `recipe` starting at workshop `building` now: inputs it lacks, and every output when
+ * the batch wouldn't fit whole in the yard alongside what's there and work already under way.
+ */
 export function recipeBlockers(
   state: GameState,
   content: Content,
@@ -66,21 +67,11 @@ export function recipeBlockers(
 ): { missing: ResourceId[]; noRoom: ResourceId[] } {
   const b = state.components.building[building];
   if (!b) return { missing: [], noRoom: [] };
-  const def = content.buildings[b.type];
-  const capacity = (resource: ResourceId) =>
-    def.outputBuffer?.find((s) => s.resource === resource)?.capacity ?? 0;
   const { inputs, outputs } = content.recipes[recipe];
+  const all = [...outputsInProgress(state, content, building), ...outputs];
   return {
     missing: inputs.filter((i) => (b.input[i.resource] ?? 0) < i.amount).map((i) => i.resource),
-    noRoom: outputs
-      .filter(
-        (o) =>
-          (b.stock[o.resource] ?? 0) +
-            outputInProgress(state, content, building, o.resource) +
-            o.amount >
-          capacity(o.resource),
-      )
-      .map((o) => o.resource),
+    noRoom: fitsInYard(state, content, building, all) ? [] : outputs.map((o) => o.resource),
   };
 }
 

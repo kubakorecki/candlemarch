@@ -3,7 +3,7 @@
 import type { Content } from '@candlemarch/content';
 import { isKnockedOut } from './combat';
 import { idsOf } from './entities';
-import { footprint, tileOfPoint } from './grid';
+import { buildingLayout, rectTiles, tileOfPoint } from './grid';
 import { heroOf } from './hero';
 import type { EntityId, GameState } from './state';
 
@@ -26,7 +26,9 @@ export function workSpeedPercent(state: GameState, content: Content, building: E
   if (id === null || !hero || !pos || isKnockedOut(state, id)) return 100;
   const { radiusTiles, speedPercent } = content.heroes[hero.type].aura;
   const at = tileOfPoint(pos);
-  const inRange = footprint(def, origin, b.rotation).some(
+  // Measured from the building itself, not its yard.
+  const { size } = buildingLayout(def, origin, b.rotation);
+  const inRange = rectTiles(origin, size.w, size.h).some(
     (t) => (t.x - at.x) ** 2 + (t.y - at.y) ** 2 <= radiusTiles * radiusTiles,
   );
   return inRange ? speedPercent : 100;

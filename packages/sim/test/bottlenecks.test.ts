@@ -41,7 +41,7 @@ describe('workplace status (why a Workplace stands idle)', () => {
   });
 
   it('says a workshop whose output buffer has no room for a batch is output full', () => {
-    const s = yardWith(1, 4);
+    const s = yardWith(1, content.logistics.yardCapacity - 1);
     expect(workplaceStatus(s, content, blockOf(s))).toEqual({
       kind: 'outputFull',
       resources: ['firewood'],
@@ -93,13 +93,17 @@ describe('workplace status (why a Workplace stands idle)', () => {
       return { s, id };
     }
 
-    it("says a hunter's lodge without room for a catch is output full", () => {
-      const { s, id } = gatherer('hunters_lodge', { hides: 4 });
-      expect(workplaceStatus(s, content, id)).toEqual({ kind: 'outputFull', resources: ['hides'] });
+    it("says a hunter's lodge without room for a whole catch is output full", () => {
+      // 6 of 10 held: no room for 4 meat and a hide.
+      const { s, id } = gatherer('hunters_lodge', { meat: 4, hides: 2 });
+      expect(workplaceStatus(s, content, id)).toEqual({
+        kind: 'outputFull',
+        resources: ['meat', 'hides'],
+      });
     });
 
     it("says a fisher's hut without room for a fish is output full", () => {
-      const { s, id } = gatherer('fishers_hut', { fish: 4 });
+      const { s, id } = gatherer('fishers_hut', { fish: content.logistics.yardCapacity });
       expect(workplaceStatus(s, content, id)).toEqual({ kind: 'outputFull', resources: ['fish'] });
     });
 

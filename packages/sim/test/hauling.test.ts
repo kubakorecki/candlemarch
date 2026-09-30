@@ -135,14 +135,14 @@ describe('hauling on roads (job dispatch)', () => {
 });
 
 describe('hauling to stockpiles (job dispatch)', () => {
-  // A woodcutter's hut at (1,1), a hunter's lodge at (9,0) and a 3×1 stockpile between them, with
+  // A woodcutter's hut at (1,1), a hunter's lodge at (8,0) and a 3×1 stockpile between them, with
   // one Carrier. Neither Workplace is staffed: the test fills their buffers by hand.
   const yard: MapDef = {
     name: 'yard',
     rows: Array(6).fill('..........'),
     buildings: [
       { type: 'woodcutters_hut', x: 1, y: 1 },
-      { type: 'hunters_lodge', x: 9, y: 0 },
+      { type: 'hunters_lodge', x: 8, y: 0 },
     ],
     stockpiles: [{ x: 4, y: 4, w: 3, h: 1 }],
     villagers: [{ job: 'carrier', x: 5, y: 3 }],

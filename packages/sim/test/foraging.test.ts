@@ -190,12 +190,10 @@ describe('the forager', () => {
     expect(amount(s, 1)).toBe(SPRING);
   });
 
-  it("fills the hut's output buffer, and waits while it's full", () => {
+  it("fills the hut's yard, and waits while it's full", () => {
     const s0 = createInitialState(1, forest, content);
     const hut = s0.components.building[HUT];
-    const capacity =
-      content.buildings.foragers_hut.outputBuffer?.find((b) => b.resource === 'berries')
-        ?.capacity ?? 0;
+    const capacity = content.logistics.yardCapacity;
     if (hut) hut.stock.berries = capacity;
     const s = run(s0, 400);
     expect(amount(s, NEAR_BUSH)).toBe(SPRING);

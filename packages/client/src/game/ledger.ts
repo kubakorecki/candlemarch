@@ -23,7 +23,7 @@ export function ledgerGoods(
   goods: Partial<Record<ResourceId, number>>,
 ): ResourceId[] {
   const made = new Set(
-    Object.values(content.buildings).flatMap((b) => (b.outputBuffer ?? []).map((s) => s.resource)),
+    Object.values(content.buildings).flatMap((b) => b.outputBuffer?.resources ?? []),
   );
   return (Object.keys(content.resources) as ResourceId[]).filter(
     (r) => isStockpileGood(content, r) && (made.has(r) || (goods[r] ?? 0) > 0),

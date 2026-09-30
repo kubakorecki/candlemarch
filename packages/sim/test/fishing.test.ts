@@ -37,8 +37,12 @@ describe("fisher's hut placement", () => {
       { ...bank, rows: ['...~...', '...~...', '...~...', '...~...'] },
       content,
     );
-    expect(canPlaceBuilding(s, content, 'fishers_hut', 2, 1)).toBe(true); // door (2,2), west bank
-    expect(canPlaceBuilding(s, content, 'fishers_hut', 4, 1)).toBe(true); // door (4,2), east bank
+    // East bank: door (4,2), yard (5,1).
+    expect(canPlaceBuilding(s, content, 'fishers_hut', 4, 1)).toBe(true);
+    // West bank: unturned, its yard (3,1) would stand in the river; turned twice, the door (2,0)
+    // is on the bank and the yard (1,1) on land.
+    expect(canPlaceBuilding(s, content, 'fishers_hut', 2, 1)).toBe(false);
+    expect(canPlaceBuilding(s, content, 'fishers_hut', 2, 1, 2)).toBe(true);
     expect(canPlaceBuilding(s, content, 'fishers_hut', 1, 1)).toBe(false);
   });
 
@@ -58,7 +62,7 @@ const fishery: MapDef = {
 };
 
 const fishes = content.buildings.fishers_hut.fishes ?? { catchTicks: 0, yieldPerCatch: 0 };
-const capacity = content.buildings.fishers_hut.outputBuffer?.[0]?.capacity ?? 0;
+const capacity = content.logistics.yardCapacity;
 
 function hutFish(s: GameState): number {
   const hut = idsOf(s.components.building).find(
@@ -76,9 +80,15 @@ describe('fishing', () => {
     expect(hutFish(run(s0, 2 * fishes.catchTicks + 2))).toBe(2 * fishes.yieldPerCatch);
   });
 
-  it('stops while the buffer is full, and Food never goes to a Stockpile', () => {
-    const s0 = createInitialState(1, fishery, content);
-    const full = runUntil(s0, (s) => hutFish(s) === capacity, 10 * fishes.catchTicks);
+  it('stops while the yard is full, and Food never goes to a Stockpile', () => {
+    // One short of full: a day's catches don't outrun spoilage at every Dawn.
+    const almost = [{ resource: 'fish' as const, amount: capacity - 1 }];
+    const s0 = createInitialState(
+      1,
+      { ...fishery, buildings: [{ type: 'fishers_hut', x: 0, y: 1, stock: almost }] },
+      content,
+    );
+    const full = runUntil(s0, (s) => hutFish(s) === capacity, 2 * fishes.catchTicks);
     expect(hutFish(full)).toBe(capacity);
     const later = run(full, 3 * fishes.catchTicks);
     expect(hutFish(later)).toBe(capacity);

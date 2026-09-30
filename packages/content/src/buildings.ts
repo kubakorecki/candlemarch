@@ -11,7 +11,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     gathers: ['tree'],
     // A radius so the placement preview can warn when it reaches into a Hunting ground.
     workRadius: 8,
-    outputBuffer: [{ resource: 'logs', capacity: 4 }],
+    outputBuffer: { resources: ['logs'], yard: { x: 1, y: 0 } },
     construction: {
       cost: [{ resource: 'logs', amount: 6 }],
       buildTicks: 200, // 10 s
@@ -27,7 +27,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     doorOnRiverbank: true,
     employs: [{ job: 'fisher', count: 1 }],
     fishes: { catchTicks: 400, yieldPerCatch: 1 }, // 20 s a fish
-    outputBuffer: [{ resource: 'fish', capacity: 4 }],
+    outputBuffer: { resources: ['fish'], yard: { x: 1, y: 0 } },
     construction: {
       cost: [{ resource: 'logs', amount: 6 }],
       buildTicks: 200, // 10 s
@@ -42,11 +42,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     employs: [{ job: 'forager', count: 1 }],
     gathers: ['berry_bush', 'mushroom_patch'],
     workRadius: 8,
-    // Two of the forager's baskets of each.
-    outputBuffer: [
-      { resource: 'berries', capacity: 6 },
-      { resource: 'mushrooms', capacity: 6 },
-    ],
+    outputBuffer: { resources: ['berries', 'mushrooms'], yard: { x: 1, y: 0 } },
     construction: {
       cost: [{ resource: 'logs', amount: 6 }],
       buildTicks: 200, // 10 s
@@ -67,10 +63,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
         { resource: 'hides', amount: 1 },
       ],
     },
-    outputBuffer: [
-      { resource: 'meat', capacity: 8 },
-      { resource: 'hides', capacity: 4 },
-    ],
+    outputBuffer: { resources: ['meat', 'hides'], yard: { x: 1, y: 0 } },
     construction: {
       cost: [{ resource: 'logs', amount: 8 }],
       buildTicks: 200, // 10 s
@@ -125,7 +118,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     employs: [{ job: 'woodsplitter', count: 1 }],
     recipes: ['split_logs'],
     inputBuffer: [{ resource: 'logs', capacity: 4 }],
-    outputBuffer: [{ resource: 'firewood', capacity: 4 }],
+    outputBuffer: { resources: ['firewood'], yard: { x: 1, y: 0 } },
     // Enough not to turn every log into firewood (spec, Firewood). Standing orders make it editable in M5.
     stockTarget: { resource: 'firewood', amount: 40 },
     construction: {

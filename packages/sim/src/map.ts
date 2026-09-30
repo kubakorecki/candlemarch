@@ -88,7 +88,7 @@ export interface MapDef {
 
 /**
  * Whether a `type` building can start holding `stock`: Food up to a Granary's capacity, fuel up
- * to a House's buffer or what a light holds, or goods up to a Workplace's output slots.
+ * to a House's buffer or what a light holds, or its outputs up to what a Workplace's yard holds.
  */
 function holdsAtStart(
   content: Content,
@@ -107,9 +107,9 @@ function holdsAtStart(
   }
   const { light } = def;
   if (light) return entries.every(([r, amount]) => r === light.fuel && amount <= light.holds);
-  return entries.every(([r, amount]) =>
-    (def.outputBuffer ?? []).some((slot) => slot.resource === r && amount <= slot.capacity),
-  );
+  const total = entries.reduce((sum, [, amount]) => sum + amount, 0);
+  const makes = def.outputBuffer?.resources ?? [];
+  return entries.every(([r]) => makes.includes(r)) && total <= content.logistics.yardCapacity;
 }
 
 /** The hero every map spawns, until the player picks one at game start. */

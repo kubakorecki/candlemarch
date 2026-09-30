@@ -60,7 +60,7 @@ export function listSupplies(state: GameState, content: Content): Supply[] {
   for (const id of idsOf(state.components.building)) {
     const b = state.components.building[id];
     if (!b) continue;
-    for (const { resource } of content.buildings[b.type].outputBuffer ?? []) {
+    for (const resource of content.buildings[b.type].outputBuffer?.resources ?? []) {
       const amount = b.stock[resource] ?? 0;
       if (amount > 0) result.push({ source: id, kind: 'building', resource, amount });
     }

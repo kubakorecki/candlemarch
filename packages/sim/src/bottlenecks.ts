@@ -2,11 +2,11 @@
 // readable"). Derived each time it's asked, never stored.
 import type { Content, ResourceId } from '@candlemarch/content';
 import { idsOf } from './entities';
-import { outputRoom } from './gathering';
 import { lodgeGrounds } from './huntingGrounds';
 import type { EntityId, GameState } from './state';
 import { isPaused, recipeBlockers } from './systems/production';
 import { openPositions } from './systems/staffing';
+import { fitsInYard, outputRoom } from './yards';
 
 export type WorkplaceStatus =
   /** A position staffing would fill is empty (within the worker limit). */
@@ -55,9 +55,9 @@ export function workplaceStatus(
 }
 
 /**
- * What a gathering Workplace's output buffer has no room for, when that stops its worker: any
- * part of a hunter's catch, a fisher's catch, or everything a gatherer gathers (a forager with
- * room for mushrooms still works). Empty for any other building.
+ * What a gathering Workplace's yard has no room for, when that stops its worker: a hunter's
+ * whole catch, a fisher's catch, or everything a gatherer gathers (a basket of mushrooms that
+ * still fits keeps a forager working). Empty for any other building.
  */
 function gathererNoRoom(state: GameState, content: Content, building: EntityId): ResourceId[] {
   const b = state.components.building[building];
@@ -65,12 +65,12 @@ function gathererNoRoom(state: GameState, content: Content, building: EntityId):
   const def = content.buildings[b.type];
   const full = (resource: ResourceId, amount: number) =>
     outputRoom(state, content, building, resource) < amount;
-  if (def.hunts)
-    return def.hunts.catch.filter((c) => full(c.resource, c.amount)).map((c) => c.resource);
-  const catchSlot = def.outputBuffer?.[0];
-  if (def.fishes && catchSlot) {
-    return full(catchSlot.resource, def.fishes.yieldPerCatch) ? [catchSlot.resource] : [];
+  if (def.hunts) {
+    const { catch: bag } = def.hunts;
+    return fitsInYard(state, content, building, bag) ? [] : bag.map((c) => c.resource);
   }
+  const fish = def.outputBuffer?.resources[0];
+  if (def.fishes && fish) return full(fish, def.fishes.yieldPerCatch) ? [fish] : [];
   const yields = new Map<ResourceId, number>();
   for (const type of def.gathers ?? []) {
     const obj = content.mapObjects[type];

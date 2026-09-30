@@ -60,6 +60,7 @@ import {
   winterIn,
   workersAt,
   workplaceStatus,
+  yardAmount,
 } from '@candlemarch/sim';
 import { CameraInput } from '../render/camera';
 import { type CameraView, gridToWorld, screenToTile } from '../render/iso';
@@ -186,8 +187,15 @@ export interface GroundInfo {
 export interface BuildingInfo {
   type: BuildingId;
   name: string;
-  /** Its output buffers: what it holds of each resource, and how much fits. */
-  holds: { resource: ResourceId; amount: number; capacity: number }[];
+  /**
+   * Its yard (output buffer), or null without one: all it holds, how much fits in total, and
+   * what it holds of each output.
+   */
+  yard: {
+    amount: number;
+    capacity: number;
+    goods: { resource: ResourceId; amount: number }[];
+  } | null;
   /** Hunting grounds its hunters reach; empty unless it hunts. */
   grounds: GroundInfo[];
   /** The ground a hunter's lodge is set to hunt, or null for the nearest with Game. */
@@ -1173,10 +1181,15 @@ function workplaceAt(state: GameState, tile: Tile): EntityId | null {
   for (const id of idsOf(building)) {
     const b = building[id];
     if (!b || maxWorkers(content, b.type) === 0) continue;
-    const layout = entityLayout(state, content, id);
-    if (layout && covers(layout.origin, layout.size.w, layout.size.h, tile)) return id;
+    if (onFootprint(state, id, tile)) return id;
   }
   return null;
+}
+
+/** Whether `tile` is one of building or site `id`'s footprint tiles, its yard included. */
+function onFootprint(state: GameState, id: EntityId, tile: Tile): boolean {
+  const tiles = entityLayout(state, content, id)?.tiles ?? [];
+  return tiles.some((t) => t.x === tile.x && t.y === tile.y);
 }
 
 /** The forage patch on `tile`, if any. */
@@ -1283,6 +1296,18 @@ function buildingNames(state: GameState): Record<EntityId, string> {
   return names;
 }
 
+/** What building `id`'s yard holds, or null without one. */
+function yardInfo(state: GameState, id: EntityId): BuildingInfo['yard'] {
+  const b = state.components.building[id];
+  const output = b && content.buildings[b.type].outputBuffer;
+  if (!b || !output) return null;
+  return {
+    amount: yardAmount(state, content, id),
+    capacity: content.logistics.yardCapacity,
+    goods: output.resources.map((resource) => ({ resource, amount: b.stock[resource] ?? 0 })),
+  };
+}
+
 /** Workplace `id`'s name, workers and worker limit for the panel, or null if it's gone. */
 function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
   const b = state.components.building[id];
@@ -1292,11 +1317,7 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
   return {
     type: b.type,
     name: buildingNames(state)[id] ?? content.buildings[b.type].name,
-    holds: (content.buildings[b.type].outputBuffer ?? []).map(({ resource, capacity }) => ({
-      resource,
-      amount: b.stock[resource] ?? 0,
-      capacity,
-    })),
+    yard: yardInfo(state, id),
     grounds: content.buildings[b.type].hunts
       ? groundsInReach(state, content, id).flatMap((g) => groundInfo(state, g) ?? [])
       : [],
@@ -1337,10 +1358,7 @@ function workersView(state: GameState): WorkersView {
 function demolishCommand(state: GameState, tile: Tile): Command | null {
   const pile = stockpileAt(state, tile);
   if (pile !== null) return { type: 'removeStockpile', id: pile };
-  const on = (id: EntityId) => {
-    const layout = entityLayout(state, content, id);
-    return layout !== null && covers(layout.origin, layout.size.w, layout.size.h, tile);
-  };
+  const on = (id: EntityId) => onFootprint(state, id, tile);
   const site = idsOf(state.components.site).find(on);
   if (site !== undefined) return { type: 'cancelConstruction', siteId: site };
   const building = idsOf(state.components.building).find(on);

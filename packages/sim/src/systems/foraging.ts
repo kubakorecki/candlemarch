@@ -5,12 +5,13 @@ import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
 import { canForage } from '../forage';
-import { gatherTargets, outputRoom, walkToNearest } from '../gathering';
+import { gatherTargets, walkToNearest } from '../gathering';
 import { doorTile } from '../grid';
 import { staticChanged } from '../snapshot';
 import { workTicks } from '../speed';
 import type { GameState } from '../state';
 import { isAtWork } from '../villagers';
+import { outputRoom } from '../yards';
 import { isAt, walkTo } from './movement';
 
 export function foragingSystem(state: GameState, content: Content): void {

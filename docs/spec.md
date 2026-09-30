@@ -204,6 +204,7 @@ Flag relay (Settlers 2 style: one carrier per road segment between flags, handin
 **Storage** *(Decided: a mix; details Proposed)*
 
 - **Workshop buffers:** each workshop holds a few units of inputs and outputs.
+- **Workplace yards** *(Decided, owner)*: every Workplace with an output buffer has a yard, a 1×1 tile of the building beside its door, turning with it, where its workers put what they make. It's part of the footprint (nothing else is built there, and it blocks walking like the building); Carriers pick up at the door. A yard holds 10 in total, shared by all the building's outputs (a hunter's meat and hides together), and a catch, basket or batch goes in only if it fits whole. The Granary and Houses have none; a fisher's hut's yard must stand on land. It's drawn like a Stockpile tile with the goods piled on it.
 - **Stockpile zones:** open-air areas for bulk raw goods (logs, stone, clay). Each tile holds 10 of one good. *(Proposed)*
 - **Food store (granary):** villagers eat from it. *(Decided)* The root cellar is its preserving upgrade. Food never goes to a Stockpile.
 - **Market stockpile:** goods set aside for sale. *(Decided)*

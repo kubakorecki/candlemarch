@@ -1,6 +1,6 @@
 # Workplace yards: a tile beside the building for its goods
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 01, 02
 
@@ -22,3 +22,5 @@ Decided (owner, 2026-09-30):
 ## Comments
 
 2026-09-30 — Owner confirmed the proposed defaults as written.
+
+2026-09-30 — Done. Every Workplace with an output (woodcutter's, forager's and fisher's huts, hunter's lodge, chopping block) has its yard at (1, 0), beside the body along the door's wall, in `outputBuffer.yard`; `logistics.yardCapacity` 10 is shared by all its outputs, and catches, baskets and batches go in whole (`sim/src/yards.ts`). The yard is in the layout's `tiles` (placement, walking, selecting, demolishing), but the work radius and the Hero's aura still measure from the building itself. Gatherers now wait until a whole gather fits (was: any room). Drawn as a Stockpile tile's dirt with a pile per output; the panel says "Yard 6 / 10" plus a line per output when there are two. The camp balance script's hunter's lodge moved one tile west (its yard fell on the path). Scenarios rerun (docs/decisions.md): all keep their outcomes; `valley` now ends with 5 meat (was 0). Checked in the browser on all four turns, placement ghost included.
