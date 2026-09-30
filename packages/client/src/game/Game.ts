@@ -11,6 +11,7 @@ import {
   canLayGroundwork,
   canLayPath,
   canLayWall,
+  canPaintReserve,
   canPlaceBuilding,
   canPlaceStockpile,
   carrierUtilization,
@@ -44,6 +45,8 @@ import {
   maxWorkers,
   type Rotation,
   reassignTargets,
+  reserveNear,
+  reserveRect,
   type StockpilePriority,
   type Tile,
   villageFood,
@@ -701,6 +704,11 @@ export class Game {
       else this.setHud({ message: "Can't lay a path there." });
     } else if (tool === 'removePath') {
       this.bridge.command({ type: 'removePath', from, to });
+    } else if (tool === 'reserve') {
+      if (canPaintReserve(state, from, to)) this.bridge.command({ type: 'paintReserve', from, to });
+      else this.setHud({ message: "Can't mark a Reserve where you haven't looked yet." });
+    } else if (tool === 'eraseReserve') {
+      this.bridge.command({ type: 'eraseReserve', from, to });
     } else if (tool === 'stockpile') {
       const r = rect(from, to);
       if (canPlaceStockpile(state, content, r.x, r.y, r.w, r.h))
@@ -962,6 +970,7 @@ export class Game {
         rotation,
         valid: canPlaceBuilding(state, content, tool, x, y, rotation),
         darkRing: darkRingTiles(state, content),
+        reserve: reserveNear(state, content, tool, hover, rotation),
       };
     }
     const from = this.dragStart ?? hover;
@@ -974,6 +983,14 @@ export class Game {
         };
       case 'removePath':
         return { kind: 'tiles', tiles: lShapeTiles(from, hover), valid: true };
+      case 'reserve':
+        return {
+          kind: 'tiles',
+          tiles: reserveRect(from, hover),
+          valid: canPaintReserve(state, from, hover),
+        };
+      case 'eraseReserve':
+        return { kind: 'tiles', tiles: reserveRect(from, hover), valid: true };
       case 'stockpile': {
         const r = rect(from, hover);
         return {

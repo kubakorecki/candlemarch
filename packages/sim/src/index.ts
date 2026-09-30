@@ -52,6 +52,13 @@ export type { Haul, LogisticsState } from './logistics/jobDispatch';
 export { createInitialState, type MapDef } from './map';
 export { DEFAULT_MAP, type MapName, maps } from './maps';
 export { bellOf, isBellRung } from './militia';
+export {
+  addToReserve,
+  canPaintReserve,
+  inReserve,
+  reserveNear,
+  reserveRect,
+} from './reserves';
 export { canLayPath, lShapeTiles, roadNeighbours } from './roads';
 export { deserialize, serialize } from './save';
 export {

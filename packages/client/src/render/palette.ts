@@ -189,6 +189,8 @@ export const palette = {
 
   valid: 0x9dbf73,
   invalid: 0xc4584a,
+  // Reserves: forest the woodcutters leave alone, washed and hatched on the ground.
+  reserve: 0x6f9aa6,
 
   // HUD, the Vellum look (docs/agents/design-system.md): umber lacquer panels, gilt hairlines, vellum
   // text. Red and amber are kept for alerts; gilt marks what's on or in hand.

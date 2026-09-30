@@ -13,6 +13,11 @@ export function setTile(bits: TileBits, index: number): void {
   bits[index >> 5] = (bits[index >> 5] ?? 0) | (1 << (index & 31));
 }
 
+/** Clears tile index `index` in `bits`. */
+export function clearTile(bits: TileBits, index: number): void {
+  bits[index >> 5] = (bits[index >> 5] ?? 0) & ~(1 << (index & 31));
+}
+
 /** No tile set, sized for `map`. */
 export function noTiles(map: MapState): TileBits {
   return new Array<number>(Math.ceil((map.width * map.height) / 32)).fill(0);

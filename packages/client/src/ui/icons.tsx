@@ -114,6 +114,21 @@ const PATHS = {
       <path d="M7.5 21h9" />
     </>
   ),
+  reserve: (
+    <>
+      <path d="M12 3.5l-4.5 7h3l-4 6.5h11l-4-6.5h3z" />
+      <path d="M12 17v3.5" />
+      <path d="M3 21h18" />
+      <path d="M3.5 21v-5M20.5 21v-5" />
+    </>
+  ),
+  unreserve: (
+    <>
+      <path d="M9 3.5l-4.5 7h3l-4 6.5h11l-4-6.5h3z" />
+      <path d="M9 17v3.5" />
+      <path d="M15 14l6 6M21 14l-6 6" />
+    </>
+  ),
   basket: (
     <>
       <path d="M3.5 10.5h17l-2 9.5h-13z" />

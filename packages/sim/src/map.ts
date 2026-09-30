@@ -13,6 +13,7 @@ import type {
 import { isMonsterRate, newDen } from './dens';
 import { depositFits } from './deposits';
 import { createEntity, idsOf } from './entities';
+import { noTiles } from './fog';
 import { refreshShade } from './forage';
 import { isFood } from './granary';
 import {
@@ -135,7 +136,16 @@ export function createEmptyState(seed: number): GameState {
     nextId: 1,
     mapVersion: 0,
     staticVersion: 0,
-    map: { width: 0, height: 0, terrain: [], roads: {}, entry: null, revealed: [], inSight: [] },
+    map: {
+      width: 0,
+      height: 0,
+      terrain: [],
+      roads: {},
+      entry: null,
+      revealed: [],
+      inSight: [],
+      reserve: [],
+    },
     components: {
       tile: {},
       mapObject: {},
@@ -189,7 +199,17 @@ export function createInitialState(
 
   const state = createEmptyState(seed);
   state.monsterRate = monsterRate;
-  state.map = { width, height, terrain: [], roads: {}, entry: null, revealed: [], inSight: [] };
+  state.map = {
+    width,
+    height,
+    terrain: [],
+    roads: {},
+    entry: null,
+    revealed: [],
+    inSight: [],
+    reserve: [],
+  };
+  state.map.reserve = noTiles(state.map);
 
   map.rows.forEach((row, y) => {
     if (row.length !== width) throw new Error(`map ${map.name}: row ${y} has length ${row.length}`);

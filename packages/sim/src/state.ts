@@ -54,6 +54,11 @@ export interface MapState {
   revealed: TileBits;
   /** Fog: the tiles in sight right now (`TileBits`); empty while Fog is off. */
   inSight: TileBits;
+  /**
+   * The Reserve (`TileBits`): tiles the player painted, where woodcutters fell nothing. A static
+   * layer.
+   */
+  reserve: TileBits;
 }
 
 /**

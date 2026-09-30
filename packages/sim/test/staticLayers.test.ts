@@ -98,6 +98,22 @@ describe('the static layers version', () => {
     expect(s.staticVersion).toBeGreaterThan(laid);
   });
 
+  it('moves when a Reserve is painted or erased, and not when nothing changes', () => {
+    const s = createInitialState(1, glade, content);
+    const area = { from: { x: 0, y: 0 }, to: { x: 3, y: 3 } };
+    const before = s.staticVersion;
+    applyCommand(s, { type: 'paintReserve', ...area }, content);
+    const painted = s.staticVersion;
+    expect(painted).toBeGreaterThan(before);
+    applyCommand(s, { type: 'paintReserve', ...area }, content);
+    expect(s.staticVersion).toBe(painted);
+    applyCommand(s, { type: 'eraseReserve', ...area }, content);
+    const erased = s.staticVersion;
+    expect(erased).toBeGreaterThan(painted);
+    applyCommand(s, { type: 'eraseReserve', ...area }, content);
+    expect(s.staticVersion).toBe(erased);
+  });
+
   it('moves on exactly the ticks that Reveal tiles, with Fog on', () => {
     let s = createInitialState(1, moor, content, 100, true);
     let bumps = 0;
@@ -213,6 +229,15 @@ describe('split snapshots', () => {
     expect(joinSnapshot(moving, staticLayers(s))).toEqual(s);
   });
 
+  it('leave the Reserve out of the moving part', () => {
+    const s = createInitialState(1, grove, content);
+    applyCommand(s, { type: 'paintReserve', from: { x: 1, y: 0 }, to: { x: 5, y: 5 } }, content);
+    const moving = movingPart(s);
+    expect(moving.map.reserve).toEqual([]);
+    expect(staticLayers(s).reserve).toBe(s.map.reserve);
+    expect(joinSnapshot(moving, staticLayers(s))).toEqual(s);
+  });
+
   it("doesn't touch the state it splits", () => {
     const s = createInitialState(1, grove, content);
     const before = JSON.stringify(s);
@@ -288,6 +313,7 @@ describe('static patches', () => {
       terrain: null,
       roads: null,
       revealed: null,
+      reserve: null,
       groundTiles: null,
       mapObject: { [TREE]: tree },
       mapObjectTile: { [TREE]: { x: 1, y: 1 } },
@@ -298,6 +324,7 @@ describe('static patches', () => {
     expect(next.terrain).toBe(client.terrain);
     expect(next.roads).toBe(client.roads);
     expect(next.revealed).toBe(client.revealed);
+    expect(next.reserve).toBe(client.reserve);
     expect(next.mapObject).not.toBe(client.mapObject);
     expect(next.mapObject[TREE]?.amount).toBe(tree.amount);
   });
@@ -312,5 +339,22 @@ describe('static patches', () => {
     expect(Object.keys(patch.mapObject)).toEqual([String(TREE)]);
     expect(patch.mapObject[TREE]?.type).toBe('stump');
     expect(applyStaticPatch(client, posted(patch))).toEqual(staticLayers(s));
+  });
+
+  it('carry the Reserve whole when it is painted or erased, and nothing else', () => {
+    const s = createInitialState(1, glade, content);
+    let client = posted(staticLayers(s));
+    const sent = sentStaticLayers(s);
+    const area = { from: { x: 0, y: 0 }, to: { x: 4, y: 2 } };
+    for (const type of ['paintReserve', 'eraseReserve'] as const) {
+      applyCommand(s, { type, ...area }, content);
+      const patch = posted(staticPatch(sent, s));
+      expect(patch).toMatchObject({ terrain: null, roads: null, revealed: null, mapObject: {} });
+      expect(patch.reserve).toEqual(s.map.reserve);
+      const next = applyStaticPatch(client, patch);
+      expect(next.terrain).toBe(client.terrain);
+      client = next;
+      expect(client).toEqual(staticLayers(s));
+    }
   });
 });

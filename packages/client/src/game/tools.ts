@@ -1,7 +1,14 @@
 // The build and demolish tools, in toolbar order, with their keyboard shortcuts and hints.
 import type { BuildingId } from '@candlemarch/content';
 
-export type ToolId = BuildingId | 'path' | 'removePath' | 'stockpile' | 'demolish';
+export type ToolId =
+  | BuildingId
+  | 'path'
+  | 'removePath'
+  | 'reserve'
+  | 'eraseReserve'
+  | 'stockpile'
+  | 'demolish';
 
 /** HUD tools in toolbar order, with their keyboard shortcut. `drag` tools act on press-drag-release. */
 export const TOOLS: readonly {
@@ -66,6 +73,20 @@ export const TOOLS: readonly {
     key: 'i',
     drag: false,
     hint: 'Click to place. Its forester plants Saplings on open meadow nearby, which grow into trees in about a year. Shift-click places more.',
+  },
+  {
+    id: 'reserve',
+    label: 'Reserve',
+    key: 'm',
+    drag: true,
+    hint: 'Drag a rectangle over forest to set it aside. Woodcutters never fell trees in a Reserve; foragers, hunters and foresters still work there. Free, and it blocks no building.',
+  },
+  {
+    id: 'eraseReserve',
+    label: 'Erase Reserve',
+    key: 'a',
+    drag: true,
+    hint: 'Drag a rectangle to open its tiles to woodcutters again.',
   },
   {
     id: 'torch',

@@ -201,7 +201,7 @@ A map object holding a fixed amount of stone, clay or iron ore. What is dug out 
 _Avoid_: Node, vein (as a term), ore patch
 
 **Reserve**:
-Forest tiles the player paints so woodcutters never fell there. Foragers and hunters still work in it.
+Forest tiles the player paints so woodcutters never fell there. Foragers, hunters and foresters still work in it.
 _Avoid_: Foraging area, preserve, protected forest
 
 **Side valley**:

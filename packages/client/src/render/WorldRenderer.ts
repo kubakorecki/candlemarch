@@ -12,6 +12,7 @@ import {
   groundTiles,
   type HealthBar,
   type HuntingGroundComponent,
+  hasTile,
   healthBars,
   heroOf,
   idsOf,
@@ -85,6 +86,7 @@ import {
   drawPalisade,
   drawPileGround,
   drawPlacementGhost,
+  drawReserve,
   drawRoads,
   drawSelectionRing,
   drawSite,
@@ -265,6 +267,8 @@ export type PlacementGhost =
       valid: boolean;
       /** Tiles in a Den's dark ring, shaded while placing. */
       darkRing: Tile[];
+      /** Reserve tiles in its work radius (a woodcutter's hut), picked out while placing. */
+      reserve?: Tile[];
     }
   | {
       kind: 'tiles';
@@ -300,6 +304,12 @@ export class WorldRenderer {
   /** Den dark rings on the ground, while a building is being placed. */
   private readonly darkRing = new Graphics();
   private darkRingKey = '';
+  /** The Reserve on the ground, redrawn when the layer changes. */
+  private readonly reserve = new Graphics();
+  private drawnReserve: GameState['map']['reserve'] | null = null;
+  /** The Reserve tiles in a woodcutter's hut's radius, picked out while it's being placed. */
+  private readonly reservePreview = new Graphics();
+  private reservePreviewKey = '';
   /**
    * Everything depth-sorted: trees (a row run each), buildings, villagers. Its own render group, so
    * its re-sorting as walkers move doesn't rebuild the ground's.
@@ -355,9 +365,11 @@ export class WorldRenderer {
       this.roads,
       this.heat,
       this.pileGround,
+      this.reserve,
       this.grounds,
       this.aura,
       this.darkRing,
+      this.reservePreview,
       this.objects,
       this.groundLabels,
       this.puffs,
@@ -422,6 +434,7 @@ export class WorldRenderer {
     });
     this.syncRoads(state);
     this.syncHeat(state);
+    this.syncReserve(state);
 
     this.fog.sync(state);
 
@@ -936,6 +949,13 @@ export class WorldRenderer {
       drawDarkRing(this.darkRing, ring);
       this.darkRingKey = ringKey;
     }
+    const reserve = ghost?.kind === 'building' ? (ghost.reserve ?? []) : [];
+    const reserveKey = JSON.stringify(reserve);
+    if (reserveKey !== this.reservePreviewKey) {
+      this.reservePreview.clear();
+      drawReserve(this.reservePreview, reserve, true);
+      this.reservePreviewKey = reserveKey;
+    }
     if (ghost?.kind === 'building') {
       const def = this.content.buildings[ghost.type];
       const layout = buildingLayout(def, { x: ghost.x, y: ghost.y }, ghost.rotation);
@@ -1061,6 +1081,22 @@ export class WorldRenderer {
     if (key === this.heatKey) return;
     this.heatKey = key;
     drawHeatMap(this.heat, tiles);
+  }
+
+  /** Redraws the Reserve when its layer is a new object and holds other tiles. */
+  private syncReserve(state: GameState): void {
+    const { map } = state;
+    if (map.reserve === this.drawnReserve) return;
+    this.drawnReserve = map.reserve;
+    const tiles: Tile[] = [];
+    map.reserve.forEach((word, w) => {
+      if (word === 0) return;
+      for (let i = w * 32; i < w * 32 + 32; i++) {
+        if (hasTile(map.reserve, i)) tiles.push({ x: i % map.width, y: Math.floor(i / map.width) });
+      }
+    });
+    this.reserve.clear();
+    drawReserve(this.reserve, tiles);
   }
 
   private syncRoads(state: GameState): void {

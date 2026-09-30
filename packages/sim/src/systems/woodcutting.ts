@@ -1,4 +1,5 @@
-// Woodcutters: walk to the nearest tree, chop, carry the logs to their hut's output buffer, repeat.
+// Woodcutters: walk to the nearest tree outside a Reserve, chop, carry the logs to their hut's
+// output buffer, repeat.
 
 import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
@@ -6,6 +7,7 @@ import { idsOf } from '../entities';
 import { gatherTargets, outputRoom, walkToNearest } from '../gathering';
 import { doorTile } from '../grid';
 import { fellTree } from '../huntingGrounds';
+import { inReserve } from '../reserves';
 import { staticChanged } from '../snapshot';
 import { workTicks } from '../speed';
 import type { EntityId, GameState } from '../state';
@@ -28,6 +30,12 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
     const hutOrigin = state.components.tile[hutId];
     if (!hut || !hutOrigin) continue;
     const door = doorTile(content.buildings[hut.type], hutOrigin, hut.rotation);
+    // A tree with logs left, not in a Reserve (which may be painted while the woodcutter is on its
+    // way or chopping).
+    const fellable = (t: EntityId) => {
+      const at = state.components.tile[t];
+      return (mapObject[t]?.amount ?? 0) > 0 && at !== undefined && !inReserve(state, at);
+    };
     const idle = () => {
       tasks[id] = { kind: 'idle', retryAt: state.tick + job.idleRetryTicks };
     };
@@ -35,8 +43,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
     switch (task.kind) {
       case 'idle': {
         if (state.tick < task.retryAt) break;
-        const standing = (t: EntityId) => (mapObject[t]?.amount ?? 0) > 0;
-        const trees = gatherTargets(state, content, hutId, standing);
+        const trees = gatherTargets(state, content, hutId, fellable);
         const tree = walkToNearest(state, content, id, trees);
         // No tree left, or the buffer is full: wait for a carrier to take something.
         if (tree === null) idle();
@@ -45,7 +52,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
       }
       case 'toTree': {
         const tree = mapObject[task.tree];
-        if (tree && tree.amount > 0) {
+        if (tree && fellable(task.tree)) {
           // A hero's aura near the hut when the chop starts speeds up the whole chop.
           const ticks = workTicks(
             state,
@@ -56,7 +63,8 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
           );
           tasks[id] = { kind: 'chopping', tree: task.tree, ticksLeft: ticks };
         } else {
-          tasks[id] = { kind: 'idle', retryAt: state.tick }; // someone else finished it
+          // Someone else finished it, or it's in a Reserve now.
+          tasks[id] = { kind: 'idle', retryAt: state.tick };
         }
         break;
       }
@@ -64,7 +72,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
         task.ticksLeft -= 1;
         if (task.ticksLeft > 0) break;
         const tree = mapObject[task.tree];
-        if (!tree || tree.amount <= 0) {
+        if (!tree || !fellable(task.tree)) {
           tasks[id] = { kind: 'idle', retryAt: state.tick };
           break;
         }

@@ -1765,10 +1765,35 @@ export function drawTileGhost(
  * The outline follows the edges where a ground tile meets a tile off the ground, whatever its shape.
  */
 export function drawHuntingGround(g: Graphics, tiles: readonly Tile[], color: number): void {
+  drawTileArea(g, tiles, color, 0.1);
+}
+
+/**
+ * The Reserve's tiles on the ground: a wash, hatched along the x axis so it reads apart from a
+ * Hunting ground's, outlined where it meets tiles off it. `strong` for the woodcutter's hut
+ * preview, which picks out the Reserve tiles in its radius.
+ */
+export function drawReserve(g: Graphics, tiles: readonly Tile[], strong = false): void {
+  if (tiles.length === 0) return;
+  for (const t of tiles) {
+    const [top, right, bottom, left] = diamond(t.x, t.y);
+    // Two lines across the tile, a third and two thirds of the way from its top-left edge.
+    for (const f of [1 / 3, 2 / 3]) {
+      const from = lerp(top, left, f);
+      const to = lerp(right, bottom, f);
+      g.moveTo(from.x, from.y).lineTo(to.x, to.y);
+    }
+  }
+  g.stroke({ width: 1.5, color: palette.reserve, alpha: strong ? 0.9 : 0.45 });
+  drawTileArea(g, tiles, palette.reserve, strong ? 0.35 : 0.14);
+}
+
+/** A wash of `color` over `tiles`, outlined where a tile meets one off the set. */
+function drawTileArea(g: Graphics, tiles: readonly Tile[], color: number, wash: number): void {
   if (tiles.length === 0) return;
   const on = new Set(tiles.map((t) => `${t.x},${t.y}`));
   for (const t of tiles) g.poly(flat(diamond(t.x, t.y)));
-  g.fill({ color, alpha: 0.1 });
+  g.fill({ color, alpha: wash });
   // Each tile's corners (top, right, bottom, left) and the neighbour across each edge.
   const edges: [Vec, Vec][] = [];
   for (const t of tiles) {
