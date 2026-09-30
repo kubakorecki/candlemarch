@@ -50,8 +50,10 @@ describe('hunting grounds', () => {
       buildings: [{ type: 'woodcutters_hut', x: 2, y: 3 }],
     };
     const s0 = createInitialState(1, logging, content);
-    const s = runUntil(s0, (x) => idsOf(x.components.mapObject).length < 8, 2000);
-    expect(idsOf(s.components.mapObject).length).toBe(7);
+    const trees = (x: GameState) =>
+      idsOf(x.components.mapObject).filter((id) => x.components.mapObject[id]?.type === 'tree');
+    const s = runUntil(s0, (x) => trees(x).length < 8, 2000);
+    expect(trees(s).length).toBe(7);
     // Ceiling trunc(20 × 7 / 8) = 17: three flee.
     expect(ground(s).game).toBe(17);
     expect(ground(s).fled).toBe(3);

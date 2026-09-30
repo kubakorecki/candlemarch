@@ -46,6 +46,16 @@ export const mapObjects: Record<MapObjectId, MapObjectDef> = {
     yieldPerGather: 1,
     grows: { into: 'tree', days: 20, stages: 3 }, // about a year of 4 seasons × 5 days
   },
+  // What a felled tree leaves. It sprouts a Sapling, so a clear-cut grows back in about two years.
+  stump: {
+    id: 'stump',
+    name: 'Stump',
+    resource: 'logs',
+    amount: 0,
+    gatherTicks: 40,
+    yieldPerGather: 1,
+    grows: { into: 'sapling', days: 20, stages: 1 },
+  },
   // Deposits: nothing works them until M5, which tunes these placeholder amounts and times.
   stone_deposit: {
     id: 'stone_deposit',

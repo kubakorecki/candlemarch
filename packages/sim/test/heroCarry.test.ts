@@ -309,7 +309,7 @@ describe('hero gathering', () => {
     const end = runUntil(s0, idle, 1000, orders);
     // A tree holds 3 logs, 1 per 40-tick chop; the hero carries up to 5.
     expect(hero(end)?.carrying).toEqual({ resource: 'logs', amount: 3 });
-    expect(end.components.mapObject[tree]).toBeUndefined();
+    expect(end.components.mapObject[tree]?.type).toBe('stump');
     // 2 tiles of walking (20 ticks at 100/tick) then 3 chops of 40 ticks; the tick it arrives
     // on already counts towards the first chop.
     expect(end.tick).toBe(20 + 3 * 40 - 1);

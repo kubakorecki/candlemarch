@@ -24,6 +24,7 @@ import {
   drawMushroomPatch,
   drawSapling,
   drawStoneDeposit,
+  drawStump,
   drawTree,
   drawWater,
   type GroundMap,
@@ -167,6 +168,9 @@ function drawMapObject(g: Graphics, obj: DrawnObject, content: Content): void {
       break;
     case 'sapling':
       drawSapling(g, obj.stage);
+      break;
+    case 'stump':
+      drawStump(g);
       break;
     case 'berry_bush':
       drawBerryBush(g, obj.amount, obj.withered);

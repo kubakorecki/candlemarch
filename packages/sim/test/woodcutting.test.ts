@@ -30,6 +30,11 @@ function settled(s: GameState): unknown {
   return copy;
 }
 
+/** Trees still standing (felled ones are Stumps). */
+function treesLeft(s: GameState): number {
+  return Object.values(s.components.mapObject).filter((o) => o.type === 'tree').length;
+}
+
 describe('woodcutting', () => {
   it('fills the output buffer up to its capacity, then waits', () => {
     // No construction site, so nothing takes logs away.
@@ -41,7 +46,7 @@ describe('woodcutting', () => {
     expect(totalLogs(end)).toBe(17 * 3);
   });
 
-  it('takes the nearest tree first and removes it once empty', () => {
+  it('takes the nearest tree first and fells it to a Stump once empty', () => {
     const s0 = createInitialState(1, grove, content);
     // From the door (2,4): tree (5,1) is 3 diagonals = 4242 units; tree (6,2) is 4828.
     const nearest = idsOf(s0.components.mapObject).find((id) => {
@@ -53,9 +58,9 @@ describe('woodcutting', () => {
     expect(w.task).toEqual({ kind: 'toTree', tree: nearest });
     const target = nearest as number;
 
-    const emptied = runUntil(s1, (s) => !s.components.mapObject[target], 5000);
-    expect(emptied.components.mapObject[target]).toBeUndefined();
-    expect(emptied.components.tile[target]).toBeUndefined();
+    const emptied = runUntil(s1, (s) => s.components.mapObject[target]?.type !== 'tree', 5000);
+    expect(emptied.components.mapObject[target]).toMatchObject({ type: 'stump', amount: 0 });
+    expect(emptied.components.tile[target]).toEqual({ x: 5, y: 1 });
   });
 
   it('stops cleanly when all trees are gone', () => {
@@ -67,7 +72,7 @@ describe('woodcutting', () => {
     const done = runUntil(
       s0,
       (s) =>
-        idsOf(s.components.mapObject).length === 0 &&
+        treesLeft(s) === 0 &&
         Object.values(s.components.villager).every((v) => v.carrying === null) &&
         idsOf(s.logistics.hauls).length === 0 &&
         idsOf(s.components.path).length === 0,
@@ -75,7 +80,7 @@ describe('woodcutting', () => {
       placeHut,
     );
 
-    expect(idsOf(done.components.mapObject)).toHaveLength(0);
+    expect(treesLeft(done)).toBe(0);
     expect(totalLogs(done)).toBe(6);
     const siteId = idsOf(done.components.site)[0] as number;
     expect(done.components.site[siteId]?.delivered.logs).toBe(6);

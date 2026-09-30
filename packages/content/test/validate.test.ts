@@ -49,7 +49,7 @@ describe('content validation', () => {
 
   it('growing things grow into map objects that exist, over whole days and stages', () => {
     const growing = Object.values(mapObjects).filter((obj) => obj.grows);
-    expect(growing.map((g) => g.id)).toEqual(['sapling']);
+    expect(growing.map((g) => g.id)).toEqual(['sapling', 'stump']);
     for (const obj of growing) {
       const { grows } = obj;
       if (!grows) continue;

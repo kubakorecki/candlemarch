@@ -221,6 +221,117 @@ describe('Saplings', () => {
   });
 });
 
+/**
+ * A 12×5 field with a tree at (5,2) shading a berry bush at (3,2), a woodcutter's hut at (7,0)
+ * (door (8,2)) and a Hero at (1,4). IDs: bush 1, tree 2, hut 3, woodcutter 4, Hero 5.
+ */
+const clearing: MapDef = {
+  name: 'clearing',
+  rows: ['............', '............', '...b.T......', '............', '............'],
+  buildings: [{ type: 'woodcutters_hut', x: 7, y: 0 }],
+  villagers: [],
+  hero: { x: 1, y: 4 },
+};
+const BUSH = 1;
+const TREE = 2;
+const stump = content.mapObjects.stump;
+/** Days from a felling to the tree standing again: a Stump's, then a Sapling's. */
+const regrowDays = (stump.grows?.days ?? 0) + (sapling.grows?.days ?? 0);
+
+/** The clearing with its tree felled at the first Dawn (tick 0). */
+function felled(): GameState {
+  const s = createInitialState(1, clearing, content);
+  fellTree(s, content, TREE);
+  return s;
+}
+
+describe('Stumps', () => {
+  it('are left by a felled tree: walked over, giving no shade', () => {
+    const s = run(createInitialState(1, clearing, content), 800); // the woodcutter fells it
+    expect(s.components.mapObject[TREE]).toMatchObject({ type: 'stump', amount: 0 });
+    expect(tilesOf(s, 'stump')).toEqual(['5,2']);
+    expect(blockedGrid(s, content)[tileIndex(s.map, 5, 2)]).toBe(0);
+    expect(isWithered(s, content, BUSH)).toBe(true);
+    // Nothing to chop: right-clicking it walks the Hero there.
+    expect(heroOrderAt(s, content, { x: 5, y: 2 })).toEqual({ order: 'move', x: 5, y: 2 });
+  });
+
+  it('sprout a Sapling a year later, which grows into a tree that can be felled again', () => {
+    expect(stump.grows?.days).toBe(20);
+    const s = felled();
+    const days = stump.grows?.days ?? 0;
+    expect(dawnOf(s, days).components.mapObject[TREE]?.type).toBe('stump');
+    const sprouted = dawnOf(s, days + 1);
+    expect(sprouted.components.mapObject[TREE]).toMatchObject({ type: 'sapling', stage: 0 });
+    expect(isWithered(sprouted, content, BUSH)).toBe(true);
+    expect(dawnOf(sprouted, regrowDays).components.mapObject[TREE]?.type).toBe('sapling');
+    const grown = dawnOf(sprouted, regrowDays + 1);
+    expect(grown.components.mapObject[TREE]).toEqual({
+      type: 'tree',
+      amount: content.mapObjects.tree.amount,
+    });
+    expect(isWithered(grown, content, BUSH)).toBe(false);
+    expect(blockedGrid(grown, content)[tileIndex(grown.map, 5, 2)]).toBe(1);
+    expect(heroOrderAt(grown, content, { x: 5, y: 2 })).toEqual({ order: 'gather', tree: TREE });
+  });
+
+  it('are cleared by a building, Road or Stockpile put on their tile', () => {
+    const wood: MapDef = { ...clearing, rows: ['TT.T........', ...clearing.rows.slice(1)] };
+    const s0 = createInitialState(1, wood, content);
+    for (const id of [1, 2, 3]) fellTree(s0, content, id);
+    expect(tilesOf(s0, 'stump')).toEqual(['0,0', '1,0', '3,0']);
+    const s = run(s0, 1, {
+      0: [
+        { type: 'placeBuilding', building: 'hut', x: 0, y: 0 },
+        { type: 'layPath', from: { x: 1, y: 0 }, to: { x: 1, y: 1 } },
+        { type: 'placeStockpile', x: 3, y: 0, w: 1, h: 1 },
+      ],
+    });
+    expect(tilesOf(s, 'stump')).toEqual([]);
+  });
+
+  it("aren't planted on by a forester", () => {
+    // The glade's tree at (4,4) is on the forester's planting grid; felled, it leaves a Stump.
+    const s0 = createInitialState(1, glade, content);
+    fellTree(s0, content, 1);
+    const s = run(s0, 2400);
+    expect(tilesOf(s, 'sapling').length).toBeGreaterThan(3);
+    expect(tilesOf(s, 'sapling')).not.toContain('4,4');
+    expect(tilesOf(s, 'stump')).toEqual(['4,4']);
+  });
+
+  it("let a Hunting ground's ceiling rise again once the tree has grown back", () => {
+    const wood: MapDef = {
+      name: 'wood',
+      rows: ['TT..........', '............'],
+      buildings: [],
+      villagers: [],
+      huntingGrounds: [{ name: 'Copse', x: 0, y: 0, w: 4, h: 2, maxGame: 10 }],
+    };
+    const s0 = createInitialState(1, wood, content);
+    const ceiling = (s: GameState) => {
+      const g = s.components.huntingGround[3];
+      if (!g) throw new Error('no ground');
+      return groundCeiling(s, content, g);
+    };
+    fellTree(s0, content, 1);
+    expect(ceiling(s0)).toBe(5);
+    const sprouted = dawnOf(s0, 1 + (stump.grows?.days ?? 0));
+    expect(ceiling(sprouted)).toBe(5);
+    expect(ceiling(dawnOf(sprouted, regrowDays))).toBe(5);
+    expect(ceiling(dawnOf(sprouted, regrowDays + 1))).toBe(10);
+  });
+
+  it('keep growing across a save and load, as if never saved', () => {
+    const s = dawnOf(felled(), 25); // sprouted a Sapling this Dawn
+    const grownDay = 25 + (sapling.grows?.days ?? 0);
+    const straight = dawnOf(s, grownDay);
+    const reloaded = dawnOf(deserialize(serialize(s), content), grownDay);
+    expect(reloaded).toEqual(straight);
+    expect(straight.components.mapObject[TREE]?.type).toBe('tree');
+  });
+});
+
 describe('forestry', () => {
   it('is deterministic', () => {
     const a = run(createInitialState(7, glade, content), 3000);

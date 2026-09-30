@@ -20,7 +20,8 @@ export type MapObjectId =
   | 'stone_deposit'
   | 'clay_deposit'
   | 'iron_deposit'
-  | 'sapling';
+  | 'sapling'
+  | 'stump';
 export type BuildingId =
   | 'drain'
   | 'pass_road'
@@ -134,9 +135,9 @@ export interface MapObjectDef {
   /** Makes it a Deposit: what is dug out never comes back. Says where it may stand. */
   deposit?: DepositDef;
   /**
-   * Makes it something growing (a Sapling): nobody gathers it (its `amount` is 0), it doesn't
-   * block walking, and a building, Road or Stockpile put on its tile clears it. It turns into
-   * `into` after `days`.
+   * Makes it something growing (a Sapling, or a Stump that will sprout one): nobody gathers it
+   * (its `amount` is 0), it doesn't block walking, and a building, Road or Stockpile put on its
+   * tile clears it. It turns into `into` after `days`.
    */
   grows?: GrowsDef;
 }

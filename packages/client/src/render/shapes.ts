@@ -339,6 +339,34 @@ export function drawTree(g: Graphics, amount: number, fullAmount: number): void 
   g.stroke({ ...THIN_INK, alpha: 0.6 });
 }
 
+/** A Stump, what a felled tree leaves: a short cut log end, pale on top, with a root or two. */
+export function drawStump(g: Graphics): void {
+  const s = TILE_H / 64;
+  groundShadow(g, 12 * s, 6 * s);
+  g.moveTo(-7 * s, -2 * s)
+    .quadraticCurveTo(-11 * s, 1 * s, -13 * s, 3 * s)
+    .moveTo(6 * s, -1 * s)
+    .quadraticCurveTo(10 * s, 2 * s, 12 * s, 2 * s)
+    .stroke({ width: 3 * s, color: palette.ink, cap: 'round' });
+  g.moveTo(-7 * s, -2 * s)
+    .quadraticCurveTo(-11 * s, 1 * s, -13 * s, 3 * s)
+    .moveTo(6 * s, -1 * s)
+    .quadraticCurveTo(10 * s, 2 * s, 12 * s, 2 * s)
+    .stroke({ width: 1.5 * s, color: palette.trunk, cap: 'round' });
+  // The side, round at the bottom like the cut top.
+  g.moveTo(-7 * s, -9 * s)
+    .lineTo(7 * s, -9 * s)
+    .lineTo(7 * s, 0)
+    .quadraticCurveTo(0, 6 * s, -7 * s, 0)
+    .closePath()
+    .fill(palette.trunk)
+    .stroke(INK);
+  g.ellipse(0, -9 * s, 7 * s, 3 * s)
+    .fill(palette.log)
+    .stroke(INK);
+  g.ellipse(0, -9 * s, 3.5 * s, 1.5 * s).stroke({ ...THIN_INK, alpha: 0.6 });
+}
+
 /**
  * A Sapling, drawn like `drawTree` but small, taller at each `stage` (0 a twig with two leaves, 1
  * a whip with a tuft, 2 a young tree with a thin crown). It stands in a ring of turned earth.

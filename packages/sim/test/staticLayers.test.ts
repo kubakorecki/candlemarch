@@ -235,8 +235,10 @@ describe('static patches', () => {
       expect(client).toEqual(staticLayers(s));
     }
     expect(patches).toBeGreaterThan(10);
-    // Trees were felled, and a Road laid and taken up, through patches too.
-    expect(Object.keys(client.mapObject).length).toBeLessThan(15);
+    // Trees were felled into Stumps, and a Road laid and taken up, through patches too.
+    expect(
+      Object.values(client.mapObject).filter((o) => o.type === 'stump').length,
+    ).toBeGreaterThan(0);
   });
 
   it('carry the Revealed tiles as the Hero walks into Fog, and nothing else', () => {
@@ -286,13 +288,15 @@ describe('static patches', () => {
     expect(next.mapObject[TREE]?.amount).toBe(tree.amount);
   });
 
-  it('carry a felled tree as removed', () => {
+  it('carry a felled tree as changed into a Stump', () => {
     const s = createInitialState(1, glade, content);
     const client = posted(staticLayers(s));
     const sent = sentStaticLayers(s);
     fellTree(s, content, TREE);
     const patch = staticPatch(sent, s);
-    expect(patch.removed).toEqual([TREE]);
+    expect(patch.removed).toEqual([]);
+    expect(Object.keys(patch.mapObject)).toEqual([String(TREE)]);
+    expect(patch.mapObject[TREE]?.type).toBe('stump');
     expect(applyStaticPatch(client, posted(patch))).toEqual(staticLayers(s));
   });
 });

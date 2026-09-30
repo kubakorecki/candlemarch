@@ -1,6 +1,6 @@
-// Things growing into Forest: Saplings, planted by a forester. They don't block walking, nobody
-// gathers them, and they count as a standing tree only once grown (then they are a `tree`). The
-// forester's rules for where to plant live here too.
+// Things growing into Forest: Saplings, planted by a forester or sprouted from the Stump a felled
+// tree leaves. They don't block walking, nobody gathers them, and they count as a standing tree
+// only once grown (then they are a `tree`). The forester's rules for where to plant live here too.
 import type { Content, GrowsDef, PlantsDef } from '@candlemarch/content';
 import { createEntity, destroyEntity, idsOf } from './entities';
 import { refreshShade } from './forage';
@@ -10,13 +10,13 @@ import { cached, mapChanged } from './mapCache';
 import { staticChanged } from './snapshot';
 import type { EntityId, GameState, Tile } from './state';
 
-/** How map object `id` grows, if it's something growing (a Sapling); else undefined. */
+/** How map object `id` grows, if it's something growing (a Sapling or a Stump); else undefined. */
 export function growsOf(state: GameState, content: Content, id: EntityId): GrowsDef | undefined {
   const obj = state.components.mapObject[id];
   return obj ? content.mapObjects[obj.type].grows : undefined;
 }
 
-/** Whether map object `id` is something growing (a Sapling). */
+/** Whether map object `id` is something growing (a Sapling or a Stump). */
 export function isGrowing(state: GameState, content: Content, id: EntityId): boolean {
   return growsOf(state, content, id) !== undefined;
 }
@@ -45,9 +45,21 @@ function startGrowing(state: GameState, content: Content, id: EntityId): void {
 }
 
 /**
+ * Turns tree `id`, just felled, into a Stump, starting to grow now. It stops blocking walking.
+ * `fellTree` calls it; the shade and Game it took are that function's business.
+ */
+export function leaveStump(state: GameState, content: Content, id: EntityId): void {
+  if (!state.components.mapObject[id]) return;
+  state.components.mapObject[id] = { type: 'stump', amount: 0 };
+  startGrowing(state, content, id);
+  mapChanged(state);
+  staticChanged(state);
+}
+
+/**
  * Brings something growing (`id`) along at a Dawn: past its `growsAt` it turns into what it grows
- * into (a Sapling into a tree, which blocks walking and shades), else its drawing stage follows
- * the time gone. Nothing for other map objects.
+ * into (a Stump into a Sapling; a Sapling into a tree, which blocks walking and shades), else its
+ * drawing stage follows the time gone. Nothing for other map objects.
  */
 export function grow(state: GameState, content: Content, id: EntityId): void {
   const obj = state.components.mapObject[id];

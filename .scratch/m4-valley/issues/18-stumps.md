@@ -1,6 +1,6 @@
 # Stumps that regrow
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 09
 
@@ -17,3 +17,7 @@ Rules in `docs/spec.md`, World and map ("Forest ecology"). Numbers Proposed, all
 
 - Headless tests: felling leaves a Stump; it sprouts a Sapling on schedule, which matures into a fellable tree; building or laying a Road on it removes it; a Hunting ground's ceiling rises again once the regrown tree matures; determinism and save/load.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-30 — Done: a felled tree becomes a `stump` in place (same ID) that sprouts a Sapling after 20 days (then 20 more to a tree); walked over, no shade, cleared by a building, wall, Drain/Pass road, Stockpile or Dirt path on its tile; the forester doesn't plant on it; client stump art. Also cleared by walls and Stockpiles, not only buildings and Roads, same as Saplings (ticket 09). The Camp's first year is unchanged. See `docs/decisions.md`.
