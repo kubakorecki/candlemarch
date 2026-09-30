@@ -173,7 +173,7 @@ Open ground that villagers walk on and build on.
 _Avoid_: Grass, field (a field is farmland)
 
 **Forest**:
-Tiles with standing trees. Not a Terrain: a tile stops being Forest when its tree is felled.
+Tiles with standing trees. Not a Terrain: a tile stops being Forest when its tree is felled. Walkers cross it slowly; nothing is built on it.
 _Avoid_: Woods, woodland, forest terrain
 
 **Rock**:

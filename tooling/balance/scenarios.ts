@@ -54,7 +54,7 @@ function campLayout({ firewood }: { firewood: boolean }): Record<number, Command
 
 /**
  * A prepared nights map, all placed at Dawn of day 1 and built from the Stockpile's logs before
- * the first Dusk: a palisade with a Gate in the middle across the gap in the wood, a watchtower
+ * the first Dusk: a palisade with a Gate in the middle across the gap in the ridge, a watchtower
  * 4 tiles inside it, whose range covers the Gate and whose door is a short walk from the Granary
  * where its Watchman eats at Dusk, and a brazier lighting the yard between the Granary and the
  * Huts. Walls first: they're what the first night needs most. The Huts stay dark.
@@ -72,11 +72,10 @@ const nightsLayout: Record<number, Command[]> = {
 /**
  * A sensible start on the generated Valley of seed 1, whose Granary stands at (10, 54) with the
  * north wood (Hazel Hanger) between it and the river and the east wood from x 30. Day 1: a
- * woodcutter's hut at the east wood, a fisher's hut on the bank beyond the north wood (the
- * nearest bank, a long walk round the wood), a hunter's lodge on the wood's edge and a Hut. Day 3: a second Hut. Day 5: a forager's
- * hut by the north wood's patches. Day 8: a chopping block by the Stockpile. The coordinates are
- * seed 1's: if a generator change moves the land, the harness throws on the first that no longer
- * fits.
+ * woodcutter's hut at the east wood, a fisher's hut on the nearest bank, beyond the north wood,
+ * a hunter's lodge on the wood's edge and a Hut. Day 3: a second Hut. Day 5: a forager's hut by
+ * the north wood's patches. Day 8: a chopping block by the Stockpile. The coordinates are seed
+ * 1's: if a generator change moves the land, the harness throws on the first that no longer fits.
  */
 const valleyLayout: Record<number, Command[]> = {
   [dawnOf(1)]: [

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { idsOf } from '../src/entities';
-import { blockedGrid, heroBlockedGrid, isRiverbank, tileAt } from '../src/grid';
+import { blockedGrid, heroBlockedGrid, isRiverbank, objectSpeedGrid, tileAt } from '../src/grid';
 import { groundTiles, standingTrees } from '../src/huntingGrounds';
 import { createInitialState } from '../src/map';
 import { regions } from '../src/pathfinding';
@@ -358,8 +358,11 @@ describe('the generated Valley', () => {
     const hero = regions(grid(heroBlockedGrid(state, content)));
     const entry = (v.entry as Tile).y * valley.size + (v.entry as Tile).x;
     const side = new Set(v.sideValley);
+    // Trees are walked through, but the generator joins only the open ground: a tree hemmed in
+    // by the river and Forage patches may stand out of reach, and nobody needs to get to it.
+    const trees = objectSpeedGrid(state, content);
     for (let i = 0; i < blocked.length; i++) {
-      if (blocked[i]) continue;
+      if (blocked[i] || trees[i]) continue;
       if (side.has(i)) {
         expect(walk[i]).not.toBe(walk[entry]);
         expect(hero[i]).toBe(hero[entry]);

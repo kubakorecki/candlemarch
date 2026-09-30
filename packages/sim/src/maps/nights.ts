@@ -1,8 +1,9 @@
 import type { MapDef } from '../map';
 
 /**
- * Nights at the Camp, 30×22: a small village already standing west of a two-tree-thick wood that
- * runs from the north edge down to the river, with one gap (17–18, 9–11). A Den lies in the wilds
+ * Nights at the Camp, 30×22: a small village already standing west of a two-tile-thick Mountain
+ * ridge that runs from the north edge down to the river, with one gap (17–18, 9–11). (It was a
+ * wood until trees stopped blocking walking.) A Den lies in the wilds
  * past the gap at (25,10). Three Huts (doors at (3,4), (6,4), (9,4)), a Granary with 20 fish, two
  * fisher's huts on the river and a 3×2 Stockpile with 32 logs and 16 firewood; four Carriers and
  * the two fishers. No Hero, so what keeps the village alive is what it builds. Newcomers enter at
@@ -11,26 +12,26 @@ import type { MapDef } from '../map';
 export const nightsMap: MapDef = {
   name: 'nights',
   rows: [
-    '............T....TT...........',
-    '.T...............TT...........',
-    '.................TT...........',
-    '.................TT...T.......',
-    '.................TT...........',
-    '.................TT...........',
-    '.................TT........T..',
-    '.................TT...........',
-    '.................TT...........',
+    '............T....^^...........',
+    '.T...............^^...........',
+    '.................^^...........',
+    '.................^^...T.......',
+    '.................^^...........',
+    '.................^^...........',
+    '.................^^........T..',
+    '.................^^...........',
+    '.................^^...........',
     '..............................',
     '.........................D....',
     '..............................',
-    '.................TT...........',
-    '.................TT.........T.',
-    '.................TT...........',
-    '.................TT.....T.....',
-    '..............T..TT...........',
-    '.................TT..T........',
-    '.................TT...........',
-    '.................TT...........',
+    '.................^^...........',
+    '.................^^.........T.',
+    '.................^^...........',
+    '.................^^.....T.....',
+    '..............T..^^...........',
+    '.................^^..T........',
+    '.................^^...........',
+    '.................^^...........',
     '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
     '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
   ],

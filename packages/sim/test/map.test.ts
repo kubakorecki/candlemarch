@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { idsOf } from '../src/entities';
-import { blockedGrid, tileIndex } from '../src/grid';
+import { blockedGrid, occupiedGrid, tileIndex } from '../src/grid';
 import { createInitialState, type MapDef } from '../src/map';
 import { maps } from '../src/maps';
 import { meadowMap } from '../src/maps/meadow';
@@ -33,10 +33,11 @@ describe('createInitialState', () => {
     expect(s.components.position[id]).toEqual({ x: 9500, y: 13500 });
   });
 
-  it('marks trees and footprints as blocked', () => {
+  it('marks footprints as blocked, and trees as occupied but walked through', () => {
     const s = createInitialState(1, meadowMap, content);
     const blocked = blockedGrid(s, content);
-    expect(blocked[tileIndex(s.map, 13, 6)]).toBe(1); // tree
+    expect(blocked[tileIndex(s.map, 13, 6)]).toBe(0); // tree
+    expect(occupiedGrid(s, content)[tileIndex(s.map, 13, 6)]).toBe(1);
     expect(blocked[tileIndex(s.map, 9, 12)]).toBe(1); // hut footprint
     expect(blocked[tileIndex(s.map, 9, 13)]).toBe(0); // hut door
     expect(blocked[tileIndex(s.map, 0, 0)]).toBe(0);

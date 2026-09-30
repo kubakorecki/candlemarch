@@ -8,6 +8,7 @@ export const mapObjects: Record<MapObjectId, MapObjectDef> = {
     amount: 3,
     gatherTicks: 40, // 2 s at 20 ticks per second
     yieldPerGather: 1,
+    walkSpeedPercent: 50, // walked through, slowly, so no Forage patch is walled in
   },
   // Forage patches never run out for good: they refill each season while a tree shades them.
   berry_bush: {

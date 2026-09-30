@@ -25,11 +25,12 @@ const speedAt = (s: GameState, t: Tile) =>
 const hutTiles = (x: number, y: number) => footprint(content.buildings.hut, { x, y });
 
 describe('the walk grid', () => {
-  it('opens the tile of a felled tree', () => {
+  it("walks a tree's tile at its speed, and at full speed once it's felled", () => {
     const s = createInitialState(1, glade, content);
-    expect(blockedAt(s, { x: 1, y: 1 })).toBe(1);
-    fellTree(s, content, TREE);
     expect(blockedAt(s, { x: 1, y: 1 })).toBe(0);
+    expect(speedAt(s, { x: 1, y: 1 })).toBe(content.mapObjects.tree.walkSpeedPercent);
+    fellTree(s, content, TREE);
+    expect(speedAt(s, { x: 1, y: 1 })).toBe(100);
   });
 
   it('speeds up a tile a path is laid on, and slows it again when the path goes', () => {

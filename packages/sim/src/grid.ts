@@ -186,10 +186,11 @@ function blocksWalking(
 
 /**
  * Walk-blocking grid: 1 where a villager or the Hero can't walk. Terrain that isn't walkable
- * (unless a Road is laid over it), map objects (trees; not Saplings) and building/site footprints block, but not
+ * (unless a Road is laid over it), map objects (Forage patches, Deposits; not trees, which slow
+ * walkers instead, nor Saplings and Stumps) and building/site footprints block, but not
  * a wall's site, a built Gate, a wall battered down to 0 HP or a groundwork site (a Drain, a Pass
  * road). `gatesBlock` makes Gates block too, for Gloamlings. Cached until the map changes
- * (`mapChanged`), so don't write to it.
+ * (`mapChanged`), so don't write to it. Placement asks `occupiedGrid`, which counts trees too.
  */
 export function blockedGrid(state: GameState, content: Content, gatesBlock = false): Uint8Array {
   return cached(state, content, gatesBlock ? 'blockedGates' : 'blocked', () =>
@@ -203,6 +204,41 @@ export function blockedGrid(state: GameState, content: Content, gatesBlock = fal
  */
 export function heroBlockedGrid(state: GameState, content: Content): Uint8Array {
   return cached(state, content, 'blockedHero', () => buildBlockedGrid(state, content, false, true));
+}
+
+/**
+ * 1 where nothing can be built, paved or piled for what's there: `blockedGrid`, plus the tiles
+ * of map objects walked through (trees). Cached like it, so don't write to it.
+ */
+export function occupiedGrid(state: GameState, content: Content): Uint8Array {
+  return cached(state, content, 'occupied', () => {
+    const occupied = blockedGrid(state, content).slice();
+    for (const id of idsOf(state.components.mapObject)) {
+      const t = state.components.tile[id];
+      const obj = state.components.mapObject[id];
+      if (t && obj && content.mapObjects[obj.type].walkSpeedPercent !== undefined) {
+        occupied[tileIndex(state.map, t.x, t.y)] = 1;
+      }
+    }
+    return occupied;
+  });
+}
+
+/**
+ * Walking speed percent each map object leaves its tile at, row-major: its `walkSpeedPercent`
+ * (a tree's), or 0 where nothing slows walkers. Cached like `blockedGrid`, so don't write to it.
+ */
+export function objectSpeedGrid(state: GameState, content: Content): Uint16Array {
+  return cached(state, content, 'objectSpeed', () => {
+    const speeds = new Uint16Array(state.map.width * state.map.height);
+    for (const id of idsOf(state.components.mapObject)) {
+      const t = state.components.tile[id];
+      const obj = state.components.mapObject[id];
+      const percent = obj && content.mapObjects[obj.type].walkSpeedPercent;
+      if (t && percent !== undefined) speeds[tileIndex(state.map, t.x, t.y)] = percent;
+    }
+    return speeds;
+  });
 }
 
 function buildBlockedGrid(
@@ -222,8 +258,11 @@ function buildBlockedGrid(
   for (const id of idsOf(state.components.mapObject)) {
     const t = state.components.tile[id];
     const obj = state.components.mapObject[id];
-    // Something growing (a Sapling) is walked over.
-    if (t && obj && !content.mapObjects[obj.type].grows) blocked[tileIndex(map, t.x, t.y)] = 1;
+    const def = obj && content.mapObjects[obj.type];
+    // Something growing (a Sapling) is walked over; a tree is walked through.
+    if (t && def && !def.grows && def.walkSpeedPercent === undefined) {
+      blocked[tileIndex(map, t.x, t.y)] = 1;
+    }
   }
   for (const id of idsOf(state.components.tile)) {
     if (!blocksWalking(state, content, id, gatesBlock)) continue;
@@ -310,8 +349,8 @@ export function tilesUnderCaches(state: GameState): Set<number> {
  * Whether a building of this type, turned `rotation`, fits with its origin at (x, y): every
  * footprint tile is in bounds, buildable, outside every Den's dark ring, and free of trees, roads
  * (a Gate may stand on one), stockpiles, caches, points of interest, other footprints and other doors (a wall's door is its own
- * tile, so nothing goes on a wall or its site either); its door tile is in bounds, walkable, not blocked
- * and not on a stockpile (it may be on a road), and on a riverbank if the type needs one. Doesn't check whether the player may place this type.
+ * tile, so nothing goes on a wall or its site either); its door tile is in bounds, walkable, not
+ * blocked or under a tree (`occupiedGrid`) and not on a stockpile (it may be on a road), and on a riverbank if the type needs one. Doesn't check whether the player may place this type.
  */
 export function fitsAt(
   state: GameState,
@@ -325,7 +364,7 @@ export function fitsAt(
   const def = content.buildings[type];
   if (!inBounds(map, x, y) || !isRotation(rotation)) return false;
   const layout = buildingLayout(def, { x, y }, rotation);
-  const blocked = blockedGrid(state, content);
+  const occupied = occupiedGrid(state, content);
   const doors = doorTiles(state, content);
   const piles = tilesUnderStockpiles(state);
   const caches = tilesUnderCaches(state);
@@ -336,7 +375,7 @@ export function fitsAt(
     const i = tileIndex(map, t.x, t.y);
     const terrain = map.terrain[i];
     if (terrain === undefined || !content.terrain[terrain].buildable) return false;
-    if (blocked[i] === 1 || doors.has(i) || piles.has(i) || caches.has(i) || pois.has(i)) {
+    if (occupied[i] === 1 || doors.has(i) || piles.has(i) || caches.has(i) || pois.has(i)) {
       return false;
     }
     if (map.roads[i] !== undefined && !def.wall?.gate) return false;
@@ -349,7 +388,7 @@ export function fitsAt(
   if (!inBounds(map, door.x, door.y)) return false;
   const doorIndex = tileIndex(map, door.x, door.y);
   if (def.doorOnRiverbank && !isRiverbank(state, content, door)) return false;
-  return blocked[doorIndex] === 0 && !piles.has(doorIndex) && !caches.has(doorIndex);
+  return occupied[doorIndex] === 0 && !piles.has(doorIndex) && !caches.has(doorIndex);
 }
 
 /** Whether the village has a `type` building, built or under construction. */

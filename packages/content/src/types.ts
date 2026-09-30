@@ -141,6 +141,12 @@ export interface MapObjectDef {
    * tile clears it. It turns into `into` after `days`.
    */
   grows?: GrowsDef;
+  /**
+   * Walkers (villagers, the Hero, Gloamlings) cross its tile at this percent of the ground's
+   * speed instead of being blocked by it. Nothing can still be built, paved or piled there.
+   * 1–100.
+   */
+  walkSpeedPercent?: number;
 }
 
 /**

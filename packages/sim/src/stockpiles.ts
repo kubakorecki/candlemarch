@@ -4,9 +4,9 @@ import { createEntity, destroyEntity } from './entities';
 import { allRevealed } from './fog';
 import { clearGrowth } from './forest';
 import {
-  blockedGrid,
   doorTiles,
   inBounds,
+  occupiedGrid,
   rectTiles,
   tileIndex,
   tilesUnderCaches,
@@ -34,7 +34,7 @@ export function canPlaceStockpile(
   const { map } = state;
   if (!Number.isInteger(w) || !Number.isInteger(h) || w < 1 || h < 1) return false;
   if (!inBounds(map, x, y) || !inBounds(map, x + w - 1, y + h - 1)) return false;
-  const blocked = blockedGrid(state, content);
+  const occupied = occupiedGrid(state, content);
   const doors = doorTiles(state, content);
   const piles = tilesUnderStockpiles(state);
   const caches = tilesUnderCaches(state);
@@ -48,7 +48,7 @@ export function canPlaceStockpile(
     return (
       terrain !== undefined &&
       content.terrain[terrain].buildable &&
-      blocked[i] === 0 &&
+      occupied[i] === 0 &&
       !doors.has(i) &&
       map.roads[i] === undefined &&
       !piles.has(i) &&

@@ -7,10 +7,10 @@ import { deserialize, serialize } from '../src/save';
 import type { GameState } from '../src/state';
 import { content, run, runUntil } from './helpers';
 
-/** An open field with a hero at (1,1) and a tree at (6,1). */
+/** An open field with a hero at (1,1) and a berry bush, which blocks walking, at (6,1). */
 const field: MapDef = {
   name: 'field',
-  rows: ['..........', '......T...', '..........', '..........', '..........'],
+  rows: ['..........', '......b...', '..........', '..........', '..........'],
   buildings: [],
   villagers: [],
   hero: { x: 1, y: 1 },

@@ -3,8 +3,8 @@ import type { Content } from '@candlemarch/content';
 import { allRevealed } from './fog';
 import { clearGrowth } from './forest';
 import {
-  blockedGrid,
   inBounds,
+  occupiedGrid,
   palisadeTiles,
   tileAt,
   tileIndex,
@@ -52,7 +52,7 @@ function endsInBounds(state: GameState, from: Tile, to: Tile): boolean {
 export function canLayPath(state: GameState, content: Content, from: Tile, to: Tile): boolean {
   if (!endsInBounds(state, from, to)) return false;
   const { map } = state;
-  const blocked = blockedGrid(state, content);
+  const occupied = occupiedGrid(state, content);
   const piles = tilesUnderStockpiles(state);
   const palisades = palisadeTiles(state, content);
   const tiles = lShapeTiles(from, to);
@@ -64,7 +64,7 @@ export function canLayPath(state: GameState, content: Content, from: Tile, to: T
     return (
       terrain !== undefined &&
       content.terrain[terrain].buildable &&
-      blocked[i] === 0 &&
+      occupied[i] === 0 &&
       !palisades.has(i) &&
       !piles.has(i)
     );

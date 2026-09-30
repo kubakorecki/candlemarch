@@ -1,6 +1,6 @@
 # Trees slow walkers instead of blocking them
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 02
 
@@ -20,3 +20,5 @@ Owner's decision (spec.md): everyone crosses trees at 50% speed; trees still blo
 - `pnpm check` passes.
 
 ## Comments
+
+2026-09-30 — Done. `MapObjectDef.walkSpeedPercent` (50 on `tree`); `objectSpeedGrid` and `occupiedGrid` in `grid.ts`; walk grids fold object speeds in; placement uses `occupiedGrid`. Tests in `trees.test.ts`; older tests that used a tree as a wall now use a berry bush or check `occupiedGrid`. The Valley test's "every walkable tile reachable" skips tree tiles (seed 11 has a tree hemmed in by river and patches). Bench unchanged. `valley` still starves (see 05). See `docs/decisions.md`.

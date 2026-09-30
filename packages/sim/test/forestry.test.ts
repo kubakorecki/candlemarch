@@ -7,7 +7,13 @@ import { dawnTick } from '../src/calendar';
 import { idsOf } from '../src/entities';
 import { isWithered } from '../src/forage';
 import { plantSapling } from '../src/forest';
-import { blockedGrid, canPlaceBuilding, tileIndex } from '../src/grid';
+import {
+  blockedGrid,
+  canPlaceBuilding,
+  objectSpeedGrid,
+  occupiedGrid,
+  tileIndex,
+} from '../src/grid';
 import { heroOrderAt } from '../src/hero';
 import { fellTree, groundCeiling } from '../src/huntingGrounds';
 import { createInitialState, type MapDef } from '../src/map';
@@ -141,14 +147,17 @@ describe('Saplings', () => {
     });
   });
 
-  it("don't block walking until they're trees", () => {
+  it("are walked over at full speed and built on until they're trees", () => {
     const s0 = createInitialState(1, field, content);
     const id = saplingAt(s0, { x: 8, y: 2 });
     const i = tileIndex(s0.map, 8, 2);
     expect(blockedGrid(s0, content)[i]).toBe(0);
+    expect(objectSpeedGrid(s0, content)[i]).toBe(0);
+    expect(occupiedGrid(s0, content)[i]).toBe(0);
     const grown = dawnOf(s0, 1 + (sapling.grows?.days ?? 0));
     expect(grown.components.mapObject[id]?.type).toBe('tree');
-    expect(blockedGrid(grown, content)[i]).toBe(1);
+    expect(objectSpeedGrid(grown, content)[i]).toBe(content.mapObjects.tree.walkSpeedPercent);
+    expect(occupiedGrid(grown, content)[i]).toBe(1);
   });
 
   it("can't be felled until they're trees", () => {
@@ -271,7 +280,7 @@ describe('Stumps', () => {
       amount: content.mapObjects.tree.amount,
     });
     expect(isWithered(grown, content, BUSH)).toBe(false);
-    expect(blockedGrid(grown, content)[tileIndex(grown.map, 5, 2)]).toBe(1);
+    expect(occupiedGrid(grown, content)[tileIndex(grown.map, 5, 2)]).toBe(1);
     expect(heroOrderAt(grown, content, { x: 5, y: 2 })).toEqual({ order: 'gather', tree: TREE });
   });
 

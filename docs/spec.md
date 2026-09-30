@@ -54,6 +54,8 @@ Each game is a procedurally generated valley seeded with handcrafted points of i
 
 **Terrain** *(Decided in design session M4-03; numbers Proposed)*. Forest isn't a Terrain: it's tiles with standing trees, and a tile stops being Forest when its tree is felled. Trees and Forage patches stand on Meadow.
 
+**Trees are walked through** *(Decided after the M4 playtest; speed Proposed)*: villagers, the Hero and Gloamlings cross a tree's tile at 50% speed, so a wood is a slow way through, not a wall. Nothing can be built, paved or piled on a tree. Forage patches and Deposits still block walking.
+
 | Terrain | Walk | Build | Walking speed | Notes |
 | --- | --- | --- | --- | --- |
 | Meadow | yes | yes | 100% | Replaces "grass" |

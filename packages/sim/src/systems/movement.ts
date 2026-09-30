@@ -5,6 +5,7 @@ import {
   blockedGrid,
   heroBlockedGrid,
   inBounds,
+  objectSpeedGrid,
   tileAt,
   tileCenter,
   tileIndex,
@@ -13,7 +14,7 @@ import {
 import { litGrid } from '../lights';
 import { cached, cachedCosts } from '../mapCache';
 import { type CostSearch, canReach, findPath, type Grid, regions } from '../pathfinding';
-import { heroSpeedPercentAt, maxSpeedPercent, speedPercentAt, speedPercentGrid } from '../roads';
+import { maxSpeedPercent, speedPercentGrid } from '../roads';
 import { speedPercent } from '../speed';
 import {
   DIAGONAL_UNITS,
@@ -63,30 +64,44 @@ function heroGrid(state: GameState, content: Content): Grid {
     width: map.width,
     height: map.height,
     blocked: heroBlockedGrid(state, content),
-    speedPercent: speedPercentGrid(map, content, true),
+    speedPercent: speedsWithObjects(state, content, true),
     maxSpeedPercent: maxSpeedPercent(content),
   }));
 }
 
-/** Walking speed percent on tile `index` for walker `id`: the Hero's (`heroSpeedPercentAt`) or everyone's. */
+/** Walking speed percent on tile `index` for walker `id`: from the grid it paths over (`walkGrid`). */
 function walkerSpeedPercentAt(
   state: GameState,
   content: Content,
   id: EntityId,
   index: number,
 ): number {
-  const at = state.components.hero[id] ? heroSpeedPercentAt : speedPercentAt;
-  return at(state.map, content, index);
+  return walkGrid(state, content, id).speedPercent[index] ?? 0;
 }
 
-/** A walking grid with `blocked` and the map's road speeds. */
+/**
+ * Walking speed percent of every tile, row-major: the terrain's or its Road's (`speedPercentGrid`,
+ * the Hero's with `hero`), slowed to what stands on it where that's slower (a tree,
+ * `objectSpeedGrid`).
+ */
+function speedsWithObjects(state: GameState, content: Content, hero: boolean): Uint16Array {
+  const speeds = speedPercentGrid(state.map, content, hero);
+  objectSpeedGrid(state, content).forEach((percent, i) => {
+    if (percent > 0 && percent < (speeds[i] ?? 0)) speeds[i] = percent;
+  });
+  return speeds;
+}
+
+/** A walking grid with `blocked` and the map's walking speeds. */
 function gridOver(state: GameState, content: Content, blocked: Uint8Array): Grid {
   const { map } = state;
   return {
     width: map.width,
     height: map.height,
     blocked,
-    speedPercent: cached(state, content, 'speedPercent', () => speedPercentGrid(map, content)),
+    speedPercent: cached(state, content, 'speedPercent', () =>
+      speedsWithObjects(state, content, false),
+    ),
     maxSpeedPercent: maxSpeedPercent(content),
   };
 }

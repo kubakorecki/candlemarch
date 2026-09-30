@@ -81,6 +81,16 @@ describe('content validation', () => {
     }
   });
 
+  it('map objects walked through slow walkers by a whole percent from 1 to 100', () => {
+    for (const obj of Object.values(mapObjects)) {
+      if (obj.walkSpeedPercent === undefined) continue;
+      expectPositiveInt(obj.walkSpeedPercent, `${obj.id}.walkSpeedPercent`);
+      expect(obj.walkSpeedPercent, `${obj.id}.walkSpeedPercent`).toBeLessThanOrEqual(100);
+      // Something growing is walked over at full speed already.
+      expect(obj.grows, `${obj.id} grows and slows`).toBeUndefined();
+    }
+  });
+
   it('Deposits hold a Stockpile good and stand on terrain that exists', () => {
     const deposits = Object.values(mapObjects).filter((obj) => obj.deposit);
     expect(deposits.map((d) => d.id).sort()).toEqual([
