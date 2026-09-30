@@ -2,7 +2,7 @@
 // from west to east north of the Camp, the Side valley in the south-east corner. `generate.ts`
 // turns or mirrors the result. Every number is in `content.valley`; the PRNG is the only source
 // of chance, drawn in a fixed order.
-import type { Content, IntRange, MapObjectId, TerrainId } from '@candlemarch/content';
+import type { Content, IntRange, MapObjectId, PoiId, TerrainId } from '@candlemarch/content';
 import { type RngHolder, randomInt } from '../rng';
 import type { Tile } from '../state';
 import { valueNoise } from './noise';
@@ -22,6 +22,8 @@ export interface Layout {
   object: (MapObjectId | null)[];
   /** 1 where a Den stands. */
   den: Uint8Array;
+  /** The point of interest on each tile, or null. */
+  poi: (PoiId | null)[];
   /** 1 on the Side valley's corner pocket (whatever its terrain). */
   sideValley: Uint8Array;
   /** 1 on Forest: the tiles the noise wooded, trees or not. Hunting grounds are cut from it. */
@@ -349,12 +351,14 @@ export function layOutValley(rng: RngHolder, content: Content): Layout {
     terrain,
     object,
     den: new Uint8Array(n * n),
+    poi: new Array(n * n).fill(null),
     sideValley,
     forest,
     entry: { x: 0, y: ey },
     camp,
     clear,
   };
+  placePois(layout, content, rng, keepClear);
   connect(layout, content, false);
   connect(layout, content, true);
   dropUnshaded(layout, content);
@@ -505,9 +509,11 @@ function connect(layout: Layout, content: Content, passOpen: boolean): void {
   for (const u of members[startRegion] ?? []) joined[u] = 1;
 
   // A pocket of a tile or two walled in by the Forest gets a tree instead: cheaper than felling.
+  const planted = (t: number) =>
+    terrain[t] === 'meadow' && layout.forest[t] && !layout.den[t] && layout.poi[t] === null;
   for (const tiles of members) {
     if (tiles.length === 0 || tiles.length > POCKET_TILES || joined[tiles[0] as number]) continue;
-    if (!tiles.every((t) => terrain[t] === 'meadow' && layout.forest[t])) continue;
+    if (!tiles.every(planted)) continue;
     for (const t of tiles) object[t] = 'tree';
   }
   for (let i = 0; i < n * n; i++) {
@@ -557,12 +563,111 @@ function dropUnshaded(layout: Layout, content: Content): void {
 }
 
 /**
+ * Points of interest (`content.valley.pois`), before `connect` so the ways in reach them. First
+ * the Abandoned mine: an iron Deposit with walkable Side-valley ground beside it, where its Den
+ * goes (on Meadow). Then Ruins and the Shrine, each a stamp: bare Meadow `clearTiles` round it
+ * (trees and Forage patches cleared; no Deposit, Den, Camp square or Side valley under it), in
+ * the main valley, at least `campTiles` from the Camp and `spacingTiles` from every other point
+ * of interest. Ruins go anywhere that fits; the Shrine on the fitting tile nearest a point
+ * `shrineAlongPercent` of the way from the entry to the middle of the Pass, out of its ward round
+ * the mine's Den. A kind with nowhere to go is left out, and the Valley's check throws the layout
+ * away.
+ */
+function placePois(layout: Layout, content: Content, rng: RngHolder, keepClear: Tiles): void {
+  const { size: n, terrain, object, sideValley, den, poi } = layout;
+  const p = content.valley.pois;
+  const table = neighbourTable(n);
+  const all = [...terrain.keys()];
+  const placed: number[] = [];
+  const apart = (i: number) => placed.every((q) => chebyshev(n, q, i) >= p.spacingTiles);
+
+  const mouthOf = (i: number) => {
+    for (let e = i * 4; e < i * 4 + 4; e++) {
+      const j = table[e] as number;
+      if (j >= 0 && sideValley[j] && (terrain[j] === 'meadow' || terrain[j] === 'rock')) return j;
+    }
+    return -1;
+  };
+  const mines = all.filter((i) => object[i] === 'iron_deposit' && mouthOf(i) >= 0);
+  const mine = mines[randomInt(rng, Math.max(1, mines.length))];
+  if (mine !== undefined) {
+    const mouth = mouthOf(mine);
+    poi[mine] = 'abandoned_mine';
+    placed.push(mine);
+    terrain[mouth] = 'meadow';
+    object[mouth] = null;
+    den[mouth] = 1;
+  }
+
+  const r = p.clearTiles;
+  const clearable = (j: number) => {
+    const type = object[j] ?? null;
+    return type === null || type === 'tree' || content.mapObjects[type].forage !== undefined;
+  };
+  const fits = (i: number) => {
+    const x = i % n;
+    const y = (i - x) / n;
+    if (terrain[i] !== 'meadow' || x < r || y < r || x + r >= n || y + r >= n) return false;
+    if (!apart(i)) return false;
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        const j = i + dy * n + dx;
+        if (terrain[j] !== 'meadow' || keepClear[j] || sideValley[j] || den[j]) return false;
+        if (!clearable(j)) return false;
+      }
+    }
+    return true;
+  };
+  const stamp = (kind: PoiId, i: number) => {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) object[i + dy * n + dx] = null;
+    }
+    poi[i] = kind;
+    placed.push(i);
+  };
+
+  const camp = layout.camp.y * n + layout.camp.x;
+  const ruins = all.filter((i) => chebyshev(n, i, camp) >= p.campTiles && fits(i));
+  let left = p.ruins;
+  while (left > 0 && ruins.length > 0) {
+    const [i] = ruins.splice(randomInt(rng, ruins.length), 1);
+    if (i === undefined || !fits(i)) continue;
+    stamp('ruins', i);
+    left -= 1;
+  }
+
+  const pass = all.filter((i) => terrain[i] === 'pass_snow');
+  if (pass.length === 0) return;
+  const mean = (coord: (i: number) => number) =>
+    Math.floor(pass.reduce((sum, i) => sum + coord(i), 0) / pass.length);
+  const middle = { x: mean((i) => i % n), y: mean((i) => Math.floor(i / n)) };
+  const { min, max } = p.shrineAlongPercent;
+  const along = min + randomInt(rng, max - min + 1);
+  const { entry } = layout;
+  const tx = entry.x + Math.floor(((middle.x - entry.x) * along) / 100);
+  const ty = entry.y + Math.floor(((middle.y - entry.y) * along) / 100);
+  const ward = content.pois.shrine.wardTiles ?? 0;
+  const dens = all.filter((i) => den[i]);
+  let best = -1;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  for (const i of all) {
+    const d = ((i % n) - tx) ** 2 + (Math.floor(i / n) - ty) ** 2;
+    if (d >= bestDistance || chebyshev(n, i, camp) < p.campTiles || !fits(i)) continue;
+    if (dens.some((j) => chebyshev(n, i, j) <= ward)) continue;
+    best = i;
+    bestDistance = d;
+  }
+  if (best >= 0) stamp('shrine', best);
+}
+
+/**
  * Dens on open Meadow the entry can reach (over the Pass), further than `denTiles` from the Camp
- * and `spacingTiles` apart: first those in the Side valley, then the rest outside it.
+ * and `spacingTiles` apart, off every point of interest's stamp and out of the Shrine's ward:
+ * first those in the Side valley (the Abandoned mine's Den counts), then the rest outside it.
  */
 function placeDens(layout: Layout, content: Content, rng: RngHolder, keepClear: Tiles): void {
-  const { size: n, terrain, object, sideValley, den } = layout;
-  const { dens, guarantees } = content.valley;
+  const { size: n, terrain, object, sideValley, den, poi } = layout;
+  const { dens, guarantees, pois } = content.valley;
   const reached = flood(
     n,
     layout.entry.y * n + layout.entry.x,
@@ -571,7 +676,22 @@ function placeDens(layout: Layout, content: Content, rng: RngHolder, keepClear: 
       object[i] === null,
   );
   const camp = layout.camp.y * n + layout.camp.x;
-  const placed: number[] = [];
+  const placed = [...den.keys()].filter((i) => den[i]);
+  const inSideAlready = placed.filter((i) => sideValley[i]).length;
+  // Tiles no Den may take: each point of interest's stamp, and the Shrine's ward.
+  const kept: Tiles = new Uint8Array(n * n);
+  for (let i = 0; i < n * n; i++) {
+    const kind = poi[i];
+    if (!kind) continue;
+    const reach = Math.max(pois.clearTiles, content.pois[kind].wardTiles ?? 0);
+    const x = i % n;
+    const y = (i - x) / n;
+    for (let ay = Math.max(0, y - reach); ay <= Math.min(n - 1, y + reach); ay++) {
+      for (let ax = Math.max(0, x - reach); ax <= Math.min(n - 1, x + reach); ax++) {
+        kept[ay * n + ax] = 1;
+      }
+    }
+  }
   const candidates = (inSide: boolean) =>
     [...terrain.keys()].filter(
       (i) =>
@@ -579,6 +699,7 @@ function placeDens(layout: Layout, content: Content, rng: RngHolder, keepClear: 
         object[i] === null &&
         reached[i] === 1 &&
         !keepClear[i] &&
+        !kept[i] &&
         (sideValley[i] === 1) === inSide &&
         chebyshev(n, i, camp) > guarantees.denTiles,
     );
@@ -592,6 +713,6 @@ function placeDens(layout: Layout, content: Content, rng: RngHolder, keepClear: 
       left -= 1;
     }
   };
-  pick(dens.sideValley, candidates(true));
-  pick(dens.count - dens.sideValley, candidates(false));
+  pick(Math.max(0, dens.sideValley - inSideAlready), candidates(true));
+  pick(dens.count - placed.length, candidates(false));
 }

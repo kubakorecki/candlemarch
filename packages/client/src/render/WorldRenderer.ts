@@ -15,6 +15,7 @@ import {
   hasTile,
   healthBars,
   heroOf,
+  heroSearch,
   idsOf,
   isBellRung,
   isBrokenWall,
@@ -55,6 +56,7 @@ import { GroundLayer, MapObjectLayer } from './mapLayers';
 import type { NightLook } from './night';
 import { palette } from './palette';
 import {
+  drawAbandonedMine,
   drawAuraRadius,
   drawAxe,
   drawBell,
@@ -86,9 +88,12 @@ import {
   drawPalisade,
   drawPileGround,
   drawPlacementGhost,
+  drawProgressBar,
   drawReserve,
   drawRoads,
+  drawRuins,
   drawSelectionRing,
+  drawShrine,
   drawSite,
   drawTileGhost,
   drawVillagerStatus,
@@ -102,7 +107,10 @@ import {
 } from './shapes';
 import { drawVillager, drawVillagerTool } from './villagerArt';
 
-/** A building, site, Den, cache or stockpile tile, redrawn only when what it shows changes. */
+/**
+ * A building, site, Den, cache, point of interest or stockpile tile, redrawn only when what it
+ * shows changes.
+ */
 interface StaticView {
   node: Container;
   graphics: Graphics;
@@ -439,7 +447,7 @@ export class WorldRenderer {
     this.fog.sync(state);
 
     const seen = new Set<string>();
-    const { tile, mapObject, building, site, den, cache } = state.components;
+    const { tile, mapObject, building, site, den, cache, poi } = state.components;
     this.mapObjects.sync(
       mapObject,
       tile,
@@ -465,6 +473,29 @@ export class WorldRenderer {
         const c = tileCenterWorld(at.x, at.y);
         view.node.position.set(c.x, c.y);
         view.node.zIndex = depthOf(at.x + 0.5, at.y + 0.5);
+      }
+    }
+
+    // Points of interest, a hair behind a cache on the same tile (a Searched Ruins').
+    for (const id of idsOf(poi)) {
+      const at = tile[id];
+      const p = poi[id];
+      if (!at || !p) continue;
+      const view = this.staticView(
+        `poi:${id}`,
+        seen,
+        staticBounds(at.x, at.y, 1, 1),
+        shown(at.x, at.y, 1, 1),
+      );
+      const key = `${p.kind}@${at.x},${at.y}:${p.searched}`;
+      if (view.key !== key) {
+        if (p.kind === 'ruins') drawRuins(view.graphics, p.searched);
+        else if (p.kind === 'shrine') drawShrine(view.graphics);
+        else drawAbandonedMine(view.graphics);
+        view.key = key;
+        const c = tileCenterWorld(at.x, at.y);
+        view.node.position.set(c.x, c.y);
+        view.node.zIndex = depthOf(at.x + 0.5, at.y + 0.5) - 1e-3;
       }
     }
 
@@ -642,7 +673,7 @@ export class WorldRenderer {
 
   /**
    * A health bar over each villager and Gloamling in a fight, and over each House door or wall
-   * segment being battered (the sim's `healthBars`).
+   * segment being battered (the sim's `healthBars`); the Hero's Search progress over its Ruins.
    */
   private drawHealthBars(
     state: GameState,
@@ -672,6 +703,12 @@ export class WorldRenderer {
       // Over a Gloamling's head, or over a villager's status icons.
       const above = state.components.gloamling[bar.id] ? 36 : 82;
       drawHealthBar(g, w.x, w.y - above * s, bar.hp, bar.maxHp);
+    }
+    const search = heroSearch(state, this.content);
+    if (search) {
+      // Above the Hero's head and its health bar.
+      const c = tileCenterWorld(search.tile.x, search.tile.y);
+      drawProgressBar(g, c.x, c.y - 96 * s, search.percent);
     }
   }
 

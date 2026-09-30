@@ -179,6 +179,14 @@ export const palette = {
   gloamLight: 0x433d4d,
   gloamEye: 0xd9e3a4,
   darkRing: 0x221c2a,
+  // Points of interest: weathered, mossy Ruins; a pale standing-stone Shrine with a gilt offering;
+  // the Abandoned mine's rotten timbers (`plankDark`) round a black mouth (`denMouth`).
+  ruin: 0x9a9384,
+  ruinDark: 0x716b60,
+  ruinMoss: 0x5f6a3e,
+  shrine: 0xb3ab96,
+  shrineDark: 0x8a836f,
+  offering: 0xc9a25a,
   // Health bars over anyone in a fight: what's left, and the empty part of the bar.
   health: 0xb8503f,
   healthLost: 0x2a2226,

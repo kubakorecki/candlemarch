@@ -12,6 +12,7 @@ import { jobs } from './jobs';
 import { logistics } from './logistics';
 import { mapObjects } from './mapObjects';
 import { needs } from './needs';
+import { pois } from './pois';
 import { recipes } from './recipes';
 import { resources } from './resources';
 import { roads } from './roads';
@@ -41,5 +42,6 @@ export const content: Content = {
   combat,
   fog,
   valley,
+  pois,
   villagerNames,
 };

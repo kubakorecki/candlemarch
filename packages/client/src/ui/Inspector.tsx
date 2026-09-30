@@ -1,6 +1,6 @@
 // Bottom left: the workers view and whatever is selected (a building, villager, Stockpile, forage
-// patch or Hunting ground), one inspector panel each.
-import { content } from '@candlemarch/content';
+// patch, point of interest or Hunting ground), one inspector panel each.
+import { content, type PoiId } from '@candlemarch/content';
 import { STOCKPILE_PRIORITIES, type StockpilePriority } from '@candlemarch/sim';
 import type { ReactNode } from 'react';
 import type {
@@ -9,11 +9,12 @@ import type {
   GroundInfo,
   HudState,
   PatchInfo,
+  PoiInfo,
   VillagerInfo,
   WorkersView,
 } from '../game/Game';
 import { TOOL_ICONS } from './buildCategories';
-import { Icon } from './icons';
+import { Icon, type IconName } from './icons';
 import {
   Avatar,
   Callout,
@@ -304,6 +305,26 @@ function PatchPanel({ patch, game }: { patch: PatchInfo; game: Game }) {
   );
 }
 
+const POI_ICONS: Record<PoiId, IconName> = {
+  ruins: 'ruins',
+  abandoned_mine: 'pick',
+  shrine: 'shrine',
+};
+
+function PoiPanel({ poi, game }: { poi: PoiInfo; game: Game }) {
+  return (
+    <section className="inspector panel" aria-label="Selected point of interest">
+      <Head
+        lead={<Medallion icon={POI_ICONS[poi.kind]} />}
+        name={poi.name}
+        sub={poi.sub ?? undefined}
+        game={game}
+      />
+      <p className="footnote">{poi.note}</p>
+    </section>
+  );
+}
+
 function GroundPanel({ ground, game }: { ground: GroundInfo; game: Game }) {
   return (
     <section className="inspector panel" aria-label="Selected Hunting ground">
@@ -379,6 +400,7 @@ export function LeftDock({ hud, game }: { hud: HudState; game: Game }) {
       {hud.villager && <VillagerPanel villager={hud.villager} game={game} />}
       {hud.pile && <PilePanel pile={hud.pile} game={game} />}
       {hud.patch && <PatchPanel patch={hud.patch} game={game} />}
+      {hud.poi && <PoiPanel poi={hud.poi} game={game} />}
       {hud.ground && <GroundPanel ground={hud.ground} game={game} />}
     </div>
   );

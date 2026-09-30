@@ -31,7 +31,7 @@ export {
   tileOfPoint,
 } from './grid';
 export { canLayGroundwork, groundworkOf } from './groundwork';
-export { type HeroOrder, heroOf, heroOrderAt } from './hero';
+export { type HeroOrder, heroOf, heroOrderAt, heroSearch } from './hero';
 export {
   addHuntingGround,
   type GroundHealth,
@@ -52,6 +52,7 @@ export type { Haul, LogisticsState } from './logistics/jobDispatch';
 export { createInitialState, type MapDef } from './map';
 export { DEFAULT_MAP, type MapName, maps } from './maps';
 export { bellOf, isBellRung } from './militia';
+export { isSearchable, poiAt } from './pois';
 export {
   addToReserve,
   canPaintReserve,

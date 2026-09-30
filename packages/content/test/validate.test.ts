@@ -438,6 +438,7 @@ describe('content validation', () => {
       valley.sideValley.wallThickness,
       valley.swamp.patches,
       valley.swamp.radiusTiles,
+      valley.pois.shrineAlongPercent,
     ];
     for (const range of ranges) {
       expectPositiveInt(range.min, 'valley range min');
@@ -462,6 +463,7 @@ describe('content validation', () => {
       ...Object.values(valley.rock),
       ...Object.values(valley.deposits),
       ...Object.values(valley.dens),
+      ...Object.values(valley.pois).filter((n) => typeof n === 'number'),
       valley.huntingGrounds.maxTiles,
       valley.huntingGrounds.minTiles,
       valley.huntingGrounds.treesPerGame,
@@ -472,6 +474,10 @@ describe('content validation', () => {
       true,
     );
     expect(valley.dens.sideValley <= valley.dens.count, 'Side valley Dens').toBe(true);
+    const { pois } = valley;
+    expect(pois.shrineAlongPercent.max <= 100, 'Shrine along the way').toBe(true);
+    // Stamps never overlap: their cleared squares stay apart.
+    expect(pois.spacingTiles > 2 * pois.clearTiles, 'POI stamps apart').toBe(true);
     expect(valley.huntingGrounds.minTiles <= valley.huntingGrounds.maxTiles).toBe(true);
     for (const { resource, amount } of [
       ...valley.camp.granaryStock,
@@ -483,6 +489,23 @@ describe('content validation', () => {
     const names = valley.huntingGrounds.names;
     expect(new Set(names).size, 'distinct Hunting ground names').toBe(names.length);
     expect(names.every((name) => name.trim() === name && name.length > 0)).toBe(true);
+  });
+
+  it('points of interest search for real goods and ward with whole tiles', () => {
+    for (const [key, poi] of Object.entries(content.pois)) {
+      expect(poi.id).toBe(key);
+      if (poi.search) {
+        expectPositiveInt(poi.search.ticks, `${poi.id}.search.ticks`);
+        expectNonNegativeInt(poi.search.spreadPercent, `${poi.id}.search.spreadPercent`);
+        expect(poi.search.spreadPercent < 100, `${poi.id} can find nothing`).toBe(true);
+        expect(poi.search.cache.length).toBeGreaterThan(0);
+        for (const { resource, amount } of poi.search.cache) {
+          expect(resources, `${poi.id}.search.cache`).toHaveProperty(resource);
+          expectPositiveInt(amount, `${poi.id}.search.cache ${resource}`);
+        }
+      }
+      if (poi.wardTiles !== undefined) expectPositiveInt(poi.wardTiles, `${poi.id}.wardTiles`);
+    }
   });
 
   it('fighters use positive whole numbers', () => {

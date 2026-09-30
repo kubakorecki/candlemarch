@@ -48,6 +48,13 @@ export const valley: ValleyDef = {
   rock: { footTiles: 2, thresholdPercent: 50, cellTiles: 6 },
   deposits: { stone: 5, clay: 4, iron: 2, spacingTiles: 6 },
   dens: { count: 3, sideValley: 1, spacingTiles: 20 },
+  pois: {
+    ruins: 2,
+    campTiles: 25,
+    clearTiles: 1,
+    spacingTiles: 12,
+    shrineAlongPercent: { min: 40, max: 60 },
+  },
   huntingGrounds: {
     maxTiles: 250,
     minTiles: 20,

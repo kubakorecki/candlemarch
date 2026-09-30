@@ -1681,6 +1681,162 @@ export function drawCache(g: Graphics, goods: readonly ResourceAmount[]): void {
   });
 }
 
+/**
+ * Ruins, drawn around (0, 0) = the centre of its tile: an old flagstone floor, broken wall stubs
+ * with moss, and a toppled column. Once Searched, the floor is dug through in the middle.
+ */
+export function drawRuins(g: Graphics, searched: boolean): void {
+  g.clear();
+  const s = TILE_H / 64;
+  groundShadow(g, 42 * s, 18 * s);
+  g.poly(
+    flat([
+      { x: -38 * s, y: 0 },
+      { x: 0, y: -19 * s },
+      { x: 38 * s, y: 0 },
+      { x: 0, y: 19 * s },
+    ]),
+  )
+    .fill(palette.ruinDark)
+    .stroke(THIN_INK);
+  g.moveTo(-19 * s, -9.5 * s).lineTo(19 * s, 9.5 * s);
+  g.moveTo(19 * s, -9.5 * s).lineTo(-19 * s, 9.5 * s);
+  g.stroke({ ...THIN_INK, alpha: 0.35 });
+  if (searched) {
+    g.ellipse(2 * s, 1 * s, 15 * s, 6.5 * s)
+      .fill(palette.denEarth)
+      .stroke(THIN_INK);
+    g.ellipse(2 * s, 2 * s, 8 * s, 3 * s).fill(palette.denMouth);
+  }
+  // A wall stub standing from (x, y), `w` either side and `h` tall, its top broken off by `jag`.
+  const stub = (x: number, y: number, w: number, h: number, jag: number) => {
+    g.poly(
+      flat([
+        { x: x - w, y },
+        { x: x - w, y: y - h },
+        { x: x - w / 3, y: y - h + jag },
+        { x: x + w / 3, y: y - h - jag / 2 },
+        { x: x + w, y: y - h + jag },
+        { x: x + w, y },
+      ]),
+    )
+      .fill(palette.ruin)
+      .stroke(INK);
+    g.moveTo(x - w, y - h / 2)
+      .lineTo(x + w, y - h / 2)
+      .stroke({ ...THIN_INK, alpha: 0.5 });
+    g.ellipse(x - w / 2, y - h + jag + 2 * s, w / 2.5, 3 * s).fill(palette.ruinMoss);
+  };
+  stub(-16 * s, -4 * s, 10 * s, 30 * s, 8 * s);
+  stub(14 * s, -8 * s, 8 * s, 20 * s, 6 * s);
+  // A toppled column in front.
+  g.poly(
+    flat([
+      { x: -20 * s, y: 8 * s },
+      { x: 12 * s, y: 14 * s },
+      { x: 12 * s, y: 22 * s },
+      { x: -20 * s, y: 16 * s },
+    ]),
+  )
+    .fill(palette.ruin)
+    .stroke(INK);
+  g.ellipse(12 * s, 18 * s, 3 * s, 4 * s)
+    .fill(palette.ruinDark)
+    .stroke(THIN_INK);
+  g.ellipse(-6 * s, 12 * s, 5 * s, 2 * s).fill(palette.ruinMoss);
+}
+
+/**
+ * A Shrine, drawn around (0, 0) = the centre of its tile: a pale standing stone with a carved
+ * spiral on a low plinth, and a gilt offering bowl at its foot.
+ */
+export function drawShrine(g: Graphics): void {
+  g.clear();
+  const s = TILE_H / 64;
+  groundShadow(g, 26 * s, 11 * s);
+  g.poly(
+    flat([
+      { x: -22 * s, y: 0 },
+      { x: 0, y: -11 * s },
+      { x: 22 * s, y: 0 },
+      { x: 0, y: 11 * s },
+    ]),
+  )
+    .fill(palette.shrineDark)
+    .stroke(INK);
+  const stone = flat([
+    { x: -10 * s, y: 2 * s },
+    { x: -12 * s, y: -30 * s },
+    { x: -6 * s, y: -46 * s },
+    { x: 4 * s, y: -50 * s },
+    { x: 11 * s, y: -40 * s },
+    { x: 10 * s, y: 2 * s },
+  ]);
+  g.poly(stone).fill(palette.shrine);
+  g.poly(
+    flat([
+      { x: 4 * s, y: -50 * s },
+      { x: 11 * s, y: -40 * s },
+      { x: 10 * s, y: 2 * s },
+      { x: 4 * s, y: 3 * s },
+    ]),
+  ).fill(palette.shrineDark);
+  g.poly(stone).stroke(INK);
+  // The carved spiral.
+  g.moveTo(-1 * s, -26 * s)
+    .arc(-1 * s, -28 * s, 2 * s, Math.PI / 2, Math.PI * 2.2)
+    .arc(-1 * s, -28 * s, 5 * s, Math.PI * 0.2, Math.PI * 1.8)
+    .stroke({ ...THIN_INK, alpha: 0.7 });
+  g.ellipse(-12 * s, 6 * s, 6 * s, 2.5 * s)
+    .fill(palette.offering)
+    .stroke(THIN_INK);
+}
+
+/**
+ * An Abandoned mine, drawn around (0, 0) = the centre of its tile, over its iron Deposit: a black
+ * mouth in the Mountain face under a timber frame, a plank nailed half across it.
+ */
+export function drawAbandonedMine(g: Graphics): void {
+  g.clear();
+  const s = TILE_H / 64;
+  g.poly(
+    flat([
+      { x: -14 * s, y: 8 * s },
+      { x: -14 * s, y: -16 * s },
+      { x: -8 * s, y: -26 * s },
+      { x: 8 * s, y: -26 * s },
+      { x: 14 * s, y: -16 * s },
+      { x: 14 * s, y: 8 * s },
+    ]),
+  ).fill(palette.denMouth);
+  const timber = { ...INK, width: 7 * s, color: palette.plankDark };
+  g.moveTo(-15 * s, 9 * s).lineTo(-15 * s, -24 * s);
+  g.moveTo(15 * s, 9 * s).lineTo(15 * s, -24 * s);
+  g.moveTo(-21 * s, -26 * s).lineTo(21 * s, -26 * s);
+  g.stroke({ ...INK, width: 10 * s });
+  g.moveTo(-15 * s, 9 * s).lineTo(-15 * s, -24 * s);
+  g.moveTo(15 * s, 9 * s).lineTo(15 * s, -24 * s);
+  g.moveTo(-21 * s, -26 * s).lineTo(21 * s, -26 * s);
+  g.stroke(timber);
+  g.moveTo(-17 * s, -6 * s).lineTo(10 * s, -12 * s);
+  g.stroke({ ...INK, width: 8 * s });
+  g.moveTo(-17 * s, -6 * s).lineTo(10 * s, -12 * s);
+  g.stroke({ ...timber, width: 5 * s, color: palette.plank });
+}
+
+/** A progress bar centred on (x, y), `percent` filled from the left, in an ink frame. */
+export function drawProgressBar(g: Graphics, x: number, y: number, percent: number): void {
+  const s = TILE_H / 64;
+  const w = 26 * s;
+  const h = 5 * s;
+  const left = x - w / 2;
+  const top = y - h / 2;
+  g.rect(left, top, w, h).fill(palette.healthLost);
+  const filled = (w * Math.max(0, Math.min(percent, 100))) / 100;
+  if (filled > 0) g.rect(left, top, filled, h).fill(palette.aura);
+  g.rect(left, top, w, h).stroke({ ...INK, width: 1.5 });
+}
+
 /** Where a Gloamling's eyes sit, relative to its feet, in art units (× TILE_H / 64). */
 const GLOAMLING_EYES: Vec[] = [
   { x: -6, y: -18 },

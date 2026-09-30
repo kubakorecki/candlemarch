@@ -1,6 +1,12 @@
 // Glue between the sim worker, the renderer, input and the React HUD. Holds UI-only state
 // (speed, build mode); everything about the world comes from sim snapshots.
-import { type BuildingId, content, type JobId, type ResourceId } from '@candlemarch/content';
+import {
+  type BuildingId,
+  content,
+  type JobId,
+  type PoiId,
+  type ResourceId,
+} from '@candlemarch/content';
 import {
   type AlertData,
   type AlertSeverity,
@@ -43,6 +49,7 @@ import {
   lShapeTiles,
   type MapName,
   maxWorkers,
+  poiAt,
   type Rotation,
   reassignTargets,
   reserveNear,
@@ -143,6 +150,19 @@ export interface PatchInfo {
   noShade: string | null;
 }
 
+/** The canvas cursor for the hero's order under the mouse: attack, Search, or the default. */
+type HeroCursor = 'crosshair' | 'zoom-in' | '';
+
+/** What the point-of-interest panel shows for the selected Ruins, Abandoned mine or Shrine. */
+export interface PoiInfo {
+  kind: PoiId;
+  name: string;
+  /** Ruins: "Searched" or "Not yet Searched"; null for the others. */
+  sub: string | null;
+  /** What it is or does: how to Search it, a Shrine's ward, the mine's iron. */
+  note: string;
+}
+
 /** What the ground panel, or a hunter's lodge's panel, shows for one Hunting ground. */
 export interface GroundInfo {
   id: EntityId;
@@ -239,6 +259,8 @@ export interface HudState {
   patch: PatchInfo | null;
   /** The Hunting ground selected by clicking it with no tool. */
   ground: GroundInfo | null;
+  /** The point of interest selected by clicking it with no tool. */
+  poi: PoiInfo | null;
   /** A warning about the building being placed, e.g. that it would log a Hunting ground. */
   placementWarning: string | null;
   /** The workers view, while it's open. */
@@ -268,8 +290,10 @@ export class Game {
   private hover: Tile | null = null;
   /** Screen point under the mouse, or null when it's off the canvas. */
   private pointer: { sx: number; sy: number } | null = null;
-  /** Whether the canvas shows the attack cursor (the hero is selected, over a Gloamling). */
-  private attackCursor = false;
+  /** The cursor the canvas shows for the hero's order under the mouse: attack, Search or none. */
+  private cursor: HeroCursor = '';
+  /** The last Search check under the mouse: its state and tile, and whether it was a Search. */
+  private searchUnder: { state: GameState; tile: Tile; search: boolean } | null = null;
   /** Tile a tool drag started on, while one is in progress. */
   private dragStart: Tile | null = null;
   /** Quarter turns clockwise the next building is placed with; kept between placements. */
@@ -279,6 +303,7 @@ export class Game {
   private selectedBuilding: EntityId | null = null;
   private selectedPatch: EntityId | null = null;
   private selectedGround: EntityId | null = null;
+  private selectedPoi: EntityId | null = null;
   private workersOpen = false;
   private lastSpeed: Speed = 1;
   private hud: HudState = {
@@ -308,6 +333,7 @@ export class Game {
     building: null,
     patch: null,
     ground: null,
+    poi: null,
     placementWarning: null,
     workers: null,
     loadMenu: null,
@@ -544,24 +570,49 @@ export class Game {
   }
 
   /**
-   * Shows the attack cursor while the hero, selected and up, has a Gloamling or a Den under the
-   * mouse. Checked every frame, as Gloamlings move under a still mouse.
+   * While the hero is selected and up, shows the attack cursor over a Gloamling or a Den and the
+   * Search cursor over Ruins it would Search. Checked every frame, as Gloamlings move under a
+   * still mouse.
    */
   private updateCursor(): void {
     const state = this.bridge.state;
     const hero = state ? heroOf(state) : null;
-    const attack =
+    let cursor: HeroCursor = '';
+    if (
       state !== null &&
       hero !== null &&
       this.hud.heroSelected &&
       this.hud.tool === null &&
       this.pointer !== null &&
-      !isKnockedOut(state, hero) &&
-      (this.renderer.hitGloamling(this.pointer.sx, this.pointer.sy) !== null ||
-        this.seenDenAt(state, this.tileAt(this.pointer.sx, this.pointer.sy)));
-    if (attack === this.attackCursor) return;
-    this.attackCursor = attack;
-    this.renderer.canvas.style.cursor = attack ? 'crosshair' : '';
+      !isKnockedOut(state, hero)
+    ) {
+      const tile = this.tileAt(this.pointer.sx, this.pointer.sy);
+      if (
+        this.renderer.hitGloamling(this.pointer.sx, this.pointer.sy) !== null ||
+        this.seenDenAt(state, tile)
+      ) {
+        cursor = 'crosshair';
+      } else if (this.searchAt(state, tile)) {
+        cursor = 'zoom-in';
+      }
+    }
+    if (cursor === this.cursor) return;
+    this.cursor = cursor;
+    this.renderer.canvas.style.cursor = cursor;
+  }
+
+  /**
+   * Whether right-clicking `tile` would order the hero to Search (the sim's `heroOrderAt`), worked
+   * out again only when the state or the tile changes.
+   */
+  private searchAt(state: GameState, tile: Tile): boolean {
+    const last = this.searchUnder;
+    if (last && last.state === state && last.tile.x === tile.x && last.tile.y === tile.y) {
+      return last.search;
+    }
+    const search = heroOrderAt(state, content, tile)?.order === 'search';
+    this.searchUnder = { state, tile, search };
+    return search;
   }
 
   /** Whether a Den the player can see (on a Revealed tile) is on `tile`. */
@@ -582,6 +633,7 @@ export class Game {
     this.refreshBuilding(state);
     this.refreshPatch(state);
     this.refreshGround(state);
+    this.refreshPoi(state);
     this.refreshWorkers(state);
     this.updateGhost();
     if (this.hud.heroSelected && heroOf(state) === null) {
@@ -720,7 +772,8 @@ export class Game {
   /**
    * Clicks with no tool. Left-click selects the hero if it's under the cursor, else a villager,
    * else the stockpile there, else the Workplace there, else the forage patch there, else the
-   * Hunting ground there (or nothing). Right-click orders the selected hero, RTS style.
+   * point of interest there, else the Hunting ground there (or nothing). Right-click orders the
+   * selected hero, RTS style.
    */
   private onSelectClick(sx: number, sy: number, button: number): void {
     const state = this.bridge.state;
@@ -740,7 +793,9 @@ export class Game {
       this.selectBuilding(workplace);
       const patch = unit || workplace !== null ? null : patchAt(state, tile);
       this.selectPatch(patch);
-      const taken = unit || workplace !== null || patch !== null;
+      const poi = unit || workplace !== null || patch !== null ? null : poiAt(state, tile);
+      this.selectPoi(poi);
+      const taken = unit || workplace !== null || patch !== null || poi !== null;
       this.selectGround(taken ? null : groundAt(state, tile));
     } else if (button === 2 && this.hud.heroSelected) {
       const hero = heroOf(state);
@@ -764,7 +819,7 @@ export class Game {
     this.setHud({
       heroSelected: selected,
       message: selected
-        ? 'Hero selected. Right-click to walk, chop a tree, carry goods, or attack a Gloamling or a Den. Esc deselects.'
+        ? 'Hero selected. Right-click to walk, chop a tree, carry goods, Search Ruins by day, or attack a Gloamling or a Den. Esc deselects.'
         : null,
     });
   }
@@ -798,11 +853,15 @@ export class Game {
     return screenToTile(sx, sy, this.camera, this.renderer.screenWidth, this.renderer.screenHeight);
   }
 
-  /** Deselects the hero, villager, stockpile, Workplace, patch and ground, whichever is selected. */
+  /**
+   * Deselects the hero, villager, stockpile, Workplace, patch, point of interest and ground,
+   * whichever is selected.
+   */
   private clearSelection(): void {
     this.selectPile(null);
     this.selectBuilding(null);
     this.selectPatch(null);
+    this.selectPoi(null);
     this.selectGround(null);
     this.selectVillager(null);
     this.selectHero(false);
@@ -863,6 +922,21 @@ export class Game {
     const info = id === null ? null : patchInfo(state, id);
     if (id !== null && !info) this.selectedPatch = null;
     if (JSON.stringify(info) !== JSON.stringify(this.hud.patch)) this.setHud({ patch: info });
+  }
+
+  private selectPoi(id: EntityId | null): void {
+    this.selectedPoi = id;
+    const state = this.bridge.state;
+    if (state) this.refreshPoi(state);
+    else this.setHud({ poi: null });
+  }
+
+  /** Copies the selected point of interest into the HUD. */
+  private refreshPoi(state: GameState): void {
+    const id = this.selectedPoi;
+    const info = id === null ? null : poiInfo(state, id);
+    if (id !== null && !info) this.selectedPoi = null;
+    if (JSON.stringify(info) !== JSON.stringify(this.hud.poi)) this.setHud({ poi: info });
   }
 
   private selectGround(id: EntityId | null): void {
@@ -1092,6 +1166,27 @@ function patchInfo(state: GameState, id: EntityId): PatchInfo | null {
       ? `No shade: needs a tree within ${def.forage.shadeTiles} tiles to regrow`
       : null,
   };
+}
+
+/** Point of interest `id`'s name and what it is for the panel, or null if it's gone. */
+function poiInfo(state: GameState, id: EntityId): PoiInfo | null {
+  const poi = state.components.poi[id];
+  if (!poi) return null;
+  const def = content.pois[poi.kind];
+  const info = { kind: poi.kind, name: def.name };
+  if (def.search) {
+    return poi.searched
+      ? { ...info, sub: 'Searched', note: 'What it held was left on its tile.' }
+      : {
+          ...info,
+          sub: 'Not yet Searched',
+          note: 'Right-click it with the hero to Search it, by day.',
+        };
+  }
+  if (def.wardTiles !== undefined) {
+    return { ...info, sub: null, note: `No Den buds within ${def.wardTiles} tiles of it.` };
+  }
+  return { ...info, sub: null, note: 'An old mine over an iron Deposit, a Den at its mouth.' };
 }
 
 /** Hunting ground `id`'s name, health and Game for the panel, or null if it's gone. */

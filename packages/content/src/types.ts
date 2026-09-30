@@ -51,6 +51,7 @@ export type JobId =
 export type RoadId = 'dirt_path' | 'pass_road';
 export type HeroId = 'placeholder';
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
+export type PoiId = 'ruins' | 'abandoned_mine' | 'shrine';
 
 /** A number of units of one resource. */
 export interface ResourceAmount {
@@ -405,6 +406,20 @@ export interface ValleyDef {
   /** Dens at the start, `sideValley` of them in the Side valley, `spacingTiles` apart. */
   dens: { count: number; sideValley: number; spacingTiles: number };
   /**
+   * Points of interest, each a stamp: one Abandoned mine (over an iron Deposit, a Den at its
+   * mouth), `ruins` Ruins and one Shrine, the Shrine nearest a point `shrineAlongPercent` of the
+   * way from the entry toward the Pass. Ruins and the Shrine stand in the main valley, at least
+   * `campTiles` from the Camp, on bare Meadow cleared `clearTiles` round them (Chebyshev). Stamps
+   * stand at least `spacingTiles` apart.
+   */
+  pois: {
+    ruins: number;
+    campTiles: number;
+    clearTiles: number;
+    spacingTiles: number;
+    shrineAlongPercent: IntRange;
+  };
+  /**
    * Hunting grounds: each connected stretch of Forest, split so none has more than `maxTiles`;
    * a stretch under `minTiles` holds none. Max Game is 1 per `treesPerGame` trees.
    */
@@ -624,6 +639,27 @@ export interface BuildingDef {
   construction?: { cost: ResourceAmount[]; buildTicks: number };
 }
 
+/**
+ * What the Hero's Search of a point of interest takes and finds: it stands on the tile for
+ * `ticks` by day, then leaves a cache of `cache`, each amount ± `spreadPercent` (rounded down)
+ * rolled with the PRNG.
+ */
+export interface SearchDef {
+  ticks: number;
+  cache: ResourceAmount[];
+  spreadPercent: number;
+}
+
+/** A point of interest (spec, World and map: "Points of interest"), placed by the Valley generator. */
+export interface PoiDef {
+  id: PoiId;
+  name: string;
+  /** Makes it something the Hero Searches, once. */
+  search?: SearchDef;
+  /** No Den buds within this many tiles of it (Chebyshev). */
+  wardTiles?: number;
+}
+
 export interface Content {
   resources: Record<ResourceId, ResourceDef>;
   terrain: Record<TerrainId, TerrainDef>;
@@ -643,6 +679,7 @@ export interface Content {
   combat: CombatDef;
   fog: FogDef;
   valley: ValleyDef;
+  pois: Record<PoiId, PoiDef>;
   /** First names new villagers are drawn from. */
   villagerNames: readonly string[];
 }

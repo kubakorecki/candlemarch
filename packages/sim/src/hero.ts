@@ -1,6 +1,7 @@
 // The hero: one per game, not a villager, acts only on the player's orders. It walks, chops trees
 // and carries goods by hand to kickstart the village (spec, logistics stage 1).
 import type { Content, ResourceId } from '@candlemarch/content';
+import { isNight } from './calendar';
 import { chebyshev, inReach, isKnockedOut } from './combat';
 import { cacheAt, denAt, takeFromCache } from './dens';
 import { isDeposit } from './deposits';
@@ -27,6 +28,7 @@ import {
   reservedOnTile,
 } from './logistics/jobDispatch';
 import { inputRoom } from './logistics/supplyDemand';
+import { finishSearch, isSearchable, poiAt } from './pois';
 import { staticChanged } from './snapshot';
 import type { EntityId, GameState, HeroComponent, HeroTask, Tile } from './state';
 import { addToTile, amountOnTile, stockpileTakes, takeFromTile } from './stockpiles';
@@ -39,7 +41,8 @@ export type HeroOrder =
   | { order: 'deliver'; target: EntityId }
   | { order: 'pickup'; source: EntityId }
   | { order: 'attack'; gloamling: EntityId }
-  | { order: 'attackDen'; den: EntityId };
+  | { order: 'attackDen'; den: EntityId }
+  | { order: 'search'; ruins: EntityId };
 
 /** The hero's entity ID, or null if this game has none. */
 export function heroOf(state: GameState): EntityId | null {
@@ -74,6 +77,8 @@ function treeStandingTiles(state: GameState, content: Content, tree: EntityId): 
  * - attack: go after a Gloamling, following it as it moves, and hit it first once it's in reach
  *   (the hero hits any Gloamling in reach on its own anyway).
  * - attackDen: walk up to a Den and hit it until it's cleared (Gloamlings in reach come first).
+ * - search: walk onto Ruins not yet Searched and stand there `search.ticks` by day; refused at
+ *   night. Dusk, another order or a knockout ends it, and the next Search starts over.
  * A Knocked-out hero takes no orders.
  */
 export function orderHero(state: GameState, content: Content, order: HeroOrder): void {
@@ -120,6 +125,15 @@ export function orderHero(state: GameState, content: Content, order: HeroOrder):
     case 'attackDen': {
       if (!state.components.den[order.den] || !walkToDen(state, content, id, order.den)) return;
       hero.order = { kind: 'attackDen', den: order.den };
+      return;
+    }
+    case 'search': {
+      const poi = state.components.poi[order.ruins];
+      const at = state.components.tile[order.ruins];
+      const search = poi ? content.pois[poi.kind].search : undefined;
+      if (!search || !at || !isSearchable(state, content, order.ruins)) return;
+      if (isNight(state.tick, content) || !rerouteTo(state, content, id, [at])) return;
+      hero.order = { kind: 'search', ruins: order.ruins, ticksLeft: search.ticks };
       return;
     }
   }
@@ -308,7 +322,8 @@ function isTree(state: GameState, content: Content, id: EntityId): boolean {
 }
 
 /**
- * What right-clicking `tile` orders the hero to do: attack a Gloamling there, or else a Den; chop
+ * What right-clicking `tile` orders the hero to do: attack a Gloamling there, or else a Den;
+ * Search Ruins not yet Searched (by day; at night the hero walks onto them); chop
  * a tree; deliver what it holds to a site, workshop or stockpile that wants it, or else pick up
  * from a building, stockpile or cache with goods; walk onto open ground. Null when there's
  * something on the tile but nothing to do with it, or the hero is Knocked out. The client uses
@@ -329,6 +344,10 @@ export function heroOrderAt(state: GameState, content: Content, tile: Tile): Her
   }
   const den = denAt(state, tile);
   if (den !== null) return { order: 'attackDen', den };
+  const poi = poiAt(state, tile);
+  if (poi !== null && isSearchable(state, content, poi) && !isNight(state.tick, content)) {
+    return { order: 'search', ruins: poi };
+  }
   const thing = thingAt(state, content, tile);
   if (thing === null) {
     return isHeroWalkableTerrain(state, content, tile)
@@ -346,12 +365,34 @@ export function heroOrderAt(state: GameState, content: Content, tile: Tile): Her
   return null;
 }
 
+/**
+ * The Hero's Search under way, for the client: the Ruins, its tile and how far it has got
+ * (whole percent, rounded down). Null unless the Hero stands on Ruins it's Searching.
+ */
+export function heroSearch(
+  state: GameState,
+  content: Content,
+): { ruins: EntityId; tile: Tile; percent: number } | null {
+  const id = heroOf(state);
+  const order = id === null ? null : state.components.hero[id]?.order;
+  if (id === null || order?.kind !== 'search') return null;
+  const poi = state.components.poi[order.ruins];
+  const tile = state.components.tile[order.ruins];
+  const search = poi ? content.pois[poi.kind].search : undefined;
+  if (!search || !tile || state.components.path[id] || !isAt(state, id, tile)) return null;
+  const percent = Math.floor(((search.ticks - order.ticksLeft) * 100) / search.ticks);
+  return { ruins: order.ruins, tile, percent };
+}
+
 /** Whether tile `a` touches tile `b`, diagonals included. */
 function touches(a: Tile, b: Tile): boolean {
   return Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1;
 }
 
-/** Whether the tree, site, stockpile, building, cache, Gloamling or Den an order is for still exists. */
+/**
+ * Whether the tree, site, stockpile, building, cache, Gloamling or Den an order is for still
+ * exists, or the Ruins it's for is still to be Searched.
+ */
 function orderTargetExists(state: GameState, order: HeroTask): boolean {
   const { mapObject, site, stockpile, building, cache } = state.components;
   switch (order.kind) {
@@ -373,6 +414,8 @@ function orderTargetExists(state: GameState, order: HeroTask): boolean {
       return state.components.gloamling[order.gloamling] !== undefined;
     case 'attackDen':
       return state.components.den[order.den] !== undefined;
+    case 'search':
+      return state.components.poi[order.ruins]?.searched === false;
   }
 }
 
@@ -424,6 +467,12 @@ export function heroSystem(state: GameState, content: Content): void {
       hero.order = null;
       stopAtNextTile(state, id);
     }
+    return;
+  }
+  if (order.kind === 'search' && isNight(state.tick, content)) {
+    // Dusk ends a Search; the next one starts over.
+    hero.order = null;
+    stopAtNextTile(state, id);
     return;
   }
   if (state.components.path[id]) return;
@@ -522,6 +571,19 @@ export function heroSystem(state: GameState, content: Content): void {
           amount: (hero.carrying?.amount ?? 0) + amount,
         };
       }
+      hero.order = null;
+      return;
+    }
+    case 'search': {
+      const at = state.components.tile[order.ruins];
+      if (!at) return;
+      if (!isAt(state, id, at)) {
+        if (!rerouteTo(state, content, id, [at])) hero.order = null;
+        return;
+      }
+      order.ticksLeft -= 1;
+      if (order.ticksLeft > 0) return;
+      finishSearch(state, content, order.ruins);
       hero.order = null;
       return;
     }

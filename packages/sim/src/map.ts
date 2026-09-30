@@ -5,6 +5,7 @@ import type {
   HeroId,
   JobId,
   MapObjectId,
+  PoiId,
   ResourceAmount,
   ResourceId,
   RoadId,
@@ -117,7 +118,7 @@ const DEFAULT_HERO: HeroId = 'placeholder';
 /** What each character in `MapDef.rows` stands for. A Deposit brings the terrain it stands on. */
 export const MAP_LEGEND: Record<
   string,
-  { terrain: TerrainId; object?: MapObjectId; road?: RoadId; den?: true }
+  { terrain: TerrainId; object?: MapObjectId; road?: RoadId; den?: true; poi?: PoiId }
 > = {
   '.': { terrain: 'meadow' },
   ':': { terrain: 'rock' },
@@ -134,6 +135,9 @@ export const MAP_LEGEND: Record<
   i: { terrain: 'mountain', object: 'iron_deposit' },
   '=': { terrain: 'meadow', road: 'dirt_path' },
   D: { terrain: 'meadow', den: true },
+  R: { terrain: 'meadow', poi: 'ruins' },
+  S: { terrain: 'meadow', poi: 'shrine' },
+  M: { terrain: 'mountain', object: 'iron_deposit', poi: 'abandoned_mine' },
 };
 
 /**
@@ -178,6 +182,7 @@ export function createEmptyState(seed: number): GameState {
       den: {},
       gloamling: {},
       cache: {},
+      poi: {},
     },
     logistics: { hauls: {} },
     deaths: [],
@@ -193,7 +198,7 @@ export function createEmptyState(seed: number): GameState {
  * A new game on `map` with Monster rate `monsterRate` (0–100) and Fog on or off (`fog`; off
  * unless asked, as for every hand-made map). Everything within `fog.startRevealTiles` of what the
  * map starts with, and the entry, starts Revealed, whether Fog is on or not. Entities are created in this order:
- * map objects and Dens (row-major), buildings with their employees (spawned at the door), sites,
+ * map objects, Dens and points of interest (row-major; an Abandoned mine's iron Deposit first), buildings with their employees (spawned at the door), sites,
  * stockpiles, free villagers, the hero, then Hunting grounds. Throws if the map is malformed or
  * anything on it couldn't be placed there.
  */
@@ -243,6 +248,11 @@ export function createInitialState(
         const id = createEntity(state);
         state.components.tile[id] = { x, y };
         state.components.den[id] = newDen(content);
+      }
+      if (cell.poi) {
+        const id = createEntity(state);
+        state.components.tile[id] = { x, y };
+        state.components.poi[id] = { kind: cell.poi, searched: false };
       }
     });
   });

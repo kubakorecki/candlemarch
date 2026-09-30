@@ -1,6 +1,6 @@
 # Points of interest and the Hero's Search
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 06
 
@@ -23,3 +23,7 @@ Rules in `docs/spec.md`, World and map ("Points of interest"). Numbers Proposed,
 
 - Headless tests: POIs are placed deterministically, never overlapping, with the counts above across 100 seeds; a Search leaves a Cache once and only by day; an interrupted Search starts over; no Den buds within 12 tiles of a Shrine.
 - `pnpm check` passes.
+
+## Comments
+
+2026-09-30 — Done. Content: `content.pois` (`PoiDef` per `PoiId`: Ruins' `search` 200 ticks, 15 firewood and 6 hides ±30%; Shrine `wardTiles` 12; the mine a marker) and `content.valley.pois` (2 Ruins, 25 tiles from the Camp, 3×3 cleared stamps, 12 apart, the Shrine 40–60% of the way from the entry to the Pass). Sim: `poi` component (`{kind, searched}`), map characters `R`/`S`/`M`, `pois.ts`, the Hero's `search` order and task, `heroSearch` for the client, budding kept off POIs and out of a Shrine's ward, nothing built or stockpiled on a POI. Generator: `placePois` before `connect`, checked in `valleyProblems`. Client: placeholder art (Ruins dug through once Searched, Shrine, Abandoned mine over its iron), `zoom-in` Search cursor, a progress bar over the Ruins, a point-of-interest panel ("Searched" / "Not yet Searched"). Tests: `sim/test/pois.test.ts`, POI checks in `valley.test.ts`'s 100-seed run (now with its own 20 s timeout), content validation. Beyond the issue: starting Dens also stay out of the Shrine's ward; the mine's Den is the Side valley's Den. Decisions in docs/decisions.md.

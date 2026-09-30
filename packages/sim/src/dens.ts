@@ -1,7 +1,7 @@
 // Monster Dens and the Monster rate: the rules other modules ask about, and clearing a Den. The
 // nightly work (spawns, budding, Gloamlings vanishing) is `systems/dens.ts`; the Hero's hits and
 // the Den's sting are `systems/combat.ts`.
-import type { Content, ResourceId } from '@candlemarch/content';
+import type { Content, ResourceAmount, ResourceId } from '@candlemarch/content';
 import { createEntity, destroyEntity, idsOf } from './entities';
 import type { DenComponent, EntityId, GameState, Tile } from './state';
 
@@ -19,15 +19,20 @@ export function clearDen(state: GameState, content: Content, id: EntityId): void
   if (!state.components.den[id] || !at) return;
   destroyEntity(state, id);
   const { cache, calmDays } = content.dens.cleared;
-  const pile = createEntity(state);
-  state.components.tile[pile] = { x: at.x, y: at.y };
-  state.components.cache[pile] = {
-    stock: Object.fromEntries(cache.map(({ resource, amount }) => [resource, amount])),
-  };
+  leaveCache(state, at, cache);
   state.calms.push({
     tile: { x: at.x, y: at.y },
     until: state.tick + calmDays * content.calendar.dayTicks,
   });
+}
+
+/** Leaves a cache of `goods` on `tile` (a cleared Den's, a Searched Ruins'). */
+export function leaveCache(state: GameState, tile: Tile, goods: ResourceAmount[]): void {
+  const pile = createEntity(state);
+  state.components.tile[pile] = { x: tile.x, y: tile.y };
+  state.components.cache[pile] = {
+    stock: Object.fromEntries(goods.map(({ resource, amount }) => [resource, amount])),
+  };
 }
 
 /** The Den on `tile`, if any. */

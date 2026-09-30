@@ -69,10 +69,13 @@ function groups(tiles: Tile[]): number {
   return count;
 }
 
-/** Characters of tiles nobody walks: Mountain, River, Pass snow, and trees and Deposits. */
-const BLOCKED = '^~*Tbmsci';
+/**
+ * Characters of tiles nobody walks: Mountain, River, Pass snow, and trees and Deposits (the
+ * Abandoned mine stands over an iron Deposit).
+ */
+const BLOCKED = '^~*TbmsciM';
 /** Characters of walkable terrain, whatever stands on it. */
-const WALKABLE_TERRAIN = '.:,_TbmscD';
+const WALKABLE_TERRAIN = '.:,_TbmscDRS';
 
 /**
  * 4-connected reach from the entry over tiles not in `blocked` and off the Granary (2×2 at the
@@ -149,7 +152,7 @@ function problems(v: Valley): string[] {
 
   // The shape: a rim, a river edge to edge, Fords, a Pass, Swamp and Rock.
   const edge = (t: Tile) => t.x === 0 || t.y === 0 || t.x === n - 1 || t.y === n - 1;
-  const rimGaps = tilesOf(v, '.:,TbmscD_').filter(edge);
+  const rimGaps = tilesOf(v, '.:,TbmscDRS_').filter(edge);
   expectThat(
     rimGaps.every((t) => distance(t, entry) <= 1),
     'the rim is open only at the entry',
@@ -174,7 +177,7 @@ function problems(v: Valley): string[] {
   // Counts.
   expectThat(tilesOf(v, 's').length === valley.deposits.stone, 'stone Deposits');
   expectThat(tilesOf(v, 'c').length === valley.deposits.clay, 'clay Deposits');
-  const iron = tilesOf(v, 'i');
+  const iron = tilesOf(v, 'iM');
   expectThat(iron.length === valley.deposits.iron, 'iron Deposits');
   expectThat(
     iron.every((t) => sides(t).some(inSide)),
@@ -207,7 +210,7 @@ function problems(v: Valley): string[] {
   // Reach: the main valley from the entry with the Pass shut; the Side valley only over it.
   const shut = reach(v, BLOCKED);
   const opened = reach(v, BLOCKED.replace('*', ''));
-  const open = tilesOf(v, '.:,_D').filter(
+  const open = tilesOf(v, '.:,_DRS').filter(
     (t) => !(t.x >= camp.x && t.x < camp.x + 2 && t.y >= camp.y && t.y < camp.y + 2),
   );
   const main = open.filter((t) => !inSide(t));
@@ -220,10 +223,54 @@ function problems(v: Valley): string[] {
     'the Side valley opens with the Pass',
   );
   // Forage patches and Deposits can be worked from an open tile beside them.
-  const workable = tilesOf(v, 'bmsci').filter((t) =>
+  const workable = tilesOf(v, 'bmsciM').filter((t) =>
     sides(t).some((s) => opened[s.y * n + s.x] === true),
   ).length;
-  expectThat(workable === tilesOf(v, 'bmsci').length, 'every patch and Deposit reachable');
+  expectThat(workable === tilesOf(v, 'bmsciM').length, 'every patch and Deposit reachable');
+
+  // Points of interest: counts, stamps apart and off the Camp, each where it belongs.
+  const { pois } = valley;
+  const ruins = tilesOf(v, 'R');
+  const mines = tilesOf(v, 'M');
+  const shrines = tilesOf(v, 'S');
+  expectThat(ruins.length === pois.ruins, `${ruins.length} Ruins`);
+  expectThat(mines.length === 1, `${mines.length} Abandoned mines`);
+  expectThat(shrines.length === 1, `${shrines.length} Shrines`);
+  const all = [...ruins, ...mines, ...shrines];
+  for (const a of all) {
+    expectThat(distance(a, camp) >= g.clearTiles + pois.clearTiles, 'a POI on the Camp');
+    for (const b of all) {
+      if (a !== b) expectThat(distance(a, b) >= pois.spacingTiles, 'POIs too close');
+    }
+  }
+  for (const t of [...ruins, ...shrines]) {
+    expectThat(!inSide(t) && shut[t.y * n + t.x] === true, 'a Ruins or Shrine out of reach');
+    for (let dy = -pois.clearTiles; dy <= pois.clearTiles; dy++) {
+      for (let dx = -pois.clearTiles; dx <= pois.clearTiles; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        expectThat(charAt(v, { x: t.x + dx, y: t.y + dy }) === '.', 'a stamp not cleared');
+      }
+    }
+  }
+  for (const t of [...ruins, ...shrines]) {
+    expectThat(distance(t, camp) >= pois.campTiles, 'a Ruins or Shrine near the Camp');
+  }
+  for (const t of mines) {
+    expectThat(
+      sides(t).some((s) => inSide(s) && charAt(v, s) === 'D'),
+      'no Den at the mouth of the Abandoned mine',
+    );
+  }
+  const ward = content.pois.shrine.wardTiles as number;
+  const passIndex = v.pass[Math.floor(v.pass.length / 2)] as number;
+  const passMiddle = { x: passIndex % n, y: Math.floor(passIndex / n) };
+  for (const t of shrines) {
+    expectThat(
+      dens.every((d) => distance(d, t) > ward),
+      'a Den by the Shrine',
+    );
+    expectThat(distance(t, passMiddle) < distance(entry, passMiddle), 'the Shrine off the way');
+  }
 
   // Hunting grounds: at most `maxTiles` each, apart, 1 Game per `treesPerGame` trees.
   const seen = new Set<number>();
@@ -256,7 +303,8 @@ describe('the generated Valley', () => {
     expect(JSON.stringify(generateValley(8, content))).not.toBe(JSON.stringify(a));
   });
 
-  it('keeps its guarantees and counts across 100 seeds', () => {
+  // About 3 s alone, longer while the whole suite runs alongside: past the default 5 s timeout.
+  it('keeps its guarantees and counts across 100 seeds', { timeout: 20_000 }, () => {
     const failures: string[] = [];
     for (let seed = 1; seed <= 100; seed++) {
       const found = problems(generateValley(seed, content));
@@ -275,6 +323,10 @@ describe('the generated Valley', () => {
     expect(idsOf(components.hero)).toHaveLength(1);
     expect(Object.values(components.building).map((b) => b.type)).toEqual(['granary']);
     expect(idsOf(components.den)).toHaveLength(valley.dens.count);
+    const kinds = Object.values(components.poi).map((p) => p.kind);
+    expect(kinds.filter((k) => k === 'ruins')).toHaveLength(valley.pois.ruins);
+    expect(kinds.filter((k) => k === 'abandoned_mine')).toHaveLength(1);
+    expect(kinds.filter((k) => k === 'shrine')).toHaveLength(1);
 
     // Every ground stands full of Game, on its trees.
     const grounds = idsOf(components.huntingGround).map((id) => components.huntingGround[id]);

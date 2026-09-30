@@ -4,6 +4,7 @@ import type {
   HeroId,
   JobId,
   MapObjectId,
+  PoiId,
   RecipeId,
   ResourceAmount,
   ResourceId,
@@ -236,7 +237,9 @@ export type HeroTask =
   /** Go after `gloamling`, following it as it moves, and hit it first while it's in reach. */
   | { kind: 'attack'; gloamling: EntityId }
   /** Walk up to `den` and hit it until it's cleared. */
-  | { kind: 'attackDen'; den: EntityId };
+  | { kind: 'attackDen'; den: EntityId }
+  /** Walk onto Ruins `ruins` and Search it by day; `ticksLeft` until it's done. */
+  | { kind: 'search'; ruins: EntityId; ticksLeft: number };
 
 /** A walk in progress along tile centres. Removed on arrival. */
 export interface PathComponent {
@@ -320,11 +323,20 @@ export interface DenComponent {
 }
 
 /**
- * The goods a cleared Den leaves, loose on its `tile`: Carriers and the Hero pick them up like a
- * building's output. Gone once empty.
+ * The goods a cleared Den or a Searched Ruins leaves, loose on its `tile`: Carriers and the Hero
+ * pick them up like a building's output. Gone once empty.
  */
 export interface CacheComponent {
   stock: ResourceAmounts;
+}
+
+/**
+ * A point of interest on its `tile`: Ruins, an Abandoned mine or a Shrine. It doesn't block
+ * walking. `searched`: a Ruins the Hero has Searched (always false for the others).
+ */
+export interface PoiComponent {
+  kind: PoiId;
+  searched: boolean;
 }
 
 /** Around a cleared Den: no Den buds within `calmTiles` of `tile` until tick `until`. */
@@ -349,7 +361,10 @@ export interface GloamlingComponent {
 }
 
 export interface Components {
-  /** Anchor tile of static things: map objects, Dens, buildings, construction sites, stockpiles. */
+  /**
+   * Anchor tile of static things: map objects, Dens, caches, points of interest, buildings,
+   * construction sites, stockpiles.
+   */
   tile: Store<Tile>;
   mapObject: Store<MapObjectComponent>;
   building: Store<BuildingComponent>;
@@ -369,6 +384,7 @@ export interface Components {
   den: Store<DenComponent>;
   gloamling: Store<GloamlingComponent>;
   cache: Store<CacheComponent>;
+  poi: Store<PoiComponent>;
 }
 
 /** How a villager died. */

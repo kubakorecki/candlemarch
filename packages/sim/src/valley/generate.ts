@@ -1,6 +1,6 @@
 // The procedural Valley (spec, World and map: "The Valley", "Forest ecology"): a `MapDef` built
 // from a seed with the seeded PRNG alone, so the same seed always gives the same Valley.
-import type { Content, MapObjectId, TerrainId } from '@candlemarch/content';
+import type { Content, MapObjectId, PoiId, TerrainId } from '@candlemarch/content';
 import type { MapDef } from '../map';
 import { nextU32, type RngHolder, randomInt, seedRng } from '../rng';
 import type { Tile } from '../state';
@@ -103,6 +103,7 @@ function turned(layout: Layout, symmetry: number): Layout {
     terrain: list(layout.terrain),
     object: list(layout.object),
     den: bits(layout.den),
+    poi: list(layout.poi),
     sideValley: bits(layout.sideValley),
     forest: bits(layout.forest),
     entry: move(layout.entry),
@@ -136,7 +137,7 @@ function huntingGrounds(layout: Layout, content: Content, rng: RngHolder): Groun
 
 /** What `layout` misses of the Valley's guarantees and counts; empty when it's good. */
 function valleyProblems(layout: Layout, grounds: Ground[], content: Content): string[] {
-  const { size: n, terrain, object, den, sideValley } = layout;
+  const { size: n, terrain, object, den, poi, sideValley } = layout;
   const v = content.valley;
   const g = v.guarantees;
   const problems: string[] = [];
@@ -224,6 +225,30 @@ function valleyProblems(layout: Layout, grounds: Ground[], content: Content): st
   if (sideTiles.some((i) => shut[i])) problems.push('the Side valley is open without the Pass');
   if (all.some((i) => !sideValley[i] && isOpen(i) && !shut[i]))
     problems.push('part of the main valley is cut off');
+
+  // Points of interest: how many, the mine's Den, Ruins and Shrine reached, the Shrine's ward.
+  const ofKind: Record<PoiId, number[]> = { ruins: [], abandoned_mine: [], shrine: [] };
+  poi.forEach((kind, i) => {
+    if (kind) ofKind[kind].push(i);
+  });
+  const wantedPois: [PoiId, number][] = [
+    ['ruins', v.pois.ruins],
+    ['abandoned_mine', 1],
+    ['shrine', 1],
+  ];
+  for (const [kind, want] of wantedPois) {
+    if (ofKind[kind].length !== want) problems.push(`${ofKind[kind].length} ${kind}`);
+  }
+  for (const i of ofKind.abandoned_mine) {
+    if (object[i] !== 'iron_deposit' || !neighbours(n, i).some((j) => den[j] && sideValley[j]))
+      problems.push('an Abandoned mine without its iron or its Den');
+  }
+  for (const i of [...ofKind.ruins, ...ofKind.shrine]) {
+    if (!shut[i] || sideValley[i]) problems.push(`${poi[i]} out of the main valley's reach`);
+  }
+  const ward = content.pois.shrine.wardTiles ?? 0;
+  if (ofKind.shrine.some((i) => dens.some((d) => chebyshev(n, i, d) <= ward)))
+    problems.push('a Den by the Shrine');
   return problems;
 }
 
@@ -237,6 +262,8 @@ const TERRAIN_CHARS: Record<TerrainId, string> = {
   ford: '_',
   pass_snow: '*',
 };
+/** An Abandoned mine's character stands for its iron Deposit too. */
+const POI_CHARS: Record<PoiId, string> = { ruins: 'R', abandoned_mine: 'M', shrine: 'S' };
 const OBJECT_CHARS: Partial<Record<MapObjectId, string>> = {
   tree: 'T',
   berry_bush: 'b',
@@ -248,18 +275,21 @@ const OBJECT_CHARS: Partial<Record<MapObjectId, string>> = {
 
 /** `layout` as a map: rows, entry, the Starting Camp and the Hunting grounds. */
 function toValley(layout: Layout, grounds: Ground[], content: Content, layoutSeed: number): Valley {
-  const { size: n, terrain, object, den, camp } = layout;
+  const { size: n, terrain, object, den, poi, camp } = layout;
   const rows: string[] = [];
   for (let y = 0; y < n; y++) {
     let row = '';
     for (let x = 0; x < n; x++) {
       const i = y * n + x;
       const type = object[i];
+      const kind = poi[i];
       row += den[i]
         ? 'D'
-        : type
-          ? (OBJECT_CHARS[type] ?? '?')
-          : TERRAIN_CHARS[terrain[i] as TerrainId];
+        : kind
+          ? POI_CHARS[kind]
+          : type
+            ? (OBJECT_CHARS[type] ?? '?')
+            : TERRAIN_CHARS[terrain[i] as TerrainId];
     }
     rows.push(row);
   }
