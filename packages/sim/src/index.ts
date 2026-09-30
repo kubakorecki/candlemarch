@@ -50,8 +50,9 @@ export {
 export { isDarkLight, type LightSource, lightSources } from './lights';
 export type { Haul, LogisticsState } from './logistics/jobDispatch';
 export { createInitialState, type MapDef } from './map';
-export { DEFAULT_MAP, type MapName, maps } from './maps';
+export { type MapName, maps } from './maps';
 export { bellOf, isBellRung } from './militia';
+export { campCentre, type NewGameMap, type NewGameSetup, newGame } from './newGame';
 export { isSearchable, poiAt } from './pois';
 export {
   addToReserve,

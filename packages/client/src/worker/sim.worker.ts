@@ -2,12 +2,11 @@
 // clock. It owns its state and steps it in place (`stepInPlace`), with no copy per tick.
 import { content } from '@candlemarch/content';
 import {
-  createInitialState,
   deserialize,
   type EntityId,
   type GameState,
-  maps,
   movingPart,
+  newGame,
   type Point,
   type StaticLayers,
   sentStaticLayers,
@@ -67,7 +66,7 @@ function start(next: GameState): void {
 function handle(message: ToWorker): void {
   switch (message.type) {
     case 'newGame':
-      start(createInitialState(message.seed, maps[message.map], content, message.monsterRate));
+      start(newGame(message.setup, content));
       return;
     case 'load':
       start(deserialize(message.json, content));

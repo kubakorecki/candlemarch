@@ -17,6 +17,3 @@ export const maps = {
 } satisfies Record<string, MapDef>;
 
 export type MapName = keyof typeof maps;
-
-/** Map used for new games. */
-export const DEFAULT_MAP: MapName = 'camp';

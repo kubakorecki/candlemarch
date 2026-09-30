@@ -6,7 +6,7 @@ import {
   type EntityId,
   type GameState,
   joinSnapshot,
-  type MapName,
+  type NewGameSetup,
   type Point,
   type StaticLayers,
 } from '@candlemarch/sim';
@@ -53,9 +53,9 @@ export class SimBridge {
     });
   }
 
-  newGame(seed: number, map: MapName, monsterRate: number): void {
+  newGame(setup: NewGameSetup): void {
     this.reset();
-    this.post({ type: 'newGame', seed, map, monsterRate });
+    this.post({ type: 'newGame', setup });
   }
 
   load(json: string): void {

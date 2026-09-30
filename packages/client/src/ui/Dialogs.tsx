@@ -1,5 +1,4 @@
 // Centred dialogs over the world: the game-over screen and the Load menu.
-import { DEFAULT_MAP } from '@candlemarch/sim';
 import type { SaveSlot } from '../game/autosave';
 import type { Game, HudState } from '../game/Game';
 import { Icon, type IconName } from './icons';
@@ -36,7 +35,7 @@ export function GameOver({ text, deaths, game }: { text: string; deaths: string[
           <button type="button" className="btn" onClick={() => game.toggleLoadMenu()}>
             Load a save
           </button>
-          <button type="button" className="btn primary" onClick={() => game.newGame(DEFAULT_MAP)}>
+          <button type="button" className="btn primary" onClick={() => game.newGame()}>
             New game
           </button>
         </div>

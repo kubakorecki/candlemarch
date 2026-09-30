@@ -14,6 +14,7 @@ import {
   bellOf,
   type Command,
   calendarAt,
+  campCentre,
   canLayGroundwork,
   canLayPath,
   canLayWall,
@@ -21,7 +22,6 @@ import {
   canPlaceBuilding,
   canPlaceStockpile,
   carrierUtilization,
-  DEFAULT_MAP,
   DEFAULT_MONSTER_RATE,
   darkRingTiles,
   denAt,
@@ -47,8 +47,8 @@ import {
   isRevealed,
   isWithered,
   lShapeTiles,
-  type MapName,
   maxWorkers,
+  type NewGameSetup,
   poiAt,
   type Rotation,
   reassignTargets,
@@ -82,7 +82,13 @@ import { stockpileGoods } from './ledger';
 import { SimBridge } from './SimBridge';
 import { TOOLS, type ToolId, toolDef } from './tools';
 
-const NEW_GAME_SEED = 1;
+/** The game the page opens on: a generated Valley under Fog. */
+const FIRST_GAME: NewGameSetup = {
+  map: 'valley',
+  seed: 1,
+  monsterRate: DEFAULT_MONSTER_RATE,
+  fog: true,
+};
 
 /** A building placed with a click (not a wall or groundwork, which are dragged). */
 function isBuilding(id: ToolId): id is BuildingId {
@@ -348,6 +354,8 @@ export class Game {
   private readonly listeners = new Set<() => void>();
   private readonly abort = new AbortController();
   private cameraCentred = false;
+  /** What the last new game started from. */
+  private lastSetup: NewGameSetup = FIRST_GAME;
 
   private constructor() {
     this.bridge = new SimBridge({
@@ -457,10 +465,11 @@ export class Game {
     this.bridge.command({ type: 'setWorkerLimit', building: id, limit: info.workerLimit + delta });
   }
 
-  /** Starts a new game on `map` with Monster rate `monsterRate`, replacing the current one. */
-  newGame(map: MapName, monsterRate: number = DEFAULT_MONSTER_RATE): void {
+  /** Starts a new game from `setup` (by default the last game's again), replacing this one. */
+  newGame(setup: NewGameSetup = this.lastSetup): void {
+    this.lastSetup = setup;
     this.cameraCentred = false;
-    this.bridge.newGame(NEW_GAME_SEED, map, monsterRate);
+    this.bridge.newGame(setup);
     this.dragStart = null;
     this.clearSelection();
     this.setHud({ tool: null, pile: null, message: null });
@@ -550,7 +559,7 @@ export class Game {
     );
     window.addEventListener('keydown', (e) => this.onKey(e), { signal: this.abort.signal });
     this.renderer.app.ticker.add((ticker) => this.frame(ticker.deltaMS));
-    this.newGame(DEFAULT_MAP);
+    this.newGame();
   }
 
   private frame(deltaMs: number): void {
@@ -622,7 +631,8 @@ export class Game {
 
   private onSnapshot(state: GameState): void {
     if (!this.cameraCentred) {
-      const c = gridToWorld(state.map.width / 2, state.map.height / 2);
+      const camp = campCentre(state, content);
+      const c = gridToWorld(camp.x, camp.y);
       this.camera.x = c.x;
       this.camera.y = c.y;
       this.cameraCentred = true;
@@ -825,6 +835,7 @@ export class Game {
   }
 
   private onKey(e: KeyboardEvent): void {
+    if (e.target instanceof HTMLInputElement) return; // typing in a field (the dev seed)
     if (e.key === 'Escape') this.cancelTool();
     else if (e.key === ' ') {
       e.preventDefault();

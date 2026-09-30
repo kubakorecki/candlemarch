@@ -3,7 +3,7 @@ import type {
   Command,
   EntityId,
   GameState,
-  MapName,
+  NewGameSetup,
   Point,
   StaticLayers,
   StaticPatch,
@@ -11,7 +11,7 @@ import type {
 import type { SaveSlot } from './game/autosave';
 
 export type ToWorker =
-  | { type: 'newGame'; seed: number; map: MapName; monsterRate: number }
+  | { type: 'newGame'; setup: NewGameSetup }
   | { type: 'load'; json: string }
   /** Run `ticks` ticks; `commands` are applied on the first of them. */
   | { type: 'advance'; ticks: number; commands: Command[] }

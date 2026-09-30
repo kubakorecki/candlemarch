@@ -362,3 +362,19 @@ Measured 2026-09-30, same machine and Node: `pnpm bench:maps 128 valley` (Fog of
 - The Valley has fewer trees than the synthetic map (its forest covers less of the land, and the rim, river and Side valley take their share), so its state and first snapshot are a little smaller: 430 KB of static layers, 5.0 ms to post, against 450 KB and 5.3 ms.
 - With nobody working, no static layer changes in the measured day (no chopping), and a tick is 0.04 ms; the worst tick (6–7 ms) wasn't profiled. Fog adds about 1 KB to the moving part (the In-sight bits) and nothing measurable to the tick.
 - Generating the Valley takes about 15 ms in Node (100 seeds: about 1.5 s, a retry with a derived seed about 1 time in 100); `createInitialState` on it about 25–30 ms, most of it the forage shade worked out once.
+
+## New game on a generated Valley in the browser (ticket 12)
+
+Measured 2026-09-30, same machine, Chrome headless with ANGLE Metal on the M1 Pro GPU, 1512×860 at 2× device pixels, at `fe32c10` plus this ticket. The real page (HUD included) starts each game from the dev New-game panel; 8 s of `requestAnimationFrame` per row, right after the start (the Starting Camp alone: 5 Carriers and the Hero, nobody working yet).
+
+| Game | fps | Frame mean | p95 | Max | Frames >33 ms |
+| --- | --- | --- | --- | --- | --- |
+| Valley 1, Fog on, 1×, on the Camp | 60 | 16.6 | 16.7 | 16.8 | 0 |
+| Valley 1, Fog on, 3×, on the Camp | 60 | 16.7 | 16.7 | 16.8 | 0 |
+| Valley 1, Fog on, 3×, zoomed out | 60 | 16.6 | 16.8 | 16.8 | 0 |
+| Valley 42, Fog on, 3×, on the Camp | 60 | 16.6 | 16.8 | 16.8 | 0 |
+| Valley 42, Fog on, 3×, zoomed out | 60 | 16.6 | 16.7 | 16.8 | 0 |
+| Valley 42, Fog off, 3×, on the Camp | 60 | 16.6 | 16.8 | 16.8 | 0 |
+| Valley 42, Fog off, 3×, zoomed out | 60 | 16.7 | 16.7 | 16.8 | 0 |
+
+- A fresh Valley is an easy load: a handful of walkers and no static layer changes until someone chops. A grown village on a Valley (the synthetic map's 50 villagers) is still the case to watch (frame p95 about 19–20 ms at 3× after ticket 15).
