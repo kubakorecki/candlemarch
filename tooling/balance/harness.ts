@@ -8,6 +8,7 @@ import {
   createInitialState,
   type DeathCause,
   type EntityId,
+  foodIds,
   type GameState,
   idsOf,
   isDawn,
@@ -19,6 +20,8 @@ export interface Scenario {
   name: string;
   map: MapDef;
   seed: number;
+  /** 0–100, as at New game; the sim's default when absent. */
+  monsterRate?: number;
   /** How many ticks to run. */
   ticks: number;
   /** Commands applied on the tick that starts at that tick number, as the player would send them. */
@@ -43,13 +46,23 @@ export interface DayReport {
   carriersBusy: number | null;
   /** Goods stored in stockpiles and building buffers. Goods in hands or on sites don't count. */
   stock: Record<ResourceId, number>;
+  /**
+   * Food gatherers put in their Workplaces' buffers since the last report, by Food (`tallyFoodMade`).
+   * Every Food is listed; nothing else is.
+   */
+  made: Partial<Record<ResourceId, number>>;
 }
 
 /**
  * Measures `state`. `seen` collects every villager ID met so far across calls, so a villager
  * missing now counts as a death.
  */
-export function measure(state: GameState, content: Content, seen: Set<EntityId>): DayReport {
+export function measure(
+  state: GameState,
+  content: Content,
+  seen: Set<EntityId>,
+  made: Partial<Record<ResourceId, number>> = {},
+): DayReport {
   const { villager, stockpile, building } = state.components;
   const alive = idsOf(villager);
   for (const id of alive) seen.add(id);
@@ -82,18 +95,67 @@ export function measure(state: GameState, content: Content, seen: Set<EntityId>)
     deathsBy,
     carriersBusy: carrierUtilization(state, content),
     stock,
+    made: Object.fromEntries(foodIds(content).map((f) => [f, made[f] ?? 0])),
   };
+}
+
+/**
+ * Adds to `made` what each building but a Granary gained of each Food since the last call, as
+ * remembered in `last` (by building and Food): what gatherers put in their buffers. A pickup and a
+ * drop-off on the same tick cancel out, so it can come out a unit or two low.
+ */
+function tallyFoodMade(
+  state: GameState,
+  content: Content,
+  last: Map<string, number>,
+  made: Partial<Record<ResourceId, number>>,
+): void {
+  const { building } = state.components;
+  for (const id of idsOf(building)) {
+    const b = building[id];
+    if (!b || content.buildings[b.type].foodCapacity !== undefined) continue;
+    for (const food of foodIds(content)) {
+      const key = `${id}:${food}`;
+      const now = b.stock[food] ?? 0;
+      made[food] = (made[food] ?? 0) + Math.max(0, now - (last.get(key) ?? 0));
+      last.set(key, now);
+    }
+  }
+}
+
+/** Throws unless every `placeBuilding` in `commands` left a site or building of its type at its tile. */
+function checkPlaced(state: GameState, scenario: Scenario, commands: Command[]): void {
+  const { tile, site, building } = state.components;
+  for (const c of commands) {
+    if (c.type !== 'placeBuilding') continue;
+    const placed = idsOf(tile).some((id) => {
+      const at = tile[id];
+      const type = site[id]?.type ?? building[id]?.type;
+      return type === c.building && at?.x === c.x && at.y === c.y;
+    });
+    if (!placed) {
+      throw new Error(
+        `${scenario.name}: ${c.building} at (${c.x}, ${c.y}) on tick ${state.tick - 1} didn't place`,
+      );
+    }
+  }
 }
 
 /** Runs `scenario` and reports at the start, at every Dawn after it, and at the last tick. */
 export function runScenario(scenario: Scenario, content: Content): DayReport[] {
-  const state = createInitialState(scenario.seed, scenario.map, content);
+  const state = createInitialState(scenario.seed, scenario.map, content, scenario.monsterRate);
   const seen = new Set<EntityId>();
+  const last = new Map<string, number>();
+  let made: Partial<Record<ResourceId, number>> = {};
   const reports = [measure(state, content, seen)];
   for (let i = 0; i < scenario.ticks; i++) {
-    stepInPlace(state, scenario.commands[state.tick] ?? [], content);
+    const commands = scenario.commands[state.tick] ?? [];
+    stepInPlace(state, commands, content);
+    checkPlaced(state, scenario, commands);
+    tallyFoodMade(state, content, last, made);
     if (isDawn(state.tick, content) || i === scenario.ticks - 1) {
-      reports.push(measure(state, content, seen));
+      reports.push(measure(state, content, seen, made));
+      made = {};
     }
   }
   return reports;
@@ -109,11 +171,13 @@ const CAUSE_COLUMNS: Record<DeathCause, string> = {
 
 /**
  * A plain-text table, one row per report: population, deaths and a column per cause, how busy the
- * Carriers were over the last day, and a column per resource.
+ * Carriers were over the last day, a column per resource, and a "+" column per Food made since
+ * the last row.
  */
 export function formatTable(reports: DayReport[], content: Content): string {
   const resources = Object.keys(content.resources) as ResourceId[];
   const causes = Object.keys(CAUSE_COLUMNS) as DeathCause[];
+  const foods = foodIds(content);
   const header = [
     'Tick',
     'Date',
@@ -122,6 +186,7 @@ export function formatTable(reports: DayReport[], content: Content): string {
     ...causes.map((c) => CAUSE_COLUMNS[c]),
     'Busy',
     ...resources.map((r) => content.resources[r].name),
+    ...foods.map((f) => `+${content.resources[f].name}`),
   ];
   const rows = reports.map((r) => [
     String(r.tick),
@@ -131,6 +196,7 @@ export function formatTable(reports: DayReport[], content: Content): string {
     ...causes.map((c) => String(r.deathsBy[c])),
     r.carriersBusy === null ? '-' : `${r.carriersBusy}%`,
     ...resources.map((res) => String(r.stock[res])),
+    ...foods.map((f) => String(r.made[f] ?? 0)),
   ]);
   const widths = header.map((h, i) =>
     Math.max(h.length, ...rows.map((row) => row[i]?.length ?? 0)),

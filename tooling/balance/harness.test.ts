@@ -102,15 +102,45 @@ describe('balance harness', () => {
     });
   });
 
+  it('counts the Food gatherers make between reports', () => {
+    // A river along row 3 and a fisher's hut on its bank; the lone villager is staffed as the
+    // fisher, so nobody hauls the catch away and all of it stays in the hut.
+    const bank: Scenario = {
+      name: 'bank',
+      map: {
+        name: 'bank',
+        rows: ['........', '........', '........', '~~~~~~~~', '........'],
+        buildings: [{ type: 'fishers_hut', x: 0, y: 1 }],
+        villagers: [{ job: 'carrier', x: 0, y: 2 }],
+      },
+      seed: 1,
+      ticks: 1000,
+      commands: {},
+    };
+    const [start, end] = runScenario(bank, content);
+    expect(start?.made).toEqual({ fish: 0, berries: 0, mushrooms: 0, meat: 0 });
+    expect(end?.made.fish).toBeGreaterThan(0);
+    expect(end?.made.fish).toBe(end?.stock.fish);
+  });
+
+  it("throws when a scripted building doesn't place", () => {
+    // (0,0) is a tree.
+    const blocked: Scenario = {
+      ...tiny,
+      commands: { 5: [{ type: 'placeBuilding', building: 'hut', x: 0, y: 0 }] },
+    };
+    expect(() => runScenario(blocked, shortDays)).toThrow(
+      "tiny: hut at (0, 0) on tick 5 didn't place",
+    );
+  });
+
   it('formats a table with a column per resource', () => {
     const lines = formatTable(runScenario(tiny, shortDays), shortDays).split('\n');
     expect(lines).toHaveLength(2 + 4);
     expect(lines[0]).toMatch(
-      /Tick\s+Date\s+Pop\s+Deaths\s+Starved\s+Froze\s+Gloamling\s+Den\s+Busy\s+Logs\s+Firewood\s+Fish\s+Berries\s+Mushrooms\s+Meat\s+Hides\s+Stone\s+Clay\s+Iron ore/,
+      /Tick\s+Date\s+Pop\s+Deaths\s+Starved\s+Froze\s+Gloamling\s+Den\s+Busy\s+Logs\s+Firewood\s+Fish\s+Berries\s+Mushrooms\s+Meat\s+Hides\s+Stone\s+Clay\s+Iron ore\s+\+Fish\s+\+Berries\s+\+Mushrooms\s+\+Meat$/,
     );
     // Nobody has died and no Carrier has worked yet at tick 0: "-" for Busy.
-    expect(lines[2]).toMatch(
-      /^\s*0\s+Y1 Spring 1\s+2\s+0\s+0\s+0\s+0\s+0\s+-\s+0\s+0\s+0\s+0\s+0\s+0\s+0\s+0\s+0\s+0$/,
-    );
+    expect(lines[2]).toMatch(/^\s*0\s+Y1 Spring 1\s+2\s+0\s+0\s+0\s+0\s+0\s+-(\s+0){14}$/);
   });
 });

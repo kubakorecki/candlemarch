@@ -49,7 +49,7 @@ Keep this section current whenever scripts change.
 - `pnpm typecheck` — type-check all packages
 - `pnpm lint` — Biome check
 - `pnpm format` — apply Biome formatting and safe fixes
-- `pnpm balance <scenario>` — run a headless balance scenario from `tooling/balance/scenarios.ts` (`meadow`, `camp`, `campNoFirewood`, `nights`, `nightsUnprepared`) and print population, deaths (with a column per cause), Carrier utilization and stored goods per in-game day
+- `pnpm balance <scenario>` — run a headless balance scenario from `tooling/balance/scenarios.ts` (`meadow`, `camp`, `campNoFirewood`, `valley`, `nights`, `nightsUnprepared`) and print population, deaths (with a column per cause), Carrier utilization, stored goods and Food made per in-game day
 - `pnpm bench:maps [--fog] [size | valley[:seed]...]` — benchmark the sim on synthetic maps (default 64, 128, 192, 256 tiles a side; minutes at 256) and on generated Valleys (`valley` is seed 1; `--fog` plays them with Fog on): ms per tick, the per-tick JSON copy, state size, worker→main snapshot transfer. Prints Markdown tables
 - `pnpm check` — typecheck + lint + test + test:scenarios; run before calling any task done
 

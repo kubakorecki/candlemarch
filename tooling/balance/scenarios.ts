@@ -1,6 +1,6 @@
 // Balance scenarios `pnpm balance <name>` can run, keyed by name.
 import { content } from '@candlemarch/content';
-import { type Command, createInitialState, maps } from '@candlemarch/sim';
+import { type Command, createInitialState, generateValley, maps } from '@candlemarch/sim';
 import type { Scenario } from './harness';
 
 const { dayTicks } = content.calendar;
@@ -69,6 +69,27 @@ const nightsLayout: Record<number, Command[]> = {
   ],
 };
 
+/**
+ * A sensible start on the generated Valley of seed 1, whose Granary stands at (10, 54) with the
+ * north wood (Hazel Hanger) between it and the river and the east wood from x 30. Day 1: a
+ * woodcutter's hut at the east wood, a fisher's hut on the bank beyond the north wood (the
+ * nearest bank, a long walk round the wood), a hunter's lodge on the wood's edge and a Hut. Day 3: a second Hut. Day 5: a forager's
+ * hut by the north wood's patches. Day 8: a chopping block by the Stockpile. The coordinates are
+ * seed 1's: if a generator change moves the land, the harness throws on the first that no longer
+ * fits.
+ */
+const valleyLayout: Record<number, Command[]> = {
+  [dawnOf(1)]: [
+    { type: 'placeBuilding', building: 'woodcutters_hut', x: 27, y: 58 },
+    { type: 'placeBuilding', building: 'fishers_hut', x: 11, y: 38, rotation: 2 },
+    { type: 'placeBuilding', building: 'hunters_lodge', x: 20, y: 51 },
+    { type: 'placeBuilding', building: 'hut', x: 13, y: 57 },
+  ],
+  [dawnOf(3)]: [{ type: 'placeBuilding', building: 'hut', x: 15, y: 57 }],
+  [dawnOf(5)]: [{ type: 'placeBuilding', building: 'foragers_hut', x: 28, y: 44 }],
+  [dawnOf(8)]: [{ type: 'placeBuilding', building: 'chopping_block', x: 14, y: 52 }],
+};
+
 export const scenarios = {
   /** The meadow for one in-game day, with a stockpile by the woodcutter's hut from the start. */
   meadow: {
@@ -93,6 +114,18 @@ export const scenarios = {
     seed: 1,
     ticks: dawnOf(21) + 1,
     commands: campLayout({ firewood: false }),
+  },
+  /**
+   * The generated Valley of seed 1 with a sensible layout, Fog off, to Dawn of year 2. No
+   * Gloamlings: this one measures food, and the layout builds no defences.
+   */
+  valley: {
+    name: 'valley',
+    map: generateValley(1, content),
+    seed: 1,
+    monsterRate: 0,
+    ticks: dawnOf(21) + 1,
+    commands: valleyLayout,
   },
   /** The nights map, prepared (`nightsLayout`), through five spring nights to Dawn of summer. */
   nights: {
