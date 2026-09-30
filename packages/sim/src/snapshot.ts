@@ -1,14 +1,23 @@
 // Snapshots for the client, split in two: the static layers (terrain, Roads, map objects, the
-// Revealed tiles), which
+// Revealed tiles, Hunting grounds' tiles), which
 // change seldom and hold most of the bytes, and the moving part (everything else). The sim bumps
 // `state.staticVersion` whenever a static layer changes, so the worker sends those layers whole
 // once per game and afterwards, when the version moves on, only a patch of what changed.
 // ADR-0004.
-import type { EntityId, GameState, MapObjectComponent, MapState, Store, Tile } from './state';
+import type {
+  EntityId,
+  GameState,
+  HuntingGroundComponent,
+  MapObjectComponent,
+  MapState,
+  Store,
+  Tile,
+} from './state';
 
 /**
  * Records that a static layer changed: terrain, a Road, a map object (added, removed, its
- * `amount` or `withered`), or a tile Revealed. Call it after every such change, and only then.
+ * `amount` or `withered`), a tile Revealed, or a Hunting ground added. Call it after every such
+ * change, and only then.
  */
 export function staticChanged(state: GameState): void {
   state.staticVersion += 1;
@@ -25,6 +34,18 @@ export interface StaticLayers {
   mapObject: Store<MapObjectComponent>;
   /** The `tile` of each map object. */
   mapObjectTile: Store<Tile>;
+  /** Each Hunting ground's `tiles`, by ground ID; the rest of the ground is in the moving part. */
+  groundTiles: Store<number[]>;
+}
+
+/** Each Hunting ground's `tiles`, by ground ID (the lists shared with `state`). */
+function groundTilesOf(state: GameState): Store<number[]> {
+  const { huntingGround } = state.components;
+  const tiles: Store<number[]> = {};
+  for (const key in huntingGround) {
+    tiles[Number(key)] = (huntingGround[Number(key)] as HuntingGroundComponent).tiles;
+  }
+  return tiles;
 }
 
 /**
@@ -45,12 +66,13 @@ export function staticLayers(state: GameState): StaticLayers {
     revealed: state.map.revealed,
     mapObject,
     mapObjectTile,
+    groundTiles: groundTilesOf(state),
   };
 }
 
 /**
- * What changed in the static layers since they were last sent: terrain, Roads and the Revealed
- * tiles whole, or null when unchanged, and only the map objects added or changed (with their tiles) or removed. A chop
+ * What changed in the static layers since they were last sent: terrain, Roads, the Revealed
+ * tiles and the Hunting grounds' tiles whole, or null when unchanged, and only the map objects added or changed (with their tiles) or removed. A chop
  * changes one tree, so its patch is a few bytes where the whole layers are hundreds of KB.
  */
 export interface StaticPatch {
@@ -59,6 +81,8 @@ export interface StaticPatch {
   terrain: MapState['terrain'] | null;
   roads: MapState['roads'] | null;
   revealed: MapState['revealed'] | null;
+  /** Every Hunting ground's tiles when any changed (a ground added or gone), else null. */
+  groundTiles: Store<number[]> | null;
   mapObject: Store<MapObjectComponent>;
   mapObjectTile: Store<Tile>;
   removed: EntityId[];
@@ -85,7 +109,24 @@ export function sentStaticLayers(state: GameState): StaticLayers {
     revealed: [...layers.revealed],
     mapObject,
     mapObjectTile,
+    groundTiles: copyGroundTiles(layers.groundTiles),
   };
+}
+
+function copyGroundTiles(groundTiles: Store<number[]>): Store<number[]> {
+  const copy: Store<number[]> = {};
+  for (const key in groundTiles) copy[Number(key)] = [...(groundTiles[Number(key)] as number[])];
+  return copy;
+}
+
+/** Whether two stores of tile lists hold the same IDs and lists. */
+function sameGroundTiles(a: Store<number[]>, b: Store<number[]>): boolean {
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every((k) => {
+    const other = b[Number(k)];
+    return other !== undefined && sameList(a[Number(k)] as number[], other);
+  });
 }
 
 /** Whether two flat records hold the same fields and values. */
@@ -111,6 +152,7 @@ export function staticPatch(sent: StaticLayers, state: GameState): StaticPatch {
     terrain: null,
     roads: null,
     revealed: null,
+    groundTiles: null,
     mapObject: {},
     mapObjectTile: {},
     removed: [],
@@ -126,6 +168,11 @@ export function staticPatch(sent: StaticLayers, state: GameState): StaticPatch {
   if (!sameList(sent.revealed, revealed)) {
     patch.revealed = revealed;
     sent.revealed = [...revealed];
+  }
+  const groundTiles = groundTilesOf(state);
+  if (!sameGroundTiles(sent.groundTiles, groundTiles)) {
+    patch.groundTiles = groundTiles;
+    sent.groundTiles = copyGroundTiles(groundTiles);
   }
   for (const key in sent.mapObject) {
     const id = Number(key);
@@ -173,25 +220,37 @@ export function applyStaticPatch(layers: StaticLayers, patch: StaticPatch): Stat
     revealed: patch.revealed ?? layers.revealed,
     mapObject,
     mapObjectTile,
+    groundTiles: patch.groundTiles ?? layers.groundTiles,
   };
 }
 
 /**
  * Everything in `state` but its static layers: a `GameState` whose terrain, Roads, Revealed tiles
- * and map objects are empty and whose `tile` store leaves out the map objects' tiles. Shallow: it shares every
- * other object with `state`, so post it or copy it before `state` steps on.
+ * and map objects are empty, whose `tile` store leaves out the map objects' tiles and whose Hunting
+ * grounds have no `tiles`. Shallow: it shares every other object with `state`, so post it or copy
+ * it before `state` steps on.
  */
 export function movingPart(state: GameState): GameState {
-  const { mapObject, tile } = state.components;
+  const { mapObject, tile, huntingGround } = state.components;
   const movingTile: Store<Tile> = {};
   for (const key in tile) {
     const id = Number(key);
     if (mapObject[id] === undefined) movingTile[id] = tile[id] as Tile;
   }
+  const movingGround: Store<HuntingGroundComponent> = {};
+  for (const key in huntingGround) {
+    const id = Number(key);
+    movingGround[id] = { ...(huntingGround[id] as HuntingGroundComponent), tiles: [] };
+  }
   return {
     ...state,
     map: { ...state.map, terrain: [], roads: {}, revealed: [] },
-    components: { ...state.components, mapObject: {}, tile: movingTile },
+    components: {
+      ...state.components,
+      mapObject: {},
+      tile: movingTile,
+      huntingGround: movingGround,
+    },
   };
 }
 
@@ -209,6 +268,20 @@ export function joinSnapshot(moving: GameState, layers: StaticLayers): GameState
       ...moving.components,
       mapObject: layers.mapObject,
       tile: { ...layers.mapObjectTile, ...moving.components.tile },
+      huntingGround: joinGrounds(moving.components.huntingGround, layers.groundTiles),
     },
   };
+}
+
+/** The moving part's Hunting grounds with their tiles back from the static layers. */
+function joinGrounds(
+  grounds: Store<HuntingGroundComponent>,
+  groundTiles: Store<number[]>,
+): Store<HuntingGroundComponent> {
+  const joined: Store<HuntingGroundComponent> = {};
+  for (const key in grounds) {
+    const id = Number(key);
+    joined[id] = { ...(grounds[id] as HuntingGroundComponent), tiles: groundTiles[id] ?? [] };
+  }
+  return joined;
 }

@@ -8,7 +8,10 @@ import {
   type GameState,
   type GroundHealth,
   groundHealth,
+  groundMiddle,
+  groundTiles,
   type HealthBar,
+  type HuntingGroundComponent,
   healthBars,
   heroOf,
   idsOf,
@@ -286,6 +289,8 @@ export class WorldRenderer {
   private readonly grounds = new Graphics();
   private readonly groundLabels = new Container();
   private groundsKey = '';
+  /** Each Hunting ground's label tile, by its `tiles` list (the same list until the layer changes). */
+  private groundMiddles = new WeakMap<readonly number[], Tile>();
   /** "Fled" puffs over grounds, drawn each frame until they fade. */
   private readonly puffs = new Graphics();
   private readonly puffLabels = new Container();
@@ -948,14 +953,12 @@ export class WorldRenderer {
     const { huntingGround } = state.components;
     const ids = idsOf(huntingGround);
     // Under Fog, a ground's name shows once its middle is Revealed; its outline is under the Fog.
-    const named = (g: { x: number; y: number; w: number; h: number }) =>
-      isRevealed(state, { x: Math.floor(g.x + g.w / 2), y: Math.floor(g.y + g.h / 2) });
+    // A ground's tiles never change, so its ID stands for them in the key.
+    const named = (g: HuntingGroundComponent) => isRevealed(state, this.middleOf(state, g));
     const key = ids
       .map((id) => {
         const g = huntingGround[id];
-        return g
-          ? `${id}:${g.x},${g.y},${g.w},${g.h}:${groundHealth(g, this.content)}:${named(g)}`
-          : '';
+        return g ? `${id}:${groundHealth(g, this.content)}:${named(g)}` : '';
       })
       .join('|');
     if (key !== this.groundsKey) {
@@ -965,10 +968,11 @@ export class WorldRenderer {
         const g = huntingGround[id];
         if (!g) continue;
         const health = groundHealth(g, this.content);
-        drawHuntingGround(this.grounds, g.x, g.y, g.w, g.h, HEALTH_COLORS[health]);
+        drawHuntingGround(this.grounds, groundTiles(state, g), HEALTH_COLORS[health]);
         if (!named(g)) continue;
         const label = this.groundText(`${g.name} · ${HEALTH_WORDS[health]}`, HEALTH_COLORS[health]);
-        const top = gridToWorld(g.x + g.w / 2, g.y + g.h / 2);
+        const middle = this.middleOf(state, g);
+        const top = gridToWorld(middle.x + 0.5, middle.y + 0.5);
         label.position.set(top.x, top.y - TILE_H * 1.5);
         this.groundLabels.addChild(label);
       }
@@ -982,12 +986,23 @@ export class WorldRenderer {
       const g = huntingGround[id];
       const before = last?.components.huntingGround[id];
       if (!g || !before || g.fled <= before.fled) continue;
-      const c = gridToWorld(g.x + g.w / 2, g.y + g.h / 2);
+      const middle = this.middleOf(state, g);
+      const c = gridToWorld(middle.x + 0.5, middle.y + 0.5);
       const label = this.groundText(`${g.fled - before.fled} fled`, palette.uiText);
       label.position.set(c.x, c.y - TILE_H * 0.6);
       this.puffLabels.addChild(label);
       this.activePuffs.push({ x: c.x, y: c.y, startMs: null, label });
     }
+  }
+
+  /** Hunting ground `g`'s label tile, worked out once per tile list. */
+  private middleOf(state: GameState, g: HuntingGroundComponent): Tile {
+    let middle = this.groundMiddles.get(g.tiles);
+    if (!middle) {
+      middle = groundMiddle(state, g);
+      this.groundMiddles.set(g.tiles, middle);
+    }
+    return middle;
   }
 
   /** Draws the "fled" puffs at `timeMs`, dropping those that have faded. */

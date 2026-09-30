@@ -1,11 +1,13 @@
 // Words for what the sim works out: alerts, the death log, the winter countdown, why a
-// Workplace is idle, Carrier utilization and the Hero's knockout countdown. Pure.
+// Workplace is idle, Carrier utilization, the Hero's knockout countdown and a Hunting ground's
+// Game coming back. Pure.
 import { content, type ResourceId } from '@candlemarch/content';
 import {
   type Alert,
   type Death,
   type DeathCause,
   type GameOver,
+  type GroundRegrowth,
   TICKS_PER_SECOND,
   type WorkplaceStatus,
 } from '@candlemarch/sim';
@@ -91,4 +93,11 @@ export function utilizationText(percent: number | null): string {
 /** The Hero panel while it's Knocked out: "Knocked out, up in 14 s" (seconds at normal speed). */
 export function knockoutText(ticksLeft: number): string {
   return `Knocked out, up in ${Math.ceil(ticksLeft / TICKS_PER_SECOND)} s`;
+}
+
+/** A Hunting ground's Game coming back: "Empty; Game returns in 6 days", "Recovering". */
+export function regrowthText(regrowth: GroundRegrowth): string {
+  if (regrowth.kind === 'recovering') return 'Recovering';
+  if (regrowth.days === null) return 'Empty; too few trees for Game to return';
+  return `Empty; Game returns in ${count(regrowth.days, 'day', 'days')}`;
 }

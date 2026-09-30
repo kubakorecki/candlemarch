@@ -33,12 +33,19 @@ export {
 export { canLayGroundwork, groundworkOf } from './groundwork';
 export { type HeroOrder, heroOf, heroOrderAt } from './hero';
 export {
+  addHuntingGround,
   type GroundHealth,
+  type GroundRegrowth,
+  groundAt,
   groundCeiling,
   groundHealth,
+  groundMiddle,
+  groundRegrowth,
   groundsInReach,
   groundsNear,
+  groundTiles,
   huntChancePermille,
+  inGround,
 } from './huntingGrounds';
 export { isDarkLight, type LightSource, lightSources } from './lights';
 export type { Haul, LogisticsState } from './logistics/jobDispatch';

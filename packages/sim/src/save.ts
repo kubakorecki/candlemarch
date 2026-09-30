@@ -3,11 +3,26 @@ import type { Content } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { allTiles } from './fog';
 import { refreshShade } from './forage';
+import { rectTiles, tileIndex } from './grid';
 import { createEmptyState } from './map';
-import { type Components, type GameState, type MapState, STATE_VERSION } from './state';
+import {
+  type Components,
+  type GameState,
+  type HuntingGroundComponent,
+  type MapState,
+  STATE_VERSION,
+} from './state';
 import { fallbackVillagerName } from './villagers';
 import { fullHp } from './walls';
 import { maxWorkers } from './workers';
+
+/** A Hunting ground as saves from before tile sets and Game recovery kept it: a rectangle. */
+type OldHuntingGround = Omit<HuntingGroundComponent, 'tiles' | 'regrowsOn'> & {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
 
 /** A save of the current version, which may lack state added after it was made. */
 type LoadedState = Partial<Omit<GameState, 'components' | 'map'>> & {
@@ -94,6 +109,19 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
   for (const den of Object.values(state.components.den)) {
     den.hp ??= content.combat.den.hp;
     den.readyAt ??= 0;
+  }
+  // Saves from before Hunting grounds were tile sets kept a rectangle; before Game recovery,
+  // nothing was due.
+  const { huntingGround } = state.components;
+  for (const id of idsOf(huntingGround)) {
+    const g = huntingGround[id] as HuntingGroundComponent | OldHuntingGround;
+    if ('tiles' in g) {
+      g.regrowsOn ??= null;
+      continue;
+    }
+    const { x, y, w, h, ...rest } = g;
+    const tiles = rectTiles({ x, y }, w, h).map((t) => tileIndex(state.map, t.x, t.y));
+    huntingGround[id] = { ...rest, tiles, regrowsOn: null };
   }
   for (const hero of Object.values(state.components.hero)) {
     hero.carrying ??= null;

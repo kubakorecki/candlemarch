@@ -30,7 +30,8 @@ const TREE = 1;
 /**
  * A wood with berry bushes in its shade (rows 1–5), a woodcutter's hut and a forager's hut
  * working it, a stockpile and a Carrier, and the Hero, who fells the tree at (13,1), the only
- * shade of the bush at (12,1): trees get chopped and felled, bushes picked and left unshaded.
+ * shade of the bush at (12,1): trees get chopped and felled, bushes picked and left unshaded. The
+ * wood is a Hunting ground.
  */
 const grove: MapDef = {
   name: 'grove',
@@ -53,6 +54,7 @@ const grove: MapDef = {
   stockpiles: [{ x: 11, y: 6, w: 2, h: 2 }],
   villagers: [{ job: 'carrier', x: 10, y: 8 }],
   hero: { x: 1, y: 8 },
+  huntingGrounds: [{ name: 'Grove', x: 1, y: 0, w: 14, h: 6, maxGame: 20 }],
 };
 
 /**
@@ -183,6 +185,17 @@ describe('split snapshots', () => {
     expect(tiles.length).toBe(Object.keys(s.components.tile).length - 15);
   });
 
+  it("leave Hunting grounds' tiles out of the moving part, and keep their Game in it", () => {
+    const s = run(createInitialState(1, grove, content), 200);
+    const id = Number(Object.keys(s.components.huntingGround)[0]);
+    const ground = s.components.huntingGround[id];
+    expect(ground?.tiles.length).toBe(84);
+    const moving = movingPart(s);
+    expect(moving.components.huntingGround[id]).toEqual({ ...ground, tiles: [] });
+    expect(staticLayers(s).groundTiles).toEqual({ [id]: ground?.tiles });
+    expect(joinSnapshot(moving, staticLayers(s))).toEqual(s);
+  });
+
   it('join a later moving part with layers sent earlier, while the version stays', () => {
     const s0 = createInitialState(1, glade, content);
     const layers = staticLayers(s0);
@@ -275,6 +288,7 @@ describe('static patches', () => {
       terrain: null,
       roads: null,
       revealed: null,
+      groundTiles: null,
       mapObject: { [TREE]: tree },
       mapObjectTile: { [TREE]: { x: 1, y: 1 } },
       removed: [],

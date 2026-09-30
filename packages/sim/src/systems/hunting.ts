@@ -6,7 +6,12 @@ import { isNight } from '../calendar';
 import { idsOf } from '../entities';
 import { outputRoom } from '../gathering';
 import { blockedGrid, doorTile, tileIndex } from '../grid';
-import { groundsInReach, groundTilesInReach, huntChancePermille } from '../huntingGrounds';
+import {
+  groundsInReach,
+  groundTilesInReach,
+  huntChancePermille,
+  loseGame,
+} from '../huntingGrounds';
 import { tileDistance } from '../pathfinding';
 import { randomInt } from '../rng';
 import { workTicks } from '../speed';
@@ -105,7 +110,7 @@ export function huntingSystem(state: GameState, content: Content): void {
         const ground = huntingGround[task.ground];
         const chance = ground ? huntChancePermille(ground, content) : 0;
         const caught = randomInt(state, 1000) < chance;
-        if (ground && caught) ground.game -= 1;
+        if (ground && caught) loseGame(state, content, ground, 1);
         const bag = caught ? def.hunts.catch.map((c) => ({ ...c })) : [];
         tasks[id] = { kind: 'toLodge', bag };
         walkTo(state, content, id, [door]);

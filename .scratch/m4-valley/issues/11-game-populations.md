@@ -1,6 +1,6 @@
 # Hunting grounds as tile sets, and Game recovery
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 03, m2-camp-winter/10
 
@@ -25,3 +25,5 @@ Rules in `docs/spec.md`, World and map ("Forest ecology"). Numbers Proposed, all
 2026-09-27 — M2 design session (m2-camp-winter/01) already gives each Hunting ground a Game count, a ceiling that follows standing trees (surplus flees when trees are felled), and a catch chance of 50% × game ÷ max. This ticket adds recovery: Game regrows toward the ceiling, and foresters raise the ceiling again. See spec, World and map, "Before full ecology (M2)".
 
 2026-09-29 — Design session 03: grounds become tile sets so the generator (06) can make one per stretch of Forest (at most 250 tiles, max Game 1 per 10 trees). The glossary term is Hunting ground, not "forest region".
+
+2026-09-30 — Done. Grounds hold `tiles` (ascending tile indices) and `regrowsOn`; `addHuntingGround` builds one from any tiles (maps' rectangles use it), old saves' rectangles convert on load. `huntingGroundsSystem` runs at each Dawn after growth: +1 every 2 days under the ceiling, and an emptied ground returns 2 (capped at the ceiling) at the first Dawn after 2 full seasons, the season it emptied in not counting. Beyond the issue: the ceiling is capped at max Game (foresters can plant more trees than a ground started with), ground tiles are a static snapshot layer, and the panel also says "Empty; too few trees for Game to return" when the ceiling is 0. Logged in docs/decisions.md.

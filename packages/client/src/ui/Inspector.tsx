@@ -85,6 +85,7 @@ function GroundRows({ ground }: { ground: GroundInfo }) {
         <span className={`health-${ground.health}`}>{ground.word}</span>
       </div>
       <div className="muted small">{ground.summary}</div>
+      {ground.regrowth && <div className="muted small">{ground.regrowth}</div>}
     </div>
   );
 }

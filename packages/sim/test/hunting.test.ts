@@ -1,10 +1,13 @@
 // Hunting grounds and the hunter's lodge: forest regions holding Game, which hunters catch with a
 // chance that follows the Game left, and which logging drives away.
 import { describe, expect, it } from 'vitest';
-import { dawnTick, duskTick } from '../src/calendar';
-import { idsOf } from '../src/entities';
+import { calendarAt, dawnTick, duskTick } from '../src/calendar';
+import { destroyEntity, idsOf } from '../src/entities';
 import {
+  fellTree,
+  groundCeiling,
   groundHealth,
+  groundRegrowth,
   groundsInReach,
   groundsNear,
   huntChancePermille,
@@ -40,6 +43,21 @@ describe('hunting grounds', () => {
     expect(idsOf(s.components.huntingGround)).toEqual([9]);
     expect(ground(s)).toMatchObject({ name: 'Old Wood', maxGame: 20, game: 20, startTrees: 8 });
     expect(ground(s).fled).toBe(0);
+  });
+
+  it("are sets of tiles: a hand-made map's rectangle becomes its tiles", () => {
+    const s = createInitialState(1, wood, content);
+    // 4×2 from (1,1) on a 10-wide map: indices 11–14 and 21–24.
+    expect(ground(s).tiles).toEqual([11, 12, 13, 14, 21, 22, 23, 24]);
+    expect(ground(s)).not.toHaveProperty('x');
+  });
+
+  it("from an old save, rectangles too, load as the map's same tiles", () => {
+    const s = createInitialState(1, wood, content);
+    const old = JSON.parse(serialize(s));
+    const { tiles: _tiles, regrowsOn: _regrowsOn, ...rest } = old.components.huntingGround[9];
+    old.components.huntingGround[9] = { ...rest, x: 1, y: 1, w: 4, h: 2 };
+    expect(deserialize(JSON.stringify(old), content)).toEqual(s);
   });
 
   it('lose the Game above their new ceiling when a woodcutter fells a tree', () => {
@@ -237,6 +255,127 @@ describe('the hunter', () => {
     expect(midHunt.components.hunter[HUNTER]?.kind).toBe('hunting');
     const uninterrupted = run(midHunt, 1500);
     expect(run(deserialize(serialize(midHunt), content), 1500)).toEqual(uninterrupted);
+  });
+});
+
+/** `s` run through every Dawn after its day up to day `day`'s, one tick each: Game regrows at Dawn. */
+function dawnsUntil(s: GameState, day: number): GameState {
+  let x = s;
+  for (let d = calendarAt(s.tick, content).day + 1; d <= day; d++) {
+    x = run({ ...x, tick: dawnTick(d, content) }, 1);
+  }
+  return x;
+}
+
+/** Ground Game at each Dawn from day `from` to day `to`. */
+function gameByDay(s: GameState, from: number, to: number): number[] {
+  const games: number[] = [];
+  let x = dawnsUntil(s, from - 1);
+  for (let d = from; d <= to; d++) {
+    x = dawnsUntil(x, d);
+    games.push(ground(x).game);
+  }
+  return games;
+}
+
+/** A PRNG state whose next roll (0–999) is under `permille`. */
+function rngRollingUnder(permille: number): number {
+  let rng = 0;
+  while (randomInt({ rng }, 1000) >= permille) rng += 1;
+  return rng;
+}
+
+/** The camp's hunter one tick before its first hunt ends, on day 1. */
+function lastTickOfHunt(): GameState {
+  return runUntil(
+    createInitialState(1, camp, content),
+    (x) => {
+      const t = x.components.hunter[HUNTER];
+      return t?.kind === 'hunting' && t.ticksLeft === 1;
+    },
+    2000,
+  );
+}
+
+/** The camp's ground hunted down to `game - 1` on day `day` by a sure catch; the hunter then leaves. */
+function huntedTo(game: number, day = 1): GameState {
+  const s0 = clone(lastTickOfHunt());
+  s0.tick += dawnTick(day, content);
+  s0.rng = rngRollingUnder(25); // a catch even at 1 Game
+  ground(s0).game = game;
+  const s = run(s0, 1);
+  expect(ground(s).game).toBe(game - 1);
+  destroyEntity(s, HUNTER);
+  return s;
+}
+
+describe('Game recovery', () => {
+  it('gains 1 animal every 2 days after a hunt, back up to the ceiling', () => {
+    const s = huntedTo(20);
+    expect(groundRegrowth(s, content, ground(s))).toEqual({ kind: 'recovering' });
+    // Caught on day 1: the animal is back at day 3's Dawn.
+    expect(gameByDay(s, 2, 5)).toEqual([19, 20, 20, 20]);
+    expect(groundRegrowth(dawnsUntil(s, 3), content, ground(dawnsUntil(s, 3)))).toBeNull();
+  });
+
+  it('keeps recovering, one every 2 days, from well under the ceiling', () => {
+    const s = huntedTo(18);
+    expect(gameByDay(s, 2, 9)).toEqual([17, 18, 18, 19, 19, 20, 20, 20]);
+  });
+
+  it('stops at a ceiling lowered by logging', () => {
+    const s0 = createInitialState(1, wood, content);
+    for (const tree of [1, 2, 3, 4]) fellTree(s0, content, tree);
+    expect(groundCeiling(s0, content, ground(s0))).toBe(10);
+    ground(s0).game = 8;
+    ground(s0).regrowsOn = null;
+    // Nothing was due: the clock starts at day 2's Dawn.
+    expect(gameByDay(s0, 2, 10)).toEqual([8, 8, 9, 9, 10, 10, 10, 10, 10]);
+    expect(ground(dawnsUntil(s0, 10)).regrowsOn).toBeNull();
+  });
+
+  it("isn't pushed above max Game by more trees than the ground started with", () => {
+    const s0 = createInitialState(1, wood, content);
+    ground(s0).startTrees = 4; // as if foresters had doubled the wood
+    expect(groundCeiling(s0, content, ground(s0))).toBe(20);
+  });
+
+  it('stays empty for 2 full seasons once hunted to 0, then 2 animals return', () => {
+    const s = huntedTo(1);
+    // Emptied in spring: summer and autumn pass, and Game returns at winter's first Dawn (day 16).
+    expect(groundRegrowth(s, content, ground(s))).toEqual({ kind: 'empty', days: 15 });
+    const waited = dawnsUntil(s, 15);
+    expect(ground(waited).game).toBe(0);
+    expect(groundRegrowth(waited, content, ground(waited))).toEqual({ kind: 'empty', days: 1 });
+    expect(gameByDay(s, 16, 18)).toEqual([2, 2, 3]);
+  });
+
+  it("doesn't count the season it was emptied in", () => {
+    expect(ground(dawnsUntil(huntedTo(1, 5), 16)).game).toBe(2);
+    const summer = huntedTo(1, 6);
+    expect(ground(dawnsUntil(summer, 20)).game).toBe(0);
+    expect(ground(dawnsUntil(summer, 21)).game).toBe(2);
+  });
+
+  it('returns no more than the ceiling', () => {
+    const s = huntedTo(1);
+    ground(s).maxGame = 10;
+    for (const tree of [1, 2, 3, 4, 5, 6, 7]) fellTree(s, content, tree);
+    expect(groundCeiling(s, content, ground(s))).toBe(1);
+    expect(ground(dawnsUntil(s, 16)).game).toBe(1);
+    fellTree(s, content, 8);
+    const noTrees = dawnsUntil(s, 16);
+    expect(ground(noTrees).game).toBe(0);
+    expect(groundRegrowth(noTrees, content, ground(noTrees))).toEqual({
+      kind: 'empty',
+      days: null,
+    });
+  });
+
+  it('comes back on the same day after a save and load', () => {
+    const s = dawnsUntil(huntedTo(1), 4);
+    const straight = dawnsUntil(s, 17);
+    expect(dawnsUntil(deserialize(serialize(s), content), 17)).toEqual(straight);
   });
 });
 

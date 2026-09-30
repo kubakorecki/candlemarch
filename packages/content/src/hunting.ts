@@ -6,4 +6,7 @@ export const hunting: HuntingDef = {
   maxCatchPermille: 500,
   thrivingPercent: 75,
   scarcePercent: 25,
+  recoveryDays: 2,
+  emptySeasons: 2,
+  returningGame: 2,
 };

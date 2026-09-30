@@ -7,7 +7,7 @@ import { calendarAt, isNight } from './calendar';
 import { idsOf } from './entities';
 import { isGranary, villageFood } from './granary';
 import { residentsOf } from './homes';
-import { groundHealth } from './huntingGrounds';
+import { groundHealth, groundMiddle } from './huntingGrounds';
 import type { EntityId, GameState, Tile, VillagerComponent } from './state';
 import { villagerTile } from './systems/movement';
 import { villageStock } from './systems/production';
@@ -200,7 +200,7 @@ function groundAlerts(state: GameState, content: Content): Alert[] {
       name: ground.name,
       health,
       severity: 'amber',
-      target: { x: ground.x + Math.floor(ground.w / 2), y: ground.y + Math.floor(ground.h / 2) },
+      target: groundMiddle(state, ground),
     });
   }
   return list;

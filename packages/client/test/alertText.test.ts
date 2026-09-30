@@ -5,6 +5,7 @@ import {
   deathText,
   gameOverText,
   knockoutText,
+  regrowthText,
   utilizationText,
   winterText,
   workplaceStatusText,
@@ -93,5 +94,16 @@ describe('knockout text', () => {
   it('counts down the seconds, at normal speed, until the Hero gets up', () => {
     expect(knockoutText(400)).toBe('Knocked out, up in 20 s');
     expect(knockoutText(1)).toBe('Knocked out, up in 1 s');
+  });
+});
+
+describe('regrowth text', () => {
+  it("says when an empty ground's Game returns, or that it's recovering", () => {
+    expect(regrowthText({ kind: 'empty', days: 6 })).toBe('Empty; Game returns in 6 days');
+    expect(regrowthText({ kind: 'empty', days: 1 })).toBe('Empty; Game returns in 1 day');
+    expect(regrowthText({ kind: 'empty', days: null })).toBe(
+      'Empty; too few trees for Game to return',
+    );
+    expect(regrowthText({ kind: 'recovering' })).toBe('Recovering');
   });
 });

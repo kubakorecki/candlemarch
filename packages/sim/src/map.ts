@@ -24,7 +24,7 @@ import {
   tileCenter,
   tileIndex,
 } from './grid';
-import { standingTrees } from './huntingGrounds';
+import { addHuntingGround } from './huntingGrounds';
 import { seedRng } from './rng';
 import { DEFAULT_MONSTER_RATE, type GameState, type Rotation, STATE_VERSION } from './state';
 import {
@@ -335,9 +335,7 @@ export function createInitialState(
         `map ${map.name}: hunting ground ${name} doesn't fit at ${x},${y} (${w}×${h})`,
       );
     }
-    const ground = { name, x, y, w, h, maxGame, game: maxGame, startTrees: 0, fled: 0 };
-    ground.startTrees = standingTrees(state, content, ground);
-    state.components.huntingGround[createEntity(state)] = ground;
+    addHuntingGround(state, content, name, rectTiles({ x, y }, w, h), maxGame);
   }
 
   // Placement above ignores Fog: it's switched on once the map stands.

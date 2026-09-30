@@ -390,6 +390,14 @@ export interface HuntingDef {
    */
   thrivingPercent: number;
   scarcePercent: number;
+  /** While 0 < Game < ceiling, a ground gains 1 animal every `recoveryDays` days. */
+  recoveryDays: number;
+  /**
+   * A ground whose Game reaches 0 stays empty for `emptySeasons` full seasons, then
+   * `returningGame` animals come back (never above its ceiling).
+   */
+  emptySeasons: number;
+  returningGame: number;
 }
 
 /**

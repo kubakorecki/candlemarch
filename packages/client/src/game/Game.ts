@@ -22,9 +22,12 @@ import {
   entityLayout,
   type GameState,
   type GroundHealth,
+  groundAt,
   groundHealth,
+  groundRegrowth,
   groundsInReach,
   groundsNear,
+  groundTiles,
   groundworkOf,
   type HeroOrder,
   heroOf,
@@ -57,6 +60,7 @@ import {
   deathText,
   gameOverText,
   knockoutText,
+  regrowthText,
   utilizationText,
   winterText,
   workplaceStatusText,
@@ -145,6 +149,8 @@ export interface GroundInfo {
   word: string;
   /** "Game 12 / 20 · 2 fled due to logging · catch chance 30%". */
   summary: string;
+  /** "Empty; Game returns in 6 days" or "Recovering", else null. */
+  regrowth: string | null;
 }
 
 /** What the building panel shows for the selected Workplace. */
@@ -906,8 +912,8 @@ export class Game {
       this.selectedGround === null
         ? undefined
         : state?.components.huntingGround[this.selectedGround];
-    if (ground) {
-      const tiles = rectTiles(ground, ground.w, ground.h);
+    if (state && ground) {
+      const tiles = groundTiles(state, ground);
       this.renderer.setGhost({ kind: 'tiles', tiles, valid: true });
       return;
     }
@@ -1071,16 +1077,6 @@ function patchInfo(state: GameState, id: EntityId): PatchInfo | null {
   };
 }
 
-/** The Hunting ground covering `tile`, the first in ID order if several do. */
-function groundAt(state: GameState, tile: Tile): EntityId | null {
-  const { huntingGround } = state.components;
-  for (const id of idsOf(huntingGround)) {
-    const g = huntingGround[id];
-    if (g && covers(g, g.w, g.h, tile)) return id;
-  }
-  return null;
-}
-
 /** Hunting ground `id`'s name, health and Game for the panel, or null if it's gone. */
 function groundInfo(state: GameState, id: EntityId): GroundInfo | null {
   const g = state.components.huntingGround[id];
@@ -1090,7 +1086,15 @@ function groundInfo(state: GameState, id: EntityId): GroundInfo | null {
   if (g.fled > 0) parts.push(`${g.fled} fled due to logging`);
   // Whole percent, rounded down, from the sim's permille.
   parts.push(`catch chance ${Math.floor(huntChancePermille(g, content) / 10)}%`);
-  return { id, name: g.name, health, word: HEALTH_WORDS[health], summary: parts.join(' · ') };
+  const regrowth = groundRegrowth(state, content, g);
+  return {
+    id,
+    name: g.name,
+    health,
+    word: HEALTH_WORDS[health],
+    summary: parts.join(' · '),
+    regrowth: regrowth && regrowthText(regrowth),
+  };
 }
 
 /**

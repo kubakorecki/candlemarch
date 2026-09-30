@@ -1,6 +1,6 @@
 // Placeholder art drawn in code: bold ink outlines, flat earthy fills. Colours come from palette.ts.
 import type { ResourceAmount, ResourceId, RoadId, TerrainId } from '@candlemarch/content';
-import type { BuildingLayout } from '@candlemarch/sim';
+import type { BuildingLayout, Tile } from '@candlemarch/sim';
 import type { Graphics } from 'pixi.js';
 import { gridToWorld, TILE_H, TILE_W, type Vec } from './iso';
 import { palette } from './palette';
@@ -1761,21 +1761,30 @@ export function drawTileGhost(
 }
 
 /**
- * A Hunting ground's rectangle of tiles outlined on the ground in its health `color`, with a
- * faint wash inside.
+ * A Hunting ground's tiles outlined on the ground in its health `color`, with a faint wash inside.
+ * The outline follows the edges where a ground tile meets a tile off the ground, whatever its shape.
  */
-export function drawHuntingGround(
-  g: Graphics,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  color: number,
-): void {
-  g.poly(flat(diamond(x, y, w, h)))
-    .fill({ color, alpha: 0.1 })
-    .stroke({ width: 4, color: palette.ink, alpha: 0.5, join: 'round' });
-  g.poly(flat(diamond(x, y, w, h))).stroke({ width: 2.5, color, alpha: 0.9, join: 'round' });
+export function drawHuntingGround(g: Graphics, tiles: readonly Tile[], color: number): void {
+  if (tiles.length === 0) return;
+  const on = new Set(tiles.map((t) => `${t.x},${t.y}`));
+  for (const t of tiles) g.poly(flat(diamond(t.x, t.y)));
+  g.fill({ color, alpha: 0.1 });
+  // Each tile's corners (top, right, bottom, left) and the neighbour across each edge.
+  const edges: [Vec, Vec][] = [];
+  for (const t of tiles) {
+    const [top, right, bottom, left] = diamond(t.x, t.y);
+    if (!on.has(`${t.x},${t.y - 1}`)) edges.push([top, right]);
+    if (!on.has(`${t.x + 1},${t.y}`)) edges.push([right, bottom]);
+    if (!on.has(`${t.x},${t.y + 1}`)) edges.push([bottom, left]);
+    if (!on.has(`${t.x - 1},${t.y}`)) edges.push([left, top]);
+  }
+  const outline = () => {
+    for (const [a, b] of edges) g.moveTo(a.x, a.y).lineTo(b.x, b.y);
+  };
+  outline();
+  g.stroke({ width: 4, color: palette.ink, alpha: 0.5, cap: 'round' });
+  outline();
+  g.stroke({ width: 2.5, color, alpha: 0.9, cap: 'round' });
 }
 
 /**

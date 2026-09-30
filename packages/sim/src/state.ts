@@ -281,22 +281,25 @@ export type HunterTask =
   | { kind: 'toLodge'; bag: ResourceAmount[] };
 
 /**
- * A Hunting ground: a rectangle of forest holding Game. Its ceiling follows the forest standing in
- * it (`groundCeiling`); Game above the ceiling flees when a tree in it is felled.
+ * A Hunting ground: a set of Forest tiles holding Game. Its ceiling follows the trees standing on
+ * its tiles (`groundCeiling`); Game above the ceiling flees when a tree on it is felled. Below the
+ * ceiling Game recovers; hunted to 0, the ground stays empty a while (`regrowsOn`).
  */
 export interface HuntingGroundComponent {
   name: string;
-  /** The rectangle, in tiles: origin (smallest x and y) and size. */
-  x: number;
-  y: number;
-  w: number;
-  h: number;
+  /** Its tiles, as tile indices (row-major), ascending and each once. Fixed once the map stands. */
+  tiles: number[];
   maxGame: number;
   game: number;
   /** Trees standing in it when the map started. */
   startTrees: number;
   /** Animals that fled because of logging, all game long. */
   fled: number;
+  /**
+   * The day at whose Dawn Game next comes back: while empty, when the returning animals come;
+   * while under the ceiling, when the next animal does; null when nothing is due.
+   */
+  regrowsOn: number | null;
 }
 
 /**
