@@ -12,23 +12,23 @@ describe('the Camp without firewood', () => {
   it('freezes in its first winter, with alerts first', { timeout: 60_000 }, () => {
     const { map, seed, ticks, commands } = scenarios.campNoFirewood;
     const s = createInitialState(seed, map, content);
-    const population = idsOf(s.components.villager).length;
     // The tick each alert kind was first seen on, checked every 3 in-game seconds.
     const firstSeen = new Map<Alert['kind'], number>();
     let firstDeath: number | null = null;
     while (s.gameOver === null && s.tick < ticks) {
       stepInPlace(s, commands[s.tick] ?? [], content);
-      if (firstDeath === null && idsOf(s.components.villager).length < population) {
-        firstDeath = s.tick;
-      }
+      if (firstDeath === null && s.deaths.length > 0) firstDeath = s.tick;
       if (s.tick % 60 === 0) {
         for (const a of alerts(s, content))
           if (!firstSeen.has(a.kind)) firstSeen.set(a.kind, s.tick);
       }
     }
 
+    // Everyone freezes, the settlers and a Newcomer who came in summer alike.
     expect(s.gameOver?.cause).toBe('freezing');
-    expect(s.deaths.map((d) => d.cause)).toEqual(Array(population).fill('freezing'));
+    expect(idsOf(s.components.villager)).toEqual([]);
+    expect(s.deaths.length).toBeGreaterThan(0);
+    expect(s.deaths.every((d) => d.cause === 'freezing')).toBe(true);
     // Amber through autumn, before any winter night; red the night before they freeze.
     expect(firstSeen.get('noFirewood')).toBeLessThan(winterDawn);
     expect(firstSeen.get('willFreeze')).toBeLessThan(firstDeath ?? 0);

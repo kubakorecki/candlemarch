@@ -42,7 +42,7 @@ export const valley: ValleyDef = {
     thresholdPercent: 55,
     treePercent: 80,
     campTreePercent: 85,
-    foragePercent: 5,
+    foragePercent: 10,
   },
   swamp: { patches: { min: 2, max: 4 }, radiusTiles: { min: 3, max: 6 } },
   rock: { footTiles: 2, thresholdPercent: 50, cellTiles: 6 },
@@ -58,7 +58,7 @@ export const valley: ValleyDef = {
   huntingGrounds: {
     maxTiles: 250,
     minTiles: 20,
-    treesPerGame: 10,
+    treesPerGame: 5,
     names: [
       'Old Wood',
       'Ashgrove',

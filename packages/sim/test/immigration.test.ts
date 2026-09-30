@@ -84,9 +84,11 @@ describe('immigration', () => {
     expect(isAtHome(home, content, NEWCOMER)).toBe(true);
   });
 
-  it('needs 5 Meals in the Granaries for each villager and the Newcomer', () => {
-    expect(villagers(dawn(campAt(2, 9)))).toEqual([3]);
-    expect(villagers(dawn(campAt(2, 10)))).toEqual([3, NEWCOMER]);
+  it('needs mealsPerHead (2) Meals in the Granaries for each villager and the Newcomer', () => {
+    // One villager and the Newcomer: 2 × 2 = 4.
+    expect(content.immigration.mealsPerHead).toBe(2);
+    expect(villagers(dawn(campAt(2, 3)))).toEqual([3]);
+    expect(villagers(dawn(campAt(2, 4)))).toEqual([3, NEWCOMER]);
   });
 
   it('needs a free place in a House', () => {

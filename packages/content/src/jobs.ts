@@ -26,7 +26,7 @@ export const jobs: Record<JobId, JobDef> = {
     id: 'forager',
     name: 'Forager',
     walkSpeed: 75,
-    carryCapacity: 1,
+    carryCapacity: 3, // a basket: a berry bush's or mushroom patch's whole gather
     idleRetryTicks: 20,
   },
   hunter: {

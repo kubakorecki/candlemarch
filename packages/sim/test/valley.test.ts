@@ -73,7 +73,7 @@ function groups(tiles: Tile[]): number {
  * Characters of tiles nobody walks: Mountain, River, Pass snow, and trees and Deposits (the
  * Abandoned mine stands over an iron Deposit).
  */
-const BLOCKED = '^~*TbmsciM';
+const BLOCKED = '^~*bmsciM'; // trees are walked through
 /** Characters of walkable terrain, whatever stands on it. */
 const WALKABLE_TERRAIN = '.:,_TbmscDRS';
 

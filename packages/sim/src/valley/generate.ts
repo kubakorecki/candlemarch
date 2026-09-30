@@ -209,15 +209,21 @@ function valleyProblems(layout: Layout, grounds: Ground[], content: Content): st
   if (dens.filter((i) => sideValley[i]).length < v.dens.sideValley)
     problems.push('no Den in the Side valley');
 
-  // Reach, 4-connected over open tiles: the main valley from the entry with the Pass shut, the
-  // Side valley only once it's open.
+  // Reach, 4-connected over open tiles and through trees (walked through): the main valley from
+  // the entry with the Pass shut, the Side valley only once it's open.
   const start = entry.y * n + entry.x;
   const walks = Uint8Array.from(terrain, (t) => (content.terrain[t].walkable ? 1 : 0));
-  const open = (passOpen: boolean) => (i: number) =>
-    (walks[i] === 1 || (passOpen && terrain[i] === 'pass_snow')) && object[i] === null;
-  const shut = flood(n, start, open(false));
-  const opened = flood(n, start, open(true));
-  const isOpen = open(false);
+  const through = (i: number) => {
+    const type = object[i];
+    return (
+      type === null || type === undefined || content.mapObjects[type].walkSpeedPercent !== undefined
+    );
+  };
+  const passable = (passOpen: boolean) => (i: number) =>
+    (walks[i] === 1 || (passOpen && terrain[i] === 'pass_snow')) && through(i);
+  const shut = flood(n, start, passable(false));
+  const opened = flood(n, start, passable(true));
+  const isOpen = (i: number) => walks[i] === 1 && object[i] === null;
   const sideTiles = all.filter((i) => sideValley[i] && isOpen(i));
   if (sideTiles.length === 0) problems.push('no Side valley');
   if (sideTiles.some((i) => !opened[i]))

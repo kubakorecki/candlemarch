@@ -62,9 +62,10 @@ const stockOf = (s: GameState, id: EntityId) => s.components.building[id]?.stock
 
 describe('spoilage at Dawn', () => {
   it('each stack loses its rate, rounded up', () => {
-    // Fish: 25% a day. 10 × 25% = 2.5, so 3 go.
+    // Fish: 15% a day. 10 × 15% = 1.5, so 2 go.
+    expect(content.resources.fish).toMatchObject({ spoilPercent: 15 });
     const spoiled = run(dawnWith(2, { fish: 10 }), 1);
-    expect(stockOf(spoiled, GRANARY).fish).toBe(7);
+    expect(stockOf(spoiled, GRANARY).fish).toBe(8);
   });
 
   it('happens only at Dawn', () => {
@@ -79,7 +80,7 @@ describe('spoilage at Dawn', () => {
 
   it('different Foods spoil at different rates', () => {
     const spoiled = run(dawnWith(2, { fish: 10, logs: 10 }), 1, {}, logsAreFood);
-    expect(stockOf(spoiled, GRANARY)).toEqual({ fish: 7, logs: 5 });
+    expect(stockOf(spoiled, GRANARY)).toEqual({ fish: 8, logs: 5 });
   });
 
   it('a stack of 1 goes', () => {
@@ -87,7 +88,7 @@ describe('spoilage at Dawn', () => {
   });
 
   it('is slower in winter', () => {
-    // Winter is days 16 to 20. Fish: 25% × 20% = 5%; 10 × 5% = 0.5, so 1 goes.
+    // Winter is days 16 to 20. Fish: 15% × 20% = 3%; 10 × 3% = 0.3, so 1 goes.
     const spoiled = run(dawnWith(17, { fish: 10 }), 1);
     expect(stockOf(spoiled, GRANARY).fish).toBe(9);
     // A winter rate is truncated: 50% × 20% = 10%; 30 × 10% = 3.
@@ -130,7 +131,7 @@ describe('spoilage at Dawn', () => {
 
 describe('the eating order', () => {
   it('is the fastest-spoiling Food first', () => {
-    // Logs spoil at 50%, fish at 25%: the first to eat takes the log, though 'fish' sorts first.
+    // Logs spoil at 50%, fish at 15%: the first to eat takes the log, though 'fish' sorts first.
     const s = createInitialState(1, store, content);
     s.tick = duskTick(1, content);
     const granary = s.components.building[GRANARY];

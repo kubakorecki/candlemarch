@@ -45,7 +45,7 @@ Keep this section current whenever scripts change.
 - `pnpm install` — install dependencies
 - `pnpm dev` — run the client in the browser
 - `pnpm test` — run all tests except the balance scenarios
-- `pnpm test:scenarios` — run the balance scenarios (`tooling/balance/*.scenario.test.ts`: the Camp's first year, five nights on the nights map; several seconds each)
+- `pnpm test:scenarios` — run the balance scenarios (`tooling/balance/*.scenario.test.ts`: the Camp's first year, the seed 1 Valley's first year, five nights on the nights map; several seconds each)
 - `pnpm typecheck` — type-check all packages
 - `pnpm lint` — Biome check
 - `pnpm format` — apply Biome formatting and safe fixes

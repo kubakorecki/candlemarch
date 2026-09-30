@@ -42,9 +42,10 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     employs: [{ job: 'forager', count: 1 }],
     gathers: ['berry_bush', 'mushroom_patch'],
     workRadius: 8,
+    // Two of the forager's baskets of each.
     outputBuffer: [
-      { resource: 'berries', capacity: 4 },
-      { resource: 'mushrooms', capacity: 4 },
+      { resource: 'berries', capacity: 6 },
+      { resource: 'mushrooms', capacity: 6 },
     ],
     construction: {
       cost: [{ resource: 'logs', amount: 6 }],

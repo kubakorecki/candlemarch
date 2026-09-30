@@ -15,11 +15,12 @@ export const mapObjects: Record<MapObjectId, MapObjectDef> = {
     id: 'berry_bush',
     name: 'Berry bush',
     resource: 'berries',
-    amount: 3, // spring's stock: the game starts in spring
-    gatherTicks: 60, // 3 s
-    yieldPerGather: 1,
+    amount: 4, // spring's stock: the game starts in spring
+    // A basketful a trip: 3 berries in 9 s, so a forager walks a third as often.
+    gatherTicks: 180,
+    yieldPerGather: 3,
     forage: {
-      stock: { spring: 3, summer: 8, autumn: 0, winter: 0 },
+      stock: { spring: 4, summer: 10, autumn: 0, winter: 0 },
       shadedBy: 'tree',
       shadeTiles: 2,
     },
@@ -29,10 +30,10 @@ export const mapObjects: Record<MapObjectId, MapObjectDef> = {
     name: 'Mushroom patch',
     resource: 'mushrooms',
     amount: 0,
-    gatherTicks: 60,
-    yieldPerGather: 1,
+    gatherTicks: 180,
+    yieldPerGather: 3,
     forage: {
-      stock: { spring: 0, summer: 0, autumn: 8, winter: 0 },
+      stock: { spring: 0, summer: 0, autumn: 12, winter: 0 },
       shadedBy: 'tree',
       shadeTiles: 2,
     },

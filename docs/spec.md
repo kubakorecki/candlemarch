@@ -110,7 +110,7 @@ Each game is a procedurally generated valley seeded with handcrafted points of i
 - **Forester's lodge:** plants Saplings on empty Meadow in its radius. A Sapling matures into a tree in about a year.
 - **Stumps:** a felled tree leaves a Stump, which sprouts a Sapling after a year. A clear-cut therefore heals on the same ground in about two years, with no creep onto new land. A building or Road on the tile removes the Stump. The forester is the fast way to grow Forest, and the only way to grow it somewhere new.
 - A **Sapling** can't be felled and doesn't block walking. It counts as a standing tree (shade for Forage patches, a Hunting ground's ceiling, Forest) only once it matures.
-- **Hunting grounds:** each is a connected stretch of Forest of at most 250 tiles. The generator splits bigger stretches and names each ground from a list. Max Game is 1 per 10 trees at the start.
+- **Hunting grounds:** each is a connected stretch of Forest of at most 250 tiles. The generator splits bigger stretches and names each ground from a list. Max Game is 1 per 5 trees at the start (Proposed; 1 per 10 until the food-balance pass after the M4 playtest).
 - **Recovery:** while 0 < Game < ceiling, a ground gains 1 animal every 2 days. A ground hunted to 0 stays empty for 2 full seasons, then 2 animals return. Maturing Saplings raise the ceiling again.
 - **Choosing a ground** *(Decided after the M4 playtest)*: a hunter's lodge can be set to hunt one Hunting ground in its reach, so two lodges don't overhunt the same one. By default it hunts the nearest ground in reach with Game. A lodge whose grounds have no Game shows "No Game left to hunt".
 - Result: the player sets aside forest reserves for food instead of clear-cutting.
@@ -120,7 +120,7 @@ Each game is a procedurally generated valley seeded with handcrafted points of i
 - **Hunting grounds:** a Hunting ground is a region of forest (hand-drawn on M2 maps, generated in M4) holding a single **Game** count, e.g. 20. Its ceiling follows the forest: `max game × standing trees ÷ trees at the start`. Felling trees lowers the ceiling, and animals above it **flee** at once.
 - **Hunt chance** = 50% × game ÷ max game, rolled with the seeded PRNG. A catch gives 4 meat and 1 hide and removes one animal; a miss comes back empty. Overhunting shows as more and more empty trips. Nothing recovers until M4, when game regrows toward the ceiling and foresters raise it.
 - **Visible:** each ground is outlined with a health word and colour (Thriving / Thinning / Scarce / Empty) while it matters: while a hunter's lodge is selected (its grounds in reach) or a hunter's lodge or woodcutter's hut is being placed (every ground), or the ground itself is selected. *(Outlines on select decided after the M4 playtest: always-on outlines were intrusive.)* Selecting it or a hunter's lodge shows "Game 12 / 20 · 2 fled due to logging · catch chance 30%". A "fled" puff shows when felling drives game out, a "no catch" icon over a hunter back empty-handed, and the woodcutter's hut placement preview warns when its radius overlaps a Hunting ground.
-- **Forage patches:** berry bushes and mushroom patches are their own map objects in the forest. Trees don't give food. A patch's stock refills at the start of its seasons (bushes: small in spring, large in summer; mushrooms: autumn; nothing in winter), but only while a standing tree is within 2 tiles (shade). A patch without shade withers: drawn bare, with a "no shade" hint when selected. The forager gathers from the nearest patch in radius with stock left.
+- **Forage patches:** berry bushes and mushroom patches are their own map objects in the forest. Trees don't give food. A patch's stock refills at the start of its seasons (bushes: small in spring, large in summer; mushrooms: autumn; nothing in winter; Proposed: a bush 4 and 10, a mushroom patch 12). A forager fills a basket (Proposed: 3) at a patch before walking back, but only while a standing tree is within 2 tiles (shade). A patch without shade withers: drawn bare, with a "no shade" hint when selected. The forager gathers from the nearest patch in radius with stock left.
 - **Fish** don't deplete; fishing stops while the river is frozen.
 
 ## Time, day/night and seasons
@@ -182,8 +182,8 @@ v1 has 10 raw resources and 12 refined goods across three tiers. *(Proposed; the
 
 - Raw meat, fish, berries and mushrooms spoil in days; bread in about a season; smoked meat, grain and flour last much longer.
 - A **root cellar** slows spoilage for food stored in it.
-- **Model** *(Decided, [ADR-0002](adr/0002-spoilage-daily-share.md))*: at each Dawn every stack of Food in a Granary or workplace buffer loses `ceil(amount × rate%)`. Food in someone's hands doesn't spoil. Rates are per Food in content (Proposed: berries 35%, fish and meat 25%, smoked goods about 3%).
-- **Cold keeps food** *(Decided)*: in winter every rate is multiplied by a content percentage (Proposed 20%, so meat loses 5% a day). With winter hunting, this is how a Camp gets through its first winter before the Butcher's smokehouse (M5). There is no no-master drying rack; it would undercut the smokehouse.
+- **Model** *(Decided, [ADR-0002](adr/0002-spoilage-daily-share.md))*: at each Dawn every stack of Food in a Granary or workplace buffer loses `ceil(amount × rate%)`. Food in someone's hands doesn't spoil. Rates are per Food in content (Proposed: berries and mushrooms 25%, fish and meat 15%, smoked goods about 3%).
+- **Cold keeps food** *(Decided)*: in winter every rate is multiplied by a content percentage (Proposed 20%, so meat loses 3% a day). With winter hunting, this is how a Camp gets through its first winter before the Butcher's smokehouse (M5). There is no no-master drying rack; it would undercut the smokehouse.
 
 **Mills:** windmills and watermills are ordinary production buildings that must sit on a hill or river. There is no power network. *(Proposed, following the no-power rule.)*
 
@@ -251,7 +251,7 @@ A house's residents rise a tier when their needs are met, and the house upgrades
 **Population** *(Proposed)*
 
 - v1: growth by **immigration only**. Newcomers arrive when there is free housing, surplus food and good happiness.
-- **Immigration rule (M2)** *(Decided in design session M2-01; numbers Proposed)*: checked at each Dawn. One Newcomer arrives when there's at least one free place in a House, Food in Granaries is at least 5 Meals × (population + 1), and it isn't winter (the roads are snowed in). Newcomers enter at the map's entry tile, walk to the House they're given and start as Carriers. Happiness joins the rule in M5.
+- **Immigration rule (M2)** *(Decided in design session M2-01; numbers Proposed)*: checked at each Dawn. One Newcomer arrives when there's at least one free place in a House, Food in Granaries is at least 2 Meals × (population + 1) (Proposed; 5 was out of reach while Food spoils), and it isn't winter (the roads are snowed in). Newcomers enter at the map's entry tile, walk to the House they're given and start as Carriers. Happiness joins the rule in M5.
 - v2: families, births and aging.
 - Villager-to-villager relationships (friendships, marriages) stay out of v1; they distract from management. A good home is what villagers care about. *(Decided)*
 

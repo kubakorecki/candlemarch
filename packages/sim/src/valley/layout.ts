@@ -51,7 +51,7 @@ const BEND_REACH = 4;
 /** Open pockets of at most this many tiles inside the Forest are planted over, not reached. */
 const POCKET_TILES = 2;
 
-/** Trees' worth of felling that taking away a Forage patch on the way in counts as. */
+/** What taking away a Forage patch on the way in costs; bare ground and trees cost nothing. */
 const FORAGE_COST = 4;
 
 type Tiles = Uint8Array;
@@ -422,10 +422,11 @@ export function flood(n: number, start: number, open: (i: number) => boolean): T
 }
 
 /**
- * Fells the fewest trees that join every open tile to the entry (over the Pass when `passOpen`),
- * and gives every Forage patch and Deposit an open side tile joined to it; a Forage patch goes
- * only where no trees would do, and Deposits never. Tiny pockets inside the Forest are planted
- * over instead. Walking is 4-connected here, as the sim's reach test is.
+ * Joins every open tile to the entry (over the Pass when `passOpen`), and gives every Forage patch
+ * and Deposit an open side tile joined to it. Trees are walked through (`walkSpeedPercent`), so
+ * they cost nothing and stay; a Forage patch in the way goes only where there's no other way, and
+ * Deposits never. Tiny pockets inside the Forest are planted over. Walking is 4-connected here,
+ * as the sim's reach test is.
  */
 function connect(layout: Layout, content: Content, passOpen: boolean): void {
   const { size: n, terrain, object } = layout;
@@ -441,25 +442,26 @@ function connect(layout: Layout, content: Content, passOpen: boolean): void {
     content.terrain[terrain[i] as TerrainId].walkable || (passOpen && terrain[i] === 'pass_snow');
   const open = (i: number) => cost[i] === 0 && object[i] === null;
 
-  // Trees in the way from the entry to each tile, along the path needing fewest: a bucket queue.
-  const felled = new Int32Array(n * n).fill(-1);
+  // What clearing the way from the entry to each tile costs, along the cheapest path: a bucket
+  // queue.
+  const clearing = new Int32Array(n * n).fill(-1);
   const parent = new Int32Array(n * n).fill(-1);
   const start = layout.entry.y * n + layout.entry.x;
-  felled[start] = 0;
+  clearing[start] = 0;
   const buckets: number[][] = [[start]];
   for (let d = 0; d < buckets.length; d++) {
     const bucket = buckets[d] ?? [];
     for (let k = 0; k < bucket.length; k++) {
       const i = bucket[k] as number;
-      if (felled[i] !== d) continue;
+      if (clearing[i] !== d) continue;
       for (let e = i * 4; e < i * 4 + 4; e++) {
         const j = table[e] as number;
         const step = j < 0 ? -1 : (cost[j] as number);
         if (step < 0) continue;
         const nd = d + step;
-        const known = felled[j] as number;
+        const known = clearing[j] as number;
         if (known !== -1 && known <= nd) continue;
-        felled[j] = nd;
+        clearing[j] = nd;
         parent[j] = i;
         let target = buckets[nd];
         if (!target) {
@@ -493,13 +495,13 @@ function connect(layout: Layout, content: Content, passOpen: boolean): void {
     }
   }
   const joined: Tiles = new Uint8Array(n * n);
-  // Back along the path to the first tile joined already, felling its trees and joining every
-  // region it crosses.
+  // Back along the path to the first tile joined already, clearing what's in the way (not trees)
+  // and joining every region it crosses.
   const join = (from: number) => {
     const path: number[] = [];
     for (let t = from; t >= 0 && !joined[t]; t = parent[t] as number) path.push(t);
     for (const t of path) {
-      object[t] = null;
+      if ((cost[t] as number) > 0) object[t] = null;
       const r = region[t] as number;
       if (r > 0) for (const u of members[r] ?? []) joined[u] = 1;
       else joined[t] = 1;
@@ -517,25 +519,26 @@ function connect(layout: Layout, content: Content, passOpen: boolean): void {
     for (const t of tiles) object[t] = 'tree';
   }
   for (let i = 0; i < n * n; i++) {
-    if (open(i) && !joined[i] && (felled[i] as number) >= 0) join(i);
+    if (open(i) && !joined[i] && (clearing[i] as number) >= 0) join(i);
   }
   for (let i = 0; i < n * n; i++) {
     const type = object[i];
-    if (!type || type === 'tree') continue;
-    const sides = neighbours(n, i).filter((j) => walkable(j) && (felled[j] as number) >= 0);
-    if (sides.some((j) => joined[j] && object[j] === null)) continue;
-    const best = sides.sort((a, b) => (felled[a] as number) - (felled[b] as number) || a - b)[0];
+    if (!type || content.mapObjects[type].walkSpeedPercent !== undefined) continue;
+    const sides = neighbours(n, i).filter((j) => walkable(j) && (clearing[j] as number) >= 0);
+    if (sides.some((j) => joined[j] && cost[j] === 0)) continue;
+    const best = sides.sort(
+      (a, b) => (clearing[a] as number) - (clearing[b] as number) || a - b,
+    )[0];
     if (best !== undefined) join(best);
   }
 }
 
 /**
- * What clearing a tile with `type` on it costs on a way in: nothing when it's empty, a tree 1, a
- * Forage patch more (taken away only when no trees would do), and never a Deposit (-1).
+ * What clearing a tile with `type` on it costs on a way in: nothing when it's empty or walked
+ * through (a tree), a Forage patch `FORAGE_COST`, and never a Deposit (-1).
  */
 function stepCost(content: Content, type: MapObjectId | null): number {
-  if (type === null) return 0;
-  if (type === 'tree') return 1;
+  if (type === null || content.mapObjects[type].walkSpeedPercent !== undefined) return 0;
   return content.mapObjects[type].forage ? FORAGE_COST : -1;
 }
 

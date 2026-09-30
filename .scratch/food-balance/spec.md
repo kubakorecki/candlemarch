@@ -1,6 +1,6 @@
 # Food balance on the generated Valley
 
-Status: open
+Status: resolved
 Created: 2026-09-30
 From: playtest after M4 (`.scratch/play/issues/after-m4.md`), seed 1
 

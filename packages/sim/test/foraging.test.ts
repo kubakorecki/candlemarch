@@ -12,6 +12,13 @@ import type { EntityId, GameState } from '../src/state';
 import { content, run } from './helpers';
 
 const bush = content.mapObjects.berry_bush;
+const mushrooms = content.mapObjects.mushroom_patch;
+/** A bush's stock in spring, when the game starts, and in summer; a mushroom patch's in autumn. */
+const SPRING = bush.forage?.stock.spring ?? 0;
+const SUMMER = bush.forage?.stock.summer ?? 0;
+const AUTUMN = mushrooms.forage?.stock.autumn ?? 0;
+/** Ticks for one gather from the door to back again, with room to spare: a walk and a gather. */
+const GATHER = bush.gatherTicks + 100;
 
 /**
  * Trees at (1,1) and (8,1). A berry bush at (3,1) and a mushroom patch at (1,3), both 2 tiles
@@ -49,13 +56,13 @@ describe('forage patches', () => {
   it("refill to each season's amount at its first Dawn while shaded", () => {
     const s0 = createInitialState(1, grove, content);
     const summer = dawnOf(s0, 6);
-    expect(amount(summer, SHADED_BUSH)).toBe(8);
+    expect(amount(summer, SHADED_BUSH)).toBe(SUMMER);
     expect(amount(summer, SHADED_MUSHROOMS)).toBe(0);
     const autumn = dawnOf(summer, 11);
     expect(amount(autumn, SHADED_BUSH)).toBe(0);
-    expect(amount(autumn, SHADED_MUSHROOMS)).toBe(8);
+    expect(amount(autumn, SHADED_MUSHROOMS)).toBe(AUTUMN);
     const spring = dawnOf(autumn, 21);
-    expect(amount(spring, SHADED_BUSH)).toBe(3);
+    expect(amount(spring, SHADED_BUSH)).toBe(SPRING);
     expect(amount(spring, SHADED_MUSHROOMS)).toBe(0);
   });
 
@@ -70,7 +77,7 @@ describe('forage patches', () => {
   it('have nothing in winter', () => {
     const s0 = createInitialState(1, grove, content);
     const autumn = dawnOf(s0, 11);
-    expect(amount(autumn, SHADED_MUSHROOMS)).toBe(8);
+    expect(amount(autumn, SHADED_MUSHROOMS)).toBe(AUTUMN);
     const winter = dawnOf(autumn, 16);
     expect(amount(winter, SHADED_BUSH)).toBe(0);
     expect(amount(winter, SHADED_MUSHROOMS)).toBe(0);
@@ -147,27 +154,27 @@ describe('the forager', () => {
   it('gathers from the nearest patch with stock that has shade', () => {
     const s0 = createInitialState(1, forest, content);
     expect(s0.components.villager[FORAGER]?.job).toBe('forager');
-    const s = run(s0, 200);
-    expect(amount(s, NEAR_BUSH)).toBeLessThan(3);
-    expect(amount(s, FAR_BUSH)).toBe(3);
-    expect(amount(s, WITHERED_BUSH)).toBe(3);
+    const s = run(s0, GATHER);
+    expect(amount(s, NEAR_BUSH)).toBeLessThan(SPRING);
+    expect(amount(s, FAR_BUSH)).toBe(SPRING);
+    expect(amount(s, WITHERED_BUSH)).toBe(SPRING);
     expect(amount(s, EMPTY_MUSHROOMS)).toBe(0);
-    expect(hutStock(s).berries).toBe(3 - (amount(s, NEAR_BUSH) ?? 0) - carried(s));
+    expect(hutStock(s).berries ?? 0).toBe(SPRING - (amount(s, NEAR_BUSH) ?? 0) - carried(s));
   });
 
   it('moves on to the next patch once the nearest is empty', () => {
     const s = run(createInitialState(1, forest, content), 1500);
     expect(amount(s, NEAR_BUSH)).toBe(0);
-    expect(amount(s, FAR_BUSH)).toBeLessThan(3);
-    expect(amount(s, WITHERED_BUSH)).toBe(3);
+    expect(amount(s, FAR_BUSH)).toBeLessThan(SPRING);
+    expect(amount(s, WITHERED_BUSH)).toBe(SPRING);
   });
 
   it('breaks ties between patches by ID', () => {
     // Bushes at (1,3) and (3,3), both 1 diagonal from the door (2,2), shaded by the tree (2,4).
     const twins: MapDef = { ...forest, rows: ['.....', '.....', '.....', '.b.b.', '..T..'] };
-    const s = run(createInitialState(1, twins, content), 200);
-    expect(amount(s, 1)).toBeLessThan(3);
-    expect(amount(s, 2)).toBe(3);
+    const s = run(createInitialState(1, twins, content), GATHER);
+    expect(amount(s, 1)).toBeLessThan(SPRING);
+    expect(amount(s, 2)).toBe(SPRING);
   });
 
   it("stays within its hut's work radius", () => {
@@ -180,7 +187,7 @@ describe('the forager', () => {
       buildings: [{ type: 'foragers_hut', x: 0, y: 1 }],
     };
     const s = run(createInitialState(1, far, content), 600);
-    expect(amount(s, 1)).toBe(3);
+    expect(amount(s, 1)).toBe(SPRING);
   });
 
   it("fills the hut's output buffer, and waits while it's full", () => {
@@ -191,7 +198,7 @@ describe('the forager', () => {
         ?.capacity ?? 0;
     if (hut) hut.stock.berries = capacity;
     const s = run(s0, 400);
-    expect(amount(s, NEAR_BUSH)).toBe(3);
+    expect(amount(s, NEAR_BUSH)).toBe(SPRING);
     expect(hutStock(s).berries).toBe(capacity);
   });
 
@@ -205,7 +212,7 @@ describe('the forager', () => {
     expect(s.components.forager[FORAGER]?.kind).toBe('idle');
     expect(s.components.villager[FORAGER]?.carrying).toBeNull();
     const total = (amount(s, NEAR_BUSH) ?? 0) + (hutStock(s).berries ?? 0);
-    expect(total).toBe(3);
+    expect(total).toBe(SPRING);
   });
 });
 

@@ -8,7 +8,7 @@ export const calendar: CalendarDef = {
     { id: 'spring', name: 'Spring', nightTicks: 1200, riverFrozen: false, spoilPercent: 100 }, // 1 minute of the 3
     { id: 'summer', name: 'Summer', nightTicks: 1200, riverFrozen: false, spoilPercent: 100 },
     { id: 'autumn', name: 'Autumn', nightTicks: 1200, riverFrozen: false, spoilPercent: 100 },
-    // 1.5 minutes of night: less work time, colder nights. The cold keeps food: meat loses 5% a day.
+    // 1.5 minutes of night: less work time, colder nights. The cold keeps food: meat loses 3% a day.
     { id: 'winter', name: 'Winter', nightTicks: 1800, riverFrozen: true, spoilPercent: 20 },
   ],
 };
