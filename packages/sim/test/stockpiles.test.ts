@@ -231,7 +231,7 @@ describe('stockpiles in job dispatch', () => {
       s0,
       [
         { type: 'setStockpilePriority', id: pile, priority: 'urgent' as 'high' },
-        { type: 'setStockpileAccepts', id: pile, resource: 'stone' as ResourceId, accepts: false },
+        { type: 'setStockpileAccepts', id: pile, resource: 'marble' as ResourceId, accepts: false },
         { type: 'setStockpilePriority', id: 999, priority: 'high' },
       ],
       content,

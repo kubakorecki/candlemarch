@@ -9,7 +9,7 @@ import { step } from '../src/step';
 import { walkGrid } from '../src/systems/movement';
 import { content } from './helpers';
 
-/** A tree at (1,1), ID 1; open grass elsewhere. */
+/** A tree at (1,1), ID 1; open Meadow elsewhere. */
 const glade: MapDef = {
   name: 'glade',
   rows: ['..........', '.T........', '..........', '..........', '..........', '..........'],

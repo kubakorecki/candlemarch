@@ -24,6 +24,15 @@ describe('serialize / deserialize', () => {
     expect(deserialize(JSON.stringify(data), content)).toEqual(s);
   });
 
+  it('loads the Grass of saves made before Terrain types as Meadow', () => {
+    const s = createInitialState(9, maps.camp, content);
+    const data = JSON.parse(serialize(s));
+    data.map.terrain = data.map.terrain.map((t: string) => (t === 'meadow' ? 'grass' : t));
+    expect(data.map.terrain).toContain('grass');
+    expect(data.map.terrain).toContain('river');
+    expect(deserialize(JSON.stringify(data), content)).toEqual(s);
+  });
+
   it('gives maps saved before immigration no entry', () => {
     const data = JSON.parse(serialize(createInitialState(9, meadowMap, content)));
     delete data.map.entry;

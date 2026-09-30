@@ -28,6 +28,9 @@ export const RESOURCE_ICONS: Record<ResourceId, IconName> = {
   mushrooms: 'mushroom',
   meat: 'meat',
   hides: 'hide',
+  stone: 'stone',
+  clay: 'clay',
+  iron_ore: 'ore',
 };
 
 /** Tracked capitals with a hairline to the right, and an optional note after it. */

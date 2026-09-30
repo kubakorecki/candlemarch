@@ -7,7 +7,7 @@ import type { GameState, Tile } from '../src/state';
 import { canPlaceStockpile } from '../src/stockpiles';
 import { content, run } from './helpers';
 
-/** 7×5 with a river down column 3, the hero on the west bank. `ford` leaves row 4 as grass. */
+/** 7×5 with a river down column 3, the hero on the west bank. `ford` leaves row 4 as Meadow. */
 function riverMap(ford: boolean): MapDef {
   return {
     name: 'river',
@@ -29,7 +29,7 @@ describe('river terrain', () => {
   it("is drawn with '~' in map rows", () => {
     const s = createInitialState(1, riverMap(false), content);
     expect(s.map.terrain[tileIndex(s.map, 3, 0)]).toBe('river');
-    expect(s.map.terrain[tileIndex(s.map, 2, 0)]).toBe('grass');
+    expect(s.map.terrain[tileIndex(s.map, 2, 0)]).toBe('meadow');
   });
 
   it('blocks walking: no way across without a ford', () => {
@@ -44,7 +44,7 @@ describe('river terrain', () => {
     const hero = heroOf(s);
     const path = hero === null ? undefined : s.components.path[hero];
     expect(path?.tiles).toContain(tileIndex(s.map, 3, 4));
-    for (const i of path?.tiles ?? []) expect(s.map.terrain[i]).toBe('grass');
+    for (const i of path?.tiles ?? []) expect(s.map.terrain[i]).toBe('meadow');
     expect(heroTile(run(s, 400))).toEqual({ x: 5, y: 1 });
   });
 
@@ -53,7 +53,7 @@ describe('river terrain', () => {
     expect(canPlaceBuilding(s, content, 'hut', 3, 1)).toBe(false);
     expect(canPlaceBuilding(s, content, 'hut', 3, 3)).toBe(false);
     expect(canPlaceBuilding(s, content, 'hut', 4, 1)).toBe(true);
-    // A hut on grass whose door (one tile south) would be in the river.
+    // A hut on Meadow whose door (one tile south) would be in the river.
     const shore = createInitialState(
       1,
       { ...riverMap(false), rows: ['.', '~'], hero: { x: 0, y: 0 } },

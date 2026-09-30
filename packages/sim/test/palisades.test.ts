@@ -15,8 +15,8 @@ import { walkTo } from '../src/systems/movement';
 import { canLayWall } from '../src/walls';
 import { content, run, runUntil } from './helpers';
 
-/** `width`×`height` open grass, with `T` trees on `trees`. */
-function grass(width: number, height: number, trees: Tile[] = []): string[] {
+/** `width`×`height` open Meadow, with `T` trees on `trees`. */
+function meadow(width: number, height: number, trees: Tile[] = []): string[] {
   return Array.from({ length: height }, (_, y) =>
     Array.from({ length: width }, (_, x) =>
       trees.some((t) => t.x === x && t.y === y) ? 'T' : '.',
@@ -27,7 +27,7 @@ function grass(width: number, height: number, trees: Tile[] = []): string[] {
 function yard(map: Partial<MapDef> = {}): GameState {
   return createInitialState(
     1,
-    { name: 'yard', rows: grass(12, 7), buildings: [], villagers: [], ...map },
+    { name: 'yard', rows: meadow(12, 7), buildings: [], villagers: [], ...map },
     content,
   );
 }
@@ -55,14 +55,14 @@ describe('laying palisades', () => {
   });
 
   it('lays nothing if any tile of the L is taken', () => {
-    const s = run(yard({ rows: grass(12, 7, [{ x: 3, y: 1 }]) }), 1, {
+    const s = run(yard({ rows: meadow(12, 7, [{ x: 3, y: 1 }]) }), 1, {
       0: [{ type: 'layWall', building: 'palisade', from: { x: 2, y: 1 }, to: { x: 4, y: 3 } }],
     });
     expect(walls(s)).toEqual([]);
   });
 
   it("lays nothing inside a Den's dark ring", () => {
-    const rows = grass(12, 7).map((r, y) => (y === 3 ? `${r.slice(0, 11)}D` : r));
+    const rows = meadow(12, 7).map((r, y) => (y === 3 ? `${r.slice(0, 11)}D` : r));
     const s = run(yard({ rows }), 1, {
       0: [{ type: 'layWall', building: 'palisade', from: { x: 1, y: 3 }, to: { x: 6, y: 3 } }],
     });
@@ -87,7 +87,7 @@ describe('laying palisades', () => {
   });
 
   it('lets a Gate stand on a Road, and a Road run through a Gate', () => {
-    const rows = grass(12, 7).map((r, y) => (y === 1 ? '='.repeat(12) : r));
+    const rows = meadow(12, 7).map((r, y) => (y === 1 ? '='.repeat(12) : r));
     const s = run(yard({ rows }), 2, {
       0: [{ type: 'layWall', building: 'gate', from: { x: 2, y: 1 }, to: { x: 2, y: 1 } }],
       1: [{ type: 'layWall', building: 'gate', from: { x: 2, y: 3 }, to: { x: 2, y: 3 } }],

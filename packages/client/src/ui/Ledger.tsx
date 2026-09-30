@@ -3,8 +3,9 @@
 import { content } from '@candlemarch/content';
 import { Fragment } from 'react';
 import type { AlertKind, Game, HudState } from '../game/Game';
+import { ledgerGoods } from '../game/ledger';
 import { Icon, type IconName } from './icons';
-import { RESOURCE_ICONS, STOCKPILE_RESOURCES, type Tone } from './kit';
+import { RESOURCE_ICONS, type Tone } from './kit';
 
 /** Needs shown under the villager count, each linked to its alert (which finds a villager). */
 export const STATUSES: {
@@ -35,7 +36,7 @@ export function Ledger({ hud, game }: { hud: HudState; game: Game }) {
   return (
     <section className="ledger panel" aria-label="Village ledger">
       <Store icon="food" value={hud.food} label="Food" />
-      {STOCKPILE_RESOURCES.map((resource) => (
+      {ledgerGoods(content, hud.goods).map((resource) => (
         <Fragment key={resource}>
           <span className="ledger-divider" />
           <Store

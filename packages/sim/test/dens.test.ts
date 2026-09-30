@@ -15,7 +15,7 @@ import { content, run } from './helpers';
 const WIDTH = 40;
 const HEIGHT = 13;
 
-/** Open grass `WIDTH`×`HEIGHT` with a Den (`D`) on each of `dens`. */
+/** Open Meadow `WIDTH`×`HEIGHT` with a Den (`D`) on each of `dens`. */
 function rows(dens: Tile[]): string[] {
   return Array.from({ length: HEIGHT }, (_, y) =>
     Array.from({ length: WIDTH }, (_, x) =>

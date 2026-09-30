@@ -56,6 +56,9 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     if (b.hp === undefined || b.hp === null) b.hp = fullHp(content, b.type);
   }
   for (const site of Object.values(state.components.site)) site.rotation ??= 0;
+  // Saves from before Terrain types called Meadow "grass" (the only rename; kept to one line
+  // rather than a new STATE_VERSION, so those saves still load).
+  state.map.terrain = state.map.terrain.map((t) => ((t as string) === 'grass' ? 'meadow' : t));
   // Saves from before Fog: played without it, so the player has seen the whole map.
   if (loaded.map?.revealed === undefined) state.map.revealed = allTiles(state.map);
   // Saves from before forage patches kept their shade.

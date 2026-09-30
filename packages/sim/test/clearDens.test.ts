@@ -16,7 +16,7 @@ const WIDTH = 30;
 const HEIGHT = 9;
 const DEN = { x: 20, y: 4 };
 
-/** Open grass with a Den (`D`) on each of `dens`. */
+/** Open Meadow with a Den (`D`) on each of `dens`. */
 function rows(dens: Tile[], width = WIDTH, height = HEIGHT): string[] {
   return Array.from({ length: height }, (_, y) =>
     Array.from({ length: width }, (_, x) =>
@@ -150,7 +150,7 @@ describe('the calm round a cleared Den', () => {
   const parent = { x: 38, y: 6 };
 
   /**
-   * 40×13 grass with a Hut at (1,6), a Den (ID 1) at (15,6) the Hero (ID 4) clears on day 1 with
+   * 40×13 Meadow with a Hut at (1,6), a Den (ID 1) at (15,6) the Hero (ID 4) clears on day 1 with
    * one hit, and a Den (ID 2) at (38,6) whose buds fit on x 28–32. The calm (15 tiles) covers x
    * up to 30.
    */

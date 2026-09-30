@@ -5,13 +5,35 @@ export const palette = {
   ink: 0x241c15,
   background: 0x1b1916,
 
-  grass: 0x6e7650,
-  grassAlt: 0x677049,
-  grassLine: 0x4f5638,
+  // Terrain (render/shapes.ts `drawLand`, `drawWater`): each in two checker shades where it's flat.
+  meadow: 0x6e7650,
+  meadowAlt: 0x677049,
+  meadowLine: 0x4f5638,
+  rock: 0x827b6c,
+  rockAlt: 0x7b7466,
+  rockCrack: 0x57513f,
+  mountain: 0x57534c,
+  mountainLight: 0x78726a,
+  mountainDark: 0x44403a,
+  swamp: 0x575a3b,
+  swampAlt: 0x525537,
+  swampWater: 0x3c4a43,
+  swampReed: 0x7d7b4c,
+  snow: 0xd8dbd4,
+  snowShade: 0xaab1b1,
 
   river: 0x4d6670,
+  ford: 0x6a8583,
+  fordRipple: 0x9fb2ab,
   ice: 0xa9b8bc,
   iceCrack: 0x6f8389,
+
+  // Deposits and their goods (stone itself is the `stone` colour below).
+  clay: 0x9a5d44,
+  clayDark: 0x754331,
+  clayWet: 0xba7c5d,
+  ironOre: 0x4b4745,
+  rust: 0x94563a,
 
   trunk: 0x5c4431,
   canopy: 0x4b5a37,

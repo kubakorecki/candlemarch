@@ -3,6 +3,7 @@
 import type { Content, ResourceId } from '@candlemarch/content';
 import { chebyshev, inReach, isKnockedOut } from './combat';
 import { cacheAt, denAt, takeFromCache } from './dens';
+import { isDeposit } from './deposits';
 import { idsOf } from './entities';
 import { isInSight, isRevealed } from './fog';
 import { isForagePatch } from './forage';
@@ -85,8 +86,7 @@ export function orderHero(state: GameState, content: Content, order: HeroOrder):
     }
     case 'gather': {
       const tree = state.components.mapObject[order.tree];
-      // Trees only: forage patches are the forager's.
-      if (!tree || tree.amount <= 0 || isForagePatch(state, content, order.tree)) return;
+      if (!tree || tree.amount <= 0 || !isTree(state, content, order.tree)) return;
       const def = content.mapObjects[tree.type];
       if (roomFor(content, hero, def.resource) <= 0) return;
       if (!rerouteTo(state, content, id, treeStandingTiles(state, content, order.tree))) return;
@@ -291,6 +291,14 @@ function gloamlingAt(state: GameState, tile: Tile): EntityId | null {
 }
 
 /**
+ * Whether the hero may chop map object `id`: trees only. Forage patches are the forager's, and
+ * nobody works Deposits yet.
+ */
+function isTree(state: GameState, content: Content, id: EntityId): boolean {
+  return !isForagePatch(state, content, id) && !isDeposit(state, content, id);
+}
+
+/**
  * What right-clicking `tile` orders the hero to do: attack a Gloamling there, or else a Den; chop
  * a tree; deliver what it holds to a site, workshop or stockpile that wants it, or else pick up
  * from a building, stockpile or cache with goods; walk onto open ground. Null when there's
@@ -317,7 +325,7 @@ export function heroOrderAt(state: GameState, content: Content, tile: Tile): Her
   const tree = state.components.mapObject[thing];
   if (tree) {
     const resource = content.mapObjects[tree.type].resource;
-    const canChop = !isForagePatch(state, content, thing) && roomFor(content, hero, resource) > 0;
+    const canChop = isTree(state, content, thing) && roomFor(content, hero, resource) > 0;
     return canChop ? { order: 'gather', tree: thing } : null;
   }
   if (deliverTask(state, content, hero, thing)) return { order: 'deliver', target: thing };

@@ -1,6 +1,6 @@
 # Terrain types and Deposits
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 03
 
@@ -35,3 +35,5 @@ Rules in `docs/spec.md`, World and map ("Terrain", "Deposits"). Numbers Proposed
 ## Comments
 
 2026-09-29 — Design session 03: Forest stays "Meadow tiles with trees", not a terrain. Fords and Pass snow were added in the session, and Deposits moved here from `m5-hamlet/06` so the generator (06) can place them.
+
+2026-09-30 — Done. Seven terrains with walking speeds in content (`speedPercent`, 0 where nobody walks); `speedPercentAt` gives a Road's speed over the terrain's, for every walker, Gloamlings included. Deposits `stone_deposit`/`clay_deposit`/`iron_deposit` (resources `stone`, `clay`, `iron_ore`) with a content standing rule (`deposit: {terrain, edge}`) that hand-made maps are checked against (`depositFits`, `sim/deposits.ts`). Map characters `: ^ , _ *` and `s c i`; old saves' `grass` loads as `meadow` without a version bump. Client: terrain and Deposit art, goods pieces, icons. Beyond the issue: Dirt paths and Stockpiles still need buildable terrain (so a Road on a slow tile is tested by writing it into state); the Ledger shows a Stockpile good only once a building makes it or some is stored, so the three new goods don't crowd it before M5. See `docs/decisions.md`.

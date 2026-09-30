@@ -18,7 +18,7 @@ const WIDTH = 30;
 const HEIGHT = 9;
 const DEN = { x: 20, y: 4 };
 
-/** Open grass with a Den at `DEN` (ID 1) and river on `river` tiles. */
+/** Open Meadow with a Den at `DEN` (ID 1) and river on `river` tiles. */
 function rows(river: Tile[] = []): string[] {
   return Array.from({ length: HEIGHT }, (_, y) =>
     Array.from({ length: WIDTH }, (_, x) => {

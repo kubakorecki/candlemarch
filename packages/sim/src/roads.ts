@@ -13,9 +13,6 @@ import { mapChanged } from './mapCache';
 import { staticChanged } from './snapshot';
 import type { GameState, MapState, Tile } from './state';
 
-/** Walking speed off-road, as a percentage. Road speeds are relative to it. */
-export const OFF_ROAD_SPEED_PERCENT = 100;
-
 // Roads are 4-connected. Offsets in a fixed order.
 const ROAD_NEIGHBOURS: readonly (readonly [number, number])[] = [
   [1, 0],
@@ -117,10 +114,12 @@ export function roadNeighbours(map: MapState, index: number): number[] {
   return result;
 }
 
-/** Walking speed on tile `index` as a percentage: its road's, or the off-road speed. */
+/** Walking speed on tile `index` as a percentage: its road's, which replaces its terrain's. */
 export function speedPercentAt(map: MapState, content: Content, index: number): number {
   const road = map.roads[index];
-  return road === undefined ? OFF_ROAD_SPEED_PERCENT : content.roads[road].speedPercent;
+  if (road !== undefined) return content.roads[road].speedPercent;
+  const terrain = map.terrain[index];
+  return terrain === undefined ? 0 : content.terrain[terrain].speedPercent;
 }
 
 /** Walking speed percent of every tile, row-major. */
@@ -130,8 +129,10 @@ export function speedPercentGrid(map: MapState, content: Content): Uint16Array {
   );
 }
 
-/** The fastest walking speed percent anywhere: the fastest road's, or the off-road speed. */
+/** The fastest walking speed percent anywhere: the fastest road's or terrain's. */
 export function maxSpeedPercent(content: Content): number {
-  const roadSpeeds = Object.values(content.roads).map((r) => r.speedPercent);
-  return Math.max(OFF_ROAD_SPEED_PERCENT, ...roadSpeeds);
+  const speeds = [...Object.values(content.roads), ...Object.values(content.terrain)].map(
+    (def) => def.speedPercent,
+  );
+  return Math.max(...speeds);
 }

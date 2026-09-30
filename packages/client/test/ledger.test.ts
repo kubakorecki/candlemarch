@@ -1,7 +1,7 @@
 import { content } from '@candlemarch/content';
 import { createInitialState, type MapDef } from '@candlemarch/sim';
 import { describe, expect, it } from 'vitest';
-import { stockpileGoods } from '../src/game/ledger';
+import { ledgerGoods, stockpileGoods } from '../src/game/ledger';
 
 // A Granary with meat and two stockpiles: logs on one, logs and firewood on the other.
 const camp: MapDef = {
@@ -33,5 +33,20 @@ describe('stockpile goods', () => {
   it('is empty without Stockpiles', () => {
     const s = createInitialState(1, { ...camp, stockpiles: [] }, content);
     expect(stockpileGoods(s)).toEqual({});
+  });
+});
+
+describe('Ledger goods', () => {
+  it('lists the Stockpile goods some building makes, in content order', () => {
+    expect(ledgerGoods(content, {})).toEqual(['logs', 'firewood', 'hides']);
+  });
+
+  it('adds a good nothing makes yet once some lies on a Stockpile', () => {
+    expect(ledgerGoods(content, { clay: 3, stone: 0 })).toEqual([
+      'logs',
+      'firewood',
+      'hides',
+      'clay',
+    ]);
   });
 });

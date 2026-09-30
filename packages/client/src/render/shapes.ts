@@ -52,26 +52,43 @@ export interface GroundMap {
   frozen: boolean;
 }
 
-function isRiverAt(map: GroundMap, x: number, y: number): boolean {
-  return (
-    x >= 0 &&
-    y >= 0 &&
-    x < map.width &&
-    y < map.height &&
-    map.terrain[y * map.width + x] === 'river'
-  );
+function terrainAt(map: GroundMap, x: number, y: number): TerrainId | undefined {
+  if (x < 0 || y < 0 || x >= map.width || y >= map.height) return undefined;
+  return map.terrain[y * map.width + x];
 }
 
-/** Off the map is neither river nor land: the map's own edge gets its outline instead. */
-function isLandAt(map: GroundMap, x: number, y: number): boolean {
-  return x >= 0 && y >= 0 && x < map.width && y < map.height && !isRiverAt(map, x, y);
+/**
+ * How the ground's ink edges group terrain: an edge is drawn where a tile meets a lower group.
+ * Meadow, Rock and Swamp are all open land; a Ford is part of its river; Mountain and Pass snow
+ * are walled off from everything round them.
+ */
+const EDGE_GROUP: Record<TerrainId, number> = {
+  meadow: 0,
+  rock: 0,
+  swamp: 0,
+  river: 1,
+  ford: 1,
+  mountain: 2,
+  pass_snow: 3,
+};
+
+/** The two checker shades of flat land terrain; water, Mountain and Pass snow are drawn apart. */
+const LAND_SHADES: Partial<Record<TerrainId, readonly [number, number]>> = {
+  meadow: [palette.meadow, palette.meadowAlt],
+  rock: [palette.rock, palette.rockAlt],
+  swamp: [palette.swamp, palette.swampAlt],
+};
+
+/** A small whole number from a tile's position, so tile details vary without looking tiled. */
+function tileVariant(x: number, y: number, n: number): number {
+  return (x * 7 + y * 13 + ((x * y) % 5)) % n;
 }
 
 /**
  * The ground is drawn in layers, each a chunk at a time, in this order across the whole map:
- * `drawGroundEdge` (the earthen front edge), `drawGrass`, `drawGridLines`, `drawWater`,
- * `drawShore`, then `drawMapOutline`. Checkered grass, faint grid lines, and river tiles as flat
- * water outlined in ink where they meet land, or pale cracked ice when frozen.
+ * `drawGroundEdge` (the earthen front edge), `drawLand`, `drawGridLines`, `drawWater`,
+ * `drawEdges`, then `drawMapOutline`. Checkered land, faint grid lines, then river and Ford tiles
+ * as flat water (pale cracked ice when frozen), and ink where terrain groups meet.
  */
 export function drawGroundEdge(g: Graphics, width: number, height: number): void {
   g.clear();
@@ -85,14 +102,84 @@ export function drawGroundEdge(g: Graphics, width: number, height: number): void
     .stroke(INK);
 }
 
-/** Checkered grass under every tile of `chunk` (water goes over it). */
-export function drawGrass(g: Graphics, chunk: TileChunk): void {
+/**
+ * Every tile of `chunk` but water, row by row: checkered Meadow, Rock (with cracks and pebbles)
+ * and Swamp (with pools and reeds); Mountain as a craggy peak; Pass snow as a white drift.
+ */
+export function drawLand(g: Graphics, chunk: TileChunk, map: GroundMap): void {
   g.clear();
   for (let y = chunk.y; y < chunk.y + chunk.h; y++) {
     for (let x = chunk.x; x < chunk.x + chunk.w; x++) {
-      g.poly(flat(diamond(x, y))).fill((x + y) % 2 === 0 ? palette.grass : palette.grassAlt);
+      const terrain = terrainAt(map, x, y);
+      const shades = terrain && LAND_SHADES[terrain];
+      if (shades) g.poly(flat(diamond(x, y))).fill(shades[(x + y) % 2]);
+      if (terrain === 'rock') drawRockDetail(g, x, y);
+      else if (terrain === 'swamp') drawSwampDetail(g, x, y);
+      else if (terrain === 'mountain') drawMountainTile(g, x, y);
+      else if (terrain === 'pass_snow') drawSnowTile(g, x, y);
     }
   }
+}
+
+function drawRockDetail(g: Graphics, x: number, y: number): void {
+  const v = tileVariant(x, y, 3);
+  const a = gridToWorld(x + 0.2, y + 0.35 + v * 0.1);
+  const b = gridToWorld(x + 0.5, y + 0.5);
+  const c = gridToWorld(x + 0.6, y + 0.85 - v * 0.1);
+  g.moveTo(a.x, a.y).lineTo(b.x, b.y).lineTo(c.x, c.y);
+  g.stroke({ width: 1.5, color: palette.rockCrack, alpha: 0.8 });
+  const s = TILE_H / 64;
+  const p = gridToWorld(x + 0.7, y + 0.3 + v * 0.15);
+  g.ellipse(p.x, p.y, 5 * s, 3 * s)
+    .fill(palette.stone)
+    .stroke({ ...THIN_INK, width: 1.5 });
+}
+
+function drawSwampDetail(g: Graphics, x: number, y: number): void {
+  const s = TILE_H / 64;
+  const v = tileVariant(x, y, 4);
+  const pool = gridToWorld(x + 0.35 + v * 0.08, y + 0.55);
+  g.ellipse(pool.x, pool.y, 16 * s, 6 * s).fill(palette.swampWater);
+  const reed = gridToWorld(x + 0.7, y + 0.3 + v * 0.05);
+  for (const dx of [-3, 0, 3]) {
+    g.moveTo(reed.x + dx * s, reed.y).lineTo(reed.x + dx * 1.6 * s, reed.y - 10 * s);
+  }
+  g.stroke({ width: 1.5 * s, color: palette.swampReed, cap: 'round' });
+}
+
+/** A Mountain tile: dark rock with a peak on it, lit on its west face. */
+function drawMountainTile(g: Graphics, x: number, y: number): void {
+  const [, right, , left] = diamond(x, y);
+  g.poly(flat(diamond(x, y))).fill(palette.mountainDark);
+  const rise = TILE_H * (0.3 + tileVariant(x, y, 3) * 0.06);
+  const base = gridToWorld(x + 0.5, y + 0.5);
+  const foot = gridToWorld(x + 0.8, y + 0.8);
+  const peak = up(gridToWorld(x + 0.45, y + 0.45), rise);
+  g.poly(flat([left, peak, foot])).fill(palette.mountainLight);
+  g.poly(flat([peak, right, foot])).fill(palette.mountain);
+  g.moveTo(left.x, left.y).lineTo(peak.x, peak.y).lineTo(right.x, right.y);
+  g.moveTo(peak.x, peak.y).lineTo(foot.x, foot.y);
+  g.stroke(THIN_INK);
+  // A snow cap on the tallest.
+  if (base.y - peak.y > TILE_H * 0.4) {
+    const l = lerp(peak, left, 0.18);
+    const r = lerp(peak, right, 0.18);
+    g.poly(flat([l, peak, r]))
+      .fill(palette.snow)
+      .stroke({ ...THIN_INK, width: 1.5 });
+  }
+}
+
+/** A Pass snow tile: white, with a drift heaped across it. */
+function drawSnowTile(g: Graphics, x: number, y: number): void {
+  const s = TILE_H / 64;
+  g.poly(flat(diamond(x, y))).fill(palette.snow);
+  const c = gridToWorld(x + 0.5, y + 0.5);
+  const v = tileVariant(x, y, 3);
+  g.ellipse(c.x - 8 * s + v * 6 * s, c.y - 3 * s, 24 * s, 8 * s)
+    .fill(palette.snowShade)
+    .stroke({ ...THIN_INK, width: 1.5 });
+  g.ellipse(c.x - 10 * s + v * 6 * s, c.y - 6 * s, 16 * s, 5 * s).fill(palette.snow);
 }
 
 /**
@@ -113,25 +200,56 @@ export function drawGridLines(g: Graphics, chunk: TileChunk, width: number, heig
     const b = gridToWorld(x1, j);
     g.moveTo(a.x, a.y).lineTo(b.x, b.y);
   }
-  g.stroke({ width: 1, color: palette.grassLine, alpha: 0.35 });
+  g.stroke({ width: 1, color: palette.meadowLine, alpha: 0.35 });
 }
 
-/** River tiles in `chunk`: flat water, or ice with a crack across each tile. */
+/**
+ * River and Ford tiles in `chunk`: flat water, a Ford paler and shallow with stepping stones; or,
+ * frozen, ice with a crack across each tile (a Ford's stones still show).
+ */
 export function drawWater(g: Graphics, chunk: TileChunk, map: GroundMap): void {
   g.clear();
   let any = false;
   for (let y = chunk.y; y < chunk.y + chunk.h; y++) {
     for (let x = chunk.x; x < chunk.x + chunk.w; x++) {
-      if (!isRiverAt(map, x, y)) continue;
-      g.poly(flat(diamond(x, y))).fill(map.frozen ? palette.ice : palette.river);
+      const t = terrainAt(map, x, y);
+      if (t !== 'river' && t !== 'ford') continue;
+      const water = t === 'ford' ? palette.ford : palette.river;
+      g.poly(flat(diamond(x, y))).fill(map.frozen ? palette.ice : water);
       any = true;
     }
   }
-  if (!map.frozen || !any) return;
+  if (!any) return;
+  const s = TILE_H / 64;
+  for (let y = chunk.y; y < chunk.y + chunk.h; y++) {
+    for (let x = chunk.x; x < chunk.x + chunk.w; x++) {
+      if (terrainAt(map, x, y) !== 'ford') continue;
+      if (!map.frozen) {
+        // Ripples where the water runs over the shallows.
+        for (const t of [0.3, 0.7]) {
+          const a = gridToWorld(x + 0.15, y + t);
+          const b = gridToWorld(x + 0.85, y + t);
+          g.moveTo(a.x, a.y).lineTo(b.x, b.y);
+        }
+        g.stroke({ width: 1.5, color: palette.fordRipple, alpha: 0.7 });
+      }
+      for (const [sx, sy] of [
+        [0.3, 0.5],
+        [0.55, 0.3],
+        [0.7, 0.7],
+      ]) {
+        const p = gridToWorld(x + (sx ?? 0), y + (sy ?? 0));
+        g.ellipse(p.x, p.y, 6 * s, 3.5 * s)
+          .fill(palette.stone)
+          .stroke({ ...THIN_INK, width: 1.5 });
+      }
+    }
+  }
+  if (!map.frozen) return;
   // A crack across each ice tile, bent differently tile to tile so the sheet doesn't look tiled.
   for (let y = chunk.y; y < chunk.y + chunk.h; y++) {
     for (let x = chunk.x; x < chunk.x + chunk.w; x++) {
-      if (!isRiverAt(map, x, y)) continue;
+      if (terrainAt(map, x, y) !== 'river') continue;
       const bend = ((x * 7 + y * 3) % 5) / 10 + 0.3;
       const a = gridToWorld(x + 0.2, y + bend);
       const b = gridToWorld(x + 0.5, y + 1 - bend);
@@ -142,22 +260,28 @@ export function drawWater(g: Graphics, chunk: TileChunk, map: GroundMap): void {
   g.stroke({ width: 1.5, color: palette.iceCrack, alpha: 0.8 });
 }
 
-/** An ink edge on every side of a river tile in `chunk` that borders land. */
-export function drawShore(g: Graphics, chunk: TileChunk, map: GroundMap): void {
+/**
+ * An ink edge on every side of a tile in `chunk` that meets a lower terrain group on the map
+ * (`EDGE_GROUP`): the river's banks, and the foot of Mountains and Pass snow. Off the map gets
+ * the map's own outline instead.
+ */
+export function drawEdges(g: Graphics, chunk: TileChunk, map: GroundMap): void {
   g.clear();
   let any = false;
   for (let y = chunk.y; y < chunk.y + chunk.h; y++) {
     for (let x = chunk.x; x < chunk.x + chunk.w; x++) {
-      if (!isRiverAt(map, x, y)) continue;
+      const t = terrainAt(map, x, y);
+      if (t === undefined || EDGE_GROUP[t] === 0) continue;
+      const group = EDGE_GROUP[t];
       const [top, right, bottom, left] = diamond(x, y);
-      const sides: [boolean, Vec, Vec][] = [
-        [isLandAt(map, x, y - 1), top, right],
-        [isLandAt(map, x + 1, y), right, bottom],
-        [isLandAt(map, x, y + 1), bottom, left],
-        [isLandAt(map, x - 1, y), left, top],
+      const sides: [TerrainId | undefined, Vec, Vec][] = [
+        [terrainAt(map, x, y - 1), top, right],
+        [terrainAt(map, x + 1, y), right, bottom],
+        [terrainAt(map, x, y + 1), bottom, left],
+        [terrainAt(map, x - 1, y), left, top],
       ];
-      for (const [shore, a, b] of sides) {
-        if (!shore) continue;
+      for (const [next, a, b] of sides) {
+        if (next === undefined || EDGE_GROUP[next] >= group) continue;
         g.moveTo(a.x, a.y).lineTo(b.x, b.y);
         any = true;
       }
@@ -272,6 +396,60 @@ export function drawMushroomPatch(g: Graphics, amount: number, withered: boolean
   }
 }
 
+/** A stone Deposit, drawn like `drawTree`: a heap of grey boulders. */
+export function drawStoneDeposit(g: Graphics): void {
+  const s = TILE_H / 64;
+  groundShadow(g, 28 * s, 12 * s);
+  g.ellipse(-11 * s, -7 * s, 14 * s, 10 * s)
+    .fill(palette.stoneDark)
+    .stroke(INK);
+  g.ellipse(12 * s, -6 * s, 12 * s, 9 * s)
+    .fill(palette.stoneDark)
+    .stroke(INK);
+  g.ellipse(0, -16 * s, 15 * s, 12 * s)
+    .fill(palette.stone)
+    .stroke(INK);
+  g.moveTo(-5 * s, -20 * s).lineTo(3 * s, -14 * s);
+  g.moveTo(8 * s, -8 * s).lineTo(14 * s, -4 * s);
+  g.stroke({ ...THIN_INK, alpha: 0.6 });
+}
+
+/** A clay Deposit, drawn like `drawTree`: a dug, wet bank of red clay. */
+export function drawClayDeposit(g: Graphics): void {
+  const s = TILE_H / 64;
+  g.ellipse(0, 0, 28 * s, 12 * s)
+    .fill(palette.clayDark)
+    .stroke(INK);
+  g.ellipse(-4 * s, -4 * s, 18 * s, 7 * s).fill(palette.clay);
+  g.ellipse(-8 * s, -6 * s, 6 * s, 2.5 * s).fill(palette.clayWet);
+  g.ellipse(9 * s, 1 * s, 4 * s, 1.8 * s).fill(palette.clayWet);
+}
+
+/** An iron Deposit, drawn like `drawTree`: a dark outcrop on the Mountain, streaked with rust. */
+export function drawIronDeposit(g: Graphics): void {
+  const s = TILE_H / 64;
+  g.poly(
+    flat([
+      { x: -22 * s, y: 2 * s },
+      { x: -14 * s, y: -18 * s },
+      { x: -2 * s, y: -26 * s },
+      { x: 12 * s, y: -20 * s },
+      { x: 22 * s, y: 0 },
+      { x: 4 * s, y: 8 * s },
+    ]),
+  )
+    .fill(palette.ironOre)
+    .stroke(INK);
+  for (const [x, y, r] of [
+    [-10, -8, 4],
+    [6, -14, 3.5],
+    [10, -2, 3],
+    [-3, -18, 2.5],
+  ]) {
+    g.circle((x ?? 0) * s, (y ?? 0) * s, (r ?? 0) * s).fill(palette.rust);
+  }
+}
+
 /** One berry, centred on (x, y). */
 function drawBerry(g: Graphics, x: number, y: number, s: number): void {
   g.circle(x, y, 3.5 * s)
@@ -366,6 +544,32 @@ function drawHide(g: Graphics, x: number, y: number, s: number): void {
     .stroke({ width: 1.5 * s, color: palette.hideDark, cap: 'round' });
 }
 
+/** One block of stone, centred on (x, y). */
+function drawStone(g: Graphics, x: number, y: number, s: number): void {
+  g.roundRect(x - 8 * s, y - 4 * s, 16 * s, 8 * s, 1.5 * s)
+    .fill(palette.stone)
+    .stroke(THIN_INK);
+  g.moveTo(x - 3 * s, y - 4 * s)
+    .lineTo(x - 1 * s, y + 4 * s)
+    .stroke({ width: 1.2 * s, color: palette.stoneDark });
+}
+
+/** One lump of clay, centred on (x, y). */
+function drawClay(g: Graphics, x: number, y: number, s: number): void {
+  g.ellipse(x, y, 8 * s, 4.5 * s)
+    .fill(palette.clay)
+    .stroke(THIN_INK);
+  g.ellipse(x - 2.5 * s, y - 1.5 * s, 3 * s, 1.2 * s).fill(palette.clayWet);
+}
+
+/** One lump of iron ore, centred on (x, y). */
+function drawIronOre(g: Graphics, x: number, y: number, s: number): void {
+  g.poly([x - 8 * s, y + 3 * s, x - 5 * s, y - 4 * s, x + 4 * s, y - 4.5 * s, x + 8 * s, y + 3 * s])
+    .fill(palette.ironOre)
+    .stroke(THIN_INK);
+  g.circle(x + 1 * s, y - 1 * s, 1.8 * s).fill(palette.rust);
+}
+
 /** How each resource is drawn as one piece, and the spacing of its pieces in a pile. */
 const PIECES: Record<
   ResourceId,
@@ -378,6 +582,9 @@ const PIECES: Record<
   mushrooms: { draw: (g, x, y, s) => drawMushroom(g, x, y + 4 * s, s), w: 14, h: 9 },
   meat: { draw: drawMeat, w: 20, h: 9 },
   hides: { draw: drawHide, w: 20, h: 7 },
+  stone: { draw: drawStone, w: 17, h: 8 },
+  clay: { draw: drawClay, w: 17, h: 8 },
+  iron_ore: { draw: drawIronOre, w: 17, h: 8 },
 };
 
 /** A pyramid of `count` pieces of `resource` whose bottom row is centred on (x, y). */

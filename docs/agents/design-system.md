@@ -134,7 +134,8 @@ and scrolls. The HUD layer ignores the mouse (`pointer-events: none`); each pane
   if none fits. The card and details read cost, size, build time and workers from content; the
   tool's `hint` shows in the details (or in the status line above the menu when its card isn't
   showing, as for Demolish).
-- **A new store on the Ledger:** it appears by itself if it's a Stockpile good; anything else is a
+- **A new store on the Ledger:** a Stockpile good appears by itself once a building makes it (an
+  output buffer holds it) or some is stored (`ledgerGoods` in `game/ledger.ts`); anything else is a
   `Store` cell in `Ledger.tsx`.
 - **A new alert kind:** word it in `game/alertText.ts`. Red alerts go under "Lives at stake",
   amber under "Warnings"; add its kind to `ON_THE_LEDGER` in `Tidings.tsx` only if the Ledger shows it.

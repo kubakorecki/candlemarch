@@ -1,9 +1,25 @@
 // ID unions and definition shapes. IDs are string literal unions so a typo is a type error.
 
-export type ResourceId = 'logs' | 'firewood' | 'fish' | 'berries' | 'mushrooms' | 'meat' | 'hides';
+export type ResourceId =
+  | 'logs'
+  | 'firewood'
+  | 'fish'
+  | 'berries'
+  | 'mushrooms'
+  | 'meat'
+  | 'hides'
+  | 'stone'
+  | 'clay'
+  | 'iron_ore';
 export type RecipeId = 'split_logs';
-export type TerrainId = 'grass' | 'river';
-export type MapObjectId = 'tree' | 'berry_bush' | 'mushroom_patch';
+export type TerrainId = 'meadow' | 'rock' | 'mountain' | 'swamp' | 'river' | 'ford' | 'pass_snow';
+export type MapObjectId =
+  | 'tree'
+  | 'berry_bush'
+  | 'mushroom_patch'
+  | 'stone_deposit'
+  | 'clay_deposit'
+  | 'iron_deposit';
 export type BuildingId =
   | 'woodcutters_hut'
   | 'hut'
@@ -70,8 +86,13 @@ export interface TerrainDef {
   name: string;
   /** Villagers may walk across it. */
   walkable: boolean;
-  /** Buildings may be placed on it. */
+  /** Buildings, Stockpiles and paths may be placed on it. */
   buildable: boolean;
+  /**
+   * Walking speed on it off-road, as a percentage (100 = full speed). A Road's speed replaces it.
+   * 0 where it isn't walkable: nobody steps on it.
+   */
+  speedPercent: number;
 }
 
 /** Work that turns inputs into outputs at a workshop. */
@@ -100,6 +121,17 @@ export interface MapObjectDef {
   yieldPerGather: number;
   /** Makes it a forage patch: it stays when empty and refills each season while shaded. */
   forage?: ForageDef;
+  /** Makes it a Deposit: what is dug out never comes back. Says where it may stand. */
+  deposit?: DepositDef;
+}
+
+/**
+ * Where a Deposit may stand: on `terrain`, and with `edge`, only at an edge of it: `riverbank`
+ * orthogonally next to a River tile, `face` orthogonally next to walkable terrain.
+ */
+export interface DepositDef {
+  terrain: TerrainId;
+  edge?: 'riverbank' | 'face';
 }
 
 /**
@@ -142,7 +174,7 @@ export interface HeroDef {
 export interface RoadDef {
   id: RoadId;
   name: string;
-  /** Walking speed on it, as a percentage of off-road speed (100 = no bonus). */
+  /** Walking speed on it, as a percentage (100 = Meadow's). It replaces the terrain's speed. */
   speedPercent: number;
 }
 

@@ -18,7 +18,7 @@ import { content } from './helpers';
 const DAY = 100;
 const NIGHT = duskTick(1, content) + 100;
 
-/** 60×30 grass with nothing on it but what `map` adds. */
+/** 60×30 Meadow with nothing on it but what `map` adds. */
 function moor(map: Partial<MapDef> = {}): MapDef {
   return {
     name: 'moor',

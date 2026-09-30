@@ -11,7 +11,8 @@ import type {
   TerrainId,
 } from '@candlemarch/content';
 import { isMonsterRate, newDen } from './dens';
-import { createEntity } from './entities';
+import { depositFits } from './deposits';
+import { createEntity, idsOf } from './entities';
 import { refreshShade } from './forage';
 import { isFood } from './granary';
 import {
@@ -100,18 +101,26 @@ function holdsAtStart(
 /** The hero every map spawns, until the player picks one at game start. */
 const DEFAULT_HERO: HeroId = 'placeholder';
 
-/** What each character in `MapDef.rows` stands for. */
+/** What each character in `MapDef.rows` stands for. A Deposit brings the terrain it stands on. */
 export const MAP_LEGEND: Record<
   string,
   { terrain: TerrainId; object?: MapObjectId; road?: RoadId; den?: true }
 > = {
-  '.': { terrain: 'grass' },
-  T: { terrain: 'grass', object: 'tree' },
-  b: { terrain: 'grass', object: 'berry_bush' },
-  m: { terrain: 'grass', object: 'mushroom_patch' },
-  '=': { terrain: 'grass', road: 'dirt_path' },
+  '.': { terrain: 'meadow' },
+  ':': { terrain: 'rock' },
+  '^': { terrain: 'mountain' },
+  ',': { terrain: 'swamp' },
   '~': { terrain: 'river' },
-  D: { terrain: 'grass', den: true },
+  _: { terrain: 'ford' },
+  '*': { terrain: 'pass_snow' },
+  T: { terrain: 'meadow', object: 'tree' },
+  b: { terrain: 'meadow', object: 'berry_bush' },
+  m: { terrain: 'meadow', object: 'mushroom_patch' },
+  s: { terrain: 'rock', object: 'stone_deposit' },
+  c: { terrain: 'meadow', object: 'clay_deposit' },
+  i: { terrain: 'mountain', object: 'iron_deposit' },
+  '=': { terrain: 'meadow', road: 'dirt_path' },
+  D: { terrain: 'meadow', den: true },
 };
 
 /**
@@ -204,6 +213,15 @@ export function createInitialState(
       }
     });
   });
+
+  // Every row is laid first: whether a Deposit fits depends on the tiles round it.
+  for (const id of idsOf(state.components.mapObject)) {
+    const obj = state.components.mapObject[id];
+    const tile = state.components.tile[id];
+    if (obj && tile && !depositFits(state, content, obj.type, tile)) {
+      throw new Error(`map ${map.name}: ${obj.type} can't stand at ${tile.x},${tile.y}`);
+    }
+  }
 
   refreshShade(state, content);
 

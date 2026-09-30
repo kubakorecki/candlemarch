@@ -63,7 +63,7 @@ describe('light sources', () => {
 
 /**
  * A torch at (2,2) holding `torch` firewood (ID 1) and a brazier at (8,2) holding `brazier`
- * (ID 2), on open grass with nobody to refill them.
+ * (ID 2), on open Meadow with nobody to refill them.
  */
 function lightsAt(tick: number, torch: number, brazier: number): GameState {
   const s = createInitialState(

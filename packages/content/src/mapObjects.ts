@@ -36,4 +36,32 @@ export const mapObjects: Record<MapObjectId, MapObjectDef> = {
       shadeTiles: 2,
     },
   },
+  // Deposits: nothing works them until M5, which tunes these placeholder amounts and times.
+  stone_deposit: {
+    id: 'stone_deposit',
+    name: 'Stone deposit',
+    resource: 'stone',
+    amount: 50,
+    gatherTicks: 80,
+    yieldPerGather: 1,
+    deposit: { terrain: 'rock' },
+  },
+  clay_deposit: {
+    id: 'clay_deposit',
+    name: 'Clay deposit',
+    resource: 'clay',
+    amount: 40,
+    gatherTicks: 80,
+    yieldPerGather: 1,
+    deposit: { terrain: 'meadow', edge: 'riverbank' },
+  },
+  iron_deposit: {
+    id: 'iron_deposit',
+    name: 'Iron deposit',
+    resource: 'iron_ore',
+    amount: 60,
+    gatherTicks: 100,
+    yieldPerGather: 1,
+    deposit: { terrain: 'mountain', edge: 'face' },
+  },
 };

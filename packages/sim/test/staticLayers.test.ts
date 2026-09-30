@@ -18,7 +18,7 @@ import type { GameState } from '../src/state';
 import { step, stepInPlace } from '../src/step';
 import { content, run } from './helpers';
 
-/** A tree at (1,1), ID 1; open grass elsewhere. */
+/** A tree at (1,1), ID 1; open Meadow elsewhere. */
 const glade: MapDef = {
   name: 'glade',
   rows: ['..........', '.T........', '..........', '..........', '..........', '..........'],
@@ -56,7 +56,7 @@ const grove: MapDef = {
 };
 
 /**
- * 60×9 grass, the Hero at (2,4) and nothing else, played with Fog on: the Camp Reveals x 0–14, and
+ * 60×9 Meadow, the Hero at (2,4) and nothing else, played with Fog on: the Camp Reveals x 0–14, and
  * the Hero Reveals more as it walks east.
  */
 const moor: MapDef = {

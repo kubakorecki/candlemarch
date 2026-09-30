@@ -46,6 +46,37 @@ describe('content validation', () => {
     }
   });
 
+  it('terrain walks at a positive speed, or at 0 where nobody walks', () => {
+    for (const t of Object.values(terrain)) {
+      if (t.walkable) expectPositiveInt(t.speedPercent, `${t.id}.speedPercent`);
+      else expect(t.speedPercent, `${t.id}.speedPercent`).toBe(0);
+      // Building needs somewhere to stand.
+      if (t.buildable) expect(t.walkable, `${t.id} buildable but not walkable`).toBe(true);
+    }
+  });
+
+  it('Deposits hold a Stockpile good and stand on terrain that exists', () => {
+    const deposits = Object.values(mapObjects).filter((obj) => obj.deposit);
+    expect(deposits.map((d) => d.id).sort()).toEqual([
+      'clay_deposit',
+      'iron_deposit',
+      'stone_deposit',
+    ]);
+    for (const obj of deposits) {
+      const { deposit } = obj;
+      if (!deposit) continue;
+      expect(resources[obj.resource].storage, `${obj.id} holds Food`).toBe('stockpile');
+      expect(obj.forage, `${obj.id} forages`).toBeUndefined();
+      expect(terrain, `${obj.id}.deposit.terrain`).toHaveProperty(deposit.terrain);
+      // A riverbank is walkable ground by the river; a face is the edge of ground nobody walks on.
+      if (deposit.edge === 'riverbank') expect(terrain[deposit.terrain].walkable).toBe(true);
+      if (deposit.edge === 'face') expect(terrain[deposit.terrain].walkable).toBe(false);
+    }
+    expect(mapObjects.stone_deposit.deposit).toEqual({ terrain: 'rock' });
+    expect(mapObjects.clay_deposit.deposit).toEqual({ terrain: 'meadow', edge: 'riverbank' });
+    expect(mapObjects.iron_deposit.deposit).toEqual({ terrain: 'mountain', edge: 'face' });
+  });
+
   it('jobs use positive integers', () => {
     for (const job of Object.values(jobs)) {
       expectPositiveInt(job.walkSpeed, `${job.id}.walkSpeed`);

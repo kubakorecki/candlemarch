@@ -1,6 +1,6 @@
-// The map's static layers on screen: the ground, drawn in chunks, and the trees and forage patches,
-// drawn a row run at a time (`mapObjectRuns.ts`). Each redraws only what changed and hides what's
-// off-screen (`cull`). ADR-0004.
+// The map's static layers on screen: the ground, drawn in chunks, and the map objects (trees,
+// forage patches, Deposits), drawn a row run at a time (`mapObjectRuns.ts`). Each redraws only
+// what changed and hides what's off-screen (`cull`). ADR-0004.
 import type { Content, TerrainId } from '@candlemarch/content';
 import {
   hasTile,
@@ -11,15 +11,18 @@ import {
 } from '@candlemarch/sim';
 import { Container, Graphics } from 'pixi.js';
 import { overlaps, type Rect, TILE_H, tileAreaBounds, tileCenterWorld } from './iso';
-import { MapObjectRuns } from './mapObjectRuns';
+import { type DrawnObject, MapObjectRuns } from './mapObjectRuns';
 import {
   drawBerryBush,
-  drawGrass,
+  drawClayDeposit,
+  drawEdges,
   drawGridLines,
   drawGroundEdge,
+  drawIronDeposit,
+  drawLand,
   drawMapOutline,
   drawMushroomPatch,
-  drawShore,
+  drawStoneDeposit,
   drawTree,
   drawWater,
   type GroundMap,
@@ -59,20 +62,20 @@ function keptGraphics(): Graphics {
 interface GroundChunk {
   tiles: TileChunk;
   bounds: Rect;
-  grass: Graphics;
+  land: Graphics;
   grid: Graphics;
   water: Graphics;
-  shore: Graphics;
+  edges: Graphics;
 }
 
 /** The ground, under everything: its own render group, as it changes seldom. */
 export class GroundLayer {
   readonly node = new Container({ isRenderGroup: true });
   private readonly edge = new Graphics();
-  private readonly grass = new Container();
+  private readonly land = new Container();
   private readonly grid = new Container();
   private readonly water = new Container();
-  private readonly shore = new Container();
+  private readonly edges = new Container();
   private readonly outline = new Graphics();
   private chunks: GroundChunk[] = [];
   private drawn: GroundMap | null = null;
@@ -83,7 +86,7 @@ export class GroundLayer {
   private warmUp = false;
 
   constructor() {
-    this.node.addChild(this.edge, this.grass, this.grid, this.water, this.shore, this.outline);
+    this.node.addChild(this.edge, this.land, this.grid, this.water, this.edges, this.outline);
   }
 
   /** Redraws what differs from the map last drawn: all of it, or only the water on a freeze or thaw. */
@@ -110,15 +113,15 @@ export class GroundLayer {
     this.warmUp = false;
     for (const chunk of this.chunks) {
       const visible = all || overlaps(chunk.bounds, view);
-      chunk.grass.visible = visible;
+      chunk.land.visible = visible;
       chunk.grid.visible = visible;
       chunk.water.visible = visible;
-      chunk.shore.visible = visible;
+      chunk.edges.visible = visible;
     }
   }
 
   private rebuild(map: GroundMap): void {
-    for (const layer of [this.grass, this.grid, this.water, this.shore]) {
+    for (const layer of [this.land, this.grid, this.water, this.edges]) {
       for (const child of layer.removeChildren()) child.destroy();
     }
     this.chunks = [];
@@ -136,22 +139,46 @@ export class GroundLayer {
           tiles,
           // A few pixels round the diamond for the ink strokes on its edges.
           bounds: tileAreaBounds(tiles.x, tiles.y, tiles.w, tiles.h, 4),
-          grass: keptGraphics(),
+          land: keptGraphics(),
           grid: keptGraphics(),
           water: keptGraphics(),
-          shore: keptGraphics(),
+          edges: keptGraphics(),
         };
-        drawGrass(chunk.grass, tiles);
+        drawLand(chunk.land, tiles, map);
         drawGridLines(chunk.grid, tiles, map.width, map.height);
         drawWater(chunk.water, tiles, map);
-        drawShore(chunk.shore, tiles, map);
-        this.grass.addChild(chunk.grass);
+        drawEdges(chunk.edges, tiles, map);
+        this.land.addChild(chunk.land);
         this.grid.addChild(chunk.grid);
         this.water.addChild(chunk.water);
-        this.shore.addChild(chunk.shore);
+        this.edges.addChild(chunk.edges);
         this.chunks.push(chunk);
       }
     }
+  }
+}
+
+/** Draws one map object round (0, 0), its tile's centre, each kind its own look. */
+function drawMapObject(g: Graphics, obj: DrawnObject, content: Content): void {
+  switch (obj.type) {
+    case 'tree':
+      drawTree(g, obj.amount, content.mapObjects.tree.amount);
+      break;
+    case 'berry_bush':
+      drawBerryBush(g, obj.amount, obj.withered);
+      break;
+    case 'mushroom_patch':
+      drawMushroomPatch(g, obj.amount, obj.withered);
+      break;
+    case 'stone_deposit':
+      drawStoneDeposit(g);
+      break;
+    case 'clay_deposit':
+      drawClayDeposit(g);
+      break;
+    case 'iron_deposit':
+      drawIronDeposit(g);
+      break;
   }
 }
 
@@ -167,7 +194,7 @@ interface RunView {
 }
 
 /**
- * Trees and forage patches, a row run to a `Graphics`, among the depth-sorted `objects` (villagers
+ * Map objects (trees, forage patches, Deposits), a row run to a `Graphics`, among the depth-sorted `objects` (villagers
  * and buildings sort between the runs as they would between single trees).
  */
 export class MapObjectLayer {
@@ -227,9 +254,7 @@ export class MapObjectLayer {
     for (const obj of objects) {
       const c = tileCenterWorld(obj.x, obj.y);
       g.setTransform(1, 0, 0, 1, c.x, c.y);
-      if (obj.type === 'berry_bush') drawBerryBush(g, obj.amount, obj.withered);
-      else if (obj.type === 'mushroom_patch') drawMushroomPatch(g, obj.amount, obj.withered);
-      else drawTree(g, obj.amount, this.content.mapObjects[obj.type].amount);
+      drawMapObject(g, obj, this.content);
       const b = tileAreaBounds(obj.x, obj.y, 1, 1, MAP_OBJECT_ABOVE);
       bounds = bounds
         ? {

@@ -11,7 +11,7 @@ import type { EntityId, GameState, Point, Tile } from '../src/state';
 import { content, run, runUntil } from './helpers';
 
 /**
- * 20×7 grass: a Hut at (2,0) (ID 1, door (2,1)), a Granary with fish at (6,0) (ID 2, door (7,2))
+ * 20×7 Meadow: a Hut at (2,0) (ID 1, door (2,1)), a Granary with fish at (6,0) (ID 2, door (7,2))
  * and a watchtower at (12,2) (ID 3, door (12,3)) whose Watchman (ID 4) starts at its door.
  */
 const post: MapDef = {
@@ -120,7 +120,7 @@ describe("the Watchman's night shift", () => {
 });
 
 /**
- * 20×9 grass at night, nothing but a watchtower at (6,4) (ID 1) with its Watchman (ID 2) on watch
+ * 20×9 Meadow at night, nothing but a watchtower at (6,4) (ID 1) with its Watchman (ID 2) on watch
  * at its door (6,5), and a Gloamling (IDs from 3) standing at each of `at`. With no House and
  * nobody out in the open, the Gloamlings have nothing to go for and stand still.
  */
