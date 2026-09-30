@@ -5,7 +5,7 @@ import { workSpeedPercent } from '../src/aura';
 import { dawnTick, duskTick } from '../src/calendar';
 import { healthBars, isIndoors } from '../src/combat';
 import type { Command } from '../src/commands';
-import { idsOf } from '../src/entities';
+import { createEntity, idsOf } from '../src/entities';
 import { tileCenter, tileOfPoint } from '../src/grid';
 import { heroOrderAt } from '../src/hero';
 import { createInitialState, type MapDef } from '../src/map';
@@ -346,9 +346,9 @@ describe('the Hero', () => {
   it('kills a Gloamling that reaches it', () => {
     const s = runUntil(run(heroField(), 1), (x) => x.components.gloamling[3] === undefined, 400);
     expect(s.components.gloamling[3]).toBeUndefined();
-    // Two hits of 10. The Hero (lower ID) strikes first each round, so the Gloamling lands one
-    // hit of 4.
-    expect(s.components.hero[2]?.hp).toBe(96);
+    // Three hits of 9. The Hero (lower ID) strikes first each round, so the Gloamling lands two
+    // hits of 4.
+    expect(s.components.hero[2]?.hp).toBe(55 - 2 * 4);
   });
 
   /**
@@ -375,7 +375,10 @@ describe('the Hero', () => {
     const until = out.components.hero[3]?.knockedOutUntil as number;
     const still = run(out, until - out.tick);
     expect(still.components.hero[3]).toMatchObject({ hp: 0, knockedOutUntil: until });
-    expect(run(still, 1).components.hero[3]).toMatchObject({ hp: 100, knockedOutUntil: null });
+    expect(run(still, 1).components.hero[3]).toMatchObject({
+      hp: content.combat.hero.hp,
+      knockedOutUntil: null,
+    });
   });
 
   it('takes no orders while Knocked out', () => {
@@ -440,14 +443,23 @@ describe('the Hero', () => {
     const old = JSON.parse(serialize(fieldAtDusk([], { hero: { x: 5, y: 4 } })));
     for (const key of ['hp', 'readyAt', 'knockedOutUntil']) delete old.components.hero[2][key];
     const loaded = deserialize(JSON.stringify(old), content);
-    expect(loaded.components.hero[2]).toMatchObject({ hp: 100, readyAt: 0, knockedOutUntil: null });
+    expect(loaded.components.hero[2]).toMatchObject({
+      hp: content.combat.hero.hp,
+      readyAt: 0,
+      knockedOutUntil: null,
+    });
   });
 
   it('shows a health bar while a Gloamling is in its reach', () => {
     const s = run(heroField(), 1);
     expect(healthBars(s, content).some((b) => b.id === 2)).toBe(false);
-    const fight = runUntil(s, (x) => x.components.hero[2]?.hp !== 100, 400);
-    expect(healthBars(fight, content)).toContainEqual({ id: 2, hp: 96, maxHp: 100 });
+    const full = content.combat.hero.hp;
+    const fight = runUntil(s, (x) => x.components.hero[2]?.hp !== full, 400);
+    expect(healthBars(fight, content)).toContainEqual({
+      id: 2,
+      hp: full - content.combat.gloamling.damage,
+      maxHp: full,
+    });
   });
 });
 
@@ -521,5 +533,70 @@ describe('Light', () => {
       1,
     );
     expect(targetOf(s)).toBe(3);
+  });
+});
+
+describe('the Hero against a pack', () => {
+  const HERO_HP = content.combat.hero.hp;
+
+  /**
+   * Open Meadow at night with the Hero (ID 1) at (10,4) and `n` Gloamlings (IDs from 2) already
+   * beside it, all ready to hit. Runs until the pack is dead or the Hero is Knocked out.
+   */
+  function packFight(n: number): { hp: number; knockedOut: boolean; left: number } {
+    const s = createInitialState(
+      1,
+      {
+        name: 'field',
+        rows: Array.from({ length: 9 }, () => '.'.repeat(20)),
+        buildings: [],
+        villagers: [],
+        hero: { x: 10, y: 4 },
+      },
+      content,
+    );
+    s.tick = duskTick(1, content) + 10;
+    const beside = [
+      { x: 11, y: 4 },
+      { x: 9, y: 4 },
+      { x: 10, y: 5 },
+    ];
+    for (const t of beside.slice(0, n)) {
+      const id = createEntity(s);
+      s.components.gloamling[id] = {
+        den: 0,
+        hp: content.combat.gloamling.hp,
+        readyAt: 0,
+        target: null,
+      };
+      s.components.position[id] = tileCenter(t);
+    }
+    const hero = (x: GameState) => x.components.hero[1];
+    const end = runUntil(
+      s,
+      (x) => idsOf(x.components.gloamling).length === 0 || hero(x)?.knockedOutUntil !== null,
+      2000,
+    );
+    return {
+      hp: hero(end)?.hp ?? 0,
+      knockedOut: hero(end)?.knockedOutUntil !== null,
+      left: idsOf(end.components.gloamling).length,
+    };
+  }
+
+  it('beats one Gloamling easily, losing at most a quarter of its HP', () => {
+    const one = packFight(1);
+    expect(one).toMatchObject({ knockedOut: false, left: 0 });
+    expect(one.hp).toBeGreaterThanOrEqual(HERO_HP * 0.75);
+  });
+
+  it('beats two at once, but with real damage: at least 40% of its HP', () => {
+    const two = packFight(2);
+    expect(two).toMatchObject({ knockedOut: false, left: 0 });
+    expect(two.hp).toBeLessThanOrEqual(HERO_HP * 0.6);
+  });
+
+  it('is Knocked out by three at once', () => {
+    expect(packFight(3)).toMatchObject({ knockedOut: true, hp: 0 });
   });
 });

@@ -39,7 +39,7 @@ describe('hero', () => {
       type: 'placeholder',
       carrying: null,
       order: null,
-      hp: 100,
+      hp: content.combat.hero.hp,
       readyAt: 0,
       knockedOutUntil: null,
     });

@@ -74,9 +74,9 @@ describe('a cleared Den', () => {
     expect(atDusk(cleared(field()))).toEqual([]);
   });
 
-  it('stings back while the Hero hits it: 8 hits of 10 against 8 stings of 5', () => {
+  it('stings back while the Hero hits it: 9 hits of 9 against 9 stings of 5', () => {
     const s = cleared(field());
-    expect(s.components.hero[HERO]?.hp).toBe(60);
+    expect(s.components.hero[HERO]?.hp).toBe(55 - 9 * 5);
   });
 
   it("leaves a cache Carriers haul to a stockpile, gone once it's empty", () => {
@@ -168,7 +168,7 @@ describe('the calm round a cleared Den', () => {
     );
     s.tick = 100;
     if (!clear) return s;
-    (s.components.den[1] as { hp: number }).hp = 10;
+    (s.components.den[1] as { hp: number }).hp = content.combat.hero.damage;
     const done = run(s, 2, { 100: [{ type: 'orderHero', order: 'attackDen', den: 1 }] });
     expect(done.components.den[1]).toBeUndefined();
     return done;
