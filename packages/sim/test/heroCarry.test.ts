@@ -149,14 +149,15 @@ function storeWith(onFirstTile: number, inHand: number): GameState {
 
 describe('hero delivering to a stockpile', () => {
   it('fills the nearest tile with room, then the next', () => {
-    const s0 = storeWith(6, 5);
+    // 2 fit next to what's already on the first tile, the other 3 go on the next tile.
+    const cap = content.logistics.stockpileTileCapacity;
+    const s0 = storeWith(cap - 2, 5);
     const pile = idsOf(s0.components.stockpile)[0] as number;
     const end = runUntil(s0, idle, 500, {
       0: [{ type: 'orderHero', order: 'deliver', target: pile }],
     });
-    // A tile holds 8: 2 fit next to the 6 already there, the other 3 go on the next tile.
     expect(end.components.stockpile[pile]?.goods).toEqual({
-      [6 * 12 + 9]: { resource: 'logs', amount: 8 },
+      [6 * 12 + 9]: { resource: 'logs', amount: cap },
       [6 * 12 + 10]: { resource: 'logs', amount: 3 },
     });
     expect(hero(end)?.carrying).toBeNull();

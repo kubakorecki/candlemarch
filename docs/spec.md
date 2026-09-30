@@ -204,7 +204,7 @@ Flag relay (Settlers 2 style: one carrier per road segment between flags, handin
 **Storage** *(Decided: a mix; details Proposed)*
 
 - **Workshop buffers:** each workshop holds a few units of inputs and outputs.
-- **Stockpile zones:** open-air areas for bulk raw goods (logs, stone, clay).
+- **Stockpile zones:** open-air areas for bulk raw goods (logs, stone, clay). Each tile holds 10 of one good. *(Proposed)*
 - **Food store (granary):** villagers eat from it. *(Decided)* The root cellar is its preserving upgrade. Food never goes to a Stockpile.
 - **Market stockpile:** goods set aside for sale. *(Decided)*
 - **Standing orders:** "keep 50 planks, pause the sawpit above 100." These are the main automation tool.

@@ -188,3 +188,4 @@ Short log of implementation choices where the spec or `CLAUDE.md` left room. One
                                             Y1 Winter 1    6        0           17
                                             Y2 Spring 1    6        0            5
   ```
+- 2026-09-30 — Stockpile tiles hold 10 (after-m4-polish/01, owner): `logistics.stockpileTileCapacity` 8 → 10; the spec now states the number, and the tests that pinned 8 read it from content. Balance: every scenario keeps its outcome; `camp` ends the same bar a log or two, `nights` gains a firewood, and `valley` still reaches Y2 Spring 1 with 6 villagers and nobody lost, but ends with 0 meat (was 4) and 15 logs (was 4), so its thin Food margin is thinner. Why: owner's call from the playtest; bigger tiles mean fewer Stockpile tiles to lay.

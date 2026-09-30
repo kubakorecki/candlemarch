@@ -240,10 +240,15 @@ describe('stockpiles in job dispatch', () => {
   });
 
   it(`hold at most ${content.logistics.stockpileTileCapacity} units per tile`, () => {
-    const s0 = step(stocked(20), [{ type: 'placeStockpile', x: 4, y: 4, w: 1, h: 2 }], content);
+    const cap = content.logistics.stockpileTileCapacity;
+    const s0 = step(
+      stocked(2 * cap + 4),
+      [{ type: 'placeStockpile', x: 4, y: 4, w: 1, h: 2 }],
+      content,
+    );
     const pile = idsOf(s0.components.stockpile)[0] as number;
-    const full = runUntil(s0, (s) => pileTotal(s, pile) === 16, 3000);
-    expect(goodsOf(full, pile)).toEqual({ '4,4': 'logs 8', '4,5': 'logs 8' });
+    const full = runUntil(s0, (s) => pileTotal(s, pile) === 2 * cap, 3000);
+    expect(goodsOf(full, pile)).toEqual({ '4,4': `logs ${cap}`, '4,5': `logs ${cap}` });
     // With no room left, the rest stays put.
     const later = run(full, 300);
     expect(goodsOf(later, pile)).toEqual(goodsOf(full, pile));
@@ -326,6 +331,7 @@ describe('stockpiles in job dispatch', () => {
 describe('stockpile tile capacity with returns', () => {
   it("isn't promised to a new haul while goods are on their way back to the tile", () => {
     // Carrier 3 starts at the hut door, carrier 4 next to a full one-tile stockpile at (6,6).
+    const cap = content.logistics.stockpileTileCapacity;
     const s1 = stocked(4);
     const id = s1.nextId;
     const pile = id + 1;
@@ -353,7 +359,7 @@ describe('stockpile tile capacity with returns', () => {
       size: { w: 1, h: 1 },
       priority: 'normal',
       refuses: [],
-      goods: { [tile]: { resource: 'logs', amount: 8 } },
+      goods: { [tile]: { resource: 'logs', amount: cap } },
     };
 
     // Both carriers take a log to a site; carrier 4 takes its log from the stockpile.
@@ -372,9 +378,9 @@ describe('stockpile tile capacity with returns', () => {
     let s = cancelled;
     for (let i = 0; i < 1000; i++) {
       s = run(s, 1);
-      expect(s.components.stockpile[pile]?.goods[tile]?.amount ?? 0).toBeLessThanOrEqual(8);
+      expect(s.components.stockpile[pile]?.goods[tile]?.amount ?? 0).toBeLessThanOrEqual(cap);
     }
-    expect(s.components.stockpile[pile]?.goods[tile]?.amount).toBe(8);
+    expect(s.components.stockpile[pile]?.goods[tile]?.amount).toBe(cap);
     expect(hutStock(s)).toBe(4);
   });
 });

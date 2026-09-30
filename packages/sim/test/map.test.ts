@@ -124,31 +124,40 @@ describe('createInitialState with roads, stockpiles and sites', () => {
 });
 
 describe('createInitialState with starting goods', () => {
-  // A Granary at (0,0) (door (1,2)) and a 2×2 stockpile at (3,0).
+  // A Granary at (0,0) (door (1,2)) and a 2×2 stockpile at (3,0) holding three tiles and 2 logs.
+  const cap = content.logistics.stockpileTileCapacity;
   const camp: MapDef = {
     name: 'camp',
     rows: ['......', '......', '......'],
     buildings: [{ type: 'granary', x: 0, y: 0, stock: [{ resource: 'meat', amount: 20 }] }],
-    stockpiles: [{ x: 3, y: 0, w: 2, h: 2, goods: [{ resource: 'logs', amount: 30 }] }],
+    stockpiles: [{ x: 3, y: 0, w: 2, h: 2, goods: [{ resource: 'logs', amount: 3 * cap + 2 }] }],
     villagers: [],
   };
 
   it('fills building buffers and stockpile tiles, row by row up to the tile capacity', () => {
     const s = createInitialState(1, camp, content);
     expect(s.components.building[1]?.stock).toEqual({ meat: 20 });
-    // Tiles hold 8: (3,0), (4,0), (3,1) are full and (4,1) takes the other 6.
+    // (3,0), (4,0), (3,1) are full and (4,1) takes the other 2.
     expect(s.components.stockpile[2]?.goods).toEqual({
-      [tileIndex(s.map, 3, 0)]: { resource: 'logs', amount: 8 },
-      [tileIndex(s.map, 4, 0)]: { resource: 'logs', amount: 8 },
-      [tileIndex(s.map, 3, 1)]: { resource: 'logs', amount: 8 },
-      [tileIndex(s.map, 4, 1)]: { resource: 'logs', amount: 6 },
+      [tileIndex(s.map, 3, 0)]: { resource: 'logs', amount: cap },
+      [tileIndex(s.map, 4, 0)]: { resource: 'logs', amount: cap },
+      [tileIndex(s.map, 3, 1)]: { resource: 'logs', amount: cap },
+      [tileIndex(s.map, 4, 1)]: { resource: 'logs', amount: 2 },
     });
   });
 
   it('rejects goods that do not fit', () => {
     const tooMuch = {
       ...camp,
-      stockpiles: [{ x: 3, y: 0, w: 2, h: 2, goods: [{ resource: 'logs' as const, amount: 33 }] }],
+      stockpiles: [
+        {
+          x: 3,
+          y: 0,
+          w: 2,
+          h: 2,
+          goods: [{ resource: 'logs' as const, amount: 4 * cap + 1 }],
+        },
+      ],
     };
     expect(() => createInitialState(1, tooMuch, content)).toThrow(/stockpile/);
     const food = {
