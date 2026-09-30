@@ -1,6 +1,6 @@
 # Choose a Hunting ground per lodge; outlines on select
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 02
 
@@ -17,3 +17,5 @@ From the playtest: hunters overhunt one ground, and the always-on ground outline
 - `pnpm check` passes.
 
 ## Comments
+
+2026-09-30 — Done. `BuildingComponent.huntingGround`, `setHuntingGround` command, `lodgeGrounds`, `noGame` status; lodge panel "Hunts in" + Hunt here / Nearest; renderer `setShownGrounds`. Outlines also show while a hunter's lodge is being placed (all grounds), not only the woodcutter's hut. Tests in `hunting.test.ts` ("choosing a Hunting ground"). See `docs/decisions.md`.

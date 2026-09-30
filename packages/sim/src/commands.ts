@@ -7,6 +7,7 @@ import { clearGrowth } from './forest';
 import { buildingLayout, canPlaceBuilding } from './grid';
 import { layGroundwork } from './groundwork';
 import { type HeroOrder, orderHero } from './hero';
+import { setHuntingGround } from './huntingGrounds';
 import { ringBell } from './militia';
 import { eraseReserve, paintReserve } from './reserves';
 import { layPath, removePath } from './roads';
@@ -57,6 +58,8 @@ export type Command =
   | { type: 'unassignWorker'; villager: EntityId }
   | { type: 'reassignWorker'; villager: EntityId; workplace: EntityId }
   | { type: 'setWorkerLimit'; building: EntityId; limit: number }
+  /** Sets a hunter's lodge to hunt only `ground` (in its reach), or with null the nearest again. */
+  | { type: 'setHuntingGround'; building: EntityId; ground: EntityId | null }
   /** Rings the Militia bell: calls the village to arms, or stands it down if it's ringing. */
   | { type: 'ringBell' }
   /** Dev: set the Monster rate (0–100). 0 turns nights off; Gloamlings out vanish at once. */
@@ -157,6 +160,10 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'setWorkerLimit': {
       setWorkerLimit(state, content, command.building, command.limit);
+      return;
+    }
+    case 'setHuntingGround': {
+      setHuntingGround(state, content, command.building, command.ground);
       return;
     }
     case 'ringBell': {

@@ -190,6 +190,8 @@ export interface BuildingInfo {
   holds: { resource: ResourceId; amount: number; capacity: number }[];
   /** Hunting grounds its hunters reach; empty unless it hunts. */
   grounds: GroundInfo[];
+  /** The ground a hunter's lodge is set to hunt, or null for the nearest with Game. */
+  huntingGround: EntityId | null;
   workers: { id: EntityId; name: string; job: string; jobId: JobId }[];
   workerLimit: number;
   maxWorkers: number;
@@ -458,6 +460,13 @@ export class Game {
   }
 
   /** Raises or lowers the selected Workplace's worker limit by `delta`. */
+  /** Sets the selected hunter's lodge to hunt only `ground`, or with null the nearest with Game. */
+  setHuntingGround(ground: EntityId | null): void {
+    const id = this.selectedBuilding;
+    if (id === null) return;
+    this.bridge.command({ type: 'setHuntingGround', building: id, ground });
+  }
+
   changeWorkerLimit(delta: number): void {
     const id = this.selectedBuilding;
     const info = this.hud.building;
@@ -992,6 +1001,7 @@ export class Game {
   private updateGhost(): void {
     const state = this.bridge.state;
     const tool = this.hud.tool;
+    this.renderer.setShownGrounds(state ? this.shownGrounds(state, tool) : []);
     const warning =
       state && tool && this.hover && isBuilding(tool)
         ? placementWarning(state, tool, this.hover, this.rotation)
@@ -1024,6 +1034,23 @@ export class Game {
         ? { kind: 'tiles', tiles: rectTiles(at, pile.size.w, pile.size.h), valid: true }
         : null,
     );
+  }
+
+  /**
+   * The Hunting grounds to outline: all of them while placing a building that hunts or fells the
+   * forest, the selected ground, or those a selected hunter's lodge reaches; else none.
+   */
+  private shownGrounds(state: GameState, tool: ToolId | null): EntityId[] {
+    const def = tool && isBuilding(tool) ? content.buildings[tool] : undefined;
+    if (def && (def.hunts || def.gathers?.includes(content.hunting.forest))) {
+      return idsOf(state.components.huntingGround);
+    }
+    if (this.selectedGround !== null) return [this.selectedGround];
+    const building = this.selectedBuilding;
+    const type = building === null ? undefined : state.components.building[building]?.type;
+    return building !== null && type && content.buildings[type].hunts
+      ? groundsInReach(state, content, building)
+      : [];
   }
 
   private ghostFor(state: GameState, tool: ToolId, hover: Tile): PlacementGhost {
@@ -1273,6 +1300,7 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
     grounds: content.buildings[b.type].hunts
       ? groundsInReach(state, content, id).flatMap((g) => groundInfo(state, g) ?? [])
       : [],
+    huntingGround: b.huntingGround ?? null,
     workers: workersAt(state, id).flatMap((w) => {
       const v = villager[w];
       return v ? [{ id: w, name: v.name, job: content.jobs[v.job].name, jobId: v.job }] : [];

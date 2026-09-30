@@ -1,4 +1,4 @@
-// Hunters: walk into the nearest Hunting ground in their lodge's radius that has Game, hunt, roll
+// Hunters: walk into the nearest Hunting ground their lodge hunts that has Game, hunt, roll
 // for a catch with the seeded PRNG, and walk back to the lodge, with the catch or empty-handed.
 
 import type { Content, ResourceAmount } from '@candlemarch/content';
@@ -6,12 +6,7 @@ import { isNight } from '../calendar';
 import { idsOf } from '../entities';
 import { outputRoom } from '../gathering';
 import { blockedGrid, doorTile, tileIndex } from '../grid';
-import {
-  groundsInReach,
-  groundTilesInReach,
-  huntChancePermille,
-  loseGame,
-} from '../huntingGrounds';
+import { groundTilesInReach, huntChancePermille, lodgeGrounds, loseGame } from '../huntingGrounds';
 import { tileDistance } from '../pathfinding';
 import { randomInt } from '../rng';
 import { workTicks } from '../speed';
@@ -20,9 +15,10 @@ import { isAtWork } from '../villagers';
 import { isAt, villagerTile, walkTo } from './movement';
 
 /**
- * Starts hunter `id` walking into the nearest Hunting ground in lodge `lodgeId`'s radius that has
- * Game (walking distance to its nearest open tile in reach, ties by ID). Returns that ground, or
- * null when every ground in reach is empty or can't be reached.
+ * Starts hunter `id` walking into the nearest Hunting ground lodge `lodgeId` hunts (its chosen
+ * one, else any in its radius; `lodgeGrounds`) that has Game (walking distance to its nearest
+ * open tile in reach, ties by ID). Returns that ground, or null when every such ground is empty or
+ * can't be reached.
  */
 function walkToGround(
   state: GameState,
@@ -35,7 +31,7 @@ function walkToGround(
   const { map, components } = state;
   const blocked = blockedGrid(state, content);
   const hereIndex = tileIndex(map, here.x, here.y);
-  const candidates = groundsInReach(state, content, lodgeId)
+  const candidates = lodgeGrounds(state, content, lodgeId)
     .filter((g) => (components.huntingGround[g]?.game ?? 0) > 0)
     .map((g) => {
       const tiles = groundTilesInReach(state, content, lodgeId, g).filter(

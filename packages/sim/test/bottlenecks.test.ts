@@ -111,7 +111,8 @@ describe('workplace status (why a Workplace stands idle)', () => {
     });
 
     it('says nothing while there is room', () => {
-      expect(workplaceStatus(...args(gatherer('hunters_lodge', { meat: 4, hides: 3 })))).toBeNull();
+      // (A lodge here would say "no Game": there's no Hunting ground on the bank.)
+      expect(workplaceStatus(...args(gatherer('fishers_hut', { fish: 3 })))).toBeNull();
     });
 
     function args({ s, id }: { s: GameState; id: EntityId }) {

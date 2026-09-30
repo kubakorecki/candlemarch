@@ -1521,6 +1521,17 @@ export function drawOutputFullIcon(g: Graphics, x: number, y: number, resource: 
     .stroke({ width: 3 * s, color: palette.invalid, cap: 'round' });
 }
 
+/** A bubble centred on (x, y) over a hunter's lodge with no Game to hunt: a haunch, struck through. */
+export function drawNoGameIcon(g: Graphics, x: number, y: number): void {
+  const s = TILE_H / 64;
+  const r = 13 * s;
+  g.circle(x, y, r).fill(palette.iconBg).stroke(INK);
+  drawMeat(g, x - 1 * s, y, s * 0.8);
+  g.moveTo(x - r * 0.7, y - r * 0.7)
+    .lineTo(x + r * 0.7, y + r * 0.7)
+    .stroke({ width: 3 * s, color: palette.invalid, cap: 'round' });
+}
+
 /** A warning bubble centred on (x, y) over a cold House: a piece of firewood, struck through. */
 export function drawNoFirewoodIcon(g: Graphics, x: number, y: number): void {
   const s = TILE_H / 64;

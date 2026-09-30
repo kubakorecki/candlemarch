@@ -123,6 +123,11 @@ export interface BuildingComponent {
    * building they don't.
    */
   hp: number | null;
+  /**
+   * A hunter's lodge's chosen Hunting ground, in its reach: its hunters hunt only there. Absent
+   * (always, for other buildings): the nearest ground in reach with Game.
+   */
+  huntingGround?: EntityId;
 }
 
 export interface SiteComponent {

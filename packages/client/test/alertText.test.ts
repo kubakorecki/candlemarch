@@ -80,6 +80,7 @@ describe('workplace status text', () => {
     expect(workplaceStatusText({ kind: 'outputFull', resources: ['firewood'] })).toBe(
       'Output full: no room for firewood',
     );
+    expect(workplaceStatusText({ kind: 'noGame' })).toBe('No Game left to hunt');
   });
 });
 

@@ -82,6 +82,8 @@ export function workplaceStatusText(status: WorkplaceStatus): string {
       return `Waiting for ${resourceList(status.resources)}`;
     case 'outputFull':
       return `Output full: no room for ${resourceList(status.resources)}`;
+    case 'noGame':
+      return 'No Game left to hunt';
   }
 }
 

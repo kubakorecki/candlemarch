@@ -84,6 +84,7 @@ import {
   drawLightPool,
   drawMissingIcon,
   drawNoFirewoodIcon,
+  drawNoGameIcon,
   drawOutputFullIcon,
   drawPalisade,
   drawPileGround,
@@ -251,6 +252,7 @@ function outputPile(
 /** Draws the icon for why a Workplace is idle, centred on (x, y). */
 function drawStatusIcon(g: Graphics, status: WorkplaceStatus, x: number, y: number): void {
   if (status.kind === 'noWorker') drawMissingIcon(g, x, y);
+  else if (status.kind === 'noGame') drawNoGameIcon(g, x, y);
   else if (status.resources[0] === undefined) return;
   else if (status.kind === 'waitingFor') drawWaitingIcon(g, x, y, status.resources[0]);
   else drawOutputFullIcon(g, x, y, status.resources[0]);
@@ -301,6 +303,8 @@ export class WorldRenderer {
   private readonly grounds = new Graphics();
   private readonly groundLabels = new Container();
   private groundsKey = '';
+  /** Hunting grounds outlined and named now (`setShownGrounds`); none until the game asks. */
+  private shownGrounds: ReadonlySet<EntityId> = new Set();
   /** Each Hunting ground's label tile, by its `tiles` list (the same list until the layer changes). */
   private groundMiddles = new WeakMap<readonly number[], Tile>();
   /** "Fled" puffs over grounds, drawn each frame until they fade. */
@@ -1004,8 +1008,19 @@ export class WorldRenderer {
   }
 
   /**
-   * Outlines every Hunting ground in its health colour, with its name and health word, and starts
-   * a "fled" puff over any ground that lost Game to logging since the last snapshot.
+   * Outlines and names only Hunting grounds `ids`, e.g. those a selected hunter's lodge reaches;
+   * the rest stay hidden.
+   */
+  setShownGrounds(ids: readonly EntityId[]): void {
+    if (ids.join(',') === [...this.shownGrounds].join(',')) return;
+    this.shownGrounds = new Set(ids);
+    if (this.lastState) this.syncGrounds(this.lastState);
+  }
+
+  /**
+   * Outlines each shown Hunting ground (`setShownGrounds`) in its health colour, with its name and
+   * health word, and starts a "fled" puff over any ground, shown or not, that lost Game to logging
+   * since the last snapshot.
    */
   private syncGrounds(state: GameState): void {
     const { huntingGround } = state.components;
@@ -1016,7 +1031,9 @@ export class WorldRenderer {
     const key = ids
       .map((id) => {
         const g = huntingGround[id];
-        return g ? `${id}:${groundHealth(g, this.content)}:${named(g)}` : '';
+        return g && this.shownGrounds.has(id)
+          ? `${id}:${groundHealth(g, this.content)}:${named(g)}`
+          : '';
       })
       .join('|');
     if (key !== this.groundsKey) {
@@ -1024,7 +1041,7 @@ export class WorldRenderer {
       for (const child of this.groundLabels.removeChildren()) child.destroy();
       for (const id of ids) {
         const g = huntingGround[id];
-        if (!g) continue;
+        if (!g || !this.shownGrounds.has(id)) continue;
         const health = groundHealth(g, this.content);
         drawHuntingGround(this.grounds, groundTiles(state, g), HEALTH_COLORS[health]);
         if (!named(g)) continue;

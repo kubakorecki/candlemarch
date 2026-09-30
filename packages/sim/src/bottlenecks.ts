@@ -3,6 +3,7 @@
 import type { Content, ResourceId } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { outputRoom } from './gathering';
+import { lodgeGrounds } from './huntingGrounds';
 import type { EntityId, GameState } from './state';
 import { isPaused, recipeBlockers } from './systems/production';
 import { openPositions } from './systems/staffing';
@@ -16,12 +17,14 @@ export type WorkplaceStatus =
    * A workshop has a recipe's inputs, but its output buffer has no room for these outputs; or a
    * gathering Workplace has no room for what it brings back.
    */
-  | { kind: 'outputFull'; resources: ResourceId[] };
+  | { kind: 'outputFull'; resources: ResourceId[] }
+  /** A hunter's lodge whose grounds (its chosen one, else all in reach) have no Game. */
+  | { kind: 'noGame' };
 
 /**
  * Why Workplace `building` is idle, or null when it isn't (or is idle on purpose: paused at its
  * stock target). "Waiting for" applies to workshops (buildings with recipes), "output full" to
- * workshops and gathering Workplaces (`gathererNoRoom`).
+ * workshops and gathering Workplaces (`gathererNoRoom`), "no Game" to hunter's lodges.
  */
 export function workplaceStatus(
   state: GameState,
@@ -34,7 +37,8 @@ export function workplaceStatus(
   const recipes = content.buildings[b.type].recipes ?? [];
   if (recipes.length === 0) {
     const noRoom = gathererNoRoom(state, content, building);
-    return noRoom.length > 0 ? { kind: 'outputFull', resources: noRoom } : null;
+    if (noRoom.length > 0) return { kind: 'outputFull', resources: noRoom };
+    return outOfGame(state, content, building) ? { kind: 'noGame' } : null;
   }
   if (isPaused(state, content, building)) return null;
   const { crafter, villager } = state.components;
@@ -74,4 +78,12 @@ function gathererNoRoom(state: GameState, content: Content, building: EntityId):
   }
   const noRoom = [...yields].filter(([resource, amount]) => full(resource, amount));
   return noRoom.length > 0 && noRoom.length === yields.size ? noRoom.map(([r]) => r) : [];
+}
+
+/** Whether building `id` hunts, and no ground it hunts (`lodgeGrounds`) has Game. */
+function outOfGame(state: GameState, content: Content, id: EntityId): boolean {
+  const b = state.components.building[id];
+  if (!b || !content.buildings[b.type].hunts) return false;
+  const { huntingGround } = state.components;
+  return !lodgeGrounds(state, content, id).some((g) => (huntingGround[g]?.game ?? 0) > 0);
 }

@@ -155,6 +155,32 @@ export function groundsInReach(state: GameState, content: Content, id: EntityId)
   return b && origin ? groundsNear(state, content, b.type, origin, b.rotation) : [];
 }
 
+/**
+ * The Hunting grounds hunter's lodge `id`'s hunters may hunt: its chosen ground, or every ground
+ * in reach (`groundsInReach`) when none is chosen. Empty for a building that doesn't hunt.
+ */
+export function lodgeGrounds(state: GameState, content: Content, id: EntityId): EntityId[] {
+  const b = state.components.building[id];
+  if (!b || !content.buildings[b.type].hunts) return [];
+  return b.huntingGround === undefined ? groundsInReach(state, content, id) : [b.huntingGround];
+}
+
+/**
+ * Sets hunter's lodge `id` to hunt only `ground`, or, with null, the nearest ground in reach with
+ * Game again. Ignored unless `id` is a built hunter's lodge and `ground` is in its reach.
+ */
+export function setHuntingGround(
+  state: GameState,
+  content: Content,
+  id: EntityId,
+  ground: EntityId | null,
+): void {
+  const b = state.components.building[id];
+  if (!b || !content.buildings[b.type].hunts) return;
+  if (ground === null) delete b.huntingGround;
+  else if (groundsInReach(state, content, id).includes(ground)) b.huntingGround = ground;
+}
+
 /** Forest map objects (content `hunting.forest`) standing on `ground`'s tiles. */
 export function standingTrees(
   state: GameState,

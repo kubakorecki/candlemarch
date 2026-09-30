@@ -78,12 +78,18 @@ function Fill({ amount, capacity }: { amount: number; capacity: number }) {
   );
 }
 
-function GroundRows({ ground }: { ground: GroundInfo }) {
+/** A Hunting ground's rows; `onHunt`, unless null, adds a button that sets the lodge to hunt it. */
+function GroundRows({ ground, onHunt }: { ground: GroundInfo; onHunt: (() => void) | null }) {
   return (
     <div>
       <div className="fact">
         <span>{ground.name}</span>
         <span className={`health-${ground.health}`}>{ground.word}</span>
+        {onHunt && (
+          <button type="button" className="btn-small" onClick={onHunt}>
+            Hunt here
+          </button>
+        )}
       </div>
       <div className="muted small">{ground.summary}</div>
       {ground.regrowth && <div className="muted small">{ground.regrowth}</div>}
@@ -135,8 +141,28 @@ function BuildingPanel({
         </div>
       )}
       {building.grounds.length > 0 && <SectionHead title="Hunting grounds" />}
+      {building.grounds.length > 0 && (
+        <div className="fact">
+          <span>Hunts in</span>
+          <span>
+            {building.grounds.find((g) => g.id === building.huntingGround)?.name ??
+              'the nearest with Game'}
+          </span>
+          {building.huntingGround !== null && (
+            <button type="button" className="btn-small" onClick={() => game.setHuntingGround(null)}>
+              Nearest
+            </button>
+          )}
+        </div>
+      )}
       {building.grounds.map((ground) => (
-        <GroundRows key={ground.id} ground={ground} />
+        <GroundRows
+          key={ground.id}
+          ground={ground}
+          onHunt={
+            ground.id === building.huntingGround ? null : () => game.setHuntingGround(ground.id)
+          }
+        />
       ))}
       {building.maxWorkers > 0 && (
         <>
@@ -329,7 +355,7 @@ function GroundPanel({ ground, game }: { ground: GroundInfo; game: Game }) {
   return (
     <section className="inspector panel" aria-label="Selected Hunting ground">
       <Head lead={<Medallion icon="bow" />} name="Hunting ground" game={game} />
-      <GroundRows ground={ground} />
+      <GroundRows ground={ground} onHunt={null} />
     </section>
   );
 }

@@ -1,6 +1,7 @@
 // Hunting grounds and the hunter's lodge: forest regions holding Game, which hunters catch with a
 // chance that follows the Game left, and which logging drives away.
 import { describe, expect, it } from 'vitest';
+import { workplaceStatus } from '../src/bottlenecks';
 import { calendarAt, dawnTick, duskTick } from '../src/calendar';
 import { destroyEntity, idsOf } from '../src/entities';
 import {
@@ -411,5 +412,103 @@ describe('reach', () => {
     expect(groundsNear(s, content, 'woodcutters_hut', { x: 5 + radius, y: 0 })).toEqual([11]);
     expect(groundsNear(s, content, 'woodcutters_hut', { x: 6 + radius, y: 0 })).toEqual([]);
     expect(groundsInReach(s, content, LODGE)).toEqual([11]);
+  });
+});
+
+describe('choosing a Hunting ground', () => {
+  /**
+   * Two woods in reach of a hunter's lodge at (7,2): the Near Wood (4×4 from (0,0)) and the Far
+   * Wood (4×4 from (13,0)), each with 4 trees and max Game 20. The hunter starts at the door.
+   */
+  const twoWoods: MapDef = {
+    name: 'two woods',
+    rows: [
+      '....................',
+      '.TT..........TT.....',
+      '.TT..........TT.....',
+      '....................',
+      '....................',
+    ],
+    buildings: [{ type: 'hunters_lodge', x: 7, y: 2 }],
+    villagers: [],
+    huntingGrounds: [
+      { name: 'Near Wood', x: 0, y: 0, w: 4, h: 4, maxGame: 20 },
+      { name: 'Far Wood', x: 13, y: 0, w: 4, h: 4, maxGame: 20 },
+    ],
+  };
+
+  function setup() {
+    const s = createInitialState(1, twoWoods, content);
+    const named = (name: string) =>
+      idsOf(s.components.huntingGround).find((g) => s.components.huntingGround[g]?.name === name) ??
+      0;
+    const lodge = idsOf(s.components.building)[0] ?? 0;
+    return { s, lodge, near: named('Near Wood'), far: named('Far Wood') };
+  }
+
+  const catches = (s: GameState, g: EntityId) => 20 - (s.components.huntingGround[g]?.game ?? 0);
+
+  it('hunts the nearest ground with Game until one is chosen', () => {
+    const { s, near, far } = setup();
+    const after = run(s, 3600);
+    expect(catches(after, near)).toBeGreaterThan(0);
+    expect(catches(after, far)).toBe(0);
+  });
+
+  it('keeps to the chosen ground, however far', () => {
+    const { s, lodge, near, far } = setup();
+    const after = run(s, 3600, { 0: [{ type: 'setHuntingGround', building: lodge, ground: far }] });
+    expect(after.components.building[lodge]?.huntingGround).toBe(far);
+    expect(catches(after, far)).toBeGreaterThan(0);
+    expect(catches(after, near)).toBe(0);
+  });
+
+  it('goes back to the nearest when the choice is cleared', () => {
+    const { s, lodge, far } = setup();
+    const chosen = run(s, 1, { 0: [{ type: 'setHuntingGround', building: lodge, ground: far }] });
+    const cleared = run(chosen, 1, {
+      1: [{ type: 'setHuntingGround', building: lodge, ground: null }],
+    });
+    expect(cleared.components.building[lodge]).not.toHaveProperty('huntingGround');
+  });
+
+  it('refuses a ground out of reach, or a building that doesn’t hunt', () => {
+    const wide: MapDef = {
+      ...twoWoods,
+      rows: twoWoods.rows.map((r) => `${r}${'.'.repeat(20)}`),
+      buildings: [...twoWoods.buildings, { type: 'hut', x: 9, y: 3 }],
+      huntingGrounds: [
+        ...(twoWoods.huntingGrounds ?? []),
+        { name: 'Beyond', x: 36, y: 0, w: 4, h: 4, maxGame: 20 },
+      ],
+    };
+    const s0 = createInitialState(1, wide, content);
+    const [lodge, hut] = idsOf(s0.components.building);
+    const beyond = idsOf(s0.components.huntingGround).at(-1) ?? 0;
+    const near = idsOf(s0.components.huntingGround)[0] ?? 0;
+    const s = run(s0, 1, {
+      0: [
+        { type: 'setHuntingGround', building: lodge ?? 0, ground: beyond },
+        { type: 'setHuntingGround', building: hut ?? 0, ground: near },
+      ],
+    });
+    expect(s.components.building[lodge ?? 0]).not.toHaveProperty('huntingGround');
+    expect(s.components.building[hut ?? 0]).not.toHaveProperty('huntingGround');
+  });
+
+  it('leaves the hunter waiting, and says why, while the chosen ground is empty', () => {
+    const { s, lodge, far } = setup();
+    const g = s.components.huntingGround[far];
+    if (g) g.game = 0;
+    const after = run(s, 600, { 0: [{ type: 'setHuntingGround', building: lodge, ground: far }] });
+    const hunter = idsOf(after.components.hunter)[0] ?? 0;
+    expect(after.components.hunter[hunter]?.kind).toBe('idle');
+    expect(workplaceStatus(after, content, lodge)).toEqual({ kind: 'noGame' });
+  });
+
+  it('keeps the choice through save and load', () => {
+    const { s, lodge, far } = setup();
+    const chosen = run(s, 1, { 0: [{ type: 'setHuntingGround', building: lodge, ground: far }] });
+    expect(deserialize(serialize(chosen), content)).toEqual(chosen);
   });
 });
