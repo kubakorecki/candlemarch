@@ -79,4 +79,22 @@ describe('map object runs', () => {
     const dirty = [...runs.update(after.mapObject, after.tile)];
     expect(dirty.map((key) => tilesOf(runs, key)).sort()).toEqual([[], ['3,5']]);
   });
+
+  it('leaves out objects on tiles not shown, and reports their run once they are', () => {
+    const runs = new MapObjectRuns();
+    const { mapObject, tile } = trees([
+      [1, 3, 5, 10],
+      [2, 6, 2, 10],
+    ]);
+    // Under Fog: only tiles west of x = 5 are Revealed.
+    let revealedUpTo = 5;
+    const shown = (x: number) => x < revealedUpTo;
+    const first = [...runs.update(mapObject, tile, shown)];
+    expect(first.map((key) => tilesOf(runs, key))).toEqual([['3,5']]);
+    expect(runs.update(mapObject, tile, shown).size).toBe(0);
+
+    revealedUpTo = 10;
+    const revealed = [...runs.update(mapObject, tile, shown)];
+    expect(revealed.map((key) => tilesOf(runs, key))).toEqual([['3,5', '6,2']]);
+  });
 });

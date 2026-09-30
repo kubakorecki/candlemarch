@@ -2,7 +2,13 @@
 // drawn a row run at a time (`mapObjectRuns.ts`). Each redraws only what changed and hides what's
 // off-screen (`cull`). ADR-0004.
 import type { Content, TerrainId } from '@candlemarch/content';
-import type { MapObjectComponent, Store, Tile } from '@candlemarch/sim';
+import {
+  hasTile,
+  type MapObjectComponent,
+  type Store,
+  type Tile,
+  type TileBits,
+} from '@candlemarch/sim';
 import { Container, Graphics } from 'pixi.js';
 import { overlaps, type Rect, TILE_H, tileAreaBounds, tileCenterWorld } from './iso';
 import { MapObjectRuns } from './mapObjectRuns';
@@ -149,6 +155,12 @@ export class GroundLayer {
   }
 }
 
+/** The Revealed tiles of a map under Fog. */
+export interface RevealedTiles {
+  width: number;
+  revealed: TileBits;
+}
+
 interface RunView {
   graphics: Graphics;
   bounds: Rect;
@@ -162,6 +174,7 @@ export class MapObjectLayer {
   private readonly runs = new MapObjectRuns();
   private readonly views = new Map<string, RunView>();
   private drawnStore: Store<MapObjectComponent> | null = null;
+  private drawnRevealed: TileBits | null = null;
   /** Runs redrawn since the last cull: drawn next frame even if culled (see `GroundLayer.warmUp`). */
   private fresh = new Set<RunView>();
 
@@ -170,11 +183,19 @@ export class MapObjectLayer {
     private readonly content: Content,
   ) {}
 
-  /** Redraws the runs whose objects changed, if the store isn't the one last drawn. */
-  sync(mapObject: Store<MapObjectComponent>, tile: Store<Tile>): void {
-    if (mapObject === this.drawnStore) return;
+  /**
+   * Redraws the runs whose objects changed, if the store or the Revealed tiles aren't the ones last
+   * drawn. Under Fog (`fog` not null) only objects on Revealed tiles are drawn.
+   */
+  sync(mapObject: Store<MapObjectComponent>, tile: Store<Tile>, fog: RevealedTiles | null): void {
+    const revealed = fog?.revealed ?? null;
+    if (mapObject === this.drawnStore && revealed === this.drawnRevealed) return;
     this.drawnStore = mapObject;
-    for (const key of this.runs.update(mapObject, tile)) this.redraw(key);
+    this.drawnRevealed = revealed;
+    const shown = fog
+      ? (x: number, y: number) => hasTile(fog.revealed, y * fog.width + x)
+      : undefined;
+    for (const key of this.runs.update(mapObject, tile, shown)) this.redraw(key);
   }
 
   cull(view: Rect): void {

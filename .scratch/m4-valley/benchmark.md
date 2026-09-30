@@ -343,3 +343,7 @@ Measured 2026-09-30, same machine and Node, `pnpm bench:maps 128` and `pnpm benc
 
 - The sight is worked out again only when a source changed tile or reach; a tick that doesn't still builds the key (about 100 sources), which is the ~0.03 ms. `step` (tests only) works it out every tick, since its copy has no remembered key: that's the paired columns' difference.
 - The Revealed and In-sight tiles cost 2 KB each at 128² (512 numbers). The synthetic village stays inside the area Revealed at the start, so Fog adds no static-layer changes here; a Hero walking into the dark sends the Revealed tiles whole (2 KB) on each tick it Reveals something.
+
+## Fog in the client (ticket 17)
+
+Measured 2026-09-30, headless Chrome 154 over CDP (no visible window available), 1512×860, the synthetic 128² map loaded from a save with Fog on and again with it off, 3×, zoomed out so the Fog's edges are on screen, 12 s of panning. rAF intervals: 60.0 fps, mean 16.67 ms, p95 16.7–16.8 ms, max 16.8 ms, no frame over 33 ms, Fog on and off alike. Main thread about 80% idle either way; the Fog's own work (working out the field and uploading the texture when the Revealed or In-sight tiles change) came to 42 ms of the 12 s profile, about 0.06 ms a frame on average (`fogField` 33 ms of it).

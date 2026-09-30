@@ -29,12 +29,18 @@ export class MapObjectRuns {
   /**
    * Brings the drawn objects in line with a map-object store and its tiles, and returns the runs
    * whose look changed: an object added, removed, moved, or its amount or withering changed. A run
-   * left empty is returned too, with no objects in it.
+   * left empty is returned too, with no objects in it. Objects on tiles `shown` says no to (under
+   * Fog, unrevealed ones) count as absent.
    */
-  update(mapObject: Store<MapObjectComponent>, tile: Store<Tile>): Set<string> {
+  update(
+    mapObject: Store<MapObjectComponent>,
+    tile: Store<Tile>,
+    shown: (x: number, y: number) => boolean = () => true,
+  ): Set<string> {
     const dirty = new Set<string>();
     for (const [id, was] of this.drawn) {
-      if (mapObject[id] === undefined || tile[id] === undefined) {
+      const at = tile[id];
+      if (mapObject[id] === undefined || !at || !shown(at.x, at.y)) {
         this.remove(id, was, dirty);
       }
     }
@@ -42,7 +48,7 @@ export class MapObjectRuns {
       const id = Number(key);
       const obj = mapObject[id] as MapObjectComponent;
       const at = tile[id];
-      if (!at) continue;
+      if (!at || !shown(at.x, at.y)) continue;
       const withered = obj.withered === true;
       const was = this.drawn.get(id);
       if (

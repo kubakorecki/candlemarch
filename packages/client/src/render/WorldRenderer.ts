@@ -17,7 +17,9 @@ import {
   isColdHouse,
   isDarkLight,
   isIndoors,
+  isInSight,
   isKnockedOut,
+  isRevealed,
   isRiverFrozen,
   lightSources,
   type Point,
@@ -30,6 +32,7 @@ import {
 } from '@candlemarch/sim';
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import { drawBuilding, drawWindowLight } from './buildingArt';
+import { FogLayer } from './fogLayer';
 import {
   type CameraView,
   depthOf,
@@ -102,6 +105,8 @@ interface StaticView {
   key: string;
   /** World area it may draw in, for culling. */
   bounds: Rect;
+  /** False while Fog hides it: none of its tiles is Revealed. */
+  shown: boolean;
 }
 
 /** How far art may reach over a static's footprint: the tallest building and its status icon. */
@@ -297,6 +302,8 @@ export class WorldRenderer {
   private readonly mapObjects: MapObjectLayer;
   /** The world area on screen (with `VIEW_MARGIN`), as of the last `applyCamera`. */
   private view: Rect = { minX: -Infinity, minY: -Infinity, maxX: Infinity, maxY: Infinity };
+  /** Fog over everything on the map but the placement ghost, so the ghost shows over the dark. */
+  private readonly fog = new FogLayer();
   private readonly ghost = new Graphics();
   /** Darkness over the whole screen: white, tinted by the night look and multiplied in. */
   private readonly night = new Graphics({ blendMode: 'multiply' });
@@ -349,6 +356,7 @@ export class WorldRenderer {
       this.groundLabels,
       this.puffs,
       this.puffLabels,
+      this.fog.node,
       this.ghost,
     );
     this.app.stage.addChild(this.world, this.night, this.lights, this.eyes, this.healthBars);
@@ -390,7 +398,7 @@ export class WorldRenderer {
     this.view = view;
     this.ground.cull(view);
     this.mapObjects.cull(view);
-    for (const s of this.statics.values()) s.node.visible = overlaps(s.bounds, view);
+    for (const s of this.statics.values()) s.node.visible = s.shown && overlaps(s.bounds, view);
   }
 
   /**
@@ -409,14 +417,28 @@ export class WorldRenderer {
     this.syncRoads(state);
     this.syncHeat(state);
 
+    this.fog.sync(state);
+
     const seen = new Set<string>();
     const { tile, mapObject, building, site, den, cache } = state.components;
-    this.mapObjects.sync(mapObject, tile);
+    this.mapObjects.sync(
+      mapObject,
+      tile,
+      state.fog ? { width: map.width, revealed: map.revealed } : null,
+    );
+    // Under Fog, nothing on an unrevealed tile is drawn: a thing shows once any of its tiles is
+    // Revealed.
+    const shown = (x: number, y: number, w: number, h: number) => revealedArea(state, x, y, w, h);
 
     for (const id of idsOf(den)) {
       const at = tile[id];
       if (!at) continue;
-      const view = this.staticView(`den:${id}`, seen, staticBounds(at.x, at.y, 1, 1));
+      const view = this.staticView(
+        `den:${id}`,
+        seen,
+        staticBounds(at.x, at.y, 1, 1),
+        shown(at.x, at.y, 1, 1),
+      );
       const key = `den@${at.x},${at.y}`;
       if (view.key !== key) {
         drawDen(view.graphics);
@@ -435,7 +457,12 @@ export class WorldRenderer {
         const amount = stock[resource] ?? 0;
         return amount > 0 ? [{ resource, amount }] : [];
       });
-      const view = this.staticView(`cache:${id}`, seen, staticBounds(at.x, at.y, 1, 1));
+      const view = this.staticView(
+        `cache:${id}`,
+        seen,
+        staticBounds(at.x, at.y, 1, 1),
+        shown(at.x, at.y, 1, 1),
+      );
       const key = `cache@${at.x},${at.y}:${JSON.stringify(goods)}`;
       if (view.key !== key) {
         drawCache(view.graphics, goods);
@@ -455,7 +482,12 @@ export class WorldRenderer {
       if (def.wall) {
         const arms = wallArms(walls, at);
         const broken = isBrokenWall(state, this.content, id);
-        const view = this.staticView(`building:${id}`, seen, staticBounds(at.x, at.y, 1, 1));
+        const view = this.staticView(
+          `building:${id}`,
+          seen,
+          staticBounds(at.x, at.y, 1, 1),
+          shown(at.x, at.y, 1, 1),
+        );
         const key = `${b.type}@${at.x},${at.y}:${JSON.stringify(arms)}:${broken}`;
         if (view.key !== key) {
           const layout = buildingLayout(def, at, b.rotation);
@@ -484,6 +516,7 @@ export class WorldRenderer {
         `building:${id}`,
         seen,
         staticBounds(at.x, at.y, size.w, size.h),
+        shown(at.x, at.y, size.w, size.h),
       );
       const key = `${b.type}@${at.x},${at.y}r${b.rotation}:${input?.amount}:${output?.resource}${output?.amount}:${JSON.stringify(status)}:${cold}:${fuel}:${ringing}`;
       if (view.key !== key) {
@@ -519,7 +552,12 @@ export class WorldRenderer {
         0,
       );
       const progress = s.buildProgress / construction.buildTicks;
-      const view = this.staticView(`site:${id}`, seen, staticBounds(at.x, at.y, size.w, size.h));
+      const view = this.staticView(
+        `site:${id}`,
+        seen,
+        staticBounds(at.x, at.y, size.w, size.h),
+        shown(at.x, at.y, size.w, size.h),
+      );
       // Redraw posts in 10% steps; the label updates every change.
       const key = `${s.type}@${at.x},${at.y}r${s.rotation}:${delivered}:${Math.floor(progress * 10)}`;
       if (this.content.buildings[s.type].wall) {
@@ -589,14 +627,16 @@ export class WorldRenderer {
     g.clear();
     const s = TILE_H / 64;
     for (const bar of this.bars) {
+      // Under Fog, only over what's In sight.
       if (bar.tile) {
+        if (!isInSight(state, bar.tile)) continue;
         // Over a battered door or wall segment, at about the height of its top.
         const c = tileCenterWorld(bar.tile.x, bar.tile.y);
         drawHealthBar(g, c.x, c.y - 60 * s, bar.hp, bar.maxHp);
         continue;
       }
       const to = state.components.position[bar.id];
-      if (!to) continue;
+      if (!to || !seenAt(state, to)) continue;
       const at = interpolate(prevPositions[bar.id] ?? to, to, alpha);
       const w = gridToWorld(at.x, at.y);
       // Over a Gloamling's head, or over a villager's status icons.
@@ -634,7 +674,8 @@ export class WorldRenderer {
       const from = prevPositions[id] ?? to;
       const g = interpolate(from, to, alpha);
       const w = gridToWorld(g.x, g.y);
-      node.visible = overlaps(walkerBounds(w.x, w.y), this.view);
+      // Off-screen, or out of sight under Fog (its eyes too).
+      node.visible = overlaps(walkerBounds(w.x, w.y), this.view) && seenAt(state, to);
       if (!node.visible) continue;
       const walking = from.x !== to.x || from.y !== to.y;
       const sway = walking ? 0 : Math.sin(timeMs / 300 + id) * 2 * (TILE_H / 64);
@@ -710,7 +751,7 @@ export class WorldRenderer {
     let hit: EntityId | null = null;
     let front = -Infinity;
     for (const [id, node] of this.gloamlings) {
-      if (node.zIndex > front && hitsNode(node, sx, sy)) {
+      if (node.visible && node.zIndex > front && hitsNode(node, sx, sy)) {
         hit = id;
         front = node.zIndex;
       }
@@ -778,7 +819,7 @@ export class WorldRenderer {
     const from = prevPositions[id] ?? to;
     const g = interpolate(from, to, alpha);
     const w = gridToWorld(g.x, g.y);
-    view.node.visible = overlaps(walkerBounds(w.x, w.y), this.view);
+    view.node.visible = overlaps(walkerBounds(w.x, w.y), this.view) && seenAt(state, to);
     if (!view.node.visible) return;
     const walking = from.x !== to.x || from.y !== to.y;
     const bob = walking ? Math.abs(Math.sin(timeMs / 90)) * 3 : 0;
@@ -824,10 +865,12 @@ export class WorldRenderer {
       const from = prevPositions[id] ?? to;
       const g = interpolate(from, to, alpha);
       const w = gridToWorld(g.x, g.y);
-      // Off-screen, or asleep inside its House: out of sight until it wakes or a Gloamling breaks
-      // the door.
+      // Off-screen, asleep inside its House (out of sight until it wakes or a Gloamling breaks
+      // the door), or out of sight under Fog.
       view.node.visible =
-        overlaps(walkerBounds(w.x, w.y), this.view) && !isIndoors(state, this.content, id);
+        overlaps(walkerBounds(w.x, w.y), this.view) &&
+        !isIndoors(state, this.content, id) &&
+        seenAt(state, to);
       if (!view.node.visible) continue;
       const walking = from.x !== to.x || from.y !== to.y;
       const bob = walking ? Math.abs(Math.sin(timeMs / 90)) * 3 : 0;
@@ -892,10 +935,15 @@ export class WorldRenderer {
   private syncGrounds(state: GameState): void {
     const { huntingGround } = state.components;
     const ids = idsOf(huntingGround);
+    // Under Fog, a ground's name shows once its middle is Revealed; its outline is under the Fog.
+    const named = (g: { x: number; y: number; w: number; h: number }) =>
+      isRevealed(state, { x: Math.floor(g.x + g.w / 2), y: Math.floor(g.y + g.h / 2) });
     const key = ids
       .map((id) => {
         const g = huntingGround[id];
-        return g ? `${id}:${g.x},${g.y},${g.w},${g.h}:${groundHealth(g, this.content)}` : '';
+        return g
+          ? `${id}:${g.x},${g.y},${g.w},${g.h}:${groundHealth(g, this.content)}:${named(g)}`
+          : '';
       })
       .join('|');
     if (key !== this.groundsKey) {
@@ -906,6 +954,7 @@ export class WorldRenderer {
         if (!g) continue;
         const health = groundHealth(g, this.content);
         drawHuntingGround(this.grounds, g.x, g.y, g.w, g.h, HEALTH_COLORS[health]);
+        if (!named(g)) continue;
         const label = this.groundText(`${g.name} · ${HEALTH_WORDS[health]}`, HEALTH_COLORS[health]);
         const top = gridToWorld(g.x + g.w / 2, g.y + g.h / 2);
         label.position.set(top.x, top.y - TILE_H * 1.5);
@@ -1023,7 +1072,12 @@ export class WorldRenderer {
         const i = Number(k);
         const x = i % width;
         const y = Math.floor(i / width);
-        const view = this.staticView(`pileTile:${i}`, seen, staticBounds(x, y, 1, 1));
+        const view = this.staticView(
+          `pileTile:${i}`,
+          seen,
+          staticBounds(x, y, 1, 1),
+          revealedArea(state, x, y, 1, 1),
+        );
         const key = `${x},${y}:${goods.resource}:${goods.amount}`;
         if (view.key !== key) {
           drawGoodsStack(view.graphics, goods);
@@ -1048,7 +1102,7 @@ export class WorldRenderer {
     this.app.destroy(true, { children: true });
   }
 
-  private staticView(key: string, seen: Set<string>, bounds: Rect): StaticView {
+  private staticView(key: string, seen: Set<string>, bounds: Rect, shown: boolean): StaticView {
     seen.add(key);
     let view = this.statics.get(key);
     if (!view) {
@@ -1056,11 +1110,12 @@ export class WorldRenderer {
       const graphics = new Graphics();
       node.addChild(graphics);
       this.objects.addChild(node);
-      view = { node, graphics, key: '', bounds };
+      view = { node, graphics, key: '', bounds, shown };
       this.statics.set(key, view);
-      node.visible = overlaps(bounds, this.view);
     }
     view.bounds = bounds;
+    view.shown = shown;
+    view.node.visible = shown && overlaps(bounds, this.view);
     return view;
   }
 
@@ -1152,6 +1207,20 @@ export class WorldRenderer {
     }
     return view;
   }
+}
+
+/** Whether any of the `w`×`h` tiles from (x, y) is Revealed (all are, with Fog off). */
+function revealedArea(state: GameState, x: number, y: number, w: number, h: number): boolean {
+  if (!state.fog) return true;
+  for (let j = 0; j < h; j++) {
+    for (let i = 0; i < w; i++) if (isRevealed(state, { x: x + i, y: y + j })) return true;
+  }
+  return false;
+}
+
+/** Whether a walker at sim position `p` is In sight: under Fog, only those are drawn. */
+function seenAt(state: GameState, p: Point): boolean {
+  return isInSight(state, tileOfPoint(p));
 }
 
 /** Tile keys ("x,y") of every built wall segment (palisade or Gate) still standing. */

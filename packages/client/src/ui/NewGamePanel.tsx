@@ -1,4 +1,4 @@
-// Dev-only: start a new game on any map, and turn monsters on or off, for playtests.
+// Dev-only: start a new game on any map, and turn monsters or Fog on or off, for playtests.
 import { DEFAULT_MAP, DEFAULT_MONSTER_RATE, type MapName, maps } from '@candlemarch/sim';
 import { useState, useSyncExternalStore } from 'react';
 import type { Game } from '../game/Game';
@@ -47,6 +47,9 @@ export function NewGamePanel({ game }: { game: Game }) {
           onClick={() => game.setMonsterRate(monstersNow ? 0 : DEFAULT_MONSTER_RATE)}
         >
           {monstersNow ? 'Monsters off now' : 'Monsters on now'}
+        </button>
+        <button type="button" className="btn" onClick={() => game.setFog(!hud.fog)}>
+          {hud.fog ? 'Fog off now' : 'Fog on now'}
         </button>
       </section>
     </div>

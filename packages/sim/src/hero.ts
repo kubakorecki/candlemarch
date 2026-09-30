@@ -4,6 +4,7 @@ import type { Content, ResourceId } from '@candlemarch/content';
 import { chebyshev, inReach, isKnockedOut } from './combat';
 import { cacheAt, denAt, takeFromCache } from './dens';
 import { idsOf } from './entities';
+import { isInSight, isRevealed } from './fog';
 import { isForagePatch } from './forage';
 import {
   blockedGrid,
@@ -294,14 +295,19 @@ function gloamlingAt(state: GameState, tile: Tile): EntityId | null {
  * a tree; deliver what it holds to a site, workshop or stockpile that wants it, or else pick up
  * from a building, stockpile or cache with goods; walk onto open ground. Null when there's
  * something on the tile but nothing to do with it, or the hero is Knocked out. The client uses
- * this so the rules stay in the sim; the command is still checked when it's applied.
+ * this so the rules stay in the sim; the command is still checked when it's applied. Under Fog it
+ * goes only by what the player sees: a Gloamling counts only In sight, and on an unrevealed tile
+ * the hero just walks there.
  */
 export function heroOrderAt(state: GameState, content: Content, tile: Tile): HeroOrder | null {
   const id = heroOf(state);
   const hero = id === null ? undefined : state.components.hero[id];
   if (id === null || !hero || isKnockedOut(state, id)) return null;
-  const gloamling = gloamlingAt(state, tile);
+  const gloamling = isInSight(state, tile) ? gloamlingAt(state, tile) : null;
   if (gloamling !== null) return { order: 'attack', gloamling };
+  if (!isRevealed(state, tile)) {
+    return isWalkableTerrain(state, content, tile) ? { order: 'move', x: tile.x, y: tile.y } : null;
+  }
   const den = denAt(state, tile);
   if (den !== null) return { order: 'attackDen', den };
   const thing = thingAt(state, content, tile);

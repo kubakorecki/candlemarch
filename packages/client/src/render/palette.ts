@@ -155,6 +155,10 @@ export const palette = {
   health: 0xb8503f,
   healthLost: 0x2a2226,
 
+  // Fog: unrevealed land fades into the dark round the map (`background`), and land out of sight
+  // is dimmed towards it.
+  fog: 0x1b1916,
+
   valid: 0x9dbf73,
   invalid: 0xc4584a,
 

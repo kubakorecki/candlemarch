@@ -32,6 +32,7 @@ import {
   isBellRung,
   isForagePatch,
   isKnockedOut,
+  isRevealed,
   isWithered,
   lShapeTiles,
   type MapName,
@@ -226,6 +227,8 @@ export interface HudState {
   heroSelected: boolean;
   /** This game's Monster rate, 0–100. */
   monsterRate: number;
+  /** Fog is on in this game. */
+  fog: boolean;
   /** What the hero holds, e.g. "3/5 logs", or null if this game has no hero. */
   heroLoad: string | null;
   /** "Knocked out, up in 14 s" while the hero is Knocked out, else null. */
@@ -288,6 +291,7 @@ export class Game {
     loadMenu: null,
     heroSelected: false,
     monsterRate: DEFAULT_MONSTER_RATE,
+    fog: false,
     heroLoad: null,
     heroKnockout: null,
     bell: null,
@@ -429,6 +433,11 @@ export class Game {
     this.bridge.command({ type: 'setMonsterRate', rate });
   }
 
+  /** Dev: turns Fog on or off in the running game (what's Revealed is kept). */
+  setFog(on: boolean): void {
+    this.bridge.command({ type: 'setFog', on });
+  }
+
   /** Opens or closes the Load menu, listing each slot with the date it was saved on. */
   toggleLoadMenu(): void {
     if (this.hud.loadMenu) {
@@ -527,10 +536,15 @@ export class Game {
       this.pointer !== null &&
       !isKnockedOut(state, hero) &&
       (this.renderer.hitGloamling(this.pointer.sx, this.pointer.sy) !== null ||
-        denAt(state, this.tileAt(this.pointer.sx, this.pointer.sy)) !== null);
+        this.seenDenAt(state, this.tileAt(this.pointer.sx, this.pointer.sy)));
     if (attack === this.attackCursor) return;
     this.attackCursor = attack;
     this.renderer.canvas.style.cursor = attack ? 'crosshair' : '';
+  }
+
+  /** Whether a Den the player can see (on a Revealed tile) is on `tile`. */
+  private seenDenAt(state: GameState, tile: Tile): boolean {
+    return isRevealed(state, tile) && denAt(state, tile) !== null;
   }
 
   private onSnapshot(state: GameState): void {
@@ -576,6 +590,7 @@ export class Game {
       carriersBusyPercent: busy,
       gameOver: state.gameOver && gameOverText(state.gameOver),
       monsterRate: state.monsterRate,
+      fog: state.fog,
     });
     const bell = bellOf(state, content) === null ? null : { ringing: isBellRung(state) };
     if (JSON.stringify(bell) !== JSON.stringify(this.hud.bell)) this.setHud({ bell });
@@ -683,8 +698,10 @@ export class Game {
       const hero = this.renderer.hitHero(sx, sy);
       const villager = hero ? null : this.renderer.hitVillager(sx, sy);
       const tile = this.tileAt(sx, sy);
-      const pile = hero || villager !== null ? null : stockpileAt(state, tile);
-      const unit = hero || villager !== null || pile !== null;
+      // Under Fog, an unrevealed tile has nothing on it to select.
+      const hidden = !isRevealed(state, tile);
+      const pile = hero || villager !== null || hidden ? null : stockpileAt(state, tile);
+      const unit = hero || villager !== null || pile !== null || hidden;
       this.selectHero(hero);
       this.selectVillager(villager);
       this.selectPile(pile);

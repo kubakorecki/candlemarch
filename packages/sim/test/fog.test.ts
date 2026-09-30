@@ -6,6 +6,7 @@ import type { Command } from '../src/commands';
 import { destroyEntity, idsOf } from '../src/entities';
 import { isInSight, isRevealed } from '../src/fog';
 import { canPlaceBuilding } from '../src/grid';
+import { heroOrderAt } from '../src/hero';
 import { createInitialState, type MapDef } from '../src/map';
 import { canLayPath } from '../src/roads';
 import { deserialize, serialize } from '../src/save';
@@ -162,6 +163,29 @@ describe('building under Fog', () => {
     const s = heroArrives(play(fogged(map), 1, { [DAY + 1]: [moveHero(59, 29)] }));
     const [hero] = idsOf(s.components.hero);
     expect(s.components.position[hero as number]).toEqual({ x: 59_500, y: 29_500 });
+  });
+});
+
+describe('ordering the Hero under Fog', () => {
+  it('walks it onto an unrevealed tile, whatever stands there unseen', () => {
+    // A Den at (40,10) and a tree at (40,12), both far outside the Revealed Camp (x 0–22).
+    const rows = Array.from({ length: 30 }, () => '.'.repeat(60));
+    rows[10] = `${'.'.repeat(40)}D${'.'.repeat(19)}`;
+    rows[12] = `${'.'.repeat(40)}T${'.'.repeat(19)}`;
+    const s = fogged(moor({ rows, hero: { x: 10, y: 10 } }));
+    expect(heroOrderAt(s, content, { x: 40, y: 10 })).toEqual({ order: 'move', x: 40, y: 10 });
+    expect(heroOrderAt(s, content, { x: 40, y: 12 })).toEqual({ order: 'move', x: 40, y: 12 });
+  });
+
+  it('passes over a Gloamling that is out of sight', () => {
+    // The Den at (20,10) is Revealed with the Camp; at night the Hero sees 4 tiles, not 10.
+    const rows = Array.from({ length: 30 }, () => '.'.repeat(60));
+    rows[10] = `${'.'.repeat(20)}D${'.'.repeat(39)}`;
+    const s = fogged(moor({ rows, hero: { x: 10, y: 10 } }), duskTick(1, content));
+    const [den] = idsOf(s.components.den);
+    expect(idsOf(s.components.gloamling).length).toBeGreaterThan(0);
+    expect(isInSight(s, { x: 20, y: 10 })).toBe(false);
+    expect(heroOrderAt(s, content, { x: 20, y: 10 })).toEqual({ order: 'attackDen', den });
   });
 });
 
