@@ -1,3 +1,4 @@
+import type { ResourceId } from '@candlemarch/content';
 import { describe, expect, it } from 'vitest';
 import { workplaceStatus } from '../src/bottlenecks';
 import { idsOf } from '../src/entities';
@@ -71,5 +72,50 @@ describe('workplace status (why a Workplace stands idle)', () => {
     if (p) p.goods[5] = { resource: 'firewood', amount: 40 };
     const settled = run(pile, 60);
     expect(workplaceStatus(settled, content, blockOf(settled))).toBeNull();
+  });
+
+  describe('of a gathering Workplace', () => {
+    /** A Workplace of `type` at (1,1) on a bank (river on row 3), staffed, its buffer set. */
+    function gatherer(
+      type: 'hunters_lodge' | 'fishers_hut' | 'foragers_hut',
+      stock: Partial<Record<ResourceId, number>>,
+    ): { s: GameState; id: EntityId } {
+      const bank: MapDef = {
+        name: 'bank',
+        rows: ['......', '......', '......', '~~~~~~'],
+        buildings: [{ type, x: 1, y: 1 }],
+        villagers: [{ job: 'carrier', x: 4, y: 0 }],
+      };
+      const s = run(createInitialState(1, bank, content), 1);
+      const id = idsOf(s.components.building)[0] as EntityId;
+      const b = s.components.building[id];
+      if (b) Object.assign(b.stock, stock);
+      return { s, id };
+    }
+
+    it("says a hunter's lodge without room for a catch is output full", () => {
+      const { s, id } = gatherer('hunters_lodge', { hides: 4 });
+      expect(workplaceStatus(s, content, id)).toEqual({ kind: 'outputFull', resources: ['hides'] });
+    });
+
+    it("says a fisher's hut without room for a fish is output full", () => {
+      const { s, id } = gatherer('fishers_hut', { fish: 4 });
+      expect(workplaceStatus(s, content, id)).toEqual({ kind: 'outputFull', resources: ['fish'] });
+    });
+
+    it('says a forager is output full only when nothing it gathers has room', () => {
+      expect(workplaceStatus(...args(gatherer('foragers_hut', { berries: 4 })))).toBeNull();
+      expect(
+        workplaceStatus(...args(gatherer('foragers_hut', { berries: 4, mushrooms: 4 }))),
+      ).toEqual({ kind: 'outputFull', resources: ['berries', 'mushrooms'] });
+    });
+
+    it('says nothing while there is room', () => {
+      expect(workplaceStatus(...args(gatherer('hunters_lodge', { meat: 4, hides: 3 })))).toBeNull();
+    });
+
+    function args({ s, id }: { s: GameState; id: EntityId }) {
+      return [s, content, id] as const;
+    }
   });
 });

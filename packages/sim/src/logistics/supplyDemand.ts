@@ -152,7 +152,8 @@ export function listDemands(state: GameState, content: Content): Demand[] {
  * input buffer on its own, oldest first, then Granaries, those wanting one Food as one group
  * (Foods in content order), then every House's fuel buffer as one group, then every light's
  * fuel, those wanting one fuel as one group, then stockpiles, highest priority first, those of one
- * priority wanting one resource (resources in content order) as one group. Within a group, goods
+ * priority wanting one resource as one group (resources in content order, starting after the one
+ * the last stockpile Haul moved, `lastToStockpile`). Within a group, goods
  * go to whichever demand is nearest, ties to the older one.
  */
 export function demandGroups(state: GameState, demands: readonly Demand[]): Demand[][] {
@@ -171,7 +172,11 @@ export function demandGroups(state: GameState, demands: readonly Demand[]): Dema
     groups.push(lights.filter((d) => d.resource === resource));
   }
   const piles = demands.filter((d) => d.kind === 'stockpile');
-  const resources = [...new Set(piles.map((d) => d.resource))];
+  // Resources in content order, turned to start after the one the last stockpile Haul moved.
+  const wanted = [...new Set(piles.map((d) => d.resource))];
+  const last = state.logistics.lastToStockpile;
+  const after = last === undefined ? 0 : wanted.indexOf(last) + 1;
+  const resources = [...wanted.slice(after), ...wanted.slice(0, after)];
   for (const priority of STOCKPILE_PRIORITIES) {
     for (const resource of resources) {
       const group = piles.filter(

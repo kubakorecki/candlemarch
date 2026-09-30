@@ -45,6 +45,11 @@ export interface Haul {
 export interface LogisticsState {
   /** Current haul per carrier, keyed by the carrier's entity ID. */
   hauls: Store<Haul>;
+  /**
+   * What the last Haul to a stockpile moved. Stockpile demand starts with the resource after it,
+   * so a steady supply of one good never starves another. Absent until the first such Haul.
+   */
+  lastToStockpile?: ResourceId;
 }
 
 function carrierIds(state: GameState): EntityId[] {
@@ -462,6 +467,7 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
       if (pickup.onStockpile) haul.fromTile = pickup.tile;
       if (dropoff.onTile) haul.toTile = dropoff.tile;
       hauls[id] = haul;
+      if (demand.kind === 'stockpile') state.logistics.lastToStockpile = demand.resource;
       return;
     }
   }

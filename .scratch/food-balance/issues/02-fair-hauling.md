@@ -1,6 +1,6 @@
 # No Stockpile good starves another; gatherer stalls show
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 01
 
@@ -17,3 +17,5 @@ Blocked by: 01
 - `pnpm check` passes.
 
 ## Comments
+
+2026-09-30 — Done. Round robin over stockpile resources (`state.logistics.lastToStockpile`); `outputFull` for hunter's lodges, fisher's huts and gatherers (all gathered resources full). Tests in `hauling.test.ts` and `bottlenecks.test.ts`. `camp`/`campNoFirewood` unchanged; `valley` now hauls hides but still starves by Summer 4, Carriers 99% busy all spring. See `docs/decisions.md`.

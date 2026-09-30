@@ -2,6 +2,7 @@
 // readable"). Derived each time it's asked, never stored.
 import type { Content, ResourceId } from '@candlemarch/content';
 import { idsOf } from './entities';
+import { outputRoom } from './gathering';
 import type { EntityId, GameState } from './state';
 import { isPaused, recipeBlockers } from './systems/production';
 import { openPositions } from './systems/staffing';
@@ -11,12 +12,16 @@ export type WorkplaceStatus =
   | { kind: 'noWorker' }
   /** A workshop lacks these inputs for its first recipe (none has all its inputs). */
   | { kind: 'waitingFor'; resources: ResourceId[] }
-  /** A workshop has a recipe's inputs, but its output buffer has no room for these outputs. */
+  /**
+   * A workshop has a recipe's inputs, but its output buffer has no room for these outputs; or a
+   * gathering Workplace has no room for what it brings back.
+   */
   | { kind: 'outputFull'; resources: ResourceId[] };
 
 /**
  * Why Workplace `building` is idle, or null when it isn't (or is idle on purpose: paused at its
- * stock target). "Waiting for" and "output full" apply to workshops (buildings with recipes).
+ * stock target). "Waiting for" applies to workshops (buildings with recipes), "output full" to
+ * workshops and gathering Workplaces (`gathererNoRoom`).
  */
 export function workplaceStatus(
   state: GameState,
@@ -27,7 +32,11 @@ export function workplaceStatus(
   if (!b) return null;
   if (openPositions(state, content, building).length > 0) return { kind: 'noWorker' };
   const recipes = content.buildings[b.type].recipes ?? [];
-  if (recipes.length === 0 || isPaused(state, content, building)) return null;
+  if (recipes.length === 0) {
+    const noRoom = gathererNoRoom(state, content, building);
+    return noRoom.length > 0 ? { kind: 'outputFull', resources: noRoom } : null;
+  }
+  if (isPaused(state, content, building)) return null;
   const { crafter, villager } = state.components;
   const working = idsOf(crafter).some(
     (id) => crafter[id]?.kind === 'working' && villager[id]?.workplace === building,
@@ -39,4 +48,30 @@ export function workplaceStatus(
   const stuck = blockers.find((r) => r.missing.length === 0);
   if (stuck) return { kind: 'outputFull', resources: stuck.noRoom };
   return { kind: 'waitingFor', resources: blockers[0]?.missing ?? [] };
+}
+
+/**
+ * What a gathering Workplace's output buffer has no room for, when that stops its worker: any
+ * part of a hunter's catch, a fisher's catch, or everything a gatherer gathers (a forager with
+ * room for mushrooms still works). Empty for any other building.
+ */
+function gathererNoRoom(state: GameState, content: Content, building: EntityId): ResourceId[] {
+  const b = state.components.building[building];
+  if (!b) return [];
+  const def = content.buildings[b.type];
+  const full = (resource: ResourceId, amount: number) =>
+    outputRoom(state, content, building, resource) < amount;
+  if (def.hunts)
+    return def.hunts.catch.filter((c) => full(c.resource, c.amount)).map((c) => c.resource);
+  const catchSlot = def.outputBuffer?.[0];
+  if (def.fishes && catchSlot) {
+    return full(catchSlot.resource, def.fishes.yieldPerCatch) ? [catchSlot.resource] : [];
+  }
+  const yields = new Map<ResourceId, number>();
+  for (const type of def.gathers ?? []) {
+    const obj = content.mapObjects[type];
+    yields.set(obj.resource, Math.max(yields.get(obj.resource) ?? 0, obj.yieldPerGather));
+  }
+  const noRoom = [...yields].filter(([resource, amount]) => full(resource, amount));
+  return noRoom.length > 0 && noRoom.length === yields.size ? noRoom.map(([r]) => r) : [];
 }

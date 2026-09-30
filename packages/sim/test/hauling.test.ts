@@ -133,3 +133,39 @@ describe('hauling on roads (job dispatch)', () => {
     );
   });
 });
+
+describe('hauling to stockpiles (job dispatch)', () => {
+  // A woodcutter's hut at (0,0), a hunter's lodge at (9,0) and a 3×1 stockpile between them, with
+  // one Carrier. Neither Workplace is staffed: the test fills their buffers by hand.
+  const yard: MapDef = {
+    name: 'yard',
+    rows: Array(6).fill('..........'),
+    buildings: [
+      { type: 'woodcutters_hut', x: 0, y: 0 },
+      { type: 'hunters_lodge', x: 9, y: 0 },
+    ],
+    stockpiles: [{ x: 4, y: 4, w: 3, h: 1 }],
+    villagers: [{ job: 'carrier', x: 5, y: 3 }],
+  };
+
+  function buildingOf(s: GameState, type: string) {
+    return Object.values(s.components.building).find((b) => b.type === type);
+  }
+
+  it('lets no stockpile good starve another: hides get hauled while logs keep coming', () => {
+    let s = createInitialState(1, yard, content);
+    for (const b of Object.values(s.components.building)) b.workerLimit = 0;
+    const lodge = buildingOf(s, 'hunters_lodge');
+    if (lodge) lodge.stock.hides = 4;
+    // Half a day, the woodcutter's buffer topped up to full every tick like a busy woodcutter's.
+    for (let i = 0; i < 1200; i++) {
+      const hut = buildingOf(s, 'woodcutters_hut');
+      if (hut) hut.stock.logs = 4;
+      s = step(s, [], content);
+    }
+    expect(buildingOf(s, 'hunters_lodge')?.stock.hides ?? 0).toBeLessThan(4);
+    const piled = Object.values(Object.values(s.components.stockpile)[0]?.goods ?? {});
+    expect(piled.some((g) => g.resource === 'hides')).toBe(true);
+    expect(piled.some((g) => g.resource === 'logs')).toBe(true);
+  });
+});
