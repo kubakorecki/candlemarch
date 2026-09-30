@@ -1793,35 +1793,35 @@ export function drawShrine(g: Graphics): void {
 }
 
 /**
- * An Abandoned mine, drawn around (0, 0) = the centre of its tile, over its iron Deposit: a black
- * mouth in the Mountain face under a timber frame, a plank nailed half across it.
+ * An Abandoned mine, drawn around (0, 0) = the centre of its tile, in front of its iron Deposit
+ * (whose rusty edges still show): a black mouth under a timber frame, a plank nailed half across.
  */
 export function drawAbandonedMine(g: Graphics): void {
   g.clear();
   const s = TILE_H / 64;
   g.poly(
     flat([
-      { x: -14 * s, y: 8 * s },
-      { x: -14 * s, y: -16 * s },
-      { x: -8 * s, y: -26 * s },
-      { x: 8 * s, y: -26 * s },
-      { x: 14 * s, y: -16 * s },
-      { x: 14 * s, y: 8 * s },
+      { x: -9 * s, y: 10 * s },
+      { x: -9 * s, y: -8 * s },
+      { x: -5 * s, y: -15 * s },
+      { x: 5 * s, y: -15 * s },
+      { x: 9 * s, y: -8 * s },
+      { x: 9 * s, y: 10 * s },
     ]),
   ).fill(palette.denMouth);
-  const timber = { ...INK, width: 7 * s, color: palette.plankDark };
-  g.moveTo(-15 * s, 9 * s).lineTo(-15 * s, -24 * s);
-  g.moveTo(15 * s, 9 * s).lineTo(15 * s, -24 * s);
-  g.moveTo(-21 * s, -26 * s).lineTo(21 * s, -26 * s);
-  g.stroke({ ...INK, width: 10 * s });
-  g.moveTo(-15 * s, 9 * s).lineTo(-15 * s, -24 * s);
-  g.moveTo(15 * s, 9 * s).lineTo(15 * s, -24 * s);
-  g.moveTo(-21 * s, -26 * s).lineTo(21 * s, -26 * s);
-  g.stroke(timber);
-  g.moveTo(-17 * s, -6 * s).lineTo(10 * s, -12 * s);
+  const frame = () => {
+    g.moveTo(-10 * s, 11 * s).lineTo(-10 * s, -14 * s);
+    g.moveTo(10 * s, 11 * s).lineTo(10 * s, -14 * s);
+    g.moveTo(-14 * s, -16 * s).lineTo(14 * s, -16 * s);
+  };
+  frame();
   g.stroke({ ...INK, width: 8 * s });
-  g.moveTo(-17 * s, -6 * s).lineTo(10 * s, -12 * s);
-  g.stroke({ ...timber, width: 5 * s, color: palette.plank });
+  frame();
+  g.stroke({ ...INK, width: 5 * s, color: palette.plankDark });
+  g.moveTo(-12 * s, 1 * s).lineTo(8 * s, -4 * s);
+  g.stroke({ ...INK, width: 7 * s });
+  g.moveTo(-12 * s, 1 * s).lineTo(8 * s, -4 * s);
+  g.stroke({ ...INK, width: 4 * s, color: palette.plank });
 }
 
 /** A progress bar centred on (x, y), `percent` filled from the left, in an ink frame. */

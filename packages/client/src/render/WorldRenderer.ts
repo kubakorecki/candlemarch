@@ -476,7 +476,8 @@ export class WorldRenderer {
       }
     }
 
-    // Points of interest, a hair behind a cache on the same tile (a Searched Ruins').
+    // Points of interest: in front of a map object on the same tile (the mine's iron Deposit, whose
+    // row runs sit 1e-6 under the tile's depth), a hair behind a cache (a Searched Ruins').
     for (const id of idsOf(poi)) {
       const at = tile[id];
       const p = poi[id];
@@ -495,7 +496,7 @@ export class WorldRenderer {
         view.key = key;
         const c = tileCenterWorld(at.x, at.y);
         view.node.position.set(c.x, c.y);
-        view.node.zIndex = depthOf(at.x + 0.5, at.y + 0.5) - 1e-3;
+        view.node.zIndex = depthOf(at.x + 0.5, at.y + 0.5) - 1e-7;
       }
     }
 
