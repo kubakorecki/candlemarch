@@ -67,6 +67,7 @@ import {
   drawGloamling,
   drawGloamlingEyes,
   drawGoodsStack,
+  drawGroundworkSite,
   drawHealthBar,
   drawHeatMap,
   drawHero,
@@ -560,6 +561,17 @@ export class WorldRenderer {
       );
       // Redraw posts in 10% steps; the label updates every change.
       const key = `${s.type}@${at.x},${at.y}r${s.rotation}:${delivered}:${Math.floor(progress * 10)}`;
+      const groundwork = this.content.buildings[s.type].groundwork;
+      if (groundwork) {
+        // Groundwork comes in long lines too: the ditch or the logs show how far along it is.
+        if (view.key !== key) {
+          const kind = 'road' in groundwork.becomes ? 'passRoad' : 'drain';
+          drawGroundworkSite(view.graphics, layout, kind, delivered, progress);
+          view.key = key;
+          view.node.zIndex = depthOf(at.x + 0.5, at.y + 0.5);
+        }
+        continue;
+      }
       if (this.content.buildings[s.type].wall) {
         // Wall sites come in long lines: no label, the stakes and logs show how far along it is.
         if (view.key !== key) {
@@ -1040,7 +1052,7 @@ export class WorldRenderer {
     const { map } = state;
     if (map.roads === this.drawnRoads) return;
     this.drawnRoads = map.roads;
-    const key = `${map.width}:${Object.keys(map.roads).join(',')}`;
+    const key = `${map.width}:${Object.entries(map.roads).join(',')}`;
     if (key === this.roadsKey) return;
     this.roadsKey = key;
     const has = (x: number, y: number) =>
@@ -1049,11 +1061,12 @@ export class WorldRenderer {
       x < map.width &&
       y < map.height &&
       map.roads[y * map.width + x] !== undefined;
-    const tiles: RoadTile[] = Object.keys(map.roads).map((k) => {
+    const tiles: RoadTile[] = Object.entries(map.roads).map(([k, kind]) => {
       const i = Number(k);
       const x = i % map.width;
       const y = Math.floor(i / map.width);
-      return { x, y, open: [has(x + 1, y), has(x, y + 1), has(x - 1, y), has(x, y - 1)] };
+      const open: RoadTile['open'] = [has(x + 1, y), has(x, y + 1), has(x - 1, y), has(x, y - 1)];
+      return { x, y, kind, open };
     });
     drawRoads(this.roads, tiles);
   }

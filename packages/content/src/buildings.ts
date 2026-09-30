@@ -202,4 +202,31 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 80, // 4 s
     },
   },
+  // Groundwork (M4, spec World and map: Terrain), laid tile by tile like a Road. Numbers Proposed.
+  drain: {
+    id: 'drain',
+    name: 'Drain',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 0 },
+    placeable: true,
+    employs: [],
+    groundwork: { on: 'swamp', becomes: { terrain: 'meadow' } },
+    construction: {
+      cost: [{ resource: 'logs', amount: 2 }],
+      buildTicks: 200, // 10 s
+    },
+  },
+  pass_road: {
+    id: 'pass_road',
+    name: 'Pass road',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 0 },
+    placeable: true,
+    employs: [],
+    groundwork: { on: 'pass_snow', becomes: { road: 'pass_road' } },
+    construction: {
+      cost: [{ resource: 'logs', amount: 6 }],
+      buildTicks: 600, // 30 s
+    },
+  },
 };

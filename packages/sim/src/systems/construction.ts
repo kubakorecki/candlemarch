@@ -1,8 +1,10 @@
 // Construction sites turn into buildings once all materials are in and the build time has passed.
-// There are no builders: the timer runs by itself, but only by day.
+// There are no builders: the timer runs by itself, but only by day. Groundwork (a Drain, a Pass
+// road) leaves no building: it changes its tile instead.
 import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
+import { finishGroundwork, groundworkOf } from '../groundwork';
 import { mapChanged } from '../mapCache';
 import type { GameState } from '../state';
 import { fullHp } from '../walls';
@@ -21,6 +23,11 @@ export function constructionSystem(state: GameState, content: Content): void {
 
     site.buildProgress += 1;
     if (site.buildProgress >= construction.buildTicks) {
+      const groundwork = groundworkOf(content, site.type);
+      if (groundwork) {
+        finishGroundwork(state, id, groundwork); // leaves no building
+        continue;
+      }
       delete sites[id];
       mapChanged(state); // a finished wall starts blocking
       building[id] = {

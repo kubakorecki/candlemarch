@@ -65,6 +65,18 @@ export function isWalkableTerrain(state: GameState, content: Content, tile: Tile
 }
 
 /**
+ * Whether the Hero can walk onto `tile`'s ground, whatever stands there: walkable terrain, terrain
+ * it wades (Pass snow) or a Road laid over terrain nobody walks otherwise (a Pass road).
+ */
+export function isHeroWalkableTerrain(state: GameState, content: Content, tile: Tile): boolean {
+  const terrain = terrainAt(state.map, tile);
+  if (terrain === undefined) return false;
+  const def = content.terrain[terrain];
+  const road = state.map.roads[tileIndex(state.map, tile.x, tile.y)] !== undefined;
+  return def.walkable || def.heroSpeedPercent !== undefined || road;
+}
+
+/**
  * Whether `tile` is riverbank: walkable terrain orthogonally next to a river tile. Trees or
  * buildings standing on it don't change that.
  */
@@ -163,6 +175,7 @@ function blocksWalking(
   const { building, site } = state.components;
   const type = building[id]?.type ?? site[id]?.type;
   if (type === undefined) return false;
+  if (content.buildings[type].groundwork) return false; // walked over while it's being built
   const wall = content.buildings[type].wall;
   if (!wall) return true;
   const built = building[id];
@@ -171,10 +184,11 @@ function blocksWalking(
 }
 
 /**
- * Walk-blocking grid: 1 where a villager or the Hero can't walk. Terrain that isn't walkable, map
- * objects (trees) and building/site footprints block, but not a wall's site, a built Gate or a
- * wall battered down to 0 HP. `gatesBlock` makes Gates block too, for Gloamlings. Cached until
- * the map changes (`mapChanged`), so don't write to it.
+ * Walk-blocking grid: 1 where a villager or the Hero can't walk. Terrain that isn't walkable
+ * (unless a Road is laid over it), map objects (trees) and building/site footprints block, but not
+ * a wall's site, a built Gate, a wall battered down to 0 HP or a groundwork site (a Drain, a Pass
+ * road). `gatesBlock` makes Gates block too, for Gloamlings. Cached until the map changes
+ * (`mapChanged`), so don't write to it.
  */
 export function blockedGrid(state: GameState, content: Content, gatesBlock = false): Uint8Array {
   return cached(state, content, gatesBlock ? 'blockedGates' : 'blocked', () =>
@@ -182,11 +196,27 @@ export function blockedGrid(state: GameState, content: Content, gatesBlock = fal
   );
 }
 
-function buildBlockedGrid(state: GameState, content: Content, gatesBlock: boolean): Uint8Array {
+/**
+ * The Hero's walk-blocking grid: `blockedGrid`, but terrain the Hero wades (Pass snow, which has
+ * a `heroSpeedPercent`) is open. Cached like it, so don't write to it.
+ */
+export function heroBlockedGrid(state: GameState, content: Content): Uint8Array {
+  return cached(state, content, 'blockedHero', () => buildBlockedGrid(state, content, false, true));
+}
+
+function buildBlockedGrid(
+  state: GameState,
+  content: Content,
+  gatesBlock: boolean,
+  hero = false,
+): Uint8Array {
   const { map } = state;
   const blocked = new Uint8Array(map.width * map.height);
   map.terrain.forEach((terrain, i) => {
-    if (!content.terrain[terrain].walkable) blocked[i] = 1;
+    const def = content.terrain[terrain];
+    // A Road opens terrain nobody walks otherwise: a Pass road over Pass snow.
+    const open = def.walkable || map.roads[i] !== undefined;
+    if (!open && !(hero && def.heroSpeedPercent !== undefined)) blocked[i] = 1;
   });
   for (const id of idsOf(state.components.mapObject)) {
     const t = state.components.tile[id];

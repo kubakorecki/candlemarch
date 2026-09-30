@@ -6,6 +6,7 @@ import { takeFromCache } from '../dens';
 import { idsOf } from '../entities';
 import { foodIds, isGranary } from '../granary';
 import { entityDoor, stockpileTileIndices, tileAt, tileIndex } from '../grid';
+import { groundworkDropTiles } from '../groundwork';
 import { lightDef } from '../lights';
 import { tileDistance } from '../pathfinding';
 import type { EntityId, GameState, Store, Tile } from '../state';
@@ -32,7 +33,10 @@ export interface Haul {
   to: EntityId;
   /** Stockpile or cache tile (map tile index) to pick up from. Absent when `from` is a building. */
   fromTile?: number;
-  /** Stockpile tile (map tile index) to deliver to. Absent when `to` is a site or workshop. */
+  /**
+   * Tile (map tile index) to deliver on: a stockpile tile, or where a groundwork site is supplied
+   * from (`groundworkDropTiles`). Absent when goods go in at `to`'s door.
+   */
   toTile?: number;
   /** `pickup`: walking to `from`. `dropoff`: carrying to `to`. `return`: carrying back to `from` because `to` is gone. */
   phase: 'pickup' | 'dropoff' | 'return';
@@ -201,14 +205,15 @@ function pickupFor(
 /** Where a haul drops off, and how many units fit there. */
 interface Dropoff {
   tile: number;
-  /** The tile is a stockpile tile, not a door. */
-  onStockpile: boolean;
+  /** The tile is kept in `Haul.toTile`: a stockpile tile or beside a groundwork site, not a door. */
+  onTile: boolean;
   room: number;
 }
 
 /**
- * Where to drop goods for `demand`: the site's or workshop's door, or the stockpile tile nearest
- * to tile `near` with room. Null if there's nowhere to put them.
+ * Where to drop goods for `demand`: the site's or workshop's door, the tile a groundwork site is
+ * supplied from that's quickest to walk to from tile `near`, or the stockpile tile nearest to
+ * `near` with room. Null if there's nowhere to put them.
  */
 function dropoffFor(
   state: GameState,
@@ -217,19 +222,27 @@ function dropoffFor(
   near: number,
 ): Dropoff | null {
   const { map } = state;
+  const groundwork = groundworkDropTiles(state, content, demand.target);
+  if (groundwork.length > 0) {
+    const costs = walkCosts(state, content, near);
+    const tiles = groundwork.map((t) => tileIndex(map, t.x, t.y));
+    // The quickest, ties to the first in `groundworkDropTiles`' order.
+    const best = tiles.reduce((a, b) => (costs.costTo(b) < costs.costTo(a) ? b : a));
+    return { tile: best, onTile: true, room: demand.amount };
+  }
   if (demand.kind !== 'stockpile') {
     const door = entityDoor(state, content, demand.target);
     if (!door) return null;
-    return { tile: tileIndex(map, door.x, door.y), onStockpile: false, room: demand.amount };
+    return { tile: tileIndex(map, door.x, door.y), onTile: false, room: demand.amount };
   }
   const tiles = stockpileTileIndices(state, demand.target);
   const found = nearestTile(map.width, tiles, near, (i) =>
     freeRoomOnTile(state, content, demand.target, i, demand.resource),
   );
-  return found && { tile: found.tile, onStockpile: true, room: found.amount };
+  return found && { tile: found.tile, onTile: true, room: found.amount };
 }
 
-/** Tile a haul walks to at one end: the stockpile tile if it has one, otherwise the door. */
+/** Tile a haul walks to at one end: its own tile if it has one (`fromTile`/`toTile`), else the door. */
 function endTile(
   state: GameState,
   content: Content,
@@ -447,7 +460,7 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
         phase: 'pickup',
       };
       if (pickup.onStockpile) haul.fromTile = pickup.tile;
-      if (dropoff.onStockpile) haul.toTile = dropoff.tile;
+      if (dropoff.onTile) haul.toTile = dropoff.tile;
       hauls[id] = haul;
       return;
     }

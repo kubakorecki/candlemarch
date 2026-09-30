@@ -8,6 +8,7 @@ import {
   bellOf,
   type Command,
   calendarAt,
+  canLayGroundwork,
   canLayPath,
   canLayWall,
   canPlaceBuilding,
@@ -24,6 +25,7 @@ import {
   groundHealth,
   groundsInReach,
   groundsNear,
+  groundworkOf,
   type HeroOrder,
   heroOf,
   heroOrderAt,
@@ -68,14 +70,25 @@ import { TOOLS, type ToolId, toolDef } from './tools';
 
 const NEW_GAME_SEED = 1;
 
-/** A building placed with a click (not a wall, which is dragged). */
+/** A building placed with a click (not a wall or groundwork, which are dragged). */
 function isBuilding(id: ToolId): id is BuildingId {
-  return id in content.buildings && !isWallTool(id);
+  return id in content.buildings && !isWallTool(id) && !isGroundworkTool(id);
+}
+
+/** Groundwork (a Drain, a Pass road) laid by dragging, like a path. */
+function isGroundworkTool(id: ToolId): id is BuildingId {
+  return id in content.buildings && groundworkOf(content, id as BuildingId) !== undefined;
 }
 
 /** A wall segment laid by dragging, like a path. */
 function isWallTool(id: ToolId): id is BuildingId {
   return id in content.buildings && content.buildings[id as BuildingId].wall !== undefined;
+}
+
+/** Why a drag of groundwork `tool` was refused. */
+function groundworkRefusal(tool: BuildingId): string {
+  const on = groundworkOf(content, tool)?.on;
+  return on ? `Lay it on ${content.terrain[on].name} only.` : "Can't build there.";
 }
 
 /** What the villager panel shows, as display text. */
@@ -673,6 +686,10 @@ export class Game {
       if (canLayWall(state, content, tool, from, to)) {
         this.bridge.command({ type: 'layWall', building: tool, from, to });
       } else this.setHud({ message: "Can't build there." });
+    } else if (isGroundworkTool(tool)) {
+      if (canLayGroundwork(state, content, tool, from, to)) {
+        this.bridge.command({ type: 'layGroundwork', building: tool, from, to });
+      } else this.setHud({ message: groundworkRefusal(tool) });
     } else if (tool === 'path') {
       if (canLayPath(state, content, from, to)) this.bridge.command({ type: 'layPath', from, to });
       else this.setHud({ message: "Can't lay a path there." });
@@ -919,6 +936,14 @@ export class Game {
         tiles: lShapeTiles(from, hover),
         valid: canLayWall(state, content, tool, from, hover),
         darkRing: darkRingTiles(state, content),
+      };
+    }
+    if (isGroundworkTool(tool)) {
+      const from = this.dragStart ?? hover;
+      return {
+        kind: 'tiles',
+        tiles: lShapeTiles(from, hover),
+        valid: canLayGroundwork(state, content, tool, from, hover),
       };
     }
     if (isBuilding(tool)) {

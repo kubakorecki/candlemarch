@@ -103,6 +103,20 @@ export const TOOLS: readonly {
     hint: "Drag to lay Gates, or click for one. Villagers and the hero walk through; Gloamlings don't.",
   },
   { id: 'path', label: 'Path', key: 'r', drag: true, hint: 'Drag to lay an L-shaped path.' },
+  {
+    id: 'drain',
+    label: 'Drain',
+    key: 'u',
+    drag: true,
+    hint: 'Drag over Swamp. Each tile, once built, turns into Meadow you can build on.',
+  },
+  {
+    id: 'pass_road',
+    label: 'Pass road',
+    key: 'j',
+    drag: true,
+    hint: 'Drag through the Pass snow. Each tile, once built, is open to everyone all year.',
+  },
   { id: 'removePath', label: 'Remove path', key: 'x', drag: true, hint: 'Drag to remove path.' },
   { id: 'stockpile', label: 'Stockpile', key: 's', drag: true, hint: 'Drag a rectangle.' },
   {

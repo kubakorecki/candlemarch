@@ -21,6 +21,8 @@ export type MapObjectId =
   | 'clay_deposit'
   | 'iron_deposit';
 export type BuildingId =
+  | 'drain'
+  | 'pass_road'
   | 'woodcutters_hut'
   | 'hut'
   | 'chopping_block'
@@ -42,7 +44,7 @@ export type JobId =
   | 'forager'
   | 'hunter'
   | 'watchman';
-export type RoadId = 'dirt_path';
+export type RoadId = 'dirt_path' | 'pass_road';
 export type HeroId = 'placeholder';
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
 
@@ -93,6 +95,11 @@ export interface TerrainDef {
    * 0 where it isn't walkable: nobody steps on it.
    */
   speedPercent: number;
+  /**
+   * Where villagers can't walk it, the Hero still wades it at this percentage off-road (Pass
+   * snow). Absent: the Hero walks it like everyone else.
+   */
+  heroSpeedPercent?: number;
 }
 
 /** Work that turns inputs into outputs at a workshop. */
@@ -397,6 +404,17 @@ export interface WallDef {
   gate: boolean;
 }
 
+/**
+ * Groundwork (M4): a 1×1 construction laid tile by tile over `on` terrain by dragging like a Road.
+ * Its site blocks nobody; when it's finished the site is gone and the tile has changed for good:
+ * its terrain becomes `terrain` (a Drain: Swamp to Meadow) or it holds the Road `road` (a Pass
+ * road over Pass snow).
+ */
+export interface GroundworkDef {
+  on: TerrainId;
+  becomes: { terrain: TerrainId } | { road: RoadId };
+}
+
 export interface BuildingDef {
   id: BuildingId;
   name: string;
@@ -453,6 +471,8 @@ export interface BuildingDef {
   watch?: WatchDef;
   /** Makes it a wall segment (M3): a palisade or a Gate. */
   wall?: WallDef;
+  /** Makes it groundwork (M4): a Drain or a Pass road. */
+  groundwork?: GroundworkDef;
   /** A village has at most one, built or under construction. */
   onePerVillage?: boolean;
   /** Cost and time to build it from a construction site. Absent for buildings that can't be built. */

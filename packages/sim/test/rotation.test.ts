@@ -79,11 +79,11 @@ describe('building layout', () => {
     expect(layoutOf(wide, origin, 3).door).toEqual({ x: 2, y: 1 });
   });
 
-  it('gives every building but a wall segment four different layouts', () => {
+  it('gives every building but a wall segment or groundwork four different layouts', () => {
     for (const type of Object.keys(content.buildings) as BuildingId[]) {
       const def = content.buildings[type];
-      // A wall segment is one tile with its door on it: turning it changes nothing.
-      if (def.wall) continue;
+      // A wall segment or groundwork is one tile with its door on it: turning it changes nothing.
+      if (def.wall || def.groundwork) continue;
       const shapes = ([0, 1, 2, 3] as const).map((r) =>
         JSON.stringify(layoutOf(def, { x: 10, y: 10 }, r)),
       );

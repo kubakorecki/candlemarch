@@ -12,16 +12,17 @@ export const terrain: Record<TerrainId, TerrainDef> = {
     buildable: false,
     speedPercent: 0,
   },
-  // Buildable once Drained (ticket 08 turns a Drained tile into Meadow).
+  // Buildable once Drained: a finished Drain turns the tile into Meadow.
   swamp: { id: 'swamp', name: 'Swamp', walkable: true, buildable: false, speedPercent: 50 },
   river: { id: 'river', name: 'River', walkable: false, buildable: false, speedPercent: 0 },
   ford: { id: 'ford', name: 'Ford', walkable: true, buildable: false, speedPercent: 50 },
-  // Open once a Pass road is built over it (ticket 08).
+  // Open to everyone once a Pass road is built over it; before that the Hero alone wades it.
   pass_snow: {
     id: 'pass_snow',
     name: 'Pass snow',
     walkable: false,
     buildable: false,
     speedPercent: 0,
+    heroSpeedPercent: 30,
   },
 };

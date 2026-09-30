@@ -1,5 +1,5 @@
 // Placeholder art drawn in code: bold ink outlines, flat earthy fills. Colours come from palette.ts.
-import type { ResourceAmount, ResourceId, TerrainId } from '@candlemarch/content';
+import type { ResourceAmount, ResourceId, RoadId, TerrainId } from '@candlemarch/content';
 import type { BuildingLayout } from '@candlemarch/sim';
 import type { Graphics } from 'pixi.js';
 import { gridToWorld, TILE_H, TILE_W, type Vec } from './iso';
@@ -919,6 +919,41 @@ export function drawWallSite(
 }
 
 /**
+ * A groundwork site (a Drain or a Pass road) on its one tile: a plate of worked ground, the logs
+ * delivered so far, and the work growing across the tile with build progress: a Drain's ditch
+ * dug from west to east, a Pass road's logs laid from north to south. No label; like wall sites,
+ * they come in long lines.
+ */
+export function drawGroundworkSite(
+  g: Graphics,
+  layout: BuildingLayout,
+  kind: 'drain' | 'passRoad',
+  delivered: number,
+  progress: number,
+): void {
+  g.clear();
+  const { x, y } = layout.origin;
+  const corners = diamond(x, y);
+  const [top, , bottom] = corners;
+  const mid = lerp(top, bottom, 0.5);
+  g.poly(flat(corners.map((p) => lerp(mid, p, 0.85))))
+    .fill({ color: palette.siteGround, alpha: 0.7 })
+    .stroke({ ...THIN_INK, alpha: 0.5 });
+  if (progress > 0) {
+    const work =
+      kind === 'drain'
+        ? diamond(x + 0.1, y + 0.38, 0.8 * progress, 0.24)
+        : diamond(x + 0.22, y + 0.1, 0.56, 0.8 * progress);
+    g.poly(flat(work))
+      .fill(kind === 'drain' ? palette.ditch : palette.passRoad)
+      .stroke(THIN_INK);
+  }
+  const m = tileMiddles(x, y);
+  const pile = lerp(m.centre, m.south, 0.45);
+  drawGoodsPile(g, 'logs', pile.x, pile.y, delivered);
+}
+
+/**
  * The hero, drawn around (0, 0) = their feet: taller than a villager, in a flared cloak with a
  * gold circlet, so it reads apart from villagers at a glance.
  */
@@ -1289,8 +1324,15 @@ export function drawPlacementGhost(g: Graphics, layout: BuildingLayout, valid: b
 export interface RoadTile {
   x: number;
   y: number;
+  kind: RoadId;
   open: [boolean, boolean, boolean, boolean];
 }
+
+/** Each Road kind's fill and edge. */
+const ROAD_COLORS: Record<RoadId, { fill: number; edge: number }> = {
+  dirt_path: { fill: palette.dirt, edge: palette.dirtDark },
+  pass_road: { fill: palette.passRoad, edge: palette.passRoadDark },
+};
 
 /** Rects (in tiles, relative to the tile origin) of a road piece's centre and arms, `pad` wider. */
 function roadRects(t: RoadTile, pad: number): [number, number, number, number][] {
@@ -1304,19 +1346,33 @@ function roadRects(t: RoadTile, pad: number): [number, number, number, number][]
   return rects;
 }
 
-/** Dirt paths: straight pieces, corners and junctions from each tile's open sides. */
+/**
+ * Roads: straight pieces, corners and junctions from each tile's open sides, in each kind's
+ * colours. A Pass road's pieces are wider and ribbed with the logs it's laid from.
+ */
 export function drawRoads(g: Graphics, tiles: RoadTile[]): void {
   g.clear();
-  for (const [pad, color] of [
-    [0.06, palette.dirtDark],
-    [0, palette.dirt],
-  ] as const) {
+  for (const edge of [true, false]) {
     for (const t of tiles) {
-      for (const [rx, ry, rw, rh] of roadRects(t, pad)) {
-        g.poly(flat(diamond(t.x + rx, t.y + ry, rw, rh))).fill(color);
+      const colors = ROAD_COLORS[t.kind];
+      const wide = t.kind === 'pass_road' ? 0.06 : 0;
+      for (const [rx, ry, rw, rh] of roadRects(t, (edge ? 0.06 : 0) + wide)) {
+        g.poly(flat(diamond(t.x + rx, t.y + ry, rw, rh))).fill(edge ? colors.edge : colors.fill);
       }
     }
   }
+  // Log seams across each Pass road tile, along both axes where it runs.
+  for (const t of tiles) {
+    if (t.kind !== 'pass_road') continue;
+    const alongX = t.open[0] || t.open[2] || !(t.open[1] || t.open[3]);
+    for (const f of [0.2, 0.4, 0.6, 0.8]) {
+      const [a, b] = alongX
+        ? [gridToWorld(t.x + f, t.y + 0.26), gridToWorld(t.x + f, t.y + 0.74)]
+        : [gridToWorld(t.x + 0.26, t.y + f), gridToWorld(t.x + 0.74, t.y + f)];
+      g.moveTo(a.x, a.y).lineTo(b.x, b.y);
+    }
+  }
+  g.stroke({ ...THIN_INK, alpha: 0.45 });
 }
 
 /** A Road tile on the heat-map, and how busy it is: 0 unused, 1 to `HEAT_LEVELS` busiest. */

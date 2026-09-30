@@ -32,7 +32,7 @@ export const BUILD_CATEGORIES: readonly BuildCategory[] = [
     id: 'roads',
     label: 'Roads & Storage',
     icon: 'path',
-    tools: ['path', 'stockpile', 'removePath'],
+    tools: ['path', 'stockpile', 'removePath', 'drain', 'pass_road'],
   },
 ];
 
@@ -54,6 +54,8 @@ export const TOOL_ICONS: Record<ToolId, IconName> = {
   path: 'path',
   stockpile: 'stockpile',
   removePath: 'unpath',
+  drain: 'drain',
+  pass_road: 'pass',
   demolish: 'pick',
 };
 

@@ -89,6 +89,11 @@ export const palette = {
 
   dirt: 0x9a8260,
   dirtDark: 0x6f5a40,
+  // A Pass road: split logs laid across packed snow.
+  passRoad: 0x8f7b62,
+  passRoadDark: 0x5e4d3a,
+  // A Drain's ditch, being dug.
+  ditch: 0x4a4130,
   pileGround: 0x7d6849,
   iconBg: 0xefe4cc,
   sitePost: 0xb59a70,

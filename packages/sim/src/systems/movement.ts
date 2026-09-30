@@ -1,11 +1,19 @@
 // Walking along tile paths, plus helpers other systems use to start and stop walks.
 import type { Content } from '@candlemarch/content';
 import { idsOf } from '../entities';
-import { blockedGrid, inBounds, tileAt, tileCenter, tileIndex, tileOfPoint } from '../grid';
+import {
+  blockedGrid,
+  heroBlockedGrid,
+  inBounds,
+  tileAt,
+  tileCenter,
+  tileIndex,
+  tileOfPoint,
+} from '../grid';
 import { litGrid } from '../lights';
 import { cached, cachedCosts } from '../mapCache';
 import { type CostSearch, canReach, findPath, type Grid, regions } from '../pathfinding';
-import { maxSpeedPercent, speedPercentAt, speedPercentGrid } from '../roads';
+import { heroSpeedPercentAt, maxSpeedPercent, speedPercentAt, speedPercentGrid } from '../roads';
 import { speedPercent } from '../speed';
 import {
   DIAGONAL_UNITS,
@@ -33,15 +41,42 @@ export function isAt(state: GameState, id: EntityId, tile: Tile): boolean {
 
 /**
  * The grid walkers path over: what blocks walking, and how fast each tile is. A Gloamling
- * (`walker`) gets `gloamlingGrid`.
+ * (`walker`) gets `gloamlingGrid`; the Hero gets `heroGrid`.
  */
 export function walkGrid(state: GameState, content: Content, walker?: EntityId): Grid {
   if (walker !== undefined && state.components.gloamling[walker]) {
     return gloamlingGrid(state, content);
   }
+  if (walker !== undefined && state.components.hero[walker]) return heroGrid(state, content);
   return cached(state, content, 'walkGrid', () =>
     gridOver(state, content, blockedGrid(state, content)),
   );
+}
+
+/**
+ * The grid the Hero paths over: villagers' grid, but it wades Pass snow (`heroBlockedGrid`) at
+ * the snow's `heroSpeedPercent` (`heroSpeedPercentAt`). Cached until the map changes.
+ */
+function heroGrid(state: GameState, content: Content): Grid {
+  const { map } = state;
+  return cached(state, content, 'heroWalkGrid', () => ({
+    width: map.width,
+    height: map.height,
+    blocked: heroBlockedGrid(state, content),
+    speedPercent: speedPercentGrid(map, content, true),
+    maxSpeedPercent: maxSpeedPercent(content),
+  }));
+}
+
+/** Walking speed percent on tile `index` for walker `id`: the Hero's (`heroSpeedPercentAt`) or everyone's. */
+function walkerSpeedPercentAt(
+  state: GameState,
+  content: Content,
+  id: EntityId,
+  index: number,
+): number {
+  const at = state.components.hero[id] ? heroSpeedPercentAt : speedPercentAt;
+  return at(state.map, content, index);
 }
 
 /** A walking grid with `blocked` and the map's road speeds. */
@@ -118,7 +153,8 @@ function canWalkTo(
   goals: readonly number[],
 ): boolean {
   const grid = walkGrid(state, content, id);
-  const key = state.components.gloamling[id] ? 'gloamlingRegions' : 'walkRegions';
+  const { gloamling, hero } = state.components;
+  const key = gloamling[id] ? 'gloamlingRegions' : hero[id] ? 'heroRegions' : 'walkRegions';
   return canReach(
     grid,
     cached(state, content, key, () => regions(grid)),
@@ -225,7 +261,7 @@ export function movementSystem(state: GameState, content: Content): void {
     // Speed depends on the tile being walked onto. Budget left over after reaching a tile
     // centre is rescaled to the next segment's speed. Slowdowns such as Tired scale it all.
     const own = speedPercent(state, content, id);
-    let percent = speedPercentAt(map, content, segment(path).to);
+    let percent = walkerSpeedPercentAt(state, content, id, segment(path).to);
     let budget = Math.trunc((speed * percent * own) / 10000);
     while (budget > 0 && path.next < path.tiles.length) {
       const { from, to } = segment(path);
@@ -236,7 +272,7 @@ export function movementSystem(state: GameState, content: Content): void {
         path.progress = 0;
         path.next += 1;
         if (path.next < path.tiles.length) {
-          const nextPercent = speedPercentAt(map, content, segment(path).to);
+          const nextPercent = walkerSpeedPercentAt(state, content, id, segment(path).to);
           budget = Math.trunc((budget * nextPercent) / percent);
           percent = nextPercent;
         }

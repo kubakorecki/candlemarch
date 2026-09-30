@@ -77,6 +77,29 @@ describe('content validation', () => {
     expect(mapObjects.iron_deposit.deposit).toEqual({ terrain: 'mountain', edge: 'face' });
   });
 
+  it('groundwork is a 1×1 construction that changes terrain that exists into what exists', () => {
+    for (const b of Object.values(buildings)) {
+      const { groundwork } = b;
+      if (!groundwork) continue;
+      expect(b.size, `${b.id}.size`).toEqual({ w: 1, h: 1 });
+      expect(b.door, `${b.id}.door`).toEqual({ x: 0, y: 0 });
+      expect(b.employs, `${b.id}.employs`).toEqual([]);
+      expect(b.construction, `${b.id}.construction`).toBeDefined();
+      expect(terrain, `${b.id}.groundwork.on`).toHaveProperty(groundwork.on);
+      if ('terrain' in groundwork.becomes) {
+        expect(terrain, `${b.id} becomes`).toHaveProperty(groundwork.becomes.terrain);
+      } else {
+        expect(roads, `${b.id} becomes`).toHaveProperty(groundwork.becomes.road);
+      }
+    }
+    for (const t of Object.values(terrain)) {
+      if (t.heroSpeedPercent !== undefined) {
+        expectPositiveInt(t.heroSpeedPercent, `${t.id}.heroSpeedPercent`);
+        expect(t.walkable, `${t.id} waded by the Hero alone`).toBe(false);
+      }
+    }
+  });
+
   it('jobs use positive integers', () => {
     for (const job of Object.values(jobs)) {
       expectPositiveInt(job.walkSpeed, `${job.id}.walkSpeed`);
@@ -280,7 +303,7 @@ describe('content validation', () => {
     for (const b of Object.values(buildings)) {
       expectPositiveInt(b.size.w, `${b.id}.size.w`);
       expectPositiveInt(b.size.h, `${b.id}.size.h`);
-      if (b.wall) continue; // walls: see below
+      if (b.wall || b.groundwork) continue; // walls and groundwork: see below
       const { x, y } = b.door;
       const inside = x >= 0 && x < b.size.w && y >= 0 && y < b.size.h;
       expect(inside, `${b.id} door inside footprint`).toBe(false);

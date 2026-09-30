@@ -4,6 +4,7 @@ import { isMonsterRate } from './dens';
 import { createEntity, destroyEntity } from './entities';
 import { setFog } from './fog';
 import { canPlaceBuilding } from './grid';
+import { layGroundwork } from './groundwork';
 import { type HeroOrder, orderHero } from './hero';
 import { ringBell } from './militia';
 import { layPath, removePath } from './roads';
@@ -40,6 +41,8 @@ export type Command =
   | { type: 'removePath'; from: Tile; to: Tile }
   /** Lays wall segments (`palisade` or `gate`) along the L from `from` to `to`, like a path. */
   | { type: 'layWall'; building: BuildingId; from: Tile; to: Tile }
+  /** Lays groundwork (a Drain or a Pass road) along the L from `from` to `to`. */
+  | { type: 'layGroundwork'; building: BuildingId; from: Tile; to: Tile }
   | { type: 'placeStockpile'; x: number; y: number; w: number; h: number }
   | { type: 'removeStockpile'; id: EntityId }
   | { type: 'setStockpilePriority'; id: EntityId; priority: StockpilePriority }
@@ -84,6 +87,10 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'layPath': {
       layPath(state, content, command.from, command.to);
+      return;
+    }
+    case 'layGroundwork': {
+      layGroundwork(state, content, command.building, command.from, command.to);
       return;
     }
     case 'layWall': {

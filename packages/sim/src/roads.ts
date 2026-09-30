@@ -86,14 +86,17 @@ export function layPath(state: GameState, content: Content, from: Tile, to: Tile
   staticChanged(state);
 }
 
-/** Removes every road tile along the L from `from` to `to`. Ignored if an end is off the map. */
+/**
+ * Removes every Dirt path tile along the L from `from` to `to`; a Pass road, built from a site,
+ * stays. Ignored if an end is off the map.
+ */
 export function removePath(state: GameState, from: Tile, to: Tile): void {
   if (!endsInBounds(state, from, to)) return;
   const { map } = state;
   let removed = false;
   for (const t of lShapeTiles(from, to)) {
     const i = tileIndex(map, t.x, t.y);
-    if (map.roads[i] === undefined) continue;
+    if (map.roads[i] !== 'dirt_path') continue;
     delete map.roads[i];
     removed = true;
   }
@@ -122,11 +125,21 @@ export function speedPercentAt(map: MapState, content: Content, index: number): 
   return terrain === undefined ? 0 : content.terrain[terrain].speedPercent;
 }
 
-/** Walking speed percent of every tile, row-major. */
-export function speedPercentGrid(map: MapState, content: Content): Uint16Array {
-  return Uint16Array.from({ length: map.width * map.height }, (_, i) =>
-    speedPercentAt(map, content, i),
-  );
+/**
+ * The Hero's walking speed on tile `index`: as everyone's (`speedPercentAt`), except on terrain
+ * only the Hero wades (Pass snow off the Pass road), where it's the terrain's `heroSpeedPercent`.
+ */
+export function heroSpeedPercentAt(map: MapState, content: Content, index: number): number {
+  const terrain = map.terrain[index];
+  const wade = terrain === undefined ? undefined : content.terrain[terrain].heroSpeedPercent;
+  if (wade !== undefined && map.roads[index] === undefined) return wade;
+  return speedPercentAt(map, content, index);
+}
+
+/** Walking speed percent of every tile, row-major; the Hero's with `hero`. */
+export function speedPercentGrid(map: MapState, content: Content, hero = false): Uint16Array {
+  const at = hero ? heroSpeedPercentAt : speedPercentAt;
+  return Uint16Array.from({ length: map.width * map.height }, (_, i) => at(map, content, i));
 }
 
 /** The fastest walking speed percent anywhere: the fastest road's or terrain's. */

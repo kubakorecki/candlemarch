@@ -30,6 +30,7 @@ export {
   tileCenter,
   tileOfPoint,
 } from './grid';
+export { canLayGroundwork, groundworkOf } from './groundwork';
 export { type HeroOrder, heroOf, heroOrderAt } from './hero';
 export {
   type GroundHealth,

@@ -11,7 +11,7 @@ import {
   blockedGrid,
   entityDoor,
   footprint,
-  isWalkableTerrain,
+  isHeroWalkableTerrain,
   standingTiles,
   stockpileTileIndices,
   tileAt,
@@ -314,13 +314,17 @@ export function heroOrderAt(state: GameState, content: Content, tile: Tile): Her
   const gloamling = isInSight(state, tile) ? gloamlingAt(state, tile) : null;
   if (gloamling !== null) return { order: 'attack', gloamling };
   if (!isRevealed(state, tile)) {
-    return isWalkableTerrain(state, content, tile) ? { order: 'move', x: tile.x, y: tile.y } : null;
+    return isHeroWalkableTerrain(state, content, tile)
+      ? { order: 'move', x: tile.x, y: tile.y }
+      : null;
   }
   const den = denAt(state, tile);
   if (den !== null) return { order: 'attackDen', den };
   const thing = thingAt(state, content, tile);
   if (thing === null) {
-    return isWalkableTerrain(state, content, tile) ? { order: 'move', x: tile.x, y: tile.y } : null;
+    return isHeroWalkableTerrain(state, content, tile)
+      ? { order: 'move', x: tile.x, y: tile.y }
+      : null;
   }
   const tree = state.components.mapObject[thing];
   if (tree) {
