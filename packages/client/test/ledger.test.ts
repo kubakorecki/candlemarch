@@ -45,6 +45,7 @@ describe('Ledger goods', () => {
       'stone',
       'clay',
       'iron_ore',
+      'charcoal',
     ]);
   });
 

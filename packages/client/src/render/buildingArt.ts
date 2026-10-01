@@ -490,6 +490,7 @@ export function drawBuilding(g: Graphics, layout: BuildingLayout, type: Building
   else if (type === 'village_hall') drawVillageHall(g, layout);
   else if (type === 'notice_board') drawNoticeBoard(g, layout);
   else if (type === 'farm') drawFarm(g, layout);
+  else if (type === 'charcoal_kiln') drawCharcoalKiln(g, layout);
   else drawCabin(g, layout);
 }
 
@@ -1377,6 +1378,66 @@ function drawFarm(g: Graphics, layout: BuildingLayout): void {
   drawDoor(g, layout, box, 0, WALL_H * 0.85);
   drawSacks(g, box, propWall(face));
   drawGableFront(g, roof, THATCH);
+}
+
+// ---------------------------------------------------------------- Charcoal kiln
+
+/**
+ * The charcoal kiln: a squat dome of clay-daubed earth on a ring of stones, a dark arched mouth
+ * facing its door and smoke curling from the vent on top.
+ */
+function drawCharcoalKiln(g: Graphics, layout: BuildingLayout): void {
+  const { origin, size } = layout;
+  const c = at(origin.x + size.w / 2, origin.y + size.h / 2, 0);
+  const rx = TILE_H * 0.62;
+  const ry = rx / 2;
+  const h = WALL_H * 1.05;
+  // The stone ring, then the dome over it.
+  g.ellipse(c.x, c.y, rx + 3 * S, ry + 2 * S)
+    .fill(palette.stoneDark)
+    .stroke(INK);
+  g.moveTo(c.x - rx, c.y)
+    .bezierCurveTo(c.x - rx, c.y - h * 1.2, c.x + rx, c.y - h * 1.2, c.x + rx, c.y)
+    .arc(c.x, c.y, rx, 0, Math.PI)
+    .closePath()
+    .fill(palette.clay)
+    .stroke(INK);
+  // Shade on the camera's right, the darker side.
+  g.moveTo(c.x + rx * 0.2, c.y - h * 0.88)
+    .bezierCurveTo(
+      c.x + rx * 0.8,
+      c.y - h * 0.8,
+      c.x + rx,
+      c.y - h * 0.3,
+      c.x + rx * 0.9,
+      c.y + ry * 0.4,
+    )
+    .stroke({ width: 4 * S, color: palette.clayDark, alpha: 0.7, cap: 'round' });
+  // The mouth, on the door's side of the dome.
+  const { sill } = doorway(layout);
+  const m = lerp(c, at(sill.x, sill.y, 0), 0.75);
+  g.moveTo(m.x - 7 * S, m.y)
+    .lineTo(m.x - 7 * S, m.y - 9 * S)
+    .arc(m.x, m.y - 9 * S, 7 * S, Math.PI, 0)
+    .lineTo(m.x + 7 * S, m.y)
+    .closePath()
+    .fill(palette.door)
+    .stroke(INK);
+  // The vent and its smoke.
+  const top = { x: c.x, y: c.y - h * 0.9 };
+  g.ellipse(top.x, top.y, 6 * S, 3 * S)
+    .fill(palette.charcoal)
+    .stroke(THIN_INK);
+  g.moveTo(top.x, top.y - 2 * S)
+    .bezierCurveTo(
+      top.x - 8 * S,
+      top.y - 12 * S,
+      top.x + 8 * S,
+      top.y - 18 * S,
+      top.x + 2 * S,
+      top.y - 30 * S,
+    )
+    .stroke({ width: 5 * S, color: palette.smoke, alpha: 0.55, cap: 'round' });
 }
 
 // ---------------------------------------------------------------- Village hall

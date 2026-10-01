@@ -39,7 +39,12 @@ export const BUILD_CATEGORIES: readonly BuildCategory[] = [
       'farm',
     ],
   },
-  { id: 'workshops', label: 'Workshops', icon: 'block', tools: ['chopping_block'] },
+  {
+    id: 'workshops',
+    label: 'Workshops',
+    icon: 'block',
+    tools: ['chopping_block', 'charcoal_kiln'],
+  },
   { id: 'village', label: 'Village', icon: 'hall', tools: ['village_hall', 'notice_board'] },
   {
     id: 'night',
@@ -71,6 +76,7 @@ export const TOOL_ICONS: Record<ToolId, IconName> = {
   bog_iron_digger: 'drain',
   farm: 'grain',
   chopping_block: 'block',
+  charcoal_kiln: 'kiln',
   village_hall: 'hall',
   notice_board: 'board',
   torch: 'torch',

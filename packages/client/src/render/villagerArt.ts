@@ -28,6 +28,7 @@ export const JOB_COLORS: Record<JobId, number> = {
   miner: palette.miner,
   bog_digger: palette.bogDigger,
   farmer: palette.farmer,
+  charcoal_burner: palette.charcoalBurner,
 };
 
 /** A stick from (x1, y1) to (x2, y2): an ink edge round a line of `color`. */
@@ -285,7 +286,7 @@ function drawHead(g: Graphics, job: JobId): void {
 /**
  * The tool a villager holds for its Job, drawn over its body: the woodcutter's axe on its shoulder,
  * the woodsplitter's maul, the fisher's rod, the forager's basket, the hunter's bow, the spade of
- * the forester, clay digger and bog digger, the pick of the quarryman and miner, the farmer's
+ * the forester, clay digger, bog digger and charcoal burner, the pick of the quarryman and miner, the farmer's
  * scythe, the watchman's spear. Carriers carry nothing but their pack. Hidden while the villager swings its axe at work.
  */
 export function drawVillagerTool(g: Graphics, job: JobId): void {
@@ -359,7 +360,12 @@ export function drawVillagerTool(g: Graphics, job: JobId): void {
     g.moveTo(1 * S, -46 * S)
       .quadraticCurveTo(10 * S, -56 * S, 20 * S, -50 * S)
       .stroke({ width: 2.5 * S, color: palette.iron, cap: 'round' });
-  } else if (job === 'forester' || job === 'clay_digger' || job === 'bog_digger') {
+  } else if (
+    job === 'forester' ||
+    job === 'clay_digger' ||
+    job === 'bog_digger' ||
+    job === 'charcoal_burner'
+  ) {
     // A spade on the shoulder, its blade up behind the head.
     pole(g, hx, hy + 2 * S, 12 * S, -50 * S, 2.5 * S, palette.log);
     g.poly([8 * S, -52 * S, 17 * S, -49 * S, 18 * S, -60 * S, 12 * S, -63 * S])

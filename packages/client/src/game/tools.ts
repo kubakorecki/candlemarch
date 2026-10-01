@@ -56,6 +56,13 @@ export const TOOLS: readonly {
     hint: 'Click to place. Shift-click places more.',
   },
   {
+    id: 'charcoal_kiln',
+    label: 'Charcoal kiln',
+    key: null,
+    drag: false,
+    hint: 'Click to place. Its charcoal burner burns logs into charcoal, fuel for the bloomery. Shift-click places more.',
+  },
+  {
     id: 'foragers_hut',
     label: "Forager's hut",
     key: 'o',

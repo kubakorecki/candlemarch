@@ -87,6 +87,13 @@ export const jobs: Record<JobId, JobDef> = {
     carryCapacity: 3, // a sack: a Field's whole harvest
     idleRetryTicks: 20,
   },
+  charcoal_burner: {
+    id: 'charcoal_burner',
+    name: 'Charcoal burner',
+    walkSpeed: 75,
+    carryCapacity: 1,
+    idleRetryTicks: 20,
+  },
   carrier: {
     id: 'carrier',
     name: 'Carrier',

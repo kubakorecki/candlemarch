@@ -30,4 +30,6 @@ export const resources: Record<ResourceId, ResourceDef> = {
   iron_ore: { id: 'iron_ore', name: 'Iron ore', storage: 'stockpile', standingOrder: 40 },
   // From the farm's Fields: Food eaten as it is, and it keeps long (spec, Spoilage).
   grain: { id: 'grain', name: 'Grain', storage: 'granary', spoilPercent: 1, standingOrder: 80 },
+  // From the charcoal kiln; the bloomery's fuel (M5).
+  charcoal: { id: 'charcoal', name: 'Charcoal', storage: 'stockpile', standingOrder: 30 },
 };

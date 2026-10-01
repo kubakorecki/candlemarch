@@ -146,6 +146,10 @@ export const palette = {
   // Grain: a tied sheaf (the yard), and ripe stalks on a Field.
   grain: 0xc4a35a,
   grainDark: 0x957a3e,
+  // Charcoal: black lumps with a grey sheen; the kiln's smoke.
+  charcoal: 0x2f2b28,
+  charcoalSheen: 0x6a645e,
+  smoke: 0x8c877f,
 
   // Fields (render/shapes.ts `drawFields`): tilled earth with darker furrows, green shoots while it
   // grows, pale stubble once harvested.
@@ -175,6 +179,7 @@ export const palette = {
   miner: 0x4f4a45,
   bogDigger: 0x5c6648,
   farmer: 0x9a8a4a,
+  charcoalBurner: 0x4e4640,
   carrier: 0x8a7d63,
   skin: 0xd6b48e,
   axeHead: 0x9aa0a3,

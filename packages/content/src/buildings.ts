@@ -356,4 +356,24 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 300, // 15 s
     },
   },
+  // The charcoal kiln (M5, no master): a workshop burning logs into charcoal for the bloomery.
+  // Numbers Proposed.
+  charcoal_kiln: {
+    id: 'charcoal_kiln',
+    name: 'Charcoal kiln',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [{ job: 'charcoal_burner', count: 1 }],
+    recipes: ['burn_charcoal'],
+    inputBuffer: [{ resource: 'logs', capacity: 6 }],
+    outputBuffer: { resources: ['charcoal'], yard: { x: 1, y: 0 } },
+    construction: {
+      cost: [
+        { resource: 'logs', amount: 6 },
+        { resource: 'stone', amount: 4 },
+      ],
+      buildTicks: 200, // 10 s
+    },
+  },
 };

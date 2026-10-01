@@ -1092,6 +1092,16 @@ function drawGrain(g: Graphics, x: number, y: number, s: number): void {
   g.rect(x - 1 * s, y - 4.5 * s, 2.5 * s, 8.5 * s).fill(palette.rope);
 }
 
+/** One lump of charcoal, centred on (x, y). */
+function drawCharcoal(g: Graphics, x: number, y: number, s: number): void {
+  g.poly([x - 8 * s, y + 3 * s, x - 6 * s, y - 3 * s, x + 2 * s, y - 4 * s, x + 8 * s, y + 3 * s])
+    .fill(palette.charcoal)
+    .stroke(THIN_INK);
+  g.moveTo(x - 4 * s, y - 2 * s)
+    .lineTo(x + 1 * s, y - 2.5 * s)
+    .stroke({ width: 1.2 * s, color: palette.charcoalSheen });
+}
+
 /** One lump of iron ore, centred on (x, y). */
 function drawIronOre(g: Graphics, x: number, y: number, s: number): void {
   g.poly([x - 8 * s, y + 3 * s, x - 5 * s, y - 4 * s, x + 4 * s, y - 4.5 * s, x + 8 * s, y + 3 * s])
@@ -1116,6 +1126,7 @@ const PIECES: Record<
   clay: { draw: drawClay, w: 17, h: 8 },
   iron_ore: { draw: drawIronOre, w: 17, h: 8 },
   grain: { draw: drawGrain, w: 19, h: 8 },
+  charcoal: { draw: drawCharcoal, w: 17, h: 8 },
 };
 
 /** A pyramid of `count` pieces of `resource` whose bottom row is centred on (x, y). */
