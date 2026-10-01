@@ -4,7 +4,7 @@ import type { BuildingLayout, Tile } from '@candlemarch/sim';
 import type { Graphics } from 'pixi.js';
 import { gridToWorld, TILE_H, TILE_W, type Vec } from './iso';
 import { palette } from './palette';
-import type { TreeLook, TreeSpecies } from './treeLooks';
+import { type TreeLook, type TreeSpecies, tileHash } from './treeLooks';
 
 export const INK = { width: 3, color: palette.ink, join: 'round', cap: 'round' } as const;
 export const THIN_INK = { width: 2, color: palette.ink, join: 'round', cap: 'round' } as const;
@@ -88,8 +88,9 @@ function tileVariant(x: number, y: number, n: number): number {
 /**
  * The ground is drawn in layers, each a chunk at a time, in this order across the whole map:
  * `drawGroundEdge` (the earthen front edge), `drawLand`, `drawGridLines`, `drawWater`,
- * `drawEdges`, then `drawMapOutline`. Checkered land, faint grid lines, then river and Ford tiles
- * as flat water (pale cracked ice when frozen), and ink where terrain groups meet.
+ * `drawEdges`, `drawMapOutline`, then `drawRelief`. Checkered land, faint grid lines, then river
+ * and Ford tiles as flat water (pale cracked ice when frozen), ink where terrain groups meet, and
+ * last the Mountains' peaks, over all the rest.
  */
 export function drawGroundEdge(g: Graphics, width: number, height: number): void {
   g.clear();
@@ -105,7 +106,8 @@ export function drawGroundEdge(g: Graphics, width: number, height: number): void
 
 /**
  * Every tile of `chunk` but water, row by row: checkered Meadow, Rock (with cracks and pebbles)
- * and Swamp (with pools and reeds); Mountain as a craggy peak; Pass snow as a white drift.
+ * and Swamp (with pools and reeds); Mountain as dark rock (`drawRelief` raises its peaks); Pass
+ * snow as a white drift.
  */
 export function drawLand(g: Graphics, chunk: TileChunk, map: GroundMap): void {
   g.clear();
@@ -148,27 +150,9 @@ function drawSwampDetail(g: Graphics, x: number, y: number): void {
   g.stroke({ width: 1.5 * s, color: palette.swampReed, cap: 'round' });
 }
 
-/** A Mountain tile: dark rock with a peak on it, lit on its west face. */
+/** A Mountain tile's ground: dark rock. Its peak is drawn over everything by `drawRelief`. */
 function drawMountainTile(g: Graphics, x: number, y: number): void {
-  const [, right, , left] = diamond(x, y);
   g.poly(flat(diamond(x, y))).fill(palette.mountainDark);
-  const rise = TILE_H * (0.3 + tileVariant(x, y, 3) * 0.06);
-  const base = gridToWorld(x + 0.5, y + 0.5);
-  const foot = gridToWorld(x + 0.8, y + 0.8);
-  const peak = up(gridToWorld(x + 0.45, y + 0.45), rise);
-  g.poly(flat([left, peak, foot])).fill(palette.mountainLight);
-  g.poly(flat([peak, right, foot])).fill(palette.mountain);
-  g.moveTo(left.x, left.y).lineTo(peak.x, peak.y).lineTo(right.x, right.y);
-  g.moveTo(peak.x, peak.y).lineTo(foot.x, foot.y);
-  g.stroke(THIN_INK);
-  // A snow cap on the tallest.
-  if (base.y - peak.y > TILE_H * 0.4) {
-    const l = lerp(peak, left, 0.18);
-    const r = lerp(peak, right, 0.18);
-    g.poly(flat([l, peak, r]))
-      .fill(palette.snow)
-      .stroke({ ...THIN_INK, width: 1.5 });
-  }
 }
 
 /** A Pass snow tile: white, with a drift heaped across it. */
@@ -295,6 +279,107 @@ export function drawEdges(g: Graphics, chunk: TileChunk, map: GroundMap): void {
 export function drawMapOutline(g: Graphics, width: number, height: number): void {
   g.clear();
   g.poly(flat(diamond(0, 0, width, height))).stroke(INK);
+}
+
+/** Peaks taller than this, in tile heights, are high enough to be lighter, cooler rock. */
+const HIGH_PEAK = 1;
+/** Peaks taller than this, in tile heights, wear snow. */
+const SNOW_LINE = 1.2;
+
+/**
+ * The Mountains' relief over `chunk`, the last ground layer: a peak rising from each Mountain
+ * tile as high as `heights` says (in tile heights, row-major, from `mountainRelief`), drawn row
+ * by row so nearer peaks overlap those behind. Chunks drawn in the order they're laid out
+ * (`GroundLayer`) overlap rightly too, since a peak stays inside its tile's width.
+ */
+export function drawRelief(
+  g: Graphics,
+  chunk: TileChunk,
+  map: GroundMap,
+  heights: ArrayLike<number>,
+): void {
+  g.clear();
+  for (let y = chunk.y; y < chunk.y + chunk.h; y++) {
+    for (let x = chunk.x; x < chunk.x + chunk.w; x++) {
+      const rise = heights[y * map.width + x] ?? 0;
+      if (rise > 0) drawPeak(g, x, y, rise);
+    }
+  }
+}
+
+/**
+ * One Mountain tile's peak, `rise` tile heights tall: a lit west face and a shaded east one
+ * from the tile's side corners up to a summit near its middle; some tiles carry a ridge of two
+ * summits instead. Higher peaks are paler, the highest snow-capped. Where the summit stands and
+ * which tiles are ridges come from a hash of the tile.
+ */
+function drawPeak(g: Graphics, x: number, y: number, rise: number): void {
+  const [, right, bottom, left] = diamond(x, y);
+  const v = tileHash(x, y, 10);
+  const c = gridToWorld(x + 0.5, y + 0.5);
+  const h = rise * TILE_H;
+  const high = rise > HIGH_PEAK;
+  const lit = high ? palette.mountainHighLight : palette.mountainLight;
+  const shade = high ? palette.mountainHigh : palette.mountain;
+  // The summit stands up to a sixth of the tile either side of the middle.
+  const lean = (((v & 7) - 3.5) / 3.5) * (TILE_W / 6);
+  const apex = { x: c.x + lean, y: c.y - h };
+  const ridge = rise > 0.6 && (v >>> 3) % 3 === 0;
+  if (ridge) {
+    // Two summits, the west one higher, with a saddle between.
+    const west = { x: c.x - TILE_W * 0.2, y: c.y - h };
+    const east = { x: c.x + TILE_W * 0.18, y: c.y - h * 0.8 };
+    const saddle = { x: c.x, y: c.y - h * 0.58 };
+    g.poly(flat([left, west, saddle, bottom])).fill(lit);
+    g.poly(flat([saddle, east, right, bottom])).fill(shade);
+    g.poly(flat([west, saddle, lerp(saddle, bottom, 0.45)])).fill(shade);
+    drawFaceLines(g, left, west, bottom, right, east);
+    if (rise > SNOW_LINE) drawSnowCap(g, west, left, lerp(west, saddle, 0.7), 0.32);
+    g.poly(flat([left, west, saddle, east, right]), false).stroke(INK);
+    g.moveTo(saddle.x, saddle.y).lineTo(bottom.x, bottom.y).stroke(THIN_INK);
+  } else {
+    g.poly(flat([left, apex, bottom])).fill(lit);
+    g.poly(flat([apex, right, bottom])).fill(shade);
+    drawFaceLines(g, left, apex, bottom, right, apex);
+    if (rise > SNOW_LINE) drawSnowCap(g, apex, left, right, 0.32);
+    g.poly(flat([left, apex, right]), false).stroke(INK);
+    g.moveTo(apex.x, apex.y).lineTo(bottom.x, bottom.y).stroke(THIN_INK);
+  }
+  // The foot along the front, where the peak meets the ground or the peaks before it.
+  g.poly(flat([left, bottom, right]), false).stroke({ ...THIN_INK, alpha: 0.7 });
+}
+
+/** A gully down each face of a peak, in the dark of the rock, so the faces read as stone. */
+function drawFaceLines(
+  g: Graphics,
+  left: Vec,
+  west: Vec,
+  bottom: Vec,
+  right: Vec,
+  east: Vec,
+): void {
+  const a = lerp(west, left, 0.35);
+  g.moveTo(a.x, a.y).lineTo(lerp(a, bottom, 0.5).x, lerp(a, bottom, 0.5).y + 2);
+  const b = lerp(east, right, 0.45);
+  g.moveTo(b.x, b.y).lineTo(lerp(b, bottom, 0.4).x, lerp(b, bottom, 0.4).y);
+  g.stroke({ width: 2, color: palette.mountainDark, cap: 'round', alpha: 0.8 });
+}
+
+/**
+ * Snow over a summit: down `depth` of the way toward `left` and `right`, its lower edge ragged,
+ * the east half in shadow.
+ */
+function drawSnowCap(g: Graphics, apex: Vec, left: Vec, right: Vec, depth: number): void {
+  const l = lerp(apex, left, depth);
+  const r = lerp(apex, right, depth);
+  const below = (t: number, drop: number): Vec => ({
+    x: l.x + (r.x - l.x) * t,
+    y: l.y + (r.y - l.y) * t + drop,
+  });
+  const cap = [apex, l, below(0.3, 5), below(0.5, -1), below(0.72, 6), r];
+  g.poly(flat(cap)).fill(palette.snow);
+  g.poly(flat([apex, below(0.5, -1), below(0.72, 6), r])).fill(palette.snowShade);
+  g.poly(flat(cap)).stroke({ ...THIN_INK, width: 1.5 });
 }
 
 function groundShadow(g: Graphics, rx: number, ry: number): void {

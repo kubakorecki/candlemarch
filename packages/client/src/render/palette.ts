@@ -15,6 +15,9 @@ export const palette = {
   mountain: 0x57534c,
   mountainLight: 0x78726a,
   mountainDark: 0x44403a,
+  // High peaks (render/shapes.ts `drawRelief`): paler, cooler rock, as if further off.
+  mountainHigh: 0x5f5e5a,
+  mountainHighLight: 0x807d77,
   swamp: 0x575a3b,
   swampAlt: 0x525537,
   swampWater: 0x3c4a43,

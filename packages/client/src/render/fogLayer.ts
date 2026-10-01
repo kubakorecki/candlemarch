@@ -7,6 +7,13 @@ import { fogField, sameBits } from './fogField';
 import { TILE_H, TILE_W } from './iso';
 import { palette } from './palette';
 
+/**
+ * Extra pixels of Fog past the field's border on the north and west, the map's back edges, each
+ * repeating the nearest one: the Mountains' peaks there rise over the map's edge on screen
+ * (`MAX_RELIEF`), and the Fog must cover them as it does their tiles.
+ */
+const BACK_MARGIN = 2;
+
 export class FogLayer {
   /** Goes over everything drawn on the map, under the placement ghost. */
   readonly node = new Sprite();
@@ -17,9 +24,10 @@ export class FogLayer {
 
   constructor() {
     this.node.visible = false;
-    // Pixel (px, py) covers tile (px - 1, py - 1): the texture has a pixel of border round the map.
+    // Pixel (px, py) covers tile (px - 1 - BACK_MARGIN, py - 1 - BACK_MARGIN): the texture has a
+    // pixel of border round the map (`fogField`), and `BACK_MARGIN` more on the north and west.
     this.node.setFromMatrix(
-      new Matrix(TILE_W / 2, TILE_H / 2, -TILE_W / 2, TILE_H / 2, 0, -TILE_H),
+      new Matrix(TILE_W / 2, TILE_H / 2, -TILE_W / 2, TILE_H / 2, 0, -TILE_H * (1 + BACK_MARGIN)),
     );
   }
 
@@ -28,8 +36,8 @@ export class FogLayer {
     const { map } = state;
     this.node.visible = state.fog;
     if (!state.fog) return;
-    const w = map.width + 2;
-    const h = map.height + 2;
+    const w = map.width + 2 + BACK_MARGIN;
+    const h = map.height + 2 + BACK_MARGIN;
     if (!this.canvas || this.canvas.width !== w || this.canvas.height !== h) this.resize(w, h);
     if (
       this.drawnRevealed &&
@@ -44,8 +52,15 @@ export class FogLayer {
     const { canvas, image } = this;
     if (!canvas || !image) return;
     const field = fogField(map);
+    const fieldW = map.width + 2;
     const data = image.data;
-    for (let i = 0; i < field.length; i++) data[i * 4 + 3] = field[i] as number;
+    for (let py = 0; py < h; py++) {
+      const fy = Math.max(0, py - BACK_MARGIN);
+      for (let px = 0; px < w; px++) {
+        const fx = Math.max(0, px - BACK_MARGIN);
+        data[(py * w + px) * 4 + 3] = field[fy * fieldW + fx] as number;
+      }
+    }
     canvas.getContext('2d')?.putImageData(image, 0, 0);
     this.node.texture.source.update();
   }

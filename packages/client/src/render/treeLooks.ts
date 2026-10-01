@@ -23,8 +23,11 @@ export interface TreeLook {
 /** Tiles a side of the cells woods are laid out on: each cell has a heart, and one species. */
 const WOOD_CELL_TILES = 14;
 
-/** A well-mixed 32-bit hash of a tile and a salt, so each property varies on its own. */
-function hash(x: number, y: number, salt: number): number {
+/**
+ * A well-mixed 32-bit hash of a tile and a salt, so each property varies on its own. Also the
+ * Mountains' relief (`relief.ts`).
+ */
+export function tileHash(x: number, y: number, salt: number): number {
   let h = Math.imul(x, 0x27d4eb2d) ^ Math.imul(y, 0x165667b1) ^ Math.imul(salt, 0x9e3779b1);
   h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
   h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
@@ -33,7 +36,7 @@ function hash(x: number, y: number, salt: number): number {
 
 /** A hash as a number in [0, 1). */
 function unit(x: number, y: number, salt: number): number {
-  return hash(x, y, salt) / 4294967296;
+  return tileHash(x, y, salt) / 4294967296;
 }
 
 /**
@@ -53,7 +56,7 @@ function speciesAt(x: number, y: number): TreeSpecies {
       const d = Math.hypot(x + 0.5 - hx, y + 0.5 - hy) + 2 * unit(x, y, 3);
       if (d < best) {
         best = d;
-        species = TREE_SPECIES[hash(i, j, 4) % TREE_SPECIES.length] as TreeSpecies;
+        species = TREE_SPECIES[tileHash(i, j, 4) % TREE_SPECIES.length] as TreeSpecies;
       }
     }
   }
@@ -64,9 +67,9 @@ function speciesAt(x: number, y: number): TreeSpecies {
 export function treeLook(x: number, y: number): TreeLook {
   return {
     species: speciesAt(x, y),
-    size: 0.85 + 0.05 * (hash(x, y, 5) % 7),
-    lean: ((hash(x, y, 6) % 5) - 2) / 2,
-    shade: hash(x, y, 7) % 3,
-    shape: hash(x, y, 8) % 4,
+    size: 0.85 + 0.05 * (tileHash(x, y, 5) % 7),
+    lean: ((tileHash(x, y, 6) % 5) - 2) / 2,
+    shade: tileHash(x, y, 7) % 3,
+    shape: tileHash(x, y, 8) % 4,
   };
 }

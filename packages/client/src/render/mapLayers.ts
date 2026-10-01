@@ -12,6 +12,7 @@ import {
 import { Container, Graphics } from 'pixi.js';
 import { gridToWorld, overlaps, type Rect, TILE_H, tileAreaBounds, tileCenterWorld } from './iso';
 import { type DrawnObject, MapObjectRuns } from './mapObjectRuns';
+import { MAX_RELIEF, mountainRelief } from './relief';
 import {
   drawBerryBush,
   drawClayDeposit,
@@ -22,6 +23,7 @@ import {
   drawLand,
   drawMapOutline,
   drawMushroomPatch,
+  drawRelief,
   drawSapling,
   drawStoneDeposit,
   drawStump,
@@ -69,6 +71,7 @@ interface GroundChunk {
   grid: Graphics;
   water: Graphics;
   edges: Graphics;
+  relief: Graphics;
 }
 
 /** The ground, under everything: its own render group, as it changes seldom. */
@@ -80,6 +83,7 @@ export class GroundLayer {
   private readonly water = new Container();
   private readonly edges = new Container();
   private readonly outline = new Graphics();
+  private readonly relief = new Container();
   private chunks: GroundChunk[] = [];
   private drawn: GroundMap | null = null;
   /**
@@ -89,7 +93,15 @@ export class GroundLayer {
   private warmUp = false;
 
   constructor() {
-    this.node.addChild(this.edge, this.land, this.grid, this.water, this.edges, this.outline);
+    this.node.addChild(
+      this.edge,
+      this.land,
+      this.grid,
+      this.water,
+      this.edges,
+      this.outline,
+      this.relief,
+    );
   }
 
   /** Redraws what differs from the map last drawn: all of it, or only the water on a freeze or thaw. */
@@ -120,16 +132,18 @@ export class GroundLayer {
       chunk.grid.visible = visible;
       chunk.water.visible = visible;
       chunk.edges.visible = visible;
+      chunk.relief.visible = visible;
     }
   }
 
   private rebuild(map: GroundMap): void {
-    for (const layer of [this.land, this.grid, this.water, this.edges]) {
+    for (const layer of [this.land, this.grid, this.water, this.edges, this.relief]) {
       for (const child of layer.removeChildren()) child.destroy();
     }
     this.chunks = [];
     drawGroundEdge(this.edge, map.width, map.height);
     drawMapOutline(this.outline, map.width, map.height);
+    const heights = mountainRelief(map);
     for (let y = 0; y < map.height; y += GROUND_CHUNK_TILES) {
       for (let x = 0; x < map.width; x += GROUND_CHUNK_TILES) {
         const tiles = {
@@ -140,21 +154,24 @@ export class GroundLayer {
         };
         const chunk: GroundChunk = {
           tiles,
-          // A few pixels round the diamond for the ink strokes on its edges.
-          bounds: tileAreaBounds(tiles.x, tiles.y, tiles.w, tiles.h, 4),
+          // The highest peak over the top corner, and a few pixels for the ink on the edges.
+          bounds: tileAreaBounds(tiles.x, tiles.y, tiles.w, tiles.h, MAX_RELIEF * TILE_H + 4),
           land: keptGraphics(),
           grid: keptGraphics(),
           water: keptGraphics(),
           edges: keptGraphics(),
+          relief: keptGraphics(),
         };
         drawLand(chunk.land, tiles, map);
         drawGridLines(chunk.grid, tiles, map.width, map.height);
         drawWater(chunk.water, tiles, map);
         drawEdges(chunk.edges, tiles, map);
+        drawRelief(chunk.relief, tiles, map, heights);
         this.land.addChild(chunk.land);
         this.grid.addChild(chunk.grid);
         this.water.addChild(chunk.water);
         this.edges.addChild(chunk.edges);
+        this.relief.addChild(chunk.relief);
         this.chunks.push(chunk);
       }
     }
