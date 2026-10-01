@@ -3,6 +3,7 @@
 // road) leaves no building: it changes its tile instead. A finished rank building raises the rank.
 import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
+import { siteCost } from '../costs';
 import { idsOf } from '../entities';
 import { finishGroundwork, groundworkOf } from '../groundwork';
 import { mapChanged } from '../mapCache';
@@ -20,7 +21,8 @@ export function constructionSystem(state: GameState, content: Content): void {
     const construction = site ? content.buildings[site.type].construction : undefined;
     if (!site || !construction) continue;
 
-    const supplied = construction.cost.every((c) => (site.delivered[c.resource] ?? 0) >= c.amount);
+    const cost = siteCost(state, content, id);
+    const supplied = cost.every((c) => (site.delivered[c.resource] ?? 0) >= c.amount);
     if (!supplied) continue;
 
     site.buildProgress += 1;

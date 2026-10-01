@@ -1,6 +1,6 @@
 # Quarry, clay pit and mine
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: m4-valley/05, m4-valley/07, m1-roads-logistics/06, 04, 23
 
@@ -24,3 +24,5 @@ Raw gatherers that don't need a master. Deposits reuse the generic map-object fi
 2026-09-29 — M4 design session (m4-valley/03): Deposits and their resources move to `m4-valley/05` so the M4 generator can place them; the glossary term is Deposit, not "vein". Iron Deposits are only in the Side valley, behind the Pass. What happens when a Deposit runs out is a question for design session 02.
 
 2026-10-01 — Design session 02: groups (ticket 23), amounts, clay refill and "left dug out" added; quarry at Camp, clay pit and mine at Hamlet.
+
+2026-10-01 — Done. Quarry (Camp, may stand on Rock), clay pit and mine (Hamlet), each a 1×1 hut whose worker (quarryman, clay digger, miner) digs Deposits in radius 8 into its yard (`systems/digging.ts`). Measured a worker at 12 stone, 10 clay, 9 ore a day, so Deposits hold 120, 100 and 90. Clay regains 25% each spring (`systems/renewal.ts`); stone and iron don't. Empty Deposits stay, block walking and are drawn as a dug hollow. "On the Abandoned mine" taken as a mine whose footprint touches its tile: 6 logs instead of 12 logs + 8 stone (`siteCost`). See `docs/decisions.md`.

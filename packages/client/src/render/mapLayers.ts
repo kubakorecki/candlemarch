@@ -197,13 +197,13 @@ function drawMapObject(g: Graphics, obj: DrawnObject, content: Content): void {
       drawMushroomPatch(g, obj.amount, obj.withered);
       break;
     case 'stone_deposit':
-      drawStoneDeposit(g);
+      drawStoneDeposit(g, obj.amount === 0);
       break;
     case 'clay_deposit':
-      drawClayDeposit(g);
+      drawClayDeposit(g, obj.amount === 0);
       break;
     case 'iron_deposit':
-      drawIronDeposit(g);
+      drawIronDeposit(g, obj.amount === 0);
       break;
   }
 }

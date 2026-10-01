@@ -45,6 +45,14 @@ export function isHelpingCarry(state: GameState, id: EntityId): boolean {
   return v !== undefined && v.job !== 'carrier' && state.logistics.hauls[id] !== undefined;
 }
 
+/** The Jobs that dig Deposits (`systems/digging.ts`). */
+const DIGGER_JOBS: readonly JobId[] = ['quarryman', 'clay_digger', 'miner'];
+
+/** Whether `job` digs Deposits: its task is a `DiggerTask`. */
+export function isDiggerJob(job: JobId): boolean {
+  return DIGGER_JOBS.includes(job);
+}
+
 /**
  * Gives villager `id` a Job and Workplace, replacing its old Job's task state with a fresh one
  * for the new Job. Anyone working at a workshop (a building with recipes) is a crafter. The
@@ -67,12 +75,14 @@ export function assignJob(
   delete state.components.forager[id];
   delete state.components.hunter[id];
   delete state.components.forester[id];
+  delete state.components.digger[id];
   const type = workplace === null ? undefined : state.components.building[workplace]?.type;
   if (job === 'woodcutter') state.components.woodcutter[id] = { kind: 'idle', retryAt: 0 };
   else if (job === 'fisher') state.components.fisher[id] = { kind: 'idle', retryAt: 0 };
   else if (job === 'forager') state.components.forager[id] = { kind: 'idle', retryAt: 0 };
   else if (job === 'hunter') state.components.hunter[id] = { kind: 'idle', retryAt: 0 };
   else if (job === 'forester') state.components.forester[id] = { kind: 'idle', retryAt: 0 };
+  else if (isDiggerJob(job)) state.components.digger[id] = { kind: 'idle', retryAt: 0 };
   else if (type && content.buildings[type].recipes) {
     state.components.crafter[id] = { kind: 'idle', retryAt: 0 };
   }

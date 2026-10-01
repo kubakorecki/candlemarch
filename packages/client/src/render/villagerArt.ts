@@ -23,6 +23,9 @@ export const JOB_COLORS: Record<JobId, number> = {
   hunter: palette.hunter,
   forester: palette.forester,
   watchman: palette.watchman,
+  quarryman: palette.quarryman,
+  clay_digger: palette.clayDigger,
+  miner: palette.miner,
 };
 
 /** A stick from (x1, y1) to (x2, y2): an ink edge round a line of `color`. */
@@ -272,7 +275,7 @@ function drawHead(g: Graphics, job: JobId): void {
 /**
  * The tool a villager holds for its Job, drawn over its body: the woodcutter's axe on its shoulder,
  * the woodsplitter's maul, the fisher's rod, the forager's basket, the hunter's bow, the forester's
- * spade, the watchman's spear. Carriers carry nothing but their pack. Hidden while the villager swings its axe at work.
+ * and clay digger's spade, the quarryman's and miner's pick, the watchman's spear. Carriers carry nothing but their pack. Hidden while the villager swings its axe at work.
  */
 export function drawVillagerTool(g: Graphics, job: JobId): void {
   g.clear();
@@ -336,7 +339,16 @@ export function drawVillagerTool(g: Graphics, job: JobId): void {
     g.circle(-hx, hy, 2.8 * S)
       .fill(palette.skin)
       .stroke({ ...THIN_INK, width: 1.5 * S });
-  } else if (job === 'forester') {
+  } else if (job === 'quarryman' || job === 'miner') {
+    // A pick on the shoulder, its iron head curving either way behind the head.
+    pole(g, hx, hy + 2 * S, 10 * S, -50 * S, 2.5 * S, palette.log);
+    g.moveTo(1 * S, -46 * S)
+      .quadraticCurveTo(10 * S, -56 * S, 20 * S, -50 * S)
+      .stroke({ width: 5 * S, color: palette.ink, cap: 'round' });
+    g.moveTo(1 * S, -46 * S)
+      .quadraticCurveTo(10 * S, -56 * S, 20 * S, -50 * S)
+      .stroke({ width: 2.5 * S, color: palette.iron, cap: 'round' });
+  } else if (job === 'forester' || job === 'clay_digger') {
     // A spade on the shoulder, its blade up behind the head.
     pole(g, hx, hy + 2 * S, 12 * S, -50 * S, 2.5 * S, palette.log);
     g.poly([8 * S, -52 * S, 17 * S, -49 * S, 18 * S, -60 * S, 12 * S, -63 * S])

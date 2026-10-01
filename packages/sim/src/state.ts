@@ -294,6 +294,16 @@ export type ForagerTask =
   | { kind: 'gathering'; patch: EntityId; ticksLeft: number }
   | { kind: 'toHut' };
 
+/**
+ * A digger (quarryman, clay digger, miner): walks to a Deposit in its Workplace's radius, digs,
+ * and carries what it dug back to the yard.
+ */
+export type DiggerTask =
+  | { kind: 'idle'; retryAt: number }
+  | { kind: 'toDeposit'; deposit: EntityId }
+  | { kind: 'digging'; deposit: EntityId; ticksLeft: number }
+  | { kind: 'toYard' };
+
 /** A forester: walks to an empty tile in its lodge's radius and plants a Sapling there. */
 export type ForesterTask =
   | { kind: 'idle'; retryAt: number }
@@ -400,6 +410,7 @@ export interface Components {
   forager: Store<ForagerTask>;
   hunter: Store<HunterTask>;
   forester: Store<ForesterTask>;
+  digger: Store<DiggerTask>;
   huntingGround: Store<HuntingGroundComponent>;
   den: Store<DenComponent>;
   gloamling: Store<GloamlingComponent>;

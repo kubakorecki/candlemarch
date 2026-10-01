@@ -254,4 +254,56 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 1200, // 60 s
     },
   },
+  // Raw gatherers (M5, no master): each worker digs within the radius and piles the yard.
+  quarry: {
+    id: 'quarry',
+    name: 'Quarry',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    alsoBuildsOn: ['rock'], // the one building that stands on Rock, by its stone
+    employs: [{ job: 'quarryman', count: 1 }],
+    gathers: ['stone_deposit'],
+    workRadius: 8,
+    outputBuffer: { resources: ['stone'], yard: { x: 1, y: 0 } },
+    construction: {
+      cost: [{ resource: 'logs', amount: 8 }],
+      buildTicks: 200, // 10 s
+    },
+  },
+  clay_pit: {
+    id: 'clay_pit',
+    name: 'Clay pit',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [{ job: 'clay_digger', count: 1 }],
+    gathers: ['clay_deposit'],
+    workRadius: 8,
+    outputBuffer: { resources: ['clay'], yard: { x: 1, y: 0 } },
+    construction: {
+      cost: [{ resource: 'logs', amount: 8 }],
+      buildTicks: 200, // 10 s
+    },
+  },
+  mine: {
+    id: 'mine',
+    name: 'Mine',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [{ job: 'miner', count: 1 }],
+    gathers: ['iron_deposit'],
+    workRadius: 8,
+    outputBuffer: { resources: ['iron_ore'], yard: { x: 1, y: 0 } },
+    // Beside the Abandoned mine the old workings are already there (numbers Proposed).
+    cheaperAt: { poi: 'abandoned_mine', cost: [{ resource: 'logs', amount: 6 }] },
+    construction: {
+      cost: [
+        { resource: 'logs', amount: 12 },
+        { resource: 'stone', amount: 8 },
+      ],
+      buildTicks: 300, // 15 s
+    },
+  },
 };

@@ -1,5 +1,5 @@
 // Points of interest (spec, World and map: "Points of interest"): Ruins the Hero Searches once
-// for a Cache, the Abandoned mine (a marker until M5) and the Shrine, near which no Den buds. The
+// for a Cache, the Abandoned mine (a mine beside it costs less: `costs.ts`) and the Shrine, near which no Den buds. The
 // Hero's Search order is `hero.ts`; where the Valley puts them is `valley/layout.ts`.
 import type { Content } from '@candlemarch/content';
 import { leaveCache } from './dens';

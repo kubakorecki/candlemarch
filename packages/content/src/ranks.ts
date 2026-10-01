@@ -28,6 +28,7 @@ export const ranks: readonly RankDef[] = [
         'drain',
         'pass_road',
         'village_hall',
+        'quarry', // the village hall needs stone
       ],
     },
   },
@@ -36,7 +37,7 @@ export const ranks: readonly RankDef[] = [
     name: 'Hamlet',
     building: 'village_hall',
     residents: 10,
-    unlocks: { buildings: [] },
+    unlocks: { buildings: ['clay_pit', 'mine'] },
   },
   { id: 'village', name: 'Village', building: null, residents: 25, unlocks: { buildings: [] } },
   { id: 'town', name: 'Town', building: null, residents: 50, unlocks: { buildings: [] } },

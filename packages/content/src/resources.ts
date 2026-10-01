@@ -24,8 +24,8 @@ export const resources: Record<ResourceId, ResourceDef> = {
   meat: { id: 'meat', name: 'Meat', storage: 'granary', spoilPercent: 15, standingOrder: 60 },
   // Piles up until the trade post (M5) can sell it.
   hides: { id: 'hides', name: 'Hides', storage: 'stockpile', standingOrder: 30 },
-  // Dug from Deposits once M5's quarry, clay pit and mine exist.
-  stone: { id: 'stone', name: 'Stone', storage: 'stockpile' },
-  clay: { id: 'clay', name: 'Clay', storage: 'stockpile' },
-  iron_ore: { id: 'iron_ore', name: 'Iron ore', storage: 'stockpile' },
+  // Dug from Deposits by the quarry, clay pit and mine; iron ore also from Swamp (bog iron).
+  stone: { id: 'stone', name: 'Stone', storage: 'stockpile', standingOrder: 60 },
+  clay: { id: 'clay', name: 'Clay', storage: 'stockpile', standingOrder: 40 },
+  iron_ore: { id: 'iron_ore', name: 'Iron ore', storage: 'stockpile', standingOrder: 40 },
 };

@@ -51,6 +51,28 @@ export const jobs: Record<JobId, JobDef> = {
     carryCapacity: 1,
     idleRetryTicks: 20,
   },
+  // Raw gatherers (M5) digging Deposits and Swamp. No master needed.
+  quarryman: {
+    id: 'quarryman',
+    name: 'Quarryman',
+    walkSpeed: 75,
+    carryCapacity: 1,
+    idleRetryTicks: 20,
+  },
+  clay_digger: {
+    id: 'clay_digger',
+    name: 'Clay digger',
+    walkSpeed: 75,
+    carryCapacity: 1,
+    idleRetryTicks: 20,
+  },
+  miner: {
+    id: 'miner',
+    name: 'Miner',
+    walkSpeed: 75,
+    carryCapacity: 1,
+    idleRetryTicks: 20,
+  },
   carrier: {
     id: 'carrier',
     name: 'Carrier',

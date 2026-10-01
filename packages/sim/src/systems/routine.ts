@@ -22,12 +22,12 @@ import { isAt, rerouteTo, stopAtNextTile } from './movement';
  * it's still finishing something. A Carrier with goods in hand delivers them (or brings them
  * back); one walking to a pickup drops the Haul. A woodcutter carrying logs takes them to its
  * Workplace; a chop, or the walk to a tree, is abandoned. A forager does the same with Food and
- * forage patches, and a hunter with its bag (full or empty): a hunt under way is abandoned, and
+ * forage patches, a digger with what it dug and Deposits, and a hunter with its bag (full or empty): a hunt under way is abandoned, and
  * so is a forester's planting. A crafter finishes a batch under way; a fisher's catch under way
  * is lost.
  */
 function finishWork(state: GameState, id: EntityId): boolean {
-  const { woodcutter, crafter, fisher, forager, hunter, forester } = state.components;
+  const { woodcutter, crafter, fisher, forager, hunter, forester, digger } = state.components;
   const haul = state.logistics.hauls[id];
   if (haul?.phase === 'pickup') abandonHaul(state, id);
   else if (haul) return true;
@@ -38,6 +38,9 @@ function finishWork(state: GameState, id: EntityId): boolean {
   const forage = forager[id];
   if (forage?.kind === 'toHut') return true;
   if (forage && forage.kind !== 'idle') forager[id] = { kind: 'idle', retryAt: state.tick };
+  const dig = digger[id];
+  if (dig?.kind === 'toYard') return true;
+  if (dig && dig.kind !== 'idle') digger[id] = { kind: 'idle', retryAt: state.tick };
   const hunt = hunter[id];
   if (hunt?.kind === 'toLodge') return true;
   if (hunt && hunt.kind !== 'idle') hunter[id] = { kind: 'idle', retryAt: state.tick };

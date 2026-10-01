@@ -3,6 +3,7 @@
 import type { Content, ResourceId } from '@candlemarch/content';
 import { isNight } from './calendar';
 import { chebyshev, inReach, isKnockedOut } from './combat';
+import { siteCost } from './costs';
 import { cacheAt, denAt, takeFromCache } from './dens';
 import { isDeposit } from './deposits';
 import { idsOf } from './entities';
@@ -244,7 +245,7 @@ function wanted(
 ): number {
   const site = state.components.site[target];
   if (!site) return inputRoom(state, content, target, resource);
-  const cost = content.buildings[site.type].construction?.cost.find((c) => c.resource === resource);
+  const cost = siteCost(state, content, target).find((c) => c.resource === resource);
   return (cost?.amount ?? 0) - (site.delivered[resource] ?? 0);
 }
 

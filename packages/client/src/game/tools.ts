@@ -81,6 +81,27 @@ export const TOOLS: readonly {
     hint: 'Click to place. Its forester plants Saplings on open meadow nearby, which grow into trees in about a year. Shift-click places more.',
   },
   {
+    id: 'quarry',
+    label: 'Quarry',
+    key: null,
+    drag: false,
+    hint: 'Click to place near stone Deposits; it may stand on Rock. Stone never comes back. Shift-click places more.',
+  },
+  {
+    id: 'clay_pit',
+    label: 'Clay pit',
+    key: null,
+    drag: false,
+    hint: 'Click to place near clay Deposits on the riverbank. Dug-out clay comes back a little each spring. Shift-click places more.',
+  },
+  {
+    id: 'mine',
+    label: 'Mine',
+    key: null,
+    drag: false,
+    hint: 'Click to place near iron Deposits on a Mountain face. Beside the Abandoned mine it costs only logs. Ore never comes back. Shift-click places more.',
+  },
+  {
     id: 'village_hall',
     label: 'Village hall',
     key: null,

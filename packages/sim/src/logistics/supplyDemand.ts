@@ -1,5 +1,6 @@
 // What can be hauled and where it is needed.
 import type { Content, ResourceId } from '@candlemarch/content';
+import { siteCost } from '../costs';
 import { idsOf } from '../entities';
 import { foodIds, granaryRoom } from '../granary';
 import { stockpileTileIndices } from '../grid';
@@ -97,9 +98,8 @@ export function listDemands(state: GameState, content: Content): Demand[] {
   const result: Demand[] = [];
   for (const id of idsOf(state.components.site)) {
     const site = state.components.site[id];
-    const construction = site ? content.buildings[site.type].construction : undefined;
-    if (!site || !construction) continue;
-    for (const cost of construction.cost) {
+    if (!site) continue;
+    for (const cost of siteCost(state, content, id)) {
       const missing = cost.amount - (site.delivered[cost.resource] ?? 0);
       if (missing > 0) {
         result.push({ target: id, kind: 'site', resource: cost.resource, amount: missing });

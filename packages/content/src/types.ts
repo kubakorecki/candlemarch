@@ -39,7 +39,10 @@ export type BuildingId =
   | 'watchtower'
   | 'palisade'
   | 'gate'
-  | 'village_hall';
+  | 'village_hall'
+  | 'quarry'
+  | 'clay_pit'
+  | 'mine';
 export type JobId =
   | 'woodcutter'
   | 'carrier'
@@ -48,7 +51,10 @@ export type JobId =
   | 'forager'
   | 'hunter'
   | 'forester'
-  | 'watchman';
+  | 'watchman'
+  | 'quarryman'
+  | 'clay_digger'
+  | 'miner';
 export type RoadId = 'dirt_path' | 'pass_road';
 export type HeroId = 'placeholder';
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
@@ -131,7 +137,10 @@ export interface MapObjectDef {
   name: string;
   /** What gathering it yields. */
   resource: ResourceId;
-  /** How many units it holds when the map starts. It is removed once empty, unless it forages. */
+  /**
+   * How many units it holds when the map starts. It is removed once empty, unless it forages or is
+   * a Deposit.
+   */
   amount: number;
   /** Ticks of work for one gather. */
   gatherTicks: number;
@@ -139,7 +148,10 @@ export interface MapObjectDef {
   yieldPerGather: number;
   /** Makes it a forage patch: it stays when empty and refills each season while shaded. */
   forage?: ForageDef;
-  /** Makes it a Deposit: what is dug out never comes back. Says where it may stand. */
+  /**
+   * Makes it a Deposit: it blocks walking, and stays on the map once dug out. Says where it may
+   * stand and whether it refills.
+   */
   deposit?: DepositDef;
   /**
    * Makes it something growing (a Sapling, or a Stump that will sprout one): nobody gathers it
@@ -172,6 +184,11 @@ export interface GrowsDef {
 export interface DepositDef {
   terrain: TerrainId;
   edge?: 'riverbank' | 'face';
+  /**
+   * At the start of each spring it regains this percent of its starting `amount`, up to that
+   * amount, even once dug out (clay). Absent: what is dug out never comes back.
+   */
+  springRefillPercent?: number;
 }
 
 /**
@@ -645,6 +662,16 @@ export interface BuildingDef {
    * it they go anywhere.
    */
   workRadius?: number;
+  /**
+   * Terrain it may stand on besides buildable terrain (a quarry: Rock). Its door still needs
+   * walkable ground.
+   */
+  alsoBuildsOn?: TerrainId[];
+  /**
+   * Placed with its footprint touching a `poi` (Chebyshev 1; a mine at the Abandoned mine), it
+   * costs `cost` instead of `construction.cost`.
+   */
+  cheaperAt?: { poi: PoiId; cost: ResourceAmount[] };
   /**
    * Its workers fish at its door, putting each catch in the output buffer. Fish never run out;
    * fishing stops while the river is frozen.

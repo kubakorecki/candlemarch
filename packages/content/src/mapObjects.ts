@@ -59,12 +59,14 @@ export const mapObjects: Record<MapObjectId, MapObjectDef> = {
     yieldPerGather: 1,
     grows: { into: 'sapling', days: 20, stages: 1 },
   },
-  // Deposits: nothing works them until M5, which tunes these placeholder amounts and times.
+  // Deposits (spec, World and map: Deposits): the quarry, clay pit and mine dig them. One lasts
+  // about 2 seasons of digging by one worker (amounts measured, see docs/decisions.md). Stone and
+  // iron ore never come back; clay regains a quarter each spring.
   stone_deposit: {
     id: 'stone_deposit',
     name: 'Stone deposit',
     resource: 'stone',
-    amount: 50,
+    amount: 120, // a quarryman digs about 12 a day
     gatherTicks: 80,
     yieldPerGather: 1,
     deposit: { terrain: 'rock' },
@@ -73,16 +75,16 @@ export const mapObjects: Record<MapObjectId, MapObjectDef> = {
     id: 'clay_deposit',
     name: 'Clay deposit',
     resource: 'clay',
-    amount: 40,
+    amount: 100, // a clay digger digs about 10 a day
     gatherTicks: 80,
     yieldPerGather: 1,
-    deposit: { terrain: 'meadow', edge: 'riverbank' },
+    deposit: { terrain: 'meadow', edge: 'riverbank', springRefillPercent: 25 },
   },
   iron_deposit: {
     id: 'iron_deposit',
     name: 'Iron deposit',
     resource: 'iron_ore',
-    amount: 60,
+    amount: 90, // a miner digs about 9 a day
     gatherTicks: 100,
     yieldPerGather: 1,
     deposit: { terrain: 'mountain', edge: 'face' },

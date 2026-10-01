@@ -1,4 +1,4 @@
-import { content } from '@candlemarch/content';
+import { type Content, content } from '@candlemarch/content';
 import { createInitialState, type MapDef } from '@candlemarch/sim';
 import { describe, expect, it } from 'vitest';
 import { ledgerGoods, stockpileGoods } from '../src/game/ledger';
@@ -38,15 +38,24 @@ describe('stockpile goods', () => {
 
 describe('Ledger goods', () => {
   it('lists the Stockpile goods some building makes, in content order', () => {
-    expect(ledgerGoods(content, {})).toEqual(['logs', 'firewood', 'hides']);
-  });
-
-  it('adds a good nothing makes yet once some lies on a Stockpile', () => {
-    expect(ledgerGoods(content, { clay: 3, stone: 0 })).toEqual([
+    expect(ledgerGoods(content, {})).toEqual([
       'logs',
       'firewood',
       'hides',
+      'stone',
       'clay',
+      'iron_ore',
     ]);
+  });
+
+  it('adds a good nothing makes yet once some lies on a Stockpile', () => {
+    // A game whose clay pit makes nothing.
+    const { outputBuffer: _, ...clayPit } = content.buildings.clay_pit;
+    const noClayPit: Content = {
+      ...content,
+      buildings: { ...content.buildings, clay_pit: clayPit },
+    };
+    expect(ledgerGoods(noClayPit, { stone: 0 })).not.toContain('clay');
+    expect(ledgerGoods(noClayPit, { clay: 3 })).toContain('clay');
   });
 });

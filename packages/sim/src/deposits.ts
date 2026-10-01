@@ -1,5 +1,6 @@
 // Deposits: map objects holding a fixed amount of stone, clay or iron ore (`MapObjectDef.deposit`).
-// What is dug out never comes back. Nothing works them until M5; they block walking like trees.
+// The quarry, clay pit and mine dig them (`systems/digging.ts`). They block walking, and an empty
+// one stays on the map. Stone and iron ore never come back; clay refills a little each spring.
 import type { Content, MapObjectId } from '@candlemarch/content';
 import { isRiverbank, isWalkableTerrain, terrainAt } from './grid';
 import type { EntityId, GameState, Tile } from './state';
@@ -8,6 +9,12 @@ import type { EntityId, GameState, Tile } from './state';
 export function isDeposit(state: GameState, content: Content, id: EntityId): boolean {
   const obj = state.components.mapObject[id];
   return obj !== undefined && content.mapObjects[obj.type].deposit !== undefined;
+}
+
+/** Whether a digger can dig map object `id` now: a Deposit with something left in it. */
+export function canDig(state: GameState, content: Content, id: EntityId): boolean {
+  const obj = state.components.mapObject[id];
+  return obj !== undefined && obj.amount > 0 && isDeposit(state, content, id);
 }
 
 /**

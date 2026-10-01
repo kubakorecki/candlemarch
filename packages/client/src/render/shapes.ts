@@ -859,9 +859,22 @@ export function drawMushroomPatch(g: Graphics, amount: number, withered: boolean
   }
 }
 
-/** A stone Deposit, drawn like `drawTree`: a heap of grey boulders. */
-export function drawStoneDeposit(g: Graphics): void {
+/** A stone Deposit, drawn like `drawTree`: grey boulders, or a quarried hollow once dug out. */
+export function drawStoneDeposit(g: Graphics, dugOut: boolean): void {
   const s = TILE_H / 64;
+  if (dugOut) {
+    drawDugHollow(g, palette.stoneDark);
+    for (const [x, y, r] of [
+      [-12, -1, 3],
+      [9, 2, 2.5],
+      [14, -3, 2],
+    ] as const) {
+      g.circle(x * s, y * s, r * s)
+        .fill(palette.stone)
+        .stroke(THIN_INK);
+    }
+    return;
+  }
   groundShadow(g, 28 * s, 12 * s);
   g.ellipse(-11 * s, -7 * s, 14 * s, 10 * s)
     .fill(palette.stoneDark)
@@ -877,9 +890,14 @@ export function drawStoneDeposit(g: Graphics): void {
   g.stroke({ ...THIN_INK, alpha: 0.6 });
 }
 
-/** A clay Deposit, drawn like `drawTree`: a dug, wet bank of red clay. */
-export function drawClayDeposit(g: Graphics): void {
+/** A clay Deposit, drawn like `drawTree`: a dug, wet bank of red clay, or a bare pit once dug out. */
+export function drawClayDeposit(g: Graphics, dugOut: boolean): void {
   const s = TILE_H / 64;
+  if (dugOut) {
+    drawDugHollow(g, palette.clayDark);
+    g.ellipse(-2 * s, 1 * s, 8 * s, 2.5 * s).fill(palette.clayWet);
+    return;
+  }
   g.ellipse(0, 0, 28 * s, 12 * s)
     .fill(palette.clayDark)
     .stroke(INK);
@@ -888,9 +906,29 @@ export function drawClayDeposit(g: Graphics): void {
   g.ellipse(9 * s, 1 * s, 4 * s, 1.8 * s).fill(palette.clayWet);
 }
 
-/** An iron Deposit, drawn like `drawTree`: a dark outcrop on the Mountain, streaked with rust. */
-export function drawIronDeposit(g: Graphics): void {
+/**
+ * An iron Deposit, drawn like `drawTree`: a dark outcrop on the Mountain, streaked with rust; once
+ * dug out, a low stump of rock round a dark hollow.
+ */
+export function drawIronDeposit(g: Graphics, dugOut: boolean): void {
   const s = TILE_H / 64;
+  if (dugOut) {
+    g.poly(
+      flat([
+        { x: -22 * s, y: 2 * s },
+        { x: -16 * s, y: -8 * s },
+        { x: 14 * s, y: -8 * s },
+        { x: 22 * s, y: 0 },
+        { x: 4 * s, y: 8 * s },
+      ]),
+    )
+      .fill(palette.ironOre)
+      .stroke(INK);
+    g.ellipse(0, -1 * s, 11 * s, 4.5 * s)
+      .fill(palette.ink)
+      .stroke(THIN_INK);
+    return;
+  }
   g.poly(
     flat([
       { x: -22 * s, y: 2 * s },
@@ -911,6 +949,15 @@ export function drawIronDeposit(g: Graphics): void {
   ]) {
     g.circle((x ?? 0) * s, (y ?? 0) * s, (r ?? 0) * s).fill(palette.rust);
   }
+}
+
+/** A dug-out Deposit's hollow: a dished pit in `rim`, its floor in shadow. */
+function drawDugHollow(g: Graphics, rim: number): void {
+  const s = TILE_H / 64;
+  g.ellipse(0, 0, 26 * s, 11 * s)
+    .fill(rim)
+    .stroke(INK);
+  g.ellipse(0, 1 * s, 17 * s, 6.5 * s).fill(palette.dirtDark);
 }
 
 /** One berry, centred on (x, y). */

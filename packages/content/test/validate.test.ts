@@ -104,12 +104,21 @@ describe('content validation', () => {
       expect(resources[obj.resource].storage, `${obj.id} holds Food`).toBe('stockpile');
       expect(obj.forage, `${obj.id} forages`).toBeUndefined();
       expect(terrain, `${obj.id}.deposit.terrain`).toHaveProperty(deposit.terrain);
+      const refill = deposit.springRefillPercent;
+      if (refill !== undefined) {
+        expectPositiveInt(refill, `${obj.id}.deposit.springRefillPercent`);
+        expect(refill, `${obj.id} refills at most all of it`).toBeLessThanOrEqual(100);
+      }
       // A riverbank is walkable ground by the river; a face is the edge of ground nobody walks on.
       if (deposit.edge === 'riverbank') expect(terrain[deposit.terrain].walkable).toBe(true);
       if (deposit.edge === 'face') expect(terrain[deposit.terrain].walkable).toBe(false);
     }
     expect(mapObjects.stone_deposit.deposit).toEqual({ terrain: 'rock' });
-    expect(mapObjects.clay_deposit.deposit).toEqual({ terrain: 'meadow', edge: 'riverbank' });
+    expect(mapObjects.clay_deposit.deposit).toEqual({
+      terrain: 'meadow',
+      edge: 'riverbank',
+      springRefillPercent: 25,
+    });
     expect(mapObjects.iron_deposit.deposit).toEqual({ terrain: 'mountain', edge: 'face' });
   });
 
@@ -284,6 +293,17 @@ describe('content validation', () => {
         expect(mapObjects, `${b.id}.digs`).toHaveProperty(obj);
       }
       if (b.workRadius !== undefined) expectPositiveInt(b.workRadius, `${b.id}.workRadius`);
+      for (const t of b.alsoBuildsOn ?? []) {
+        expect(terrain, `${b.id}.alsoBuildsOn`).toHaveProperty(t);
+        expect(terrain[t].walkable, `${b.id} stands on walkable ${t}`).toBe(true);
+      }
+      if (b.cheaperAt) {
+        expect(content.pois, `${b.id}.cheaperAt.poi`).toHaveProperty(b.cheaperAt.poi);
+        for (const cost of b.cheaperAt.cost) {
+          expect(resources, `${b.id} cheaper cost`).toHaveProperty(cost.resource);
+          expectPositiveInt(cost.amount, `${b.id} cheaper cost ${cost.resource}`);
+        }
+      }
       for (const resource of b.outputBuffer?.resources ?? []) {
         expect(resources, `${b.id}.outputBuffer`).toHaveProperty(resource);
       }

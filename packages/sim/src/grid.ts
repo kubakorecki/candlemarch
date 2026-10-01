@@ -360,7 +360,7 @@ export function tilesUnderCaches(state: GameState): Set<number> {
 
 /**
  * Whether a building of this type, turned `rotation`, fits with its origin at (x, y): every
- * footprint tile is in bounds, buildable, outside every Den's dark ring, and free of trees, roads
+ * footprint tile is in bounds, buildable (or terrain its `alsoBuildsOn` names), outside every Den's dark ring, and free of trees, roads
  * (a Gate may stand on one), stockpiles, caches, points of interest, other footprints and other doors (a wall's door is its own
  * tile, so nothing goes on a wall or its site either); its door tile is in bounds, walkable, not
  * blocked or under a tree (`occupiedGrid`) and not on a stockpile (it may be on a road), and on a riverbank if the type needs one. Doesn't check whether the player may place this type.
@@ -387,7 +387,8 @@ export function fitsAt(
     if (!inBounds(map, t.x, t.y)) return false;
     const i = tileIndex(map, t.x, t.y);
     const terrain = map.terrain[i];
-    if (terrain === undefined || !content.terrain[terrain].buildable) return false;
+    if (terrain === undefined) return false;
+    if (!content.terrain[terrain].buildable && !def.alsoBuildsOn?.includes(terrain)) return false;
     if (occupied[i] === 1 || doors.has(i) || piles.has(i) || caches.has(i) || pois.has(i)) {
       return false;
     }

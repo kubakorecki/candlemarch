@@ -31,9 +31,10 @@ export function cantUseWorkers(state: GameState, content: Content, building: Ent
  * in hand, and its Workplace can't use it (`cantUseWorkers`). Never a Carrier.
  */
 export function canHelpCarry(state: GameState, content: Content, id: EntityId): boolean {
-  const { villager, woodcutter, fisher, forager, hunter, crafter } = state.components;
+  const { villager, woodcutter, fisher, forager, hunter, crafter, digger } = state.components;
   const v = villager[id];
   if (!v || v.workplace === null || v.carrying || !isAtWork(v)) return false;
-  const task = woodcutter[id] ?? fisher[id] ?? forager[id] ?? hunter[id] ?? crafter[id];
+  const task =
+    woodcutter[id] ?? fisher[id] ?? forager[id] ?? hunter[id] ?? crafter[id] ?? digger[id];
   return task?.kind === 'idle' && cantUseWorkers(state, content, v.workplace);
 }

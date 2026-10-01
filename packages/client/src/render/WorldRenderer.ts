@@ -30,6 +30,7 @@ import {
   type Point,
   type Rotation,
   roadTraffic,
+  siteCost,
   type Tile,
   tileOfPoint,
   type WorkplaceStatus,
@@ -578,8 +579,9 @@ export class WorldRenderer {
       if (!s || !at || !construction) continue;
       const layout = buildingLayout(this.content.buildings[s.type], at, s.rotation);
       const { size } = layout;
-      const needed = construction.cost.reduce((n, c) => n + c.amount, 0);
-      const delivered = construction.cost.reduce(
+      const cost = siteCost(state, this.content, id);
+      const needed = cost.reduce((n, c) => n + c.amount, 0);
+      const delivered = cost.reduce(
         (n, c) => n + Math.min(c.amount, s.delivered[c.resource] ?? 0),
         0,
       );
