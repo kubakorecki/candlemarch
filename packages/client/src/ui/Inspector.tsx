@@ -406,7 +406,7 @@ function BuildingPanel({
           </div>
           {building.workers.map((worker) => (
             <div key={worker.id} className="person">
-              <Avatar name={worker.name} job={worker.jobId} />
+              <Avatar name={worker.name} job={worker.jobId} master={worker.master !== null} />
               <div className="who">
                 <button
                   type="button"
@@ -415,7 +415,9 @@ function BuildingPanel({
                 >
                   {worker.name}
                 </button>
-                <span className="muted">{worker.job}</span>
+                <span className="muted">
+                  {worker.master ? `Master ${worker.master}` : worker.job}
+                </span>
               </div>
               <button
                 type="button"
@@ -438,9 +440,11 @@ function VillagerPanel({ villager, game }: { villager: VillagerInfo; game: Game 
   return (
     <section className="inspector panel" aria-label="Selected villager">
       <Head
-        lead={<Avatar name={villager.name} job={villager.jobId} big />}
+        lead={
+          <Avatar name={villager.name} job={villager.jobId} big master={villager.master !== null} />
+        }
         name={villager.name}
-        sub={`${villager.job} · ${villager.workplace ?? 'no Workplace'}${villager.helpingCarry ? ' · helping carry' : ''}`}
+        sub={`${villager.master ? `Master ${villager.master} · ` : ''}${villager.job} · ${villager.workplace ?? 'no Workplace'}${villager.helpingCarry ? ' · helping carry' : ''}`}
         game={game}
       />
       {needs && (
@@ -608,12 +612,13 @@ function WorkersPanel({ workers, game }: { workers: WorkersView; game: Game }) {
       <div className="workers-list">
         {workers.rows.map((row) => (
           <div key={row.id} className="person">
-            <Avatar name={row.name} job={row.jobId} />
+            <Avatar name={row.name} job={row.jobId} master={row.master !== null} />
             <div className="who">
               <button type="button" className="link" onClick={() => game.focusVillager(row.id)}>
                 {row.name}
               </button>
               <span className="muted">
+                {row.master ? `Master ${row.master}: ` : ''}
                 {row.workplace === null ? 'Carrier' : `${row.job}, ${row.workplace}`}
               </span>
             </div>

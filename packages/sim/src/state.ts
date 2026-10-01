@@ -12,6 +12,7 @@ import type {
   ResourceId,
   RoadId,
   TerrainId,
+  TradeId,
 } from '@candlemarch/content';
 import type { LogisticsState } from './logistics/jobDispatch';
 
@@ -441,6 +442,14 @@ export interface GloamlingComponent {
   target: EntityId | null;
 }
 
+/**
+ * A Master (spec, Trades and masters): an ordinary villager who holds a trade. Destroyed with the
+ * villager, so a dead Master is simply gone; `GameState.trades` remembers the trade.
+ */
+export interface MasterComponent {
+  trade: TradeId;
+}
+
 export interface Components {
   /**
    * Anchor tile of static things: map objects, Dens, caches, points of interest, buildings,
@@ -468,6 +477,8 @@ export interface Components {
   gloamling: Store<GloamlingComponent>;
   cache: Store<CacheComponent>;
   poi: Store<PoiComponent>;
+  /** Villagers who are Masters (`masters.ts`), by villager ID. */
+  master: Store<MasterComponent>;
 }
 
 /** How a villager died. */
@@ -542,4 +553,9 @@ export interface GameState {
   calms: CalmArea[];
   /** The village's rank (`ranks.ts`); a new game, and a save from before ranks, is at Camp. */
   rank: RankId;
+  /**
+   * Every trade whose Master has settled here, in the order they came; a trade stays once its
+   * Master is lost, so its workshops crawl rather than wait (`masters.ts`). Old saves: none.
+   */
+  trades: TradeId[];
 }

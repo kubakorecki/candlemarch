@@ -395,6 +395,32 @@ describe('content validation', () => {
     }
   });
 
+  it('trades are the seven masters, each run in workshops, with whole-percent speeds', () => {
+    expect(Object.keys(content.trades)).toEqual([
+      'carpenter',
+      'mason',
+      'butcher',
+      'smith',
+      'miller',
+      'brewer',
+      'baker',
+    ]);
+    for (const [id, trade] of Object.entries(content.trades)) {
+      expect(trade.id).toBe(id);
+      expect(trade.name).not.toBe('');
+    }
+    for (const b of Object.values(buildings)) {
+      if (b.trade === undefined) continue;
+      expect(content.trades, `${b.id}.trade`).toHaveProperty(b.trade);
+      expect(b.recipes?.length ?? 0, `${b.id} is a workshop`).toBeGreaterThan(0);
+    }
+    // The chopping block and charcoal kiln need no master.
+    expect(buildings.chopping_block.trade).toBeUndefined();
+    expect(buildings.charcoal_kiln.trade).toBeUndefined();
+    expectPositiveInt(content.masters.masterSpeedPercent, 'masters.masterSpeedPercent');
+    expectPositiveInt(content.masters.lostSpeedPercent, 'masters.lostSpeedPercent');
+  });
+
   it('buildings have a sane footprint and a door outside it', () => {
     for (const b of Object.values(buildings)) {
       expectPositiveInt(b.size.w, `${b.id}.size.w`);

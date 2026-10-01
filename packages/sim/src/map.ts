@@ -188,6 +188,7 @@ export function createEmptyState(seed: number): GameState {
       gloamling: {},
       cache: {},
       poi: {},
+      master: {},
     },
     logistics: { hauls: {} },
     deaths: [],
@@ -197,6 +198,7 @@ export function createEmptyState(seed: number): GameState {
     fog: false,
     calms: [],
     rank: 'camp',
+    trades: [],
   };
 }
 

@@ -19,6 +19,7 @@ import { recipes } from './recipes';
 import { resources } from './resources';
 import { roads } from './roads';
 import { terrain } from './terrain';
+import { masters, trades } from './trades';
 import type { Content } from './types';
 import { valley } from './valley';
 import { villagerNames } from './villagerNames';
@@ -34,6 +35,8 @@ export const content: Content = {
   crops,
   farming,
   buildings,
+  trades,
+  masters,
   heroes,
   roads,
   logistics,

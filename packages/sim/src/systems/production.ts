@@ -4,6 +4,7 @@
 import type { Content, RecipeId, ResourceAmount, ResourceId } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { doorTile } from '../grid';
+import { waitingForMaster } from '../masters';
 import { workTicks } from '../speed';
 import { isPaused } from '../standingOrders';
 import type { EntityId, GameState } from '../state';
@@ -48,13 +49,16 @@ export function recipeBlockers(
 }
 
 /**
- * The first of the workshop's recipes that can start now: it isn't paused, every input is in the
+ * The first of the workshop's recipes that can start now: it isn't paused or waiting for its
+ * Master (`waitingForMaster`), every input is in the
  * input buffer, and every output fits in the output buffer alongside work already under way.
  * Null if none can.
  */
 function startableRecipe(state: GameState, content: Content, building: EntityId): RecipeId | null {
   const b = state.components.building[building];
-  if (!b || isPaused(state, content, building)) return null;
+  if (!b || isPaused(state, content, building) || waitingForMaster(state, content, building)) {
+    return null;
+  }
   for (const id of content.buildings[b.type].recipes ?? []) {
     const { missing, noRoom } = recipeBlockers(state, content, building, id);
     if (missing.length === 0 && noRoom.length === 0) return id;

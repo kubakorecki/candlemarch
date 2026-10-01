@@ -71,6 +71,9 @@ describe('death and winter text', () => {
 describe('workplace status text', () => {
   it('says why a Workplace is idle', () => {
     expect(workplaceStatusText({ kind: 'noWorker' })).toBe('No worker');
+    expect(workplaceStatusText({ kind: 'noMaster', trade: 'carpenter' })).toBe(
+      'Waiting for a Master: the Carpenter',
+    );
     expect(workplaceStatusText({ kind: 'waitingFor', resources: ['logs'] })).toBe(
       'Waiting for logs',
     );

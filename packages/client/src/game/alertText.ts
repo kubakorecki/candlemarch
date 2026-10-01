@@ -78,6 +78,8 @@ export function workplaceStatusText(status: WorkplaceStatus): string {
   switch (status.kind) {
     case 'noWorker':
       return 'No worker';
+    case 'noMaster':
+      return `Waiting for a Master: the ${content.trades[status.trade].name}`;
     case 'waitingFor':
       return `Waiting for ${resourceList(status.resources)}`;
     case 'outputFull':

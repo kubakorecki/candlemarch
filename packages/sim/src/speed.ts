@@ -2,12 +2,14 @@
 // applies. Derived from state each time it's asked; nothing is stored.
 import type { Content } from '@candlemarch/content';
 import { workSpeedPercent } from './aura';
+import { tradeSpeedPercent } from './masters';
 import type { EntityId, GameState } from './state';
 
 /**
  * Speed of `id` as a percentage of normal. Slowdowns don't stack: only the worst of Tired, Hungry
  * and Cold applies. Work at `workplace` is also multiplied by the
- * hero's aura there, truncated. 100 for anyone who isn't a villager, such as the hero.
+ * hero's aura there and by its trade's speed (`tradeSpeedPercent`: a Master, or a lost one),
+ * truncated. 100 for anyone who isn't a villager, such as the hero.
  */
 export function speedPercent(
   state: GameState,
@@ -21,7 +23,9 @@ export function speedPercent(
   if (v && v.missedMeals > 0) percent = Math.min(percent, content.needs.hungry.speedPercent);
   if (v && v.coldNights > 0) percent = Math.min(percent, content.needs.cold.speedPercent);
   if (workplace === null) return percent;
-  return Math.trunc((percent * workSpeedPercent(state, content, workplace)) / 100);
+  const aura = workSpeedPercent(state, content, workplace);
+  const trade = tradeSpeedPercent(state, content, id, workplace);
+  return Math.trunc((percent * aura * trade) / 10_000);
 }
 
 /**

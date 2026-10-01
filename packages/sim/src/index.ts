@@ -55,6 +55,7 @@ export type { Haul, LogisticsState } from './logistics/jobDispatch';
 export { createInitialState, type MapDef } from './map';
 export { type MapName, maps } from './maps';
 export { canMark } from './marks';
+export { masterOf, settleMaster, tradeOf, waitingForMaster } from './masters';
 export { bellOf, isBellRung } from './militia';
 export { campCentre, type NewGameMap, type NewGameSetup, newGame } from './newGame';
 export {

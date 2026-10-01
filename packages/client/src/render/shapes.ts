@@ -2035,6 +2035,26 @@ export function drawMissingIcon(g: Graphics, x: number, y: number): void {
     .stroke({ width: 3 * s, color: palette.invalid, cap: 'round' });
 }
 
+/** A five-pointed star centred on (x, y), `r` to each point: a Master's mark. */
+function drawMasterStar(g: Graphics, x: number, y: number, r: number): void {
+  const points: number[] = [];
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const d = i % 2 === 0 ? r : r * 0.45;
+    points.push(x + Math.cos(a) * d, y + Math.sin(a) * d);
+  }
+  g.poly(points).fill(palette.gilt).stroke(THIN_INK);
+}
+
+/** A bubble centred on (x, y) over a workshop waiting for its Master: the Master's star, and "...". */
+export function drawNoMasterIcon(g: Graphics, x: number, y: number): void {
+  const s = TILE_H / 64;
+  const r = 13 * s;
+  g.circle(x, y, r).fill(palette.iconBg).stroke(INK);
+  drawMasterStar(g, x, y - 2 * s, 7 * s);
+  for (const dx of [-4, 0, 4]) g.circle(x + dx * s, y + 8 * s, 1.4 * s).fill(palette.ink);
+}
+
 /** A bubble centred on (x, y) over a workshop waiting for `resource`: a piece of it, and "...". */
 export function drawWaitingIcon(g: Graphics, x: number, y: number, resource: ResourceId): void {
   const s = TILE_H / 64;
@@ -2100,10 +2120,13 @@ export interface VillagerStatus {
   cold: boolean;
   /** A hunter walking back from a hunt empty-handed. */
   noCatch: boolean;
+  /** A Master: their mark, first in the row and always shown. */
+  master: boolean;
 }
 
 /**
- * Status icons over a villager's head, drawn relative to its feet: a House struck through when
+ * Status icons over a villager's head, drawn relative to its feet: a Master's gilt star, a House
+ * struck through when
  * it's Homeless, "zzz" when it's Tired, an empty bowl when it's Hungry, a snowflake when it's
  * Cold, a haunch struck through
  * when a hunter comes back with no catch. Every icon that applies shows, side by side.
@@ -2111,8 +2134,9 @@ export interface VillagerStatus {
 export function drawVillagerStatus(g: Graphics, status: VillagerStatus): void {
   g.clear();
   const s = TILE_H / 64;
-  const { homeless, tired, hungry, cold, noCatch } = status;
+  const { homeless, tired, hungry, cold, noCatch, master } = status;
   const icons = [
+    master && 'master',
     homeless && 'homeless',
     tired && 'tired',
     hungry && 'hungry',
@@ -2124,7 +2148,9 @@ export function drawVillagerStatus(g: Graphics, status: VillagerStatus): void {
     const x = (i - (icons.length - 1) / 2) * (2 * r + 3 * s);
     const y = -66 * s;
     g.circle(x, y, r).fill(palette.iconBg).stroke(INK);
-    if (icon === 'homeless') {
+    if (icon === 'master') {
+      drawMasterStar(g, x, y, 6.5 * s);
+    } else if (icon === 'homeless') {
       g.poly([
         x - 5 * s,
         y,

@@ -547,6 +547,20 @@ body,
   height: 48px;
   font-size: 20px;
 }
+/* A Master: a gilt ring, and their star on a lacquer disc at the top right. */
+.avatar.master {
+  position: relative;
+  border: 2px solid var(--ui-gilt-lit);
+}
+.avatar .master-mark {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  padding: 1px;
+  border-radius: 50%;
+  background: var(--ui-lacquer);
+  color: var(--ui-gilt-lit);
+}
 
 /* A bar of how full something is: pips for a few slots, a line for a share. */
 .pips {

@@ -119,14 +119,26 @@ export function Medallion({
 }
 
 /** A villager's initial on its Job's colour. */
-export function Avatar({ name, job, big = false }: { name: string; job: JobId; big?: boolean }) {
+export function Avatar({
+  name,
+  job,
+  big = false,
+  master = false,
+}: {
+  name: string;
+  job: JobId;
+  big?: boolean;
+  /** A Master: a gilt ring and their star at the corner. */
+  master?: boolean;
+}) {
   return (
     <span
-      className={big ? 'avatar big' : 'avatar'}
+      className={`avatar${big ? ' big' : ''}${master ? ' master' : ''}`}
       style={{ background: hex(JOB_COLORS[job]) }}
       aria-hidden="true"
     >
       {name.charAt(0)}
+      {master && <Icon name="master" size={big ? 16 : 13} className="master-mark" />}
     </span>
   );
 }

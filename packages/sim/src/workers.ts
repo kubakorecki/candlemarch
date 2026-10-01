@@ -2,6 +2,7 @@
 import type { BuildingId, Content, JobId } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { abandonHaul } from './logistics/jobDispatch';
+import { waitingForMaster } from './masters';
 import type { EntityId, GameState } from './state';
 import { stopAtNextTile } from './systems/movement';
 import { assignJob } from './villagers';
@@ -39,13 +40,16 @@ export function vacantPositions(state: GameState, content: Content, building: En
 
 /**
  * Workplaces villager `id` can be reassigned to: every building but its own with a vacant
- * position, in ID order.
+ * position, in ID order, leaving out workshops waiting for their Master.
  */
 export function reassignTargets(state: GameState, content: Content, id: EntityId): EntityId[] {
   const v = state.components.villager[id];
   if (!v) return [];
   return idsOf(state.components.building).filter(
-    (b) => b !== v.workplace && vacantPositions(state, content, b).length > 0,
+    (b) =>
+      b !== v.workplace &&
+      !waitingForMaster(state, content, b) &&
+      vacantPositions(state, content, b).length > 0,
   );
 }
 
@@ -85,14 +89,14 @@ export function dropWork(state: GameState, content: Content, id: EntityId): void
  * Makes villager `id` a Carrier with no Workplace, from where it stands, once it has dropped its
  * work (`dropWork`). Leaves worker limits alone.
  */
-function release(state: GameState, content: Content, id: EntityId): void {
+export function releaseWorker(state: GameState, content: Content, id: EntityId): void {
   dropWork(state, content, id);
   assignJob(state, content, id, 'carrier', null);
 }
 
 /** Makes every worker at `building` a Carrier, from where it stands. Leaves worker limits alone. */
 export function releaseWorkers(state: GameState, content: Content, building: EntityId): void {
-  for (const id of workersAt(state, building)) release(state, content, id);
+  for (const id of workersAt(state, building)) releaseWorker(state, content, id);
 }
 
 /** Lowers `building`'s worker limit by one, so staffing doesn't fill the position just left. */
@@ -106,7 +110,7 @@ export function unassignWorker(state: GameState, content: Content, id: EntityId)
   const v = state.components.villager[id];
   if (!v || v.workplace === null) return;
   const old = v.workplace;
-  release(state, content, id);
+  releaseWorker(state, content, id);
   lowerLimit(state, old);
 }
 
@@ -128,7 +132,7 @@ export function reassignWorker(
   const job = vacantPositions(state, content, workplace)[0];
   if (job === undefined) return;
   const old = v.workplace;
-  release(state, content, id);
+  releaseWorker(state, content, id);
   lowerLimit(state, old);
   if (workersAt(state, workplace).length >= target.workerLimit) target.workerLimit += 1;
   assignJob(state, content, id, job, workplace);
@@ -148,6 +152,6 @@ export function setWorkerLimit(
   if (!b || !Number.isInteger(limit) || limit < 0 || limit > maxWorkers(content, b.type)) return;
   b.workerLimit = limit;
   for (const id of workersAt(state, building).slice(limit).reverse()) {
-    release(state, content, id);
+    releaseWorker(state, content, id);
   }
 }

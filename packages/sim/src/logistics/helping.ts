@@ -4,6 +4,7 @@
 // worker holding a Haul is helping carry (`isHelpingCarry`).
 import type { Content } from '@candlemarch/content';
 import { farmWork, isFarm } from '../fields';
+import { waitingForMaster } from '../masters';
 import { isPaused } from '../standingOrders';
 import type { EntityId, GameState } from '../state';
 import { recipeBlockers } from '../systems/production';
@@ -12,7 +13,7 @@ import { gathererNoRoom } from '../yards';
 
 /**
  * Whether Workplace `building` can't use its workers between tasks now: it's paused by its
- * standing order, it's a gathering Workplace whose yard is full (`gathererNoRoom`), it's a
+ * standing order or waiting for its Master, it's a gathering Workplace whose yard is full (`gathererNoRoom`), it's a
  * workshop where no recipe can start (waiting for inputs, or output full), or it's a farm with no
  * Field work its farmers can do now (`farmWork`).
  */
@@ -21,7 +22,7 @@ export function cantUseWorkers(state: GameState, content: Content, building: Ent
   if (!b) return false;
   // A farm paused by its standing order still clears and harvests: only sowing stops.
   if (isFarm(state, content, building)) return farmWork(state, content, building).length === 0;
-  if (isPaused(state, content, building)) return true;
+  if (isPaused(state, content, building) || waitingForMaster(state, content, building)) return true;
   const recipes = content.buildings[b.type].recipes ?? [];
   if (recipes.length === 0) return gathererNoRoom(state, content, building).length > 0;
   return recipes.every((r) => {

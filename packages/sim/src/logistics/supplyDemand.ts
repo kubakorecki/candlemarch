@@ -5,6 +5,7 @@ import { idsOf } from '../entities';
 import { foodIds, granaryRoom } from '../granary';
 import { stockpileTileIndices } from '../grid';
 import { lightDef, lightFuelRoom } from '../lights';
+import { waitingForMaster } from '../masters';
 import { isPaused } from '../standingOrders';
 import type { EntityId, GameState } from '../state';
 import { amountOnTile, roomOnTile, STOCKPILE_PRIORITIES, stockpileTakes } from '../stockpiles';
@@ -32,7 +33,8 @@ export interface Demand {
 
 /**
  * Units of `resource` workshop `building`'s input buffer still has room for (not counting anything
- * already on its way), or 0 if it has no slot for it, is paused, or isn't a workshop.
+ * already on its way), or 0 if it has no slot for it, is paused, is waiting for its Master, or
+ * isn't a workshop.
  */
 export function inputRoom(
   state: GameState,
@@ -43,6 +45,7 @@ export function inputRoom(
   const b = state.components.building[building];
   const slot = b && content.buildings[b.type].inputBuffer?.find((s) => s.resource === resource);
   if (!b || !slot || isPaused(state, content, building)) return 0;
+  if (waitingForMaster(state, content, building)) return 0;
   return Math.max(0, slot.capacity - (b.input[resource] ?? 0));
 }
 

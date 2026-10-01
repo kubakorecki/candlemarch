@@ -88,6 +88,7 @@ import {
   drawMissingIcon,
   drawNoFirewoodIcon,
   drawNoGameIcon,
+  drawNoMasterIcon,
   drawOutputFullIcon,
   drawPalisade,
   drawPileGround,
@@ -227,6 +228,7 @@ function hitsNode(node: Container, sx: number, sy: number): boolean {
 /** Draws the icon for why a Workplace is idle, centred on (x, y). */
 function drawStatusIcon(g: Graphics, status: WorkplaceStatus, x: number, y: number): void {
   if (status.kind === 'noWorker') drawMissingIcon(g, x, y);
+  else if (status.kind === 'noMaster') drawNoMasterIcon(g, x, y);
   else if (status.kind === 'noGame') drawNoGameIcon(g, x, y);
   else if (status.resources[0] === undefined) return;
   else if (status.kind === 'waitingFor') drawWaitingIcon(g, x, y, status.resources[0]);
@@ -994,9 +996,17 @@ export class WorldRenderer {
       const hungry = v.missedMeals > 0;
       const cold = v.coldNights > 0;
       const noCatch = bag !== null && bag.length === 0;
-      const status = `${homeless}:${v.tired}:${hungry}:${cold}:${noCatch}`;
+      const master = state.components.master[id] !== undefined;
+      const status = `${homeless}:${v.tired}:${hungry}:${cold}:${noCatch}:${master}`;
       if (status !== view.statusDrawn) {
-        drawVillagerStatus(view.status, { homeless, tired: v.tired, hungry, cold, noCatch });
+        drawVillagerStatus(view.status, {
+          homeless,
+          tired: v.tired,
+          hungry,
+          cold,
+          noCatch,
+          master,
+        });
         view.statusDrawn = status;
       }
       // Its goods take the icons' place while it carries something.

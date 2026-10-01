@@ -70,6 +70,8 @@ export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
 export type PoiId = 'ruins' | 'abandoned_mine' | 'shrine';
 /** What a farm grows on its Fields (spec, Resources: Farms and crops). */
 export type CropId = 'grain';
+/** The master trades (spec, Trades and masters). A trade's workshops name it (`BuildingDef.trade`). */
+export type TradeId = 'carpenter' | 'mason' | 'butcher' | 'smith' | 'miller' | 'brewer' | 'baker';
 
 /** A number of units of one resource. */
 export interface ResourceAmount {
@@ -710,6 +712,11 @@ export interface BuildingDef {
   placeable: boolean;
   /** Villagers the building employs when it exists. */
   employs: { job: JobId; count: number }[];
+  /**
+   * The master trade that runs this workshop (spec, Trades and masters): it stands idle until
+   * that trade's Master has settled, and crawls once the Master is lost. Absent: no master needed.
+   */
+  trade?: TradeId;
   /** Map objects its workers gather from, if any. */
   gathers?: MapObjectId[];
   /**
@@ -829,6 +836,21 @@ export interface RankDef {
   unlocks: { buildings: BuildingId[] };
 }
 
+/** A master trade: its Master's title. Its workshops are the buildings naming it. */
+export interface TradeDef {
+  id: TradeId;
+  /** The Master's title, e.g. "Carpenter". */
+  name: string;
+}
+
+/** How a trade's Master changes its workshops' speed (spec, How a trade scales). */
+export interface MastersDef {
+  /** The Master's own work, in a workshop of their trade, as a percent of normal (+50%: 150). */
+  masterSpeedPercent: number;
+  /** Every workshop of a trade whose Master is lost, until a new one comes (a crawl: 25). */
+  lostSpeedPercent: number;
+}
+
 export interface Content {
   resources: Record<ResourceId, ResourceDef>;
   terrain: Record<TerrainId, TerrainDef>;
@@ -838,6 +860,8 @@ export interface Content {
   crops: Record<CropId, CropDef>;
   farming: FarmingDef;
   buildings: Record<BuildingId, BuildingDef>;
+  trades: Record<TradeId, TradeDef>;
+  masters: MastersDef;
   heroes: Record<HeroId, HeroDef>;
   roads: Record<RoadId, RoadDef>;
   logistics: LogisticsDef;

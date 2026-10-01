@@ -1,6 +1,6 @@
 # Masters
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 01, 04, m2-camp-winter/06
 
@@ -19,3 +19,7 @@ Spec: Trades and masters (What a master is, How a trade scales). Glossary: Maste
 
 - Headless tests: a workshop idles without its Master; the Master's workshop is +50%; another workshop runs at normal speed; losing the Master drops both to 25%.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-10-01: Done. Trades are content (`trades.ts`, `BuildingDef.trade` on a workshop; none yet, ticket 12 adds them); a Master is a `master` component on a villager, `state.trades` remembers every trade that has had one. Workshops of a trade never Mastered stand idle, unstaffed, asking for no inputs ("Waiting for a Master: the Carpenter"); the Master works in the lowest-ID workshop of the trade at 150%, the others at 100%, and all crawl at 25% once the Master is gone. `settleMaster` puts a Master into state (tests; Charters in ticket 11). The Master shows a gilt star over the head and on avatars, and "Master Carpenter" in the villager panel and worker rows. Tests: `packages/sim/test/masters.test.ts`. See docs/decisions.md.

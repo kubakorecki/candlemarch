@@ -1,8 +1,9 @@
 // Why a Workplace stands idle, for the icons over it (spec, Logistics: "Making bottlenecks
 // readable"). Derived each time it's asked, never stored.
-import type { Content, ResourceId } from '@candlemarch/content';
+import type { Content, ResourceId, TradeId } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { lodgeGrounds } from './huntingGrounds';
+import { tradeOf, waitingForMaster } from './masters';
 import { isPaused } from './standingOrders';
 import type { EntityId, GameState } from './state';
 import { recipeBlockers } from './systems/production';
@@ -10,6 +11,8 @@ import { openPositions } from './systems/staffing';
 import { gathererNoRoom } from './yards';
 
 export type WorkplaceStatus =
+  /** A workshop whose trade has never had a Master (`waitingForMaster`): idle, unstaffed. */
+  | { kind: 'noMaster'; trade: TradeId }
   /** A position staffing would fill is empty (within the worker limit). */
   | { kind: 'noWorker' }
   /** A workshop lacks these inputs for its first recipe (none has all its inputs). */
@@ -34,6 +37,10 @@ export function workplaceStatus(
 ): WorkplaceStatus | null {
   const b = state.components.building[building];
   if (!b) return null;
+  const trade = tradeOf(content, b.type);
+  if (trade !== null && waitingForMaster(state, content, building)) {
+    return { kind: 'noMaster', trade };
+  }
   if (openPositions(state, content, building).length > 0) return { kind: 'noWorker' };
   if (isPaused(state, content, building)) return null;
   const recipes = content.buildings[b.type].recipes ?? [];

@@ -60,6 +60,7 @@ import {
   isWithered,
   lShapeTiles,
   MAX_STANDING_ORDER,
+  masterOf,
   maxWorkers,
   type NewGameSetup,
   oreAt,
@@ -155,6 +156,8 @@ export interface VillagerInfo {
   cold: string | null;
   /** A worker holding a Haul because its Workplace can't use it now. */
   helpingCarry: boolean;
+  /** A Master's title ("Carpenter"), or null for anyone else. */
+  master: string | null;
 }
 
 /** A row of the workers view: one villager, as display text, and where it can be reassigned. */
@@ -163,6 +166,8 @@ export interface WorkerRow {
   name: string;
   job: string;
   jobId: JobId;
+  /** A Master's title ("Carpenter"), or null for anyone else. */
+  master: string | null;
   /** The Workplace's name, or null for a Carrier. */
   workplace: string | null;
   /** Workplaces with a free position, by name. */
@@ -241,7 +246,7 @@ export interface BuildingInfo {
   grounds: GroundInfo[];
   /** The ground a hunter's lodge is set to hunt, or null for the nearest with Game. */
   huntingGround: EntityId | null;
-  workers: { id: EntityId; name: string; job: string; jobId: JobId }[];
+  workers: { id: EntityId; name: string; job: string; jobId: JobId; master: string | null }[];
   workerLimit: number;
   maxWorkers: number;
   /** Why it's idle, e.g. "Waiting for logs", or null while it works. */
@@ -1570,7 +1575,16 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
     huntingGround: b.huntingGround ?? null,
     workers: workersAt(state, id).flatMap((w) => {
       const v = villager[w];
-      return v ? [{ id: w, name: v.name, job: content.jobs[v.job].name, jobId: v.job }] : [];
+      if (!v) return [];
+      return [
+        {
+          id: w,
+          name: v.name,
+          job: content.jobs[v.job].name,
+          jobId: v.job,
+          master: title(state, w),
+        },
+      ];
     }),
     workerLimit: b.workerLimit,
     maxWorkers: maxWorkers(content, b.type),
@@ -1610,6 +1624,7 @@ function workersView(state: GameState): WorkersView {
       name: v.name,
       job: content.jobs[v.job].name,
       jobId: v.job,
+      master: title(state, id),
       workplace: v.workplace === null ? null : (names[v.workplace] ?? null),
       targets: reassignTargets(state, content, id).map((b) => ({ id: b, name: names[b] ?? '' })),
     });
@@ -1648,7 +1663,14 @@ function villagerInfo(state: GameState, id: EntityId): VillagerInfo | null {
     hunger: v.missedMeals > 0 ? hungerLabel(v.missedMeals) : null,
     cold: v.coldNights > 0 ? coldLabel(v.coldNights) : null,
     helpingCarry: isHelpingCarry(state, id),
+    master: title(state, id),
   };
+}
+
+/** Villager `id`'s title as a Master ("Carpenter"), or null when it isn't one. */
+function title(state: GameState, id: EntityId): string | null {
+  const trade = masterOf(state, id);
+  return trade === null ? null : content.trades[trade].name;
 }
 
 /** "1 cold night; freezes after 2". */
