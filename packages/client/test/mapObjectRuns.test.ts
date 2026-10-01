@@ -82,6 +82,21 @@ describe('map object runs', () => {
     expect(runs.objectsIn(grown[0] as string)[0]).toMatchObject({ type: 'tree', stage: 0 });
   });
 
+  it('reports the run of an object marked or unmarked', () => {
+    const runs = new MapObjectRuns();
+    const { mapObject, tile } = trees([
+      [1, 3, 5, 10],
+      [2, 9, 9, 10],
+    ]);
+    runs.update(mapObject, tile);
+    mapObject[2] = { type: 'tree', amount: 10, marked: true };
+    const marked = [...runs.update(mapObject, tile)];
+    expect(marked.map((key) => tilesOf(runs, key))).toEqual([['9,9']]);
+    expect(runs.objectsIn(marked[0] as string)[0]?.marked).toBe(true);
+    mapObject[2] = { type: 'tree', amount: 10 };
+    expect(runs.update(mapObject, tile).size).toBe(1);
+  });
+
   it('reports the run of a removed object, and an emptied run with nothing in it', () => {
     const runs = new MapObjectRuns();
     const before = trees([

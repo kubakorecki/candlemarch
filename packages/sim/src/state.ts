@@ -84,6 +84,11 @@ export interface MapObjectComponent {
   growsAt?: number;
   /** Something growing with drawing stages (a Sapling): the stage it's drawn at, from 0. */
   stage?: number;
+  /**
+   * Marked by the player (`marks.ts`): a tree to fell first, or a Stump to dig out. Absent when
+   * unmarked. It goes with the object: the Stump a felled tree leaves starts unmarked.
+   */
+  marked?: true;
 }
 
 /**
@@ -258,6 +263,10 @@ export interface PathComponent {
   progress: number;
 }
 
+/**
+ * A woodcutter. `tree` is the tree it fells, or a marked Stump it digs out (`marks.ts`), with the
+ * same walk, work and trip back to the hut.
+ */
 export type WoodcutterTask =
   | { kind: 'idle'; retryAt: number }
   | { kind: 'toTree'; tree: EntityId }

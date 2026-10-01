@@ -164,13 +164,13 @@ export class GroundLayer {
 function drawMapObject(g: Graphics, obj: DrawnObject, content: Content): void {
   switch (obj.type) {
     case 'tree':
-      drawTree(g, obj.amount, content.mapObjects.tree.amount);
+      drawTree(g, obj.amount, content.mapObjects.tree.amount, obj.marked);
       break;
     case 'sapling':
       drawSapling(g, obj.stage);
       break;
     case 'stump':
-      drawStump(g);
+      drawStump(g, obj.marked);
       break;
     case 'berry_bush':
       drawBerryBush(g, obj.amount, obj.withered);

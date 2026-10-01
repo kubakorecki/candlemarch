@@ -309,7 +309,7 @@ export function groundShadowAt(g: Graphics, x: number, y: number, rx: number, ry
  * A tree, drawn around (0, 0) = the centre of its tile on the ground. Map objects add to `g`
  * without clearing it, so a row of them can share one Graphics (see `mapObjectRuns.ts`).
  */
-export function drawTree(g: Graphics, amount: number, fullAmount: number): void {
+export function drawTree(g: Graphics, amount: number, fullAmount: number, marked = false): void {
   const s = TILE_H / 64; // art scale
   const fullness = 0.75 + 0.25 * (amount / fullAmount);
   groundShadow(g, 30 * s, 14 * s);
@@ -337,10 +337,37 @@ export function drawTree(g: Graphics, amount: number, fullAmount: number): void 
   g.moveTo(-6 * s, -70 * s).lineTo(2 * s, -62 * s);
   g.moveTo(8 * s, -48 * s).lineTo(14 * s, -42 * s);
   g.stroke({ ...THIN_INK, alpha: 0.6 });
+  // Marked to fell: a pennant above the crown, seen over the trees in front.
+  if (marked) drawPennant(g, s, 2 * s, -66 * s - r, -66 * s - r * 1.15 - 16 * s);
 }
 
-/** A Stump, what a felled tree leaves: a short cut log end, pale on top, with a root or two. */
-export function drawStump(g: Graphics): void {
+/**
+ * A mark's pennant: a stick from (x, `foot`) up to (x, `top`) flying a flag of paint-coloured
+ * cloth. `s` is the art scale.
+ */
+function drawPennant(g: Graphics, s: number, x: number, foot: number, top: number): void {
+  g.moveTo(x, foot)
+    .lineTo(x, top)
+    .stroke({ width: 3.5 * s, color: palette.ink, cap: 'round' });
+  g.moveTo(x, foot)
+    .lineTo(x, top)
+    .stroke({ width: 1.8 * s, color: palette.log, cap: 'round' });
+  g.poly(
+    flat([
+      { x, y: top },
+      { x: x + 11 * s, y: top + 4 * s },
+      { x, y: top + 8 * s },
+    ]),
+  )
+    .fill(palette.mark)
+    .stroke(THIN_INK);
+}
+
+/**
+ * A Stump, what a felled tree leaves: a short cut log end, pale on top, with a root or two; with
+ * a pennant staked beside it when `marked` to be dug out.
+ */
+export function drawStump(g: Graphics, marked = false): void {
   const s = TILE_H / 64;
   groundShadow(g, 12 * s, 6 * s);
   g.moveTo(-7 * s, -2 * s)
@@ -365,6 +392,7 @@ export function drawStump(g: Graphics): void {
     .fill(palette.log)
     .stroke(INK);
   g.ellipse(0, -9 * s, 3.5 * s, 1.5 * s).stroke({ ...THIN_INK, alpha: 0.6 });
+  if (marked) drawPennant(g, s, 11 * s, 3 * s, -20 * s);
 }
 
 /**

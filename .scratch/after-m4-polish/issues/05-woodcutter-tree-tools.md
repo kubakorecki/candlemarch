@@ -1,6 +1,6 @@
 # Tree tools in the woodcutter's hut: fell these, keep those, dig out stumps
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 02
 
@@ -22,3 +22,5 @@ Decided (owner, 2026-09-30):
 ## Comments
 
 2026-09-30 — Owner confirmed the defaults, with one change: digging out a Stump gives 1 log.
+
+2026-10-01 — Done. The woodcutter's hut panel has a "Trees" row: Fell, Keep (the Reserve, moved out of the build menu; M still picks it), Dig stumps and a fourth tool, Erase (the old Erase Reserve, key A, now also taking Fell and Dig marks off), since marks need a way off. A mark is a flag on the map object (`mapObject.marked`), so it travels in the existing static patch and leaves with the object (a felled marked tree's Stump starts unmarked). Marking a tree in a Reserve is refused (that tree is skipped), and painting Keep takes Fell marks off the trees it covers. Marked trees and marked Stumps come first together, nearest first. Digging takes 100 ticks (the Stump's gather numbers, via a new `BuildingDef.digs`) and gives 1 log. Marks are drawn as paint-coloured pennants. Tests: `sim/test/marks.test.ts`. Details in `docs/decisions.md`.

@@ -137,7 +137,7 @@ export interface MapObjectDef {
   deposit?: DepositDef;
   /**
    * Makes it something growing (a Sapling, or a Stump that will sprout one): nobody gathers it
-   * (its `amount` is 0), it doesn't block walking, and a building, Road or Stockpile put on its
+   * (its `amount` is 0; a building may still dig it out, see `BuildingDef.digs`), it doesn't block walking, and a building, Road or Stockpile put on its
    * tile clears it. It turns into `into` after `days`.
    */
   grows?: GrowsDef;
@@ -597,6 +597,12 @@ export interface BuildingDef {
   employs: { job: JobId; count: number }[];
   /** Map objects its workers gather from, if any. */
   gathers?: MapObjectId[];
+  /**
+   * Map objects its workers dig out once the player marks them (a woodcutter's hut: Stumps): a
+   * gather of the object's `gatherTicks` for `yieldPerGather` of its `resource`, after which it's
+   * gone for good. Within `workRadius`, like `gathers`.
+   */
+  digs?: MapObjectId[];
   /**
    * Its workers gather only within this many tiles of its footprint (Chebyshev distance). Without
    * it they go anywhere.

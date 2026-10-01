@@ -1,6 +1,6 @@
 // Gatherers (woodcutters, foragers): how far they may go, and walking to the nearest map object
 // worth gathering.
-import type { Content } from '@candlemarch/content';
+import type { Content, MapObjectId } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { blockedGrid, standingTiles, tileIndex } from './grid';
 import { tileDistance } from './pathfinding';
@@ -30,18 +30,19 @@ export function inWorkRadius(
 
 /**
  * Map objects the workers of building `hutId` could gather from now, in ID order: of a type it
- * gathers, `canGather`, within its work radius, and yielding a whole gather its yard has room
- * for.
+ * gathers (or of `types`, when given), `canGather`, within its work radius, and yielding a whole
+ * gather its yard has room for.
  */
 export function gatherTargets(
   state: GameState,
   content: Content,
   hutId: EntityId,
   canGather: (id: EntityId) => boolean,
+  types?: readonly MapObjectId[],
 ): EntityId[] {
   const { mapObject, tile, building } = state.components;
   const hut = building[hutId];
-  const gathers = hut ? (content.buildings[hut.type].gathers ?? []) : [];
+  const gathers = types ?? (hut ? (content.buildings[hut.type].gathers ?? []) : []);
   return idsOf(mapObject).filter((t) => {
     const obj = mapObject[t];
     if (!obj || !gathers.includes(obj.type) || !canGather(t)) return false;

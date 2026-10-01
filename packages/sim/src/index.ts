@@ -51,12 +51,14 @@ export { isDarkLight, type LightSource, lightSources } from './lights';
 export type { Haul, LogisticsState } from './logistics/jobDispatch';
 export { createInitialState, type MapDef } from './map';
 export { type MapName, maps } from './maps';
+export { canMark } from './marks';
 export { bellOf, isBellRung } from './militia';
 export { campCentre, type NewGameMap, type NewGameSetup, newGame } from './newGame';
 export { isSearchable, poiAt } from './pois';
 export {
   addToReserve,
   canPaintReserve,
+  fellsTrees,
   inReserve,
   reserveNear,
   reserveRect,

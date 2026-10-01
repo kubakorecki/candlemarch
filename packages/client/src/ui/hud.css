@@ -369,6 +369,15 @@ body,
   color: var(--ui-lacquer);
   font-weight: 600;
 }
+/* Tools as a segmented choice (the woodcutter's hut's tree tools): icon over word. */
+.seg.tools button {
+  height: 52px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 4px;
+  font-size: 13px;
+  white-space: nowrap;
+}
 .seg.joined {
   gap: 0;
 }

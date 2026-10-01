@@ -15,6 +15,8 @@ export interface DrawnObject {
   withered: boolean;
   /** A Sapling's growth stage; 0 for anything else. */
   stage: number;
+  /** Marked to fell (a tree) or dig out (a Stump). */
+  marked: boolean;
   x: number;
   y: number;
 }
@@ -30,7 +32,8 @@ export class MapObjectRuns {
 
   /**
    * Brings the drawn objects in line with a map-object store and its tiles, and returns the runs
-   * whose look changed: an object added, removed, moved, or its type, amount, withering or growth stage changed. A run
+   * whose look changed: an object added, removed, moved, or its type, amount, withering, growth
+   * stage or mark changed. A run
    * left empty is returned too, with no objects in it. Objects on tiles `shown` says no to (under
    * Fog, unrevealed ones) count as absent.
    */
@@ -53,6 +56,7 @@ export class MapObjectRuns {
       if (!at || !shown(at.x, at.y)) continue;
       const withered = obj.withered === true;
       const stage = obj.stage ?? 0;
+      const marked = obj.marked === true;
       const was = this.drawn.get(id);
       if (
         was &&
@@ -60,6 +64,7 @@ export class MapObjectRuns {
         was.amount === obj.amount &&
         was.withered === withered &&
         was.stage === stage &&
+        was.marked === marked &&
         was.x === at.x &&
         was.y === at.y
       ) {
@@ -67,7 +72,15 @@ export class MapObjectRuns {
       }
       if (was) this.remove(id, was, dirty);
       const run = runKey(at.x, at.y);
-      this.drawn.set(id, { type: obj.type, amount: obj.amount, withered, stage, x: at.x, y: at.y });
+      this.drawn.set(id, {
+        type: obj.type,
+        amount: obj.amount,
+        withered,
+        stage,
+        marked,
+        x: at.x,
+        y: at.y,
+      });
       let ids = this.members.get(run);
       if (!ids) {
         ids = new Set();

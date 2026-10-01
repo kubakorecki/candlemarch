@@ -76,7 +76,9 @@ must be told apart also differ in lightness.
   (gilt border and an underline). Always give a `label` (it's the aria-label and the tooltip; put the
   shortcut in it, e.g. "Workers (V)"). `size="small"` for − / +, `size="bare"` for close.
 - **Segmented choice** (`<fieldset className="seg">` of buttons with `aria-pressed`): speed,
-  Stockpile priority. The chosen one is filled gilt. Add `joined` to butt them together.
+  Stockpile priority. The chosen one is filled gilt. Add `joined` to butt them together. Add
+  `tools` for tools taken up from a panel (the woodcutter's hut's tree tools): icon over word, the
+  one in hand filled gilt, its hint in the status line above the build menu.
 - **Toggle chips** (`<label className="toggle-chip">` around a checkbox, an icon and a word): on/off
   settings like what a Stockpile takes.
 - **Links** (`.link`): a name that selects its villager, gilt-lit.
@@ -130,8 +132,8 @@ and scrolls. The HUD layer ignores the mouse (`pointer-events: none`); each pane
   (`.fact` rows, or a `.facts` grid), callouts, and a `<SectionHead>` per list. Render it in
   `LeftDock`.
 - **A new building or tool:** add it to `TOOLS` (`game/tools.ts`), to a category and to
-  `TOOL_ICONS` in `ui/buildCategories.ts` (a test checks every tool is in one category), and an icon
-  if none fits. The card and details read cost, size, build time and workers from content; the
+  `TOOL_ICONS` in `ui/buildCategories.ts` (a test checks every tool is in one category, bar Demolish
+  and the panel's `TREE_TOOLS`), and an icon if none fits. The card and details read cost, size, build time and workers from content; the
   tool's `hint` shows in the details (or in the status line above the menu when its card isn't
   showing, as for Demolish).
 - **A new store on the Ledger:** a Stockpile good appears by itself once a building makes it (an

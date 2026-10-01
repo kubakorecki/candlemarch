@@ -8,8 +8,9 @@ import { buildingLayout, canPlaceBuilding } from './grid';
 import { layGroundwork } from './groundwork';
 import { type HeroOrder, orderHero } from './hero';
 import { setHuntingGround } from './huntingGrounds';
+import { clearMarks, markObjects, paintKeep } from './marks';
 import { ringBell } from './militia';
-import { eraseReserve, paintReserve } from './reserves';
+import { eraseReserve } from './reserves';
 import { layPath, removePath } from './roads';
 import {
   type EntityId,
@@ -46,10 +47,19 @@ export type Command =
   | { type: 'layWall'; building: BuildingId; from: Tile; to: Tile }
   /** Lays groundwork (a Drain or a Pass road) along the L from `from` to `to`. */
   | { type: 'layGroundwork'; building: BuildingId; from: Tile; to: Tile }
-  /** Paints the rectangle with corners `from` and `to` as a Reserve: woodcutters fell nothing there. */
+  /**
+   * Paints the rectangle with corners `from` and `to` as a Reserve (the Keep tool): woodcutters
+   * fell nothing there. Takes the Fell marks off the trees in it.
+   */
   | { type: 'paintReserve'; from: Tile; to: Tile }
   /** Erases the Reserve from the rectangle with corners `from` and `to`. */
   | { type: 'eraseReserve'; from: Tile; to: Tile }
+  /** Marks the trees on the rectangle with corners `from` and `to` to be felled first. */
+  | { type: 'markTrees'; from: Tile; to: Tile }
+  /** Marks the Stumps on the rectangle with corners `from` and `to` to be dug out. */
+  | { type: 'markStumps'; from: Tile; to: Tile }
+  /** Takes every Fell and Dig mark off the rectangle with corners `from` and `to`. */
+  | { type: 'clearMarks'; from: Tile; to: Tile }
   | { type: 'placeStockpile'; x: number; y: number; w: number; h: number }
   | { type: 'removeStockpile'; id: EntityId }
   | { type: 'setStockpilePriority'; id: EntityId; priority: StockpilePriority }
@@ -113,11 +123,23 @@ export function applyCommand(state: GameState, command: Command, content: Conten
       return;
     }
     case 'paintReserve': {
-      paintReserve(state, command.from, command.to);
+      paintKeep(state, content, command.from, command.to);
       return;
     }
     case 'eraseReserve': {
       eraseReserve(state, command.from, command.to);
+      return;
+    }
+    case 'markTrees': {
+      markObjects(state, content, 'fell', command.from, command.to);
+      return;
+    }
+    case 'markStumps': {
+      markObjects(state, content, 'dig', command.from, command.to);
+      return;
+    }
+    case 'clearMarks': {
+      clearMarks(state, content, command.from, command.to);
       return;
     }
     case 'placeStockpile': {

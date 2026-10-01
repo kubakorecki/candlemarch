@@ -18,6 +18,7 @@ import {
   canLayGroundwork,
   canLayPath,
   canLayWall,
+  canMark,
   canPaintReserve,
   canPlaceBuilding,
   canPlaceStockpile,
@@ -27,6 +28,7 @@ import {
   denAt,
   type EntityId,
   entityLayout,
+  fellsTrees,
   type GameState,
   type GroundHealth,
   groundAt,
@@ -207,6 +209,8 @@ export interface BuildingInfo {
   status: string | null;
   /** It's the Militia bell, so the panel can ring it. */
   bell: boolean;
+  /** It fells trees (a woodcutter's hut), so the panel has the tree tools (`TREE_TOOLS`). */
+  treeTools: boolean;
 }
 
 /** One save slot in the Load menu: its name and when it was saved, or null when it's empty. */
@@ -408,6 +412,16 @@ export class Game {
     this.clearSelection();
     // The build menu shows the tool's hint.
     this.setHud({ tool, message: null });
+    this.updateGhost();
+  }
+
+  /**
+   * Takes up tree tool `tool` from the woodcutter's hut panel, keeping the hut selected so its
+   * panel stays open; puts it down again if it's already in hand.
+   */
+  toggleTreeTool(tool: ToolId): void {
+    this.dragStart = null;
+    this.setHud({ tool: this.hud.tool === tool ? null : tool, message: null });
     this.updateGhost();
   }
 
@@ -783,11 +797,18 @@ export class Game {
       else this.setHud({ message: "Can't lay a path there." });
     } else if (tool === 'removePath') {
       this.bridge.command({ type: 'removePath', from, to });
+    } else if (tool === 'fellTrees') {
+      if (canMark(state, from, to)) this.bridge.command({ type: 'markTrees', from, to });
+      else this.setHud({ message: "Can't mark trees where you haven't looked yet." });
     } else if (tool === 'reserve') {
       if (canPaintReserve(state, from, to)) this.bridge.command({ type: 'paintReserve', from, to });
       else this.setHud({ message: "Can't mark a Reserve where you haven't looked yet." });
-    } else if (tool === 'eraseReserve') {
+    } else if (tool === 'digStumps') {
+      if (canMark(state, from, to)) this.bridge.command({ type: 'markStumps', from, to });
+      else this.setHud({ message: "Can't mark Stumps where you haven't looked yet." });
+    } else if (tool === 'eraseMarks') {
       this.bridge.command({ type: 'eraseReserve', from, to });
+      this.bridge.command({ type: 'clearMarks', from, to });
     } else if (tool === 'stockpile') {
       const r = rect(from, to);
       if (canPlaceStockpile(state, content, r.x, r.y, r.w, r.h))
@@ -1109,7 +1130,14 @@ export class Game {
           tiles: reserveRect(from, hover),
           valid: canPaintReserve(state, from, hover),
         };
-      case 'eraseReserve':
+      case 'fellTrees':
+      case 'digStumps':
+        return {
+          kind: 'tiles',
+          tiles: reserveRect(from, hover),
+          valid: canMark(state, from, hover),
+        };
+      case 'eraseMarks':
         return { kind: 'tiles', tiles: reserveRect(from, hover), valid: true };
       case 'stockpile': {
         const r = rect(from, hover);
@@ -1330,6 +1358,7 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
     maxWorkers: maxWorkers(content, b.type),
     status: status && workplaceStatusText(status),
     bell: content.buildings[b.type].bell !== undefined,
+    treeTools: fellsTrees(content, b.type),
   };
 }
 

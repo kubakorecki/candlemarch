@@ -9,6 +9,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     placeable: true,
     employs: [{ job: 'woodcutter', count: 1 }],
     gathers: ['tree'],
+    digs: ['stump'], // once marked with the Dig stumps tool
     // A radius so the placement preview can warn when it reaches into a Hunting ground.
     workRadius: 8,
     outputBuffer: { resources: ['logs'], yard: { x: 1, y: 0 } },

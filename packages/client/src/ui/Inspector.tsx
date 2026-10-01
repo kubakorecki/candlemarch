@@ -13,6 +13,7 @@ import type {
   VillagerInfo,
   WorkersView,
 } from '../game/Game';
+import { TREE_TOOLS, toolDef } from '../game/tools';
 import { TOOL_ICONS } from './buildCategories';
 import { Icon, type IconName } from './icons';
 import {
@@ -131,6 +132,37 @@ function YardFacts({ yard }: { yard: NonNullable<BuildingInfo['yard']> }) {
   );
 }
 
+/**
+ * A woodcutter's hut's tools for the trees around it: Fell, Keep (the Reserve), Dig stumps and
+ * Erase, each dragged as a rectangle on the map. The one in hand is lit; its hint shows in the
+ * status line above the build menu.
+ */
+function TreeTools({ hud, game }: { hud: HudState; game: Game }) {
+  return (
+    <>
+      <SectionHead title="Trees" />
+      <fieldset className="seg tools" aria-label="Tree tools">
+        {TREE_TOOLS.map((id) => {
+          const tool = toolDef(id);
+          if (!tool) return null;
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={hud.tool === id}
+              title={tool.key ? `${tool.hint} (${tool.key.toUpperCase()})` : tool.hint}
+              onClick={() => game.toggleTreeTool(id)}
+            >
+              <Icon name={TOOL_ICONS[id]} size={20} />
+              {tool.label}
+            </button>
+          );
+        })}
+      </fieldset>
+    </>
+  );
+}
+
 function BuildingPanel({
   building,
   hud,
@@ -158,6 +190,7 @@ function BuildingPanel({
           </button>
         </div>
       )}
+      {building.treeTools && <TreeTools hud={hud} game={game} />}
       {building.grounds.length > 0 && <SectionHead title="Hunting grounds" />}
       {building.grounds.length > 0 && (
         <div className="fact">

@@ -199,6 +199,8 @@ export const palette = {
   invalid: 0xc4584a,
   // Reserves: forest the woodcutters leave alone, washed and hatched on the ground.
   reserve: 0x6f9aa6,
+  // Fell and Dig marks: woodsman's paint on a marked tree's trunk and a marked Stump's stake.
+  mark: 0xd08a3c,
 
   // HUD, the Vellum look (docs/agents/design-system.md): umber lacquer panels, gilt hairlines, vellum
   // text. Red and amber are kept for alerts; gilt marks what's on or in hand.

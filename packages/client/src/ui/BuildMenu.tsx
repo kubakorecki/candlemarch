@@ -61,7 +61,7 @@ function Card({
       onFocus={() => onHover(tool.id)}
       onBlur={() => onHover(null)}
     >
-      <span className="keycap">{tool.key.toUpperCase()}</span>
+      {tool.key && <span className="keycap">{tool.key.toUpperCase()}</span>}
       <Medallion icon={TOOL_ICONS[tool.id]} size={28} />
       <span className="name">{building?.name ?? tool.label}</span>
       <Cost cost={building?.construction?.cost ?? []} />
@@ -205,7 +205,7 @@ export function BuildMenu({ hud, game }: { hud: HudState; game: Game }) {
             className="build-tab demolish"
             aria-pressed={hud.tool === 'demolish'}
             disabled={!hud.ready}
-            title={`${demolish.hint} (${demolish.key.toUpperCase()})`}
+            title={`${demolish.hint} (${demolish.key?.toUpperCase()})`}
             onClick={() =>
               hud.tool === 'demolish' ? game.cancelTool() : game.selectTool('demolish')
             }

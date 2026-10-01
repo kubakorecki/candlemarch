@@ -72,6 +72,11 @@ export function eraseReserve(state: GameState, from: Tile, to: Tile): void {
   if (erased) staticChanged(state);
 }
 
+/** Whether a `type` building fells trees (a woodcutter's hut): the one the Reserve holds back. */
+export function fellsTrees(content: Content, type: BuildingId): boolean {
+  return content.buildings[type].gathers?.includes(content.hunting.forest) === true;
+}
+
 /**
  * The Reserve tiles a `type` building placed at `origin` would have in its work radius, row by row,
  * for its placement preview; none unless it fells trees (a woodcutter's hut).
@@ -85,7 +90,7 @@ export function reserveNear(
 ): Tile[] {
   const def = content.buildings[type];
   const r = def.workRadius;
-  if (r === undefined || !def.gathers?.includes(content.hunting.forest)) return [];
+  if (r === undefined || !fellsTrees(content, type)) return [];
   const { size } = buildingLayout(def, origin, rotation);
   const tiles: Tile[] = [];
   for (let y = origin.y - r; y <= origin.y + size.h - 1 + r; y++) {

@@ -280,6 +280,9 @@ describe('content validation', () => {
       for (const obj of b.gathers ?? []) {
         expect(mapObjects, `${b.id}.gathers`).toHaveProperty(obj);
       }
+      for (const obj of b.digs ?? []) {
+        expect(mapObjects, `${b.id}.digs`).toHaveProperty(obj);
+      }
       if (b.workRadius !== undefined) expectPositiveInt(b.workRadius, `${b.id}.workRadius`);
       for (const resource of b.outputBuffer?.resources ?? []) {
         expect(resources, `${b.id}.outputBuffer`).toHaveProperty(resource);
@@ -390,7 +393,7 @@ describe('content validation', () => {
 
   it('a gathering building has somewhere to put what it gathers', () => {
     for (const b of Object.values(buildings)) {
-      for (const obj of b.gathers ?? []) {
+      for (const obj of [...(b.gathers ?? []), ...(b.digs ?? [])]) {
         const resource = mapObjects[obj].resource;
         expect(b.outputBuffer?.resources, `${b.id} holds ${resource}`).toContain(resource);
         expect(mapObjects[obj].yieldPerGather, `${b.id}'s yard holds a gather`).toBeLessThanOrEqual(

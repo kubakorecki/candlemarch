@@ -1,20 +1,26 @@
-// The build and demolish tools, in toolbar order, with their keyboard shortcuts and hints.
+// The build and demolish tools, in toolbar order, with their keyboard shortcuts and hints; and the
+// tree tools of the woodcutter's hut panel (`TREE_TOOLS`).
 import type { BuildingId } from '@candlemarch/content';
 
 export type ToolId =
   | BuildingId
   | 'path'
   | 'removePath'
+  | 'fellTrees'
   | 'reserve'
-  | 'eraseReserve'
+  | 'digStumps'
+  | 'eraseMarks'
   | 'stockpile'
   | 'demolish';
 
-/** HUD tools in toolbar order, with their keyboard shortcut. `drag` tools act on press-drag-release. */
+/**
+ * HUD tools in toolbar order, with their keyboard shortcut (null for none: every letter is
+ * taken). `drag` tools act on press-drag-release.
+ */
 export const TOOLS: readonly {
   id: ToolId;
   label: string;
-  key: string;
+  key: string | null;
   drag: boolean;
   hint: string;
 }[] = [
@@ -75,20 +81,6 @@ export const TOOLS: readonly {
     hint: 'Click to place. Its forester plants Saplings on open meadow nearby, which grow into trees in about a year. Shift-click places more.',
   },
   {
-    id: 'reserve',
-    label: 'Reserve',
-    key: 'm',
-    drag: true,
-    hint: 'Drag a rectangle over forest to set it aside. Woodcutters never fell trees in a Reserve; foragers, hunters and foresters still work there. Free, and it blocks no building.',
-  },
-  {
-    id: 'eraseReserve',
-    label: 'Erase Reserve',
-    key: 'a',
-    drag: true,
-    hint: 'Drag a rectangle to open its tiles to woodcutters again.',
-  },
-  {
     id: 'torch',
     label: 'Torch',
     key: 'l',
@@ -147,6 +139,35 @@ export const TOOLS: readonly {
   },
   { id: 'removePath', label: 'Remove path', key: 'x', drag: true, hint: 'Drag to remove path.' },
   { id: 'stockpile', label: 'Stockpile', key: 's', drag: true, hint: 'Drag a rectangle.' },
+  // The tree tools, in the woodcutter's hut panel rather than the build menu.
+  {
+    id: 'fellTrees',
+    label: 'Fell',
+    key: null,
+    drag: true,
+    hint: 'Drag a rectangle over trees to mark them. Woodcutters fell marked trees in reach before any other.',
+  },
+  {
+    id: 'reserve',
+    label: 'Keep',
+    key: 'm',
+    drag: true,
+    hint: 'Drag a rectangle over forest to keep it as a Reserve. Woodcutters never fell trees there; foragers, hunters and foresters still work there. Free, and it blocks no building.',
+  },
+  {
+    id: 'digStumps',
+    label: 'Dig stumps',
+    key: null,
+    drag: true,
+    hint: 'Drag a rectangle over Stumps to mark them. A woodcutter in reach digs each out for a log, leaving bare ground where nothing grows back.',
+  },
+  {
+    id: 'eraseMarks',
+    label: 'Erase',
+    key: 'a',
+    drag: true,
+    hint: 'Drag a rectangle to take Fell and Dig marks and the Reserve off it.',
+  },
   {
     id: 'demolish',
     label: 'Demolish',
@@ -155,6 +176,9 @@ export const TOOLS: readonly {
     hint: 'Click a building, stockpile or construction site to remove it. Its goods are lost.',
   },
 ];
+
+/** The woodcutter's hut panel's tools, in order. The build menu leaves them out. */
+export const TREE_TOOLS: readonly ToolId[] = ['fellTrees', 'reserve', 'digStumps', 'eraseMarks'];
 
 /** Tool `id`'s definition. */
 export function toolDef(id: ToolId): (typeof TOOLS)[number] | undefined {

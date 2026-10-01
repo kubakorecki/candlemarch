@@ -1,12 +1,14 @@
 // Woodcutters: walk to the nearest tree outside a Reserve, chop, carry the logs to their hut's
-// output buffer, repeat.
+// output buffer, repeat. Marked trees and Stumps (`marks.ts`) in the hut's radius come first; a
+// marked Stump is dug out the same way and leaves bare ground.
 
 import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
-import { idsOf } from '../entities';
+import { destroyEntity, idsOf } from '../entities';
 import { gatherTargets, walkToNearest } from '../gathering';
 import { doorTile } from '../grid';
 import { fellTree } from '../huntingGrounds';
+import { isMarked } from '../marks';
 import { inReserve } from '../reserves';
 import { staticChanged } from '../snapshot';
 import { workTicks } from '../speed';
@@ -30,13 +32,21 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
     const hut = building[hutId];
     const hutOrigin = state.components.tile[hutId];
     if (!hut || !hutOrigin) continue;
-    const door = doorTile(content.buildings[hut.type], hutOrigin, hut.rotation);
+    const hutDef = content.buildings[hut.type];
+    const door = doorTile(hutDef, hutOrigin, hut.rotation);
+    const digs = hutDef.digs ?? [];
     // A tree with logs left, not in a Reserve (which may be painted while the woodcutter is on its
     // way or chopping).
     const fellable = (t: EntityId) => {
       const at = state.components.tile[t];
       return (mapObject[t]?.amount ?? 0) > 0 && at !== undefined && !inReserve(state, at);
     };
+    // A Stump marked to dig out (which may be unmarked while the woodcutter is on its way).
+    const diggable = (t: EntityId) => {
+      const obj = mapObject[t];
+      return obj !== undefined && digs.includes(obj.type) && isMarked(state, t);
+    };
+    const workable = (t: EntityId) => diggable(t) || fellable(t);
     const idle = () => {
       tasks[id] = { kind: 'idle', retryAt: state.tick + job.idleRetryTicks };
     };
@@ -44,8 +54,18 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
     switch (task.kind) {
       case 'idle': {
         if (state.tick < task.retryAt) break;
-        const trees = gatherTargets(state, content, hutId, fellable);
-        const tree = walkToNearest(state, content, id, trees);
+        const types = [...(hutDef.gathers ?? []), ...digs];
+        const targets = gatherTargets(state, content, hutId, workable, types);
+        // Marked trees and Stumps first, then any tree.
+        const marked = targets.filter((t) => isMarked(state, t));
+        const tree =
+          walkToNearest(state, content, id, marked) ??
+          walkToNearest(
+            state,
+            content,
+            id,
+            targets.filter((t) => !isMarked(state, t)),
+          );
         // No tree left, or the buffer is full: wait for a carrier to take something.
         if (tree === null) idle();
         else tasks[id] = { kind: 'toTree', tree };
@@ -53,7 +73,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
       }
       case 'toTree': {
         const tree = mapObject[task.tree];
-        if (tree && fellable(task.tree)) {
+        if (tree && workable(task.tree)) {
           // A hero's aura near the hut when the chop starts speeds up the whole chop.
           const ticks = workTicks(
             state,
@@ -64,7 +84,7 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
           );
           tasks[id] = { kind: 'chopping', tree: task.tree, ticksLeft: ticks };
         } else {
-          // Someone else finished it, or it's in a Reserve now.
+          // Someone else finished it, it's in a Reserve now, or it's a Stump no longer marked.
           tasks[id] = { kind: 'idle', retryAt: state.tick };
         }
         break;
@@ -73,11 +93,22 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
         task.ticksLeft -= 1;
         if (task.ticksLeft > 0) break;
         const tree = mapObject[task.tree];
-        if (!tree || !fellable(task.tree)) {
+        if (!tree || !workable(task.tree)) {
           tasks[id] = { kind: 'idle', retryAt: state.tick };
           break;
         }
         const def = content.mapObjects[tree.type];
+        if (digs.includes(tree.type)) {
+          // Dug out: it never sprouts, and the tile is bare ground.
+          v.carrying = {
+            resource: def.resource,
+            amount: Math.min(def.yieldPerGather, job.carryCapacity),
+          };
+          destroyEntity(state, task.tree);
+          tasks[id] = { kind: 'toHut' };
+          walkTo(state, content, id, [door]);
+          break;
+        }
         const amount = Math.min(def.yieldPerGather, tree.amount, job.carryCapacity);
         tree.amount -= amount;
         staticChanged(state);
