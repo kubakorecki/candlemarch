@@ -33,7 +33,7 @@ export {
   tileOfPoint,
 } from './grid';
 export { canLayGroundwork, groundworkOf } from './groundwork';
-export { type HeroOrder, heroOf, heroOrderAt, heroSearch } from './hero';
+export { type HeroOrder, heroOf, heroOrderAt, heroSearch, recoveryTile } from './hero';
 export {
   addHuntingGround,
   type GroundHealth,

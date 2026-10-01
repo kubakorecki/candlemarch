@@ -1,8 +1,9 @@
 // Night combat, resolved on its own. Each tick every Gloamling picks what to go for and walks
 // there; a villager a Gloamling reaches drops its work and hits back; then everyone in reach and
 // off cooldown hits, in entity-ID order, so the same fight always ends the same way. Gloamlings
-// batter House doors (the sleepers inside come out and fight) and the walls in their way. Villagers, the Hero, doors and walls are back to
-// full HP at Dawn; a Knocked-out Hero gets up at full HP once its time is up. By day or night the
+// batter House doors (the sleepers inside come out and fight) and the walls in their way.
+// Villagers, the Hero, doors and walls are back to full HP at Dawn; a Knocked-out Hero gets up at
+// full HP once its time is up, at the village hall's door once one stands. By day or night the
 // Hero hits a Den it's ordered to attack, and every Den stings whoever stands next to it.
 import type { Content } from '@candlemarch/content';
 import { isDawn } from '../calendar';
@@ -23,7 +24,8 @@ import {
 import { killVillager } from '../deaths';
 import { clearDen } from '../dens';
 import { destroyEntity, idsOf } from '../entities';
-import { entityDoor, inBounds, tileIndex } from '../grid';
+import { entityDoor, inBounds, tileCenter, tileIndex } from '../grid';
+import { recoveryTile } from '../hero';
 import { litGrid } from '../lights';
 import { mapChanged } from '../mapCache';
 import { type CostSearch, findPath } from '../pathfinding';
@@ -63,7 +65,7 @@ export function combatSystem(state: GameState, content: Content): void {
     const h = hero[id];
     if (!h) continue;
     const getsUp = h.knockedOutUntil !== null && state.tick >= h.knockedOutUntil;
-    if (getsUp) h.knockedOutUntil = null;
+    if (getsUp) getUp(state, content, id);
     if (getsUp || (dawn && h.knockedOutUntil === null)) h.hp = content.combat.hero.hp;
   }
   const gloamlings = idsOf(gloamling);
@@ -410,6 +412,20 @@ function batter(state: GameState, id: EntityId, building: EntityId, damage: numb
     g.target = null;
     mapChanged(state); // a broken wall stops blocking
   }
+}
+
+/**
+ * The Knocked-out Hero gets up: at the village hall's door once one stands (`recoveryTile`), else
+ * where it fell.
+ */
+function getUp(state: GameState, content: Content, id: EntityId): void {
+  const h = state.components.hero[id];
+  if (!h) return;
+  h.knockedOutUntil = null;
+  const at = recoveryTile(state, content);
+  if (!at) return;
+  state.components.position[id] = tileCenter(at);
+  delete state.components.path[id];
 }
 
 /**

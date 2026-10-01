@@ -50,6 +50,19 @@ export function heroOf(state: GameState): EntityId | null {
   return idsOf(state.components.hero)[0] ?? null;
 }
 
+/**
+ * Where a Knocked-out hero gets up: the door of the first built building that `heroRecovers` (the
+ * village hall), or null while none stands and it gets up where it fell.
+ */
+export function recoveryTile(state: GameState, content: Content): Tile | null {
+  const { building } = state.components;
+  for (const id of idsOf(building)) {
+    const b = building[id];
+    if (b && content.buildings[b.type].heroRecovers) return entityDoor(state, content, id);
+  }
+  return null;
+}
+
 /** Units of `resource` the hero can still pick up: 0 if its hands hold something else. */
 function roomFor(content: Content, hero: HeroComponent, resource: ResourceId): number {
   const capacity = content.heroes[hero.type].carryCapacity;

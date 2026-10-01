@@ -487,6 +487,7 @@ export function drawBuilding(g: Graphics, layout: BuildingLayout, type: Building
   else if (type === 'foragers_hut') drawForagersHut(g, layout);
   else if (type === 'hunters_lodge') drawHuntersLodge(g, layout);
   else if (type === 'granary') drawGranary(g, layout);
+  else if (type === 'village_hall') drawVillageHall(g, layout);
   else drawCabin(g, layout);
 }
 
@@ -1353,4 +1354,112 @@ function drawSacks(g: Graphics, box: Box, wall: FrontWall): void {
       .lineTo(c.x + 5 * S, c.y - 21 * S)
       .stroke({ width: 1.5 * S, color: palette.ink });
   }
+}
+
+// ---------------------------------------------------------------- Village hall
+
+/** Height of the village hall's stone plinth. */
+const HALL_PLINTH = 14 * S;
+
+/**
+ * The village hall, the Hamlet's rank building: a long log hall on a dressed-stone plinth under a
+ * tall shingle gable, its ridge along the long wall, windows either side of the door, and the
+ * village's banner hung on the gable end.
+ */
+function drawVillageHall(g: Graphics, layout: BuildingLayout): void {
+  const box = bodyBox(layout, 0.1);
+  const axis = layout.size.w >= layout.size.h ? 'x' : 'y';
+  const eave = wallHeight(layout.size);
+  const rise = ROOF_H * 1.4;
+  const roof = gable(box, axis, eave, rise, 0.12);
+  drawGableBack(g, roof, SHINGLES);
+  drawPlinth(g, box, HALL_PLINTH);
+  drawWall(g, box, 'south', roof.south, LOGS, HALL_PLINTH);
+  drawWall(g, box, 'east', roof.east, LOGS, HALL_PLINTH);
+  drawCorners(g, box, flatTop(eave), flatTop(eave), HALL_PLINTH);
+  const long: FrontWall = axis === 'x' ? 'south' : 'east';
+  const end: FrontWall = axis === 'x' ? 'east' : 'south';
+  for (const u of [0.2, 0.8]) drawHallWindow(g, box, long, u, eave);
+  drawDoor(g, layout, box, 0, HALL_PLINTH + WALL_H * 0.62);
+  drawBanner(g, box, end, eave + rise * 0.4, eave * 0.42);
+  drawGableFront(g, roof, SHINGLES);
+}
+
+/** Dressed stone along the foot of both front walls, `h` high, in two courses. */
+function drawPlinth(g: Graphics, box: Box, h: number): void {
+  for (const wall of ['south', 'east'] as const) {
+    const p = (u: number, z: number) => wallPoint(box, wall, u, 0.02, z);
+    const face = [p(0, 0), p(1, 0), p(1, h), p(0, h)];
+    g.poly(flat(face)).fill(wall === 'south' ? palette.stone : palette.stoneDark);
+    const [a, b] = wallEnds(box, wall);
+    const stones = Math.max(2, Math.round((Math.abs(b.x - a.x) + Math.abs(b.y - a.y)) / 0.3));
+    const mid = [p(0, h / 2), p(1, h / 2)] as const;
+    g.moveTo(mid[0].x, mid[0].y).lineTo(mid[1].x, mid[1].y);
+    for (let i = 1; i < stones; i++) {
+      const u = i / stones;
+      const shift = 0.5 / stones;
+      const lo = [p(u, 0), p(u, h / 2)] as const;
+      const hi = [p(Math.min(1, u + shift), h / 2), p(Math.min(1, u + shift), h)] as const;
+      g.moveTo(lo[0].x, lo[0].y).lineTo(lo[1].x, lo[1].y);
+      g.moveTo(hi[0].x, hi[0].y).lineTo(hi[1].x, hi[1].y);
+    }
+    g.stroke({ width: 1.2 * S, color: palette.ink, alpha: 0.45 });
+    g.poly(flat(face)).stroke(INK);
+  }
+}
+
+/** A tall mullioned window on a front wall at `u`, under a plank lintel, below the eave `top`. */
+function drawHallWindow(g: Graphics, box: Box, wall: FrontWall, u: number, top: number): void {
+  const [a, b] = wallEnds(box, wall);
+  const half = 0.13 / (Math.abs(b.x - a.x) + Math.abs(b.y - a.y));
+  const sill = HALL_PLINTH + 8 * S;
+  const lintel = top - 9 * S;
+  const p = (du: number, z: number) => wallPoint(box, wall, u + du, 0, z);
+  const pane = [p(-half, sill), p(half, sill), p(half, lintel), p(-half, lintel)];
+  g.poly(flat(pane)).fill(palette.window).stroke(THIN_INK);
+  const mid = (sill + lintel) / 2;
+  const [s0, s1, m0, m1] = [p(0, sill), p(0, lintel), p(-half, mid), p(half, mid)];
+  g.moveTo(s0.x, s0.y).lineTo(s1.x, s1.y);
+  g.moveTo(m0.x, m0.y).lineTo(m1.x, m1.y);
+  g.stroke({ ...THIN_INK, width: 1.5 * S });
+  const beam = [
+    p(-half * 1.5, lintel),
+    p(half * 1.5, lintel),
+    p(half * 1.5, lintel + 4 * S),
+    p(-half * 1.5, lintel + 4 * S),
+  ];
+  g.poly(flat(beam)).fill(palette.plankDark).stroke(THIN_INK);
+}
+
+/**
+ * The village's banner hung from a pole across the middle of `wall`, from `top` down to `bottom`:
+ * madder-red cloth with a swallowtail and a gilt roundel.
+ */
+function drawBanner(g: Graphics, box: Box, wall: FrontWall, top: number, bottom: number): void {
+  const p = (u: number, z: number) => wallPoint(box, wall, u, 0.04, z);
+  const cloth = [
+    p(0.38, top),
+    p(0.62, top),
+    p(0.62, bottom),
+    p(0.5, bottom + 7 * S),
+    p(0.38, bottom),
+  ];
+  g.poly(flat(cloth)).fill(wall === 'south' ? palette.banner : palette.bannerDark);
+  const hem = [p(0.41, top - 3 * S), p(0.41, bottom + 2 * S)] as const;
+  const hem2 = [p(0.59, top - 3 * S), p(0.59, bottom + 2 * S)] as const;
+  g.moveTo(hem[0].x, hem[0].y).lineTo(hem[1].x, hem[1].y);
+  g.moveTo(hem2[0].x, hem2[0].y).lineTo(hem2[1].x, hem2[1].y);
+  g.stroke({ width: 1.5 * S, color: palette.gilt, alpha: 0.8 });
+  g.poly(flat(cloth)).stroke(THIN_INK);
+  const c = p(0.5, (top + bottom) / 2 + 2 * S);
+  g.circle(c.x, c.y, 5 * S)
+    .fill(palette.gilt)
+    .stroke({ ...THIN_INK, width: 1.5 * S });
+  const pole = [p(0.33, top + 1 * S), p(0.67, top + 1 * S)] as const;
+  g.moveTo(pole[0].x, pole[0].y)
+    .lineTo(pole[1].x, pole[1].y)
+    .stroke({ width: 5 * S, color: palette.ink, cap: 'round' });
+  g.moveTo(pole[0].x, pole[0].y)
+    .lineTo(pole[1].x, pole[1].y)
+    .stroke({ width: 2.5 * S, color: palette.log, cap: 'round' });
 }

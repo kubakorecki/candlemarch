@@ -63,6 +63,7 @@ import {
   rankLock,
   rankProgress,
   reassignTargets,
+  recoveryTile,
   reserveNear,
   reserveRect,
   type StandingOrder,
@@ -1609,7 +1610,8 @@ function heroHp(state: GameState): { hp: number; max: number } | null {
 function heroKnockoutLabel(state: GameState): string | null {
   const id = heroOf(state);
   const until = id === null ? null : (state.components.hero[id]?.knockedOutUntil ?? null);
-  return until === null ? null : knockoutText(until - state.tick);
+  if (until === null) return null;
+  return knockoutText(until - state.tick, recoveryTile(state, content) !== null);
 }
 
 /** The save in `slot`, or null when there's none or storage can't be read. */

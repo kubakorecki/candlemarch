@@ -92,9 +92,13 @@ export function utilizationText(percent: number | null): string {
   return percent === null ? '–' : `${percent}%`;
 }
 
-/** The Hero panel while it's Knocked out: "Knocked out, up in 14 s" (seconds at normal speed). */
-export function knockoutText(ticksLeft: number): string {
-  return `Knocked out, up in ${Math.ceil(ticksLeft / TICKS_PER_SECOND)} s`;
+/**
+ * The Hero panel while it's Knocked out: "Knocked out, up in 14 s" (seconds at normal speed), or
+ * "Knocked out, up at the hall in 14 s" when it will get up at the village hall.
+ */
+export function knockoutText(ticksLeft: number, atHall = false): string {
+  const where = atHall ? ' at the hall' : '';
+  return `Knocked out, up${where} in ${Math.ceil(ticksLeft / TICKS_PER_SECOND)} s`;
 }
 
 /** A Hunting ground's Game coming back: "Empty; Game returns in 6 days", "Recovering". */

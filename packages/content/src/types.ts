@@ -735,6 +735,8 @@ export interface BuildingDef {
   groundwork?: GroundworkDef;
   /** A village has at most one, built or under construction. */
   onePerVillage?: boolean;
+  /** Makes it where a Knocked-out Hero gets up (M5: the village hall), at its door, once built. */
+  heroRecovers?: boolean;
   /** Cost and time to build it from a construction site. Absent for buildings that can't be built. */
   construction?: { cost: ResourceAmount[]; buildTicks: number };
 }

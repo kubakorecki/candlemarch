@@ -95,6 +95,7 @@ describe('knockout text', () => {
   it('counts down the seconds, at normal speed, until the Hero gets up', () => {
     expect(knockoutText(400)).toBe('Knocked out, up in 20 s');
     expect(knockoutText(1)).toBe('Knocked out, up in 1 s');
+    expect(knockoutText(400, true)).toBe('Knocked out, up at the hall in 20 s');
   });
 });
 

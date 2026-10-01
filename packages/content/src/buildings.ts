@@ -237,7 +237,8 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     },
   },
   // The Hamlet rank building (spec, Progression). Placed once the village has Hamlet's residents
-  // (`ranks.ts`); completing it makes the village a Hamlet. Numbers Proposed.
+  // (`ranks.ts`); completing it makes the village a Hamlet. A Knocked-out Hero gets up at its door
+  // (spec, Heroes). Numbers Proposed.
   village_hall: {
     id: 'village_hall',
     name: 'Village hall',
@@ -246,6 +247,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     placeable: true,
     employs: [],
     onePerVillage: true,
+    heroRecovers: true,
     construction: {
       cost: [
         { resource: 'logs', amount: 40 },

@@ -203,6 +203,13 @@ export const palette = {
   // The Militia bell: a bronze bell under a timber frame (`torchPole`).
   bell: 0x8c6d3f,
   bellLight: 0xae8c55,
+  // The village hall's banner on its gable end, a gilt roundel on madder-red cloth; the notice
+  // board's pinned sheets of paper.
+  banner: 0x6b3a35,
+  bannerDark: 0x522c29,
+  gilt: 0xb39556,
+  paper: 0xd9cdb0,
+  paperShade: 0xb8ab8c,
   // Palisades and Gates: sharpened log stakes, and a Gate's plank door between two posts.
   stake: 0x6a4e35,
   stakeLight: 0x7d5e40,

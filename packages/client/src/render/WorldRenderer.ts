@@ -914,7 +914,7 @@ export class WorldRenderer {
       return;
     }
     const view = this.heroView();
-    const from = prevPositions[id] ?? to;
+    const from = jumped(prevPositions[id], to) ? to : (prevPositions[id] ?? to);
     const g = this.walkerAt(id, from, to, alpha);
     const w = gridToWorld(g.x, g.y);
     view.node.visible = overlaps(walkerBounds(w.x, w.y), this.view) && seenAt(state, to);
@@ -1422,4 +1422,15 @@ function wallArms(walls: Set<string>, at: Tile): WallArms {
     south: walls.has(`${at.x},${at.y + 1}`),
     west: walls.has(`${at.x - 1},${at.y}`),
   };
+}
+
+/**
+ * Whether a walker moved more than a tile in one tick: a jump, not a step (the Hero getting up at
+ * the village hall), drawn at once rather than slid across the map.
+ */
+function jumped(from: Point | undefined, to: Point): boolean {
+  if (!from) return false;
+  const a = tileOfPoint(from);
+  const b = tileOfPoint(to);
+  return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) > 1;
 }

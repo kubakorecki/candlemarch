@@ -381,6 +381,49 @@ describe('the Hero', () => {
     });
   });
 
+  it('gets up where it fell while there is no village hall', () => {
+    const out = runUntil(knockout(), (x) => x.components.hero[3]?.knockedOutUntil !== null, 400);
+    const until = out.components.hero[3]?.knockedOutUntil as number;
+    const still = run(out, until - out.tick);
+    const up = run(still, 1);
+    expect(up.components.hero[3]?.knockedOutUntil).toBeNull();
+    expect(up.components.position[3]).toEqual(still.components.position[3]);
+  });
+
+  /**
+   * `knockout()` with a village hall (ID 2) standing at (2,1), its door at (3,3): the villager is
+   * ID 3, the Hero ID 4 and the Gloamling ID 5.
+   */
+  function knockoutWithHall(): GameState {
+    const s = run(
+      fieldAtDusk([{ x: 6, y: 6 }], {
+        hero: { x: 17, y: 4 },
+        buildings: [{ type: 'village_hall', x: 2, y: 1 }],
+      }),
+      1,
+    );
+    (s.components.hero[4] as { hp: number }).hp = 4;
+    (s.components.gloamling[5] as { hp: number }).hp = 1000;
+    return s;
+  }
+
+  it('with a village hall standing, falls where it is hit and gets up at the hall door', () => {
+    const s = knockoutWithHall();
+    expect(s.components.building[2]?.type).toBe('village_hall');
+    const out = runUntil(s, (x) => x.components.hero[4]?.knockedOutUntil !== null, 400);
+    const until = out.components.hero[4]?.knockedOutUntil as number;
+    const still = run(out, until - out.tick);
+    const fell = tileOfPoint(still.components.position[4] as { x: number; y: number });
+    expect(fell.x).toBeGreaterThan(10); // lying out in the field, nowhere near the hall
+    const up = run(still, 1);
+    expect(up.components.hero[4]).toMatchObject({
+      hp: content.combat.hero.hp,
+      knockedOutUntil: null,
+    });
+    expect(up.components.position[4]).toEqual(tileCenter({ x: 3, y: 3 }));
+    expect(up.components.path[4]).toBeUndefined();
+  });
+
   it('takes no orders while Knocked out', () => {
     const out = runUntil(knockout(), (x) => x.components.hero[3]?.knockedOutUntil !== null, 400);
     const settled = run(out, 30); // it finishes the step it fell on
