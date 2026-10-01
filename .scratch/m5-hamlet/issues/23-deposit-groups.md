@@ -1,6 +1,6 @@
 # Deposits in groups
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: none
 
@@ -17,3 +17,7 @@ Spec: World and map (The Valley; Deposits). Today the generator places single De
 
 - Generator tests: every Valley of seeds 1–100 has the right number of groups of each kind, each of 3–20 Deposits, scattered (no group a solid block), with the Camp guarantees; determinism.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-10-01: Done. Groups are grown in `valley/layout.ts` (`placeGroup`) and found again from the tiles (Deposits within `linkTiles`, chained) by `valleyProblems` and the 100-seed test; numbers in `content.valley.deposits`. Beyond the issue: "a group within 30 tiles" is read as the whole group; the Camp's stone group gets a Rock outcrop grown round the sure one; `valleyProblems` now checks every patch and Deposit is reachable, as the test did; seed 1's Valley moved, so the `valley` balance scenario was laid out again (still nobody lost). Retries and timings in `docs/decisions.md`.

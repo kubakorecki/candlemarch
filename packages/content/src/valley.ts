@@ -54,7 +54,14 @@ export const valley: ValleyDef = {
   },
   swamp: { patches: { min: 2, max: 4 }, radiusTiles: { min: 3, max: 6 } },
   rock: { footTiles: 2, thresholdPercent: 50, cellTiles: 6 },
-  deposits: { stone: 5, clay: 4, iron: 2, spacingTiles: 6 },
+  deposits: {
+    groups: { stone: 5, clay: 4, iron: 2 },
+    groupSize: { min: 3, max: 20 },
+    linkTiles: 2,
+    touchPercent: 15,
+    spacingTiles: 6,
+    campOutcropTiles: 3,
+  },
   dens: { count: 3, sideValley: 1, spacingTiles: 20 },
   pois: {
     ruins: 2,

@@ -76,10 +76,10 @@ const valleyMap = generateValley(1, content);
 const valleyId = (n: number) => createInitialState(1, valleyMap, content).nextId + n;
 
 /**
- * A sensible start on the generated Valley of seed 1, whose Granary stands at (54, 10) below the
- * entry, with a wood between it and the river to the west. Day 1: a Hut, a forager's hut and a
+ * A sensible start on the generated Valley of seed 1, whose Granary stands at (117, 54) beside
+ * the entry on the east edge, with a wood between it and the river to the north. Day 1: a Hut, a forager's hut and a
  * hunter's lodge on the wood's edge (its berry bushes are by the forager's hut), a woodcutter's
- * hut at the wood's south end. Day 2: a second Stockpile, so hides and firewood both have room.
+ * hut at the wood's west end. Day 2: a second Stockpile, so hides and firewood both have room.
  * Day 3: a second Hut. Day 6, with the Huts up: the woodcutter stops. Day 11 (autumn): it cuts
  * again and a chopping block splits firewood for winter, until day 15. No fisher's hut: the river
  * is beyond the wood, and five settlers can't staff three food Workplaces and still haul. Worker
@@ -93,17 +93,17 @@ function valleyLayout(): Record<number, Command[]> {
   const choppingBlock = valleyId(6);
   return {
     [dawnOf(1)]: [
-      { type: 'placeBuilding', building: 'hut', x: 57, y: 13 },
-      { type: 'placeBuilding', building: 'hunters_lodge', x: 51, y: 18 },
-      { type: 'placeBuilding', building: 'foragers_hut', x: 50, y: 8 },
-      { type: 'placeBuilding', building: 'woodcutters_hut', x: 51, y: 25 },
+      { type: 'placeBuilding', building: 'hut', x: 116, y: 58 },
+      { type: 'placeBuilding', building: 'hunters_lodge', x: 106, y: 50 },
+      { type: 'placeBuilding', building: 'foragers_hut', x: 113, y: 50 },
+      { type: 'placeBuilding', building: 'woodcutters_hut', x: 100, y: 50 },
     ],
-    [dawnOf(2)]: [{ type: 'placeStockpile', x: 51, y: 14, w: 3, h: 2 }],
-    [dawnOf(3)]: [{ type: 'placeBuilding', building: 'hut', x: 59, y: 13 }],
+    [dawnOf(2)]: [{ type: 'placeStockpile', x: 111, y: 55, w: 3, h: 2 }],
+    [dawnOf(3)]: [{ type: 'placeBuilding', building: 'hut', x: 118, y: 58 }],
     [dawnOf(6)]: [{ type: 'setWorkerLimit', building: woodcuttersHut, limit: 0 }],
     [dawnOf(11)]: [
       { type: 'setWorkerLimit', building: woodcuttersHut, limit: 1 },
-      { type: 'placeBuilding', building: 'chopping_block', x: 55, y: 14 },
+      { type: 'placeBuilding', building: 'chopping_block', x: 114, y: 52 },
     ],
     [dawnOf(15)]: [
       { type: 'setWorkerLimit', building: woodcuttersHut, limit: 0 },

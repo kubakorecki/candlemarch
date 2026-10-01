@@ -366,7 +366,7 @@ export interface ValleyDef {
     forage: { withinTiles: number; count: number };
     riverbankTiles: number;
     fordTiles: number;
-    /** A stone and a clay Deposit this close. */
+    /** A group of stone and a group of clay Deposits wholly this close. */
     depositTiles: number;
     /** No Den this close. */
     denTiles: number;
@@ -425,8 +425,23 @@ export interface ValleyDef {
   swamp: { patches: IntRange; radiusTiles: IntRange };
   /** Rock outcrops: Meadow within `footTiles` of a Mountain where noise passes `thresholdPercent`. */
   rock: { footTiles: number; thresholdPercent: number; cellTiles: number };
-  /** Deposits per Valley (both iron in the Side valley), at least `spacingTiles` apart. */
-  deposits: { stone: number; clay: number; iron: number; spacingTiles: number };
+  /**
+   * Deposits in groups: `groups` of each kind per Valley (both iron in the Side valley), each of
+   * `groupSize` Deposits (rolled; a tight patch may hold fewer, never under `groupSize.min`).
+   * Every Deposit of a group lies within `linkTiles` (Chebyshev) of another of it, and touches at
+   * most one other (so a group is scattered, never a solid clump): each placed apart from the rest
+   * unless a `touchPercent` roll lets it touch one, or nothing else fits. Groups stand at least
+   * `spacingTiles` apart (more than `linkTiles`, so groups never run together). The Camp's stone
+   * group grows on a Rock outcrop `campOutcropTiles` round its first Deposit.
+   */
+  deposits: {
+    groups: { stone: number; clay: number; iron: number };
+    groupSize: IntRange;
+    linkTiles: number;
+    touchPercent: number;
+    spacingTiles: number;
+    campOutcropTiles: number;
+  };
   /** Dens at the start, `sideValley` of them in the Side valley, `spacingTiles` apart. */
   dens: { count: number; sideValley: number; spacingTiles: number };
   /**

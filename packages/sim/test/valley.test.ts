@@ -71,6 +71,30 @@ function groups(tiles: Tile[]): number {
 }
 
 /**
+ * Groups of `tiles`: tiles within `link` of each other (Chebyshev), chained, are one group.
+ */
+function clusters(tiles: Tile[], link: number): Tile[][] {
+  const left = [...tiles];
+  const found: Tile[][] = [];
+  while (left.length > 0) {
+    const group = [left.pop() as Tile];
+    for (let k = 0; k < group.length; k++) {
+      const t = group[k] as Tile;
+      for (let j = left.length - 1; j >= 0; j--) {
+        if (distance(t, left[j] as Tile) <= link) group.push(...left.splice(j, 1));
+      }
+    }
+    found.push(group);
+  }
+  return found;
+}
+
+/** How many of `group` touch `t` (8-neighbours), `t` itself left out. */
+function touching(group: Tile[], t: Tile): number {
+  return group.filter((u) => u !== t && distance(u, t) === 1).length;
+}
+
+/**
  * Characters of tiles nobody walks: Mountain, River, Pass snow, and trees and Deposits (the
  * Abandoned mine stands over an iron Deposit).
  */
@@ -183,14 +207,30 @@ function problems(v: Valley): string[] {
   expectThat(tilesOf(v, ',').length > 0, 'Swamp');
   expectThat(tilesOf(v, ':s').length > 0, 'Rock');
 
-  // Counts.
-  expectThat(tilesOf(v, 's').length === valley.deposits.stone, 'stone Deposits');
-  expectThat(tilesOf(v, 'c').length === valley.deposits.clay, 'clay Deposits');
-  const iron = tilesOf(v, 'iM');
-  expectThat(iron.length === valley.deposits.iron, 'iron Deposits');
+  // Deposits in groups: how many of each kind, each 3–20 Deposits, scattered (touching at most
+  // in pairs, so never a solid block).
+  const { deposits } = valley;
+  const stone = clusters(tilesOf(v, 's'), deposits.linkTiles);
+  const clay = clusters(tilesOf(v, 'c'), deposits.linkTiles);
+  const iron = clusters(tilesOf(v, 'iM'), deposits.linkTiles);
+  expectThat(stone.length === deposits.groups.stone, `${stone.length} stone groups`);
+  expectThat(clay.length === deposits.groups.clay, `${clay.length} clay groups`);
+  expectThat(iron.length === deposits.groups.iron, `${iron.length} iron groups`);
+  for (const group of [...stone, ...clay, ...iron]) {
+    const size = group.length;
+    expectThat(size >= 3 && size <= 20, `a Deposit group of ${size}`);
+    expectThat(
+      group.every((t) => touching(group, t) <= 1),
+      'a Deposit group clumped',
+    );
+  }
   expectThat(
-    iron.every((t) => sides(t).some(inSide)),
-    'both iron Deposits in the Side valley',
+    iron.every((group) => group.every((t) => sides(t).some(inSide))),
+    'both iron groups in the Side valley',
+  );
+  expectThat(
+    iron.some((group) => group.some((t) => charAt(v, t) === 'M')),
+    'an iron group under the Abandoned mine',
   );
   const dens = tilesOf(v, 'D');
   expectThat(dens.length === valley.dens.count, 'Dens');
@@ -224,8 +264,10 @@ function problems(v: Valley): string[] {
   );
   expectThat(near(riverbank, g.riverbankTiles).length > 0, 'a Riverbank near the Camp');
   expectThat(near(fords, g.fordTiles).length > 0, 'a Ford near the Camp');
-  expectThat(near(tilesOf(v, 's'), g.depositTiles).length > 0, 'stone near the Camp');
-  expectThat(near(tilesOf(v, 'c'), g.depositTiles).length > 0, 'clay near the Camp');
+  const wholly = (groups: Tile[][]) =>
+    groups.some((group) => near(group, g.depositTiles).length === group.length);
+  expectThat(wholly(stone), 'a stone group near the Camp');
+  expectThat(wholly(clay), 'a clay group near the Camp');
   expectThat(near(dens, g.denTiles).length === 0, 'no Den near the Camp');
 
   // Reach: the main valley from the entry with the Pass shut; the Side valley only over it.

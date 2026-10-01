@@ -319,19 +319,9 @@ export function layOutValley(rng: RngHolder, content: Content): Layout {
     }
   }
 
-  // Deposits: a stone and a clay near the Camp, the rest anywhere they fit; iron in the Side valley.
-  const placed: number[] = [];
-  const spaced = (i: number) => placed.every((p) => chebyshev(n, p, i) >= v.deposits.spacingTiles);
-  const place = (type: MapObjectId, count: number, candidates: number[]) => {
-    let left = count;
-    while (left > 0 && candidates.length > 0) {
-      const [i] = candidates.splice(randomInt(rng, candidates.length), 1);
-      if (i === undefined || !spaced(i)) continue;
-      object[i] = type;
-      placed.push(i);
-      left -= 1;
-    }
-  };
+  // Deposits in groups: a stone and a clay group near the Camp, the rest anywhere they fit;
+  // iron in the Side valley.
+  const d = v.deposits;
   const table = neighbourTable(n);
   const beside = (i: number, test: (j: number) => boolean) => {
     for (let e = i * 4; e < i * 4 + 4; e++) {
@@ -342,35 +332,77 @@ export function layOutValley(rng: RngHolder, content: Content): Layout {
   };
   const riverbank = (i: number) => beside(i, (j) => terrain[j] === 'river');
   const all = [...terrain.keys()];
+  const campAt = at(camp.x, camp.y);
+  const nearCamp = (i: number) => chebyshev(n, i, campAt) <= g.depositTiles;
+  const mainValley = (i: number) => !sideValley[i] && !keepClear[i];
+  // Tiles a later group may not take: within `spacingTiles` of a group already placed.
+  const taken: Tiles = new Uint8Array(n * n);
+  const group = (type: MapObjectId, centres: number[], ground: (i: number) => boolean) => {
+    const members = placeGroup(
+      n,
+      rng,
+      between(d.groupSize),
+      centres,
+      (i) => !taken[i] && ground(i),
+      (i) => content.terrain[terrain[i] as TerrainId].walkable,
+      d,
+    );
+    for (const i of members) {
+      object[i] = type;
+      const x = i % n;
+      const y = (i - x) / n;
+      const r = d.spacingTiles - 1;
+      for (let ay = Math.max(0, y - r); ay <= Math.min(n - 1, y + r); ay++) {
+        for (let ax = Math.max(0, x - r); ax <= Math.min(n - 1, x + r); ax++) taken[at(ax, ay)] = 1;
+      }
+    }
+  };
+
+  // The Camp's stone: a Rock outcrop round the sure one south-west of the Camp, its Meadow
+  // turned to bare Rock (what grew there goes, and it's no longer Forest).
+  const r = d.campOutcropTiles;
+  const outcrop: number[] = [];
+  for (let y = campStone.y - r; y <= campStone.y + r; y++) {
+    for (let x = campStone.x - r; x <= campStone.x + r; x++) {
+      if (!inMap(x, y)) continue;
+      const i = at(x, y);
+      if (keepClear[i] || !nearCamp(i)) continue;
+      if (terrain[i] === 'meadow') {
+        terrain[i] = 'rock';
+        object[i] = null;
+        forest[i] = 0;
+      }
+      if (terrain[i] === 'rock') outcrop.push(i);
+    }
+  }
   const campStoneAt = at(campStone.x, campStone.y);
-  if (terrain[campStoneAt] === 'rock') place('stone_deposit', 1, [campStoneAt]);
-  const campClay = all.filter(
-    (i) =>
-      Math.floor(i / n) === bankRow &&
-      i % n >= clear.x &&
-      i % n < clear.x + clear.w &&
-      terrain[i] === 'meadow' &&
-      riverbank(i),
-  );
-  place('clay_deposit', 1, campClay);
-  const mainValley = (i: number) => !sideValley[i] && !keepClear[i] && !placed.includes(i);
-  place(
+  group(
     'stone_deposit',
-    v.deposits.stone - 1,
-    all.filter((i) => terrain[i] === 'rock' && mainValley(i)),
+    outcrop.includes(campStoneAt) ? [campStoneAt] : outcrop,
+    (i) => terrain[i] === 'rock' && mainValley(i) && nearCamp(i),
   );
-  place(
+  const clayGround = (i: number) => terrain[i] === 'meadow' && mainValley(i) && riverbank(i);
+  group(
     'clay_deposit',
-    v.deposits.clay - 1,
-    all.filter((i) => terrain[i] === 'meadow' && mainValley(i) && riverbank(i)),
+    all.filter(
+      (i) =>
+        Math.floor(i / n) === bankRow &&
+        i % n >= clear.x &&
+        i % n < clear.x + clear.w &&
+        clayGround(i),
+    ),
+    (i) => clayGround(i) && nearCamp(i),
   );
-  const openBeside = (i: number) =>
+  const stoneGround = (i: number) => terrain[i] === 'rock' && mainValley(i);
+  const stoneTiles = all.filter(stoneGround);
+  for (let k = 1; k < d.groups.stone; k++) group('stone_deposit', stoneTiles, stoneGround);
+  const clayTiles = all.filter(clayGround);
+  for (let k = 1; k < d.groups.clay; k++) group('clay_deposit', clayTiles, clayGround);
+  const ironGround = (i: number) =>
+    terrain[i] === 'mountain' &&
     beside(i, (j) => sideValley[j] === 1 && content.terrain[terrain[j] as TerrainId].walkable);
-  place(
-    'iron_deposit',
-    v.deposits.iron,
-    all.filter((i) => terrain[i] === 'mountain' && openBeside(i)),
-  );
+  const ironTiles = all.filter(ironGround);
+  for (let k = 0; k < d.groups.iron; k++) group('iron_deposit', ironTiles, ironGround);
 
   const layout: Layout = {
     size: n,
@@ -390,6 +422,97 @@ export function layOutValley(rng: RngHolder, content: Content): Layout {
   dropUnshaded(layout, content);
   placeDens(layout, content, rng, keepClear);
   return layout;
+}
+
+/** Centres a Deposit group tries before it settles for the biggest that grew. */
+const GROUP_TRIES = 10;
+
+/**
+ * A Deposit group of up to `size` tiles (`content.valley.deposits`): from a centre drawn from
+ * `centres`, each next Deposit is drawn among the `ground` tiles within `linkTiles` of one placed,
+ * apart from the rest, or (on a `touchPercent` roll, or when nothing else fits) touching one
+ * other (8-neighbours) that touches no other; never leaving a tile `walks` says is walkable with
+ * no way out but through it. Tries up to `GROUP_TRIES` centres, keeping the first that grows to
+ * `size`, else the biggest; none under `groupSize.min` (an empty list: the Valley's check then
+ * throws the layout away). Draws from the PRNG and changes nothing else.
+ */
+function placeGroup(
+  n: number,
+  rng: RngHolder,
+  size: number,
+  centres: number[],
+  ground: (i: number) => boolean,
+  walks: (i: number) => boolean,
+  d: ValleyDef['deposits'],
+): number[] {
+  const table = neighbourTable(n);
+  const left = centres.filter(ground);
+  let best: number[] = [];
+  for (let attempt = 0; attempt < GROUP_TRIES && left.length > 0; attempt++) {
+    const [centre] = left.splice(randomInt(rng, left.length), 1);
+    if (centre === undefined) break;
+    const members: number[] = [];
+    const placed = new Set<number>();
+    const touches = (i: number) => {
+      const x = i % n;
+      const y = (i - x) / n;
+      const found: number[] = [];
+      for (let ay = Math.max(0, y - 1); ay <= Math.min(n - 1, y + 1); ay++) {
+        for (let ax = Math.max(0, x - 1); ax <= Math.min(n - 1, x + 1); ax++) {
+          const j = ay * n + ax;
+          if (j !== i && placed.has(j)) found.push(j);
+        }
+      }
+      return found;
+    };
+    const scattered = (i: number) => {
+      const near = touches(i);
+      return near.length === 0 || (near.length === 1 && touches(near[0] as number).length === 0);
+    };
+    // Whether a Deposit on `i` leaves a walkable tile beside it with no way out but `i`.
+    const wallsIn = (i: number) => {
+      for (let e = i * 4; e < i * 4 + 4; e++) {
+        const j = table[e] as number;
+        if (j < 0 || !walks(j) || placed.has(j)) continue;
+        let out = false;
+        for (let f = j * 4; f < j * 4 + 4 && !out; f++) {
+          const k = table[f] as number;
+          out = k >= 0 && k !== i && walks(k) && !placed.has(k);
+        }
+        if (!out) return true;
+      }
+      return false;
+    };
+    if (wallsIn(centre)) continue;
+    members.push(centre);
+    placed.add(centre);
+    while (members.length < size) {
+      const next = new Set<number>();
+      for (const m of members) {
+        const x = m % n;
+        const y = (m - x) / n;
+        const l = d.linkTiles;
+        for (let ay = Math.max(0, y - l); ay <= Math.min(n - 1, y + l); ay++) {
+          for (let ax = Math.max(0, x - l); ax <= Math.min(n - 1, x + l); ax++) {
+            const j = ay * n + ax;
+            if (!placed.has(j) && ground(j) && scattered(j) && !wallsIn(j)) next.add(j);
+          }
+        }
+      }
+      if (next.size === 0) break;
+      const sorted = [...next].sort((a, b) => a - b);
+      const apart = sorted.filter((i) => touches(i).length === 0);
+      const touching = sorted.filter((i) => touches(i).length > 0);
+      const touch = randomInt(rng, 100) < d.touchPercent;
+      const options = apart.length === 0 || (touch && touching.length > 0) ? touching : apart;
+      const pick = options[randomInt(rng, options.length)] as number;
+      members.push(pick);
+      placed.add(pick);
+    }
+    if (members.length > best.length) best = members;
+    if (best.length >= size) break;
+  }
+  return best.length >= d.groupSize.min ? best : [];
 }
 
 /**

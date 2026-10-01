@@ -186,26 +186,40 @@ function valleyProblems(layout: Layout, grounds: Ground[], content: Content): st
     problems.push('no Riverbank near the Camp');
   if (!all.some((i) => near(i, g.fordTiles) && terrain[i] === 'ford'))
     problems.push('no Ford near the Camp');
-  for (const type of ['stone_deposit', 'clay_deposit'] as const) {
-    if (!all.some((i) => near(i, g.depositTiles) && object[i] === type))
-      problems.push(`no ${type} near the Camp`);
+  const d = v.deposits;
+  const groupsOf = (type: MapObjectId) =>
+    depositGroups(
+      n,
+      all.filter((i) => object[i] === type),
+      d.linkTiles,
+    );
+  const stone = groupsOf('stone_deposit');
+  const clay = groupsOf('clay_deposit');
+  const iron = groupsOf('iron_deposit');
+  for (const [type, groups] of [
+    ['stone', stone],
+    ['clay', clay],
+  ] as const) {
+    if (!groups.some((tiles) => tiles.every((i) => near(i, g.depositTiles))))
+      problems.push(`no ${type} group near the Camp`);
   }
   if (all.some((i) => den[i] && near(i, g.denTiles))) problems.push('a Den near the Camp');
 
-  const wanted: [MapObjectId, number][] = [
-    ['stone_deposit', v.deposits.stone],
-    ['clay_deposit', v.deposits.clay],
-    ['iron_deposit', v.deposits.iron],
+  const wanted: [string, number[][], number][] = [
+    ['stone', stone, d.groups.stone],
+    ['clay', clay, d.groups.clay],
+    ['iron', iron, d.groups.iron],
   ];
-  for (const [type, want] of wanted) {
-    if (count(all, type) !== want) problems.push(`${count(all, type)} ${type}`);
+  for (const [type, groups, want] of wanted) {
+    if (groups.length !== want) problems.push(`${groups.length} ${type} groups`);
+    for (const tiles of groups) {
+      if (tiles.length < d.groupSize.min || tiles.length > d.groupSize.max)
+        problems.push(`a ${type} group of ${tiles.length}`);
+    }
   }
-  const ironInSide = all.filter(
-    (i) =>
-      object[i] === 'iron_deposit' &&
-      neighbours(n, i).some((j) => sideValley[j] && terrain[j] !== 'mountain'),
-  ).length;
-  if (ironInSide !== v.deposits.iron) problems.push('iron outside the Side valley');
+  const inSide = (i: number) =>
+    neighbours(n, i).some((j) => sideValley[j] && terrain[j] !== 'mountain');
+  if (!iron.every((tiles) => tiles.every(inSide))) problems.push('iron outside the Side valley');
   const dens = all.filter((i) => den[i]);
   if (dens.length !== v.dens.count) problems.push(`${dens.length} Dens`);
   if (dens.filter((i) => sideValley[i]).length < v.dens.sideValley)
@@ -233,6 +247,13 @@ function valleyProblems(layout: Layout, grounds: Ground[], content: Content): st
   if (sideTiles.some((i) => shut[i])) problems.push('the Side valley is open without the Pass');
   if (all.some((i) => !sideValley[i] && isOpen(i) && !shut[i]))
     problems.push('part of the main valley is cut off');
+  // Forage patches and Deposits worked from a reached tile beside them (a group can wall one in).
+  const worked = (i: number) => {
+    const type = object[i];
+    return type !== null && type !== undefined && !through(i);
+  };
+  if (all.some((i) => worked(i) && !neighbours(n, i).some((j) => opened[j])))
+    problems.push('a Forage patch or Deposit out of reach');
 
   // Points of interest: how many, the mine's Den, Ruins and Shrine reached, the Shrine's ward.
   const ofKind: Record<PoiId, number[]> = { ruins: [], abandoned_mine: [], shrine: [] };
@@ -258,6 +279,26 @@ function valleyProblems(layout: Layout, grounds: Ground[], content: Content): st
   if (ofKind.shrine.some((i) => dens.some((d) => chebyshev(n, i, d) <= ward)))
     problems.push('a Den by the Shrine');
   return problems;
+}
+
+/**
+ * `tiles` (ascending tile indices on an `n`-wide map) in Deposit groups: tiles within `linkTiles`
+ * of each other (Chebyshev), chained, are one group.
+ */
+function depositGroups(n: number, tiles: number[], linkTiles: number): number[][] {
+  const left = [...tiles];
+  const groups: number[][] = [];
+  while (left.length > 0) {
+    const group = left.splice(0, 1);
+    for (let k = 0; k < group.length; k++) {
+      const t = group[k] as number;
+      for (let j = left.length - 1; j >= 0; j--) {
+        if (chebyshev(n, t, left[j] as number) <= linkTiles) group.push(...left.splice(j, 1));
+      }
+    }
+    groups.push(group);
+  }
+  return groups;
 }
 
 /** The map characters (`MAP_LEGEND`) for each terrain, and for what may stand on it. */

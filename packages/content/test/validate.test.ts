@@ -501,7 +501,9 @@ describe('content validation', () => {
         typeof f === 'number' ? [f] : Object.values(f),
       ),
       ...Object.values(valley.rock),
-      ...Object.values(valley.deposits),
+      ...Object.values(valley.deposits).flatMap((d) =>
+        typeof d === 'number' ? [d] : Object.values(d),
+      ),
       ...Object.values(valley.dens),
       ...Object.values(valley.pois).filter((n) => typeof n === 'number'),
       valley.huntingGrounds.maxTiles,
@@ -520,6 +522,10 @@ describe('content validation', () => {
     expect(forest.outlierPercent * 2 <= forest.edgeTreePercent, 'outliers').toBe(true);
     expect(forest.clearing.treePercent <= forest.edgeTreePercent, 'clearings').toBe(true);
     expect(valley.dens.sideValley <= valley.dens.count, 'Side valley Dens').toBe(true);
+    const { deposits } = valley;
+    expect(deposits.groupSize.min <= deposits.groupSize.max, 'Deposit group size').toBe(true);
+    // Groups never run together: Deposits of one group link closer than groups stand apart.
+    expect(deposits.linkTiles < deposits.spacingTiles, 'Deposit groups apart').toBe(true);
     const { pois } = valley;
     expect(pois.shrineAlongPercent.max <= 100, 'Shrine along the way').toBe(true);
     // Stamps never overlap: their cleared squares stay apart.
