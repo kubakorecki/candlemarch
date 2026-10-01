@@ -112,7 +112,7 @@ No emoji, no icon fonts. Each resource has one icon (`RESOURCE_ICONS`), each too
 | Region | Component | Holds |
 | --- | --- | --- |
 | Top left | `Almanac.tsx` | vellum ribbon (year, season, day, time of day), day track, winter countdown, speed, Militia bell |
-| Top, between | `Ledger.tsx` | Food, Stockpile goods, villagers with status counts, Carriers busy, the Hero |
+| Top, between | `Ledger.tsx` | Food, Stockpile goods, villagers with status counts, Carriers busy, the Hero button (a small sword medallion with its key cap; HP and a meter, then its load, or the knockout countdown in red; lit while the Hero is selected; selects the Hero and centres on it, key 1) |
 | Top right | `nav` in `Hud.tsx` | icon buttons for views (Workers, Traffic) and Save / Load |
 | Right | `Tidings.tsx` | alerts by weight, then the chronicle |
 | Bottom left | `Inspector.tsx` (`LeftDock`) | workers view, then the selected thing's inspector |
@@ -121,7 +121,7 @@ No emoji, no icon fonts. Each resource has one icon (`RESOURCE_ICONS`), each too
 
 Sizes are tokens at the top of `hud.css`: margins `--edge` (16px), gaps between regions `--gap`
 (16px), the Almanac `--almanac` (340px), the side columns (Tidings, the left dock) `--column`
-(318px). The Ledger stretches between the Almanac and the nav, so **adding a nav button means raising
+(318px). The Ledger stretches between the Almanac and the nav (at most 860px), so **adding a nav button means raising
 `--nav-buttons`**. Below 1440px wide the build menu reaches under Tidings, so Tidings stops above it
 and scrolls. The HUD layer ignores the mouse (`pointer-events: none`); each panel takes it back.
 

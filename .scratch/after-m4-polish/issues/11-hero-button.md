@@ -1,6 +1,6 @@
 # Select the Hero from the HUD
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by:
 
@@ -18,3 +18,4 @@ Keys 1, 2 and 3 set game speed today (`Game.onKey`). Decided (owner, 2026-09-30)
 ## Comments
 
 2026-09-30 — Owner: Hero on 1, speed on F1/F2/F3.
+2026-10-01 — Done. The Ledger's Hero cell is now the button (sword medallion with a `1` key cap, HP with a meter, load or the red knockout countdown; lit while selected); it and key 1 select the Hero and centre the camera on it. Speed is on F1/F2/F3 (tooltips say so; the browser's F1/F3 actions are stopped); keys live in `game/keys.ts` with a test. Checked in the browser on seed 1 and on a save with the Hero Knocked out. The Ledger's max width rose to 860px so the countdown fits.

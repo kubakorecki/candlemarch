@@ -14,9 +14,9 @@ const PHASES: { phase: DayPhase; label: string }[] = [
 
 const SPEED_TITLES: Record<Speed, string> = {
   0: 'Pause (Space)',
-  1: 'Speed 1× (1)',
-  2: 'Speed 2× (2)',
-  3: 'Speed 3× (3)',
+  1: 'Speed 1× (F1)',
+  2: 'Speed 2× (F2)',
+  3: 'Speed 3× (F3)',
 };
 
 export function Almanac({ hud, game }: { hud: HudState; game: Game }) {

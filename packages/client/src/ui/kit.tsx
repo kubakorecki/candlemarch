@@ -95,10 +95,23 @@ export function CloseButton({ onClick }: { onClick: () => void }) {
 }
 
 /** An icon in a round gilt frame: a building in the inspector and on build cards. */
-export function Medallion({ icon, size = 24 }: { icon: IconName; size?: number }) {
+export function Medallion({
+  icon,
+  size = 24,
+  className,
+  children,
+}: {
+  icon: IconName;
+  size?: number;
+  /** Extra classes, e.g. `hero-medallion`. */
+  className?: string;
+  /** Laid over the frame, e.g. a `.keycap`. */
+  children?: ReactNode;
+}) {
   return (
-    <span className="medallion">
+    <span className={className ? `medallion ${className}` : 'medallion'}>
       <Icon name={icon} size={size} />
+      {children}
     </span>
   );
 }

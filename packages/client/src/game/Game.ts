@@ -65,7 +65,7 @@ import {
   yardAmount,
 } from '@candlemarch/sim';
 import { CameraInput } from '../render/camera';
-import { type CameraView, gridToWorld, screenToTile } from '../render/iso';
+import { type CameraView, gridToWorld, screenToTile, unitsToGrid } from '../render/iso';
 import { nightLook } from '../render/night';
 import { HEALTH_WORDS, type PlacementGhost, WorldRenderer } from '../render/WorldRenderer';
 import {
@@ -81,9 +81,10 @@ import {
 import { type DayTrack, dayTrack } from './almanac';
 import { SAVE_SLOTS, type SaveSlot, seasonName, slotDateLabel } from './autosave';
 import type { Speed } from './clock';
+import { keyAction } from './keys';
 import { stockpileGoods } from './ledger';
 import { SimBridge } from './SimBridge';
-import { TOOLS, type ToolId, toolDef } from './tools';
+import { type ToolId, toolDef } from './tools';
 
 /** The game the page opens on: a generated Valley under Fog. */
 const FIRST_GAME: NewGameSetup = {
@@ -297,6 +298,8 @@ export interface HudState {
   heroLoad: string | null;
   /** "Knocked out, up in 14 s" while the hero is Knocked out, else null. */
   heroKnockout: string | null;
+  /** The hero's hit points and its most, or null if this game has no hero. */
+  heroHp: { hp: number; max: number } | null;
   /** The Militia bell: whether it's ringing, or null while the village has none built. */
   bell: { ringing: boolean } | null;
   message: string | null;
@@ -362,6 +365,7 @@ export class Game {
     fog: false,
     heroLoad: null,
     heroKnockout: null,
+    heroHp: null,
     bell: null,
     message: null,
   };
@@ -464,6 +468,23 @@ export class Game {
     this.selectPile(null);
     this.selectBuilding(null);
     this.selectVillager(id);
+  }
+
+  /**
+   * Selects the Hero, as clicking it would (putting down any tool), and centres the camera on it:
+   * the Hero button and key 1.
+   */
+  focusHero(): void {
+    const state = this.bridge.state;
+    const id = state ? heroOf(state) : null;
+    const at = state && id !== null ? state.components.position[id] : undefined;
+    if (!at) return;
+    this.cancelTool();
+    this.selectHero(true);
+    const g = unitsToGrid(at);
+    const c = gridToWorld(g.x, g.y);
+    this.camera.x = c.x;
+    this.camera.y = c.y;
   }
 
   /** Moves the camera to an alert's target tile. */
@@ -686,10 +707,12 @@ export class Game {
     const busy = carrierUtilization(state, content);
     const track = dayTrack(state.tick, content);
     const goods = stockpileGoods(state);
+    const hp = heroHp(state);
     this.setHud({
       ready: true,
       heroLoad: heroLoadLabel(state),
       heroKnockout: heroKnockoutLabel(state),
+      heroHp: sameJson(hp, this.hud.heroHp) ? this.hud.heroHp : hp,
       day: time.day,
       season: seasonName(time.season, content),
       dayOfSeason: time.dayOfSeason,
@@ -874,20 +897,19 @@ export class Game {
 
   private onKey(e: KeyboardEvent): void {
     if (e.target instanceof HTMLInputElement) return; // typing in a field (the dev seed)
-    if (e.key === 'Escape') this.cancelTool();
-    else if (e.key === ' ') {
-      e.preventDefault();
-      this.togglePause();
-    } else if (e.key === '1' || e.key === '2' || e.key === '3')
-      this.setSpeed(Number(e.key) as Speed);
-    else if (e.key.toLowerCase() === 'v') this.toggleWorkers();
-    else if (e.key.toLowerCase() === 't') this.toggleHeatMap();
-    else if (e.key.toLowerCase() === 'e') this.turnBuilding(1);
-    else if (e.key.toLowerCase() === 'q') this.turnBuilding(3);
-    else {
-      const tool = TOOLS.find((t) => t.key === e.key.toLowerCase());
-      if (tool) this.selectTool(tool.id);
-    }
+    const action = keyAction(e.key);
+    if (!action) return;
+    // Space would scroll or press the focused button; F1–F3 would open the browser's help or
+    // search.
+    if (action.kind === 'pause' || action.kind === 'speed') e.preventDefault();
+    if (action.kind === 'cancel') this.cancelTool();
+    else if (action.kind === 'pause') this.togglePause();
+    else if (action.kind === 'speed') this.setSpeed(action.speed);
+    else if (action.kind === 'hero') this.focusHero();
+    else if (action.kind === 'workers') this.toggleWorkers();
+    else if (action.kind === 'heatMap') this.toggleHeatMap();
+    else if (action.kind === 'turn') this.turnBuilding(action.quarters);
+    else this.selectTool(action.tool);
   }
 
   /** Turns the building being placed `quarters` quarter turns clockwise (3 is one anticlockwise). */
@@ -1436,6 +1458,13 @@ function heroLoadLabel(state: GameState): string | null {
   const goods = hero.carrying;
   if (!goods) return `0/${capacity}`;
   return `${goods.amount}/${capacity} ${content.resources[goods.resource].name.toLowerCase()}`;
+}
+
+/** The hero's hit points and its most, or null if there's no hero. */
+function heroHp(state: GameState): { hp: number; max: number } | null {
+  const id = heroOf(state);
+  const hero = id === null ? undefined : state.components.hero[id];
+  return hero ? { hp: hero.hp, max: content.combat.hero.hp } : null;
 }
 
 /** The hero's knockout countdown, or null when it's up or there's no hero. */

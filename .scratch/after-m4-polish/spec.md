@@ -1,6 +1,6 @@
 # Polish after the M4 playtest
 
-Status: open
+Status: resolved
 Created: 2026-09-30
 From: the owner's playtest notes (`.scratch/play/issues/after-m4.md`) and a follow-up list, with a screenshot of floating doors and windows on the woodcutter's hut and the Hut.
 
