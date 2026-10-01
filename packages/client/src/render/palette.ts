@@ -163,6 +163,7 @@ export const palette = {
   quarryman: 0x6e6a62,
   clayDigger: 0x8a5a43,
   miner: 0x4f4a45,
+  bogDigger: 0x5c6648,
   carrier: 0x8a7d63,
   skin: 0xd6b48e,
   axeHead: 0x9aa0a3,

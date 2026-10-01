@@ -37,7 +37,7 @@ export const ranks: readonly RankDef[] = [
     name: 'Hamlet',
     building: 'village_hall',
     residents: 10,
-    unlocks: { buildings: ['clay_pit', 'mine'] },
+    unlocks: { buildings: ['clay_pit', 'mine', 'bog_iron_digger'] },
   },
   { id: 'village', name: 'Village', building: null, residents: 25, unlocks: { buildings: [] } },
   { id: 'town', name: 'Town', building: null, residents: 50, unlocks: { buildings: [] } },

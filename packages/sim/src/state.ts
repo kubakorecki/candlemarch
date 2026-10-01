@@ -61,6 +61,11 @@ export interface MapState {
    * layer.
    */
   reserve: TileBits;
+  /**
+   * Bog iron: units dug since the last spring from each tile whose terrain holds ore, by tile
+   * index (absent: none dug). `bogIron.ts` reads it; spring empties it.
+   */
+  oreDug: Record<number, number>;
 }
 
 /**
@@ -294,14 +299,17 @@ export type ForagerTask =
   | { kind: 'gathering'; patch: EntityId; ticksLeft: number }
   | { kind: 'toHut' };
 
+/** Where a digger digs: a Deposit (standing beside it), or a tile's bog iron (standing on it). */
+export type DigSpot = { deposit: EntityId } | { tile: Tile };
+
 /**
- * A digger (quarryman, clay digger, miner): walks to a Deposit in its Workplace's radius, digs,
- * and carries what it dug back to the yard.
+ * A digger (quarryman, clay digger, miner, bog digger): walks to a Deposit or a Swamp tile in its
+ * Workplace's radius, digs, and carries what it dug back to the yard.
  */
 export type DiggerTask =
   | { kind: 'idle'; retryAt: number }
-  | { kind: 'toDeposit'; deposit: EntityId }
-  | { kind: 'digging'; deposit: EntityId; ticksLeft: number }
+  | { kind: 'toDig'; spot: DigSpot }
+  | { kind: 'digging'; spot: DigSpot; ticksLeft: number }
   | { kind: 'toYard' };
 
 /** A forester: walks to an empty tile in its lodge's radius and plants a Sapling there. */

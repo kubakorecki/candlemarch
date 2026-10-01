@@ -423,6 +423,27 @@ describe('content validation', () => {
     }
   });
 
+  it('terrain ore is a Stockpile good in whole numbers, dug by a building with room for it', () => {
+    for (const t of Object.values(terrain)) {
+      const { ore } = t;
+      if (!ore) continue;
+      expect(resources[ore.resource].storage, `${t.id} ore is Food`).toBe('stockpile');
+      expectPositiveInt(ore.cap, `${t.id}.ore.cap`);
+      expectPositiveInt(ore.digTicks, `${t.id}.ore.digTicks`);
+      expectPositiveInt(ore.yieldPerDig, `${t.id}.ore.yieldPerDig`);
+      expect(t.walkable, `${t.id} with ore is walkable`).toBe(true);
+    }
+    for (const b of Object.values(buildings)) {
+      if (!b.digsOre) continue;
+      const ore = terrain[b.digsOre].ore;
+      expect(ore, `${b.id} digs ore from ${b.digsOre}`).toBeDefined();
+      if (!ore) continue;
+      expect(b.workRadius, `${b.id} digs within a radius`).toBeDefined();
+      expect(b.outputBuffer?.resources, `${b.id} holds ${ore.resource}`).toContain(ore.resource);
+      expect(ore.yieldPerDig).toBeLessThanOrEqual(content.logistics.yardCapacity);
+    }
+  });
+
   it('a fishing building fishes from a riverbank into a buffer that holds a catch', () => {
     for (const b of Object.values(buildings)) {
       if (b.fishes === undefined) continue;

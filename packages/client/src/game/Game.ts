@@ -12,6 +12,8 @@ import {
   type AlertSeverity,
   alerts,
   bellOf,
+  bogIronLost,
+  bogIronNear,
   type Command,
   calendarAt,
   campCentre,
@@ -53,6 +55,8 @@ import {
   MAX_STANDING_ORDER,
   maxWorkers,
   type NewGameSetup,
+  oreAt,
+  oreCap,
   poiAt,
   type RankLock,
   type Rotation,
@@ -170,6 +174,14 @@ export interface PatchInfo {
   stock: string;
   /** "No shade: needs a tree within 2 tiles to regrow" once withered, otherwise null. */
   noShade: string | null;
+}
+
+/** What the Swamp panel shows for a selected tile that holds bog iron. */
+export interface SwampInfo {
+  /** The terrain's name. */
+  name: string;
+  /** "Bog iron 1 / 2". */
+  ore: string;
 }
 
 /** The canvas cursor for the hero's order under the mouse: attack, Search, or the default. */
@@ -298,8 +310,15 @@ export interface HudState {
   ground: GroundInfo | null;
   /** The point of interest selected by clicking it with no tool. */
   poi: PoiInfo | null;
-  /** A warning about the building being placed, e.g. that it would log a Hunting ground. */
+  /** The Swamp tile selected by clicking it with no tool. */
+  swamp: SwampInfo | null;
+  /**
+   * A warning about the building being placed, e.g. that it would log a Hunting ground or a
+   * Drain would lose bog iron.
+   */
   placementWarning: string | null;
+  /** A plain note about the building being placed: the bog iron a digger would reach. */
+  placementNote: string | null;
   /** The workers view, while it's open. */
   workers: WorkersView | null;
   /** The Load menu, while it's open: each save slot, in order. */
@@ -347,6 +366,7 @@ export class Game {
   private selectedPatch: EntityId | null = null;
   private selectedGround: EntityId | null = null;
   private selectedPoi: EntityId | null = null;
+  private selectedSwamp: Tile | null = null;
   private workersOpen = false;
   private lastSpeed: Speed = 1;
   private hud: HudState = {
@@ -377,7 +397,9 @@ export class Game {
     patch: null,
     ground: null,
     poi: null,
+    swamp: null,
     placementWarning: null,
+    placementNote: null,
     workers: null,
     loadMenu: null,
     heroSelected: false,
@@ -737,6 +759,7 @@ export class Game {
     this.refreshPatch(state);
     this.refreshGround(state);
     this.refreshPoi(state);
+    this.refreshSwamp(state);
     this.refreshWorkers(state);
     this.updateGhost();
     if (this.hud.heroSelected && heroOf(state) === null) {
@@ -922,7 +945,11 @@ export class Game {
       const poi = unit || workplace !== null || patch !== null ? null : poiAt(state, tile);
       this.selectPoi(poi);
       const taken = unit || workplace !== null || patch !== null || poi !== null;
-      this.selectGround(taken ? null : groundAt(state, tile));
+      const ground = taken ? null : groundAt(state, tile);
+      this.selectGround(ground);
+      // A bare tile that holds bog iron.
+      const swamp = taken || ground !== null || oreCap(state, content, tile) === 0;
+      this.selectSwamp(swamp ? null : tile);
     } else if (button === 2 && this.hud.heroSelected) {
       const hero = heroOf(state);
       if (hero !== null && isKnockedOut(state, hero)) {
@@ -980,8 +1007,8 @@ export class Game {
   }
 
   /**
-   * Deselects the hero, villager, stockpile, Workplace, patch, point of interest and ground,
-   * whichever is selected.
+   * Deselects the hero, villager, stockpile, Workplace, patch, point of interest, ground and
+   * Swamp tile, whichever is selected.
    */
   private clearSelection(): void {
     this.selectPile(null);
@@ -989,6 +1016,7 @@ export class Game {
     this.selectPatch(null);
     this.selectPoi(null);
     this.selectGround(null);
+    this.selectSwamp(null);
     this.selectVillager(null);
     this.selectHero(false);
   }
@@ -1065,6 +1093,21 @@ export class Game {
     if (JSON.stringify(info) !== JSON.stringify(this.hud.poi)) this.setHud({ poi: info });
   }
 
+  private selectSwamp(tile: Tile | null): void {
+    this.selectedSwamp = tile;
+    const state = this.bridge.state;
+    if (state) this.refreshSwamp(state);
+    else this.setHud({ swamp: null });
+  }
+
+  /** Copies the selected Swamp tile's bog iron into the HUD, or deselects it once Drained. */
+  private refreshSwamp(state: GameState): void {
+    const tile = this.selectedSwamp;
+    const info = tile === null ? null : swampInfo(state, tile);
+    if (tile !== null && !info) this.selectedSwamp = null;
+    if (JSON.stringify(info) !== JSON.stringify(this.hud.swamp)) this.setHud({ swamp: info });
+  }
+
   private selectGround(id: EntityId | null): void {
     this.selectedGround = id;
     const state = this.bridge.state;
@@ -1108,11 +1151,18 @@ export class Game {
     const state = this.bridge.state;
     const tool = this.hud.tool;
     this.renderer.setShownGrounds(state ? this.shownGrounds(state, tool) : []);
-    const warning =
-      state && tool && this.hover && isBuilding(tool)
-        ? placementWarning(state, tool, this.hover, this.rotation)
-        : null;
-    this.setHud({ placementWarning: warning });
+    const hover = this.hover;
+    const placing = state && tool && hover && isBuilding(tool) ? { state, tool, hover } : null;
+    const from = this.dragStart ?? hover;
+    this.setHud({
+      placementWarning:
+        placing && from
+          ? placementWarning(placing.state, placing.tool, from, placing.hover, this.rotation)
+          : null,
+      placementNote: placing
+        ? placementNote(placing.state, placing.tool, placing.hover, this.rotation)
+        : null,
+    });
     if (state && tool && this.hover) {
       this.renderer.setGhost(this.ghostFor(state, tool, this.hover));
       return;
@@ -1369,22 +1419,48 @@ function groundInfo(state: GameState, id: EntityId): GroundInfo | null {
   };
 }
 
+/** Swamp tile `tile`'s bog iron for the panel, or null once it holds none (Drained). */
+function swampInfo(state: GameState, tile: Tile): SwampInfo | null {
+  const cap = oreCap(state, content, tile);
+  const terrain = state.map.terrain[tile.y * state.map.width + tile.x];
+  if (cap === 0 || !terrain) return null;
+  return {
+    name: content.terrain[terrain].name,
+    ore: `Bog iron ${oreAt(state, content, tile)} / ${cap}`,
+  };
+}
+
 /**
- * What placing a `type` building at `origin` would do to Hunting grounds, if anything: one that
- * fells the forest warns when its radius reaches into a ground.
+ * What placing a `type` building at `origin` would cost, if anything: one that fells the forest
+ * warns when its radius reaches into a Hunting ground; groundwork laid from `from` that would turn
+ * Swamp into Meadow (a Drain) says how much bog iron it loses.
  */
 function placementWarning(
   state: GameState,
   type: BuildingId,
+  from: Tile,
   origin: Tile,
   rotation: Rotation,
 ): string | null {
+  const lost = bogIronLost(state, content, type, from, origin);
+  if (lost > 0) return `Draining loses ${lost} bog iron for good.`;
   if (!content.buildings[type].gathers?.includes(content.hunting.forest)) return null;
   const names = groundsNear(state, content, type, origin, rotation).map(
     (id) => state.components.huntingGround[id]?.name ?? '',
   );
   if (names.length === 0) return null;
   return `Its radius reaches into ${names.join(' and ')}: felling trees there drives game away.`;
+}
+
+/** A plain note about placing a `type` building at `origin`: the bog iron a digger would reach. */
+function placementNote(
+  state: GameState,
+  type: BuildingId,
+  origin: Tile,
+  rotation: Rotation,
+): string | null {
+  if (!content.buildings[type].digsOre) return null;
+  return `Bog iron in reach: ${bogIronNear(state, content, type, origin, rotation)}.`;
 }
 
 /**

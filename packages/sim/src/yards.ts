@@ -48,7 +48,7 @@ export function fitsInYard(
 
 /**
  * What a gathering Workplace's yard has no room for, when that stops its worker: a hunter's
- * whole catch, a fisher's catch, or everything a gatherer gathers (a basket of mushrooms that
+ * whole catch, a fisher's catch, or everything a gatherer gathers or digs (bog iron included) (a basket of mushrooms that
  * still fits keeps a forager working). Empty for any other building.
  */
 export function gathererNoRoom(
@@ -72,6 +72,8 @@ export function gathererNoRoom(
     const obj = content.mapObjects[type];
     yields.set(obj.resource, Math.max(yields.get(obj.resource) ?? 0, obj.yieldPerGather));
   }
+  const ore = def.digsOre ? content.terrain[def.digsOre].ore : undefined;
+  if (ore) yields.set(ore.resource, Math.max(yields.get(ore.resource) ?? 0, ore.yieldPerDig));
   const noRoom = [...yields].filter(([resource, amount]) => full(resource, amount));
   return noRoom.length > 0 && noRoom.length === yields.size ? noRoom.map(([r]) => r) : [];
 }

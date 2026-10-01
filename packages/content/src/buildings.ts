@@ -306,4 +306,19 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 300, // 15 s
     },
   },
+  bog_iron_digger: {
+    id: 'bog_iron_digger',
+    name: 'Bog-iron digger',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [{ job: 'bog_digger', count: 1 }],
+    digsOre: 'swamp',
+    workRadius: 6,
+    outputBuffer: { resources: ['iron_ore'], yard: { x: 1, y: 0 } },
+    construction: {
+      cost: [{ resource: 'logs', amount: 8 }],
+      buildTicks: 200, // 10 s
+    },
+  },
 };

@@ -45,10 +45,10 @@ export function isHelpingCarry(state: GameState, id: EntityId): boolean {
   return v !== undefined && v.job !== 'carrier' && state.logistics.hauls[id] !== undefined;
 }
 
-/** The Jobs that dig Deposits (`systems/digging.ts`). */
-const DIGGER_JOBS: readonly JobId[] = ['quarryman', 'clay_digger', 'miner'];
+/** The Jobs that dig Deposits or bog iron (`systems/digging.ts`). */
+const DIGGER_JOBS: readonly JobId[] = ['quarryman', 'clay_digger', 'miner', 'bog_digger'];
 
-/** Whether `job` digs Deposits: its task is a `DiggerTask`. */
+/** Whether `job` digs Deposits or bog iron: its task is a `DiggerTask`. */
 export function isDiggerJob(job: JobId): boolean {
   return DIGGER_JOBS.includes(job);
 }

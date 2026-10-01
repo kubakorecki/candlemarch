@@ -42,7 +42,8 @@ export type BuildingId =
   | 'village_hall'
   | 'quarry'
   | 'clay_pit'
-  | 'mine';
+  | 'mine'
+  | 'bog_iron_digger';
 export type JobId =
   | 'woodcutter'
   | 'carrier'
@@ -54,7 +55,8 @@ export type JobId =
   | 'watchman'
   | 'quarryman'
   | 'clay_digger'
-  | 'miner';
+  | 'miner'
+  | 'bog_digger';
 export type RoadId = 'dirt_path' | 'pass_road';
 export type HeroId = 'placeholder';
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
@@ -117,6 +119,22 @@ export interface TerrainDef {
    * snow). Absent: the Hero walks it like everyone else.
    */
   heroSpeedPercent?: number;
+  /**
+   * Ore every tile of it holds (Swamp: bog iron), back up to the cap at the start of each spring.
+   * A building whose `digsOre` names this terrain digs it.
+   */
+  ore?: TerrainOreDef;
+}
+
+/**
+ * Ore a terrain's tiles hold: up to `cap` units of `resource` a tile, dug `yieldPerDig` at a time
+ * in `digTicks` of work.
+ */
+export interface TerrainOreDef {
+  resource: ResourceId;
+  cap: number;
+  digTicks: number;
+  yieldPerDig: number;
 }
 
 /** Work that turns inputs into outputs at a workshop. */
@@ -662,6 +680,11 @@ export interface BuildingDef {
    * it they go anywhere.
    */
   workRadius?: number;
+  /**
+   * Its workers dig the ore (`TerrainDef.ore`) out of tiles of this terrain within its work
+   * radius (a bog-iron digger: Swamp), standing on the tile.
+   */
+  digsOre?: TerrainId;
   /**
    * Terrain it may stand on besides buildable terrain (a quarry: Rock). Its door still needs
    * walkable ground.

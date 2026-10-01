@@ -16,6 +16,7 @@ import type {
   HudState,
   PatchInfo,
   PoiInfo,
+  SwampInfo,
   VillagerInfo,
   WorkersView,
 } from '../game/Game';
@@ -457,6 +458,21 @@ function PatchPanel({ patch, game }: { patch: PatchInfo; game: Game }) {
   );
 }
 
+function SwampPanel({ swamp, game }: { swamp: SwampInfo; game: Game }) {
+  return (
+    <section className="inspector panel" aria-label="Selected Swamp">
+      <Head lead={<Medallion icon="ore" />} name={swamp.name} game={game} />
+      <div className="fact">
+        <span>Holds</span>
+        <span>{swamp.ore}</span>
+      </div>
+      <p className="footnote">
+        A bog-iron digger digs it. It comes back each spring; Draining the tile loses it for good.
+      </p>
+    </section>
+  );
+}
+
 const POI_ICONS: Record<PoiId, IconName> = {
   ruins: 'ruins',
   abandoned_mine: 'pick',
@@ -554,6 +570,7 @@ export function LeftDock({ hud, game }: { hud: HudState; game: Game }) {
       {hud.patch && <PatchPanel patch={hud.patch} game={game} />}
       {hud.poi && <PoiPanel poi={hud.poi} game={game} />}
       {hud.ground && <GroundPanel ground={hud.ground} game={game} />}
+      {hud.swamp && <SwampPanel swamp={hud.swamp} game={game} />}
     </div>
   );
 }

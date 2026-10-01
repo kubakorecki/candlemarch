@@ -162,6 +162,7 @@ export function createEmptyState(seed: number): GameState {
       revealed: [],
       inSight: [],
       reserve: [],
+      oreDug: {},
     },
     components: {
       tile: {},
@@ -228,6 +229,7 @@ export function createInitialState(
     revealed: [],
     inSight: [],
     reserve: [],
+    oreDug: {},
   };
   state.map.reserve = noTiles(state.map);
 

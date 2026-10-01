@@ -1,6 +1,6 @@
 // Bottom: the build menu. Category tabs along the bottom (Demolish at the end); the open category's
 // cards above them, and details of the card under the mouse or in hand. The status line (the last
-// message and any placement warning) floats above it. A card the village's rank keeps locked is
+// message, any placement note and any placement warning) floats above it. A card the village's rank keeps locked is
 // dimmed and says what it waits for: the rank that unlocks it, or a rank building's residents.
 import {
   type BuildingDef,
@@ -163,9 +163,10 @@ export function BuildMenu({ hud, game }: { hud: HudState; game: Game }) {
   return (
     <section className="build panel" aria-label="Build">
       <Corners />
-      {(status || hud.placementWarning) && (
+      {(status || hud.placementWarning || hud.placementNote) && (
         <div className="toast panel" role="status">
           {status && <div>{status}</div>}
+          {hud.placementNote && <div className="footnote">{hud.placementNote}</div>}
           {hud.placementWarning && <Callout tone="warn" title={hud.placementWarning} />}
         </div>
       )}

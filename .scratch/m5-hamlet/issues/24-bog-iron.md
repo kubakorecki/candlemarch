@@ -1,6 +1,6 @@
 # Bog iron
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 04, 06
 
@@ -17,3 +17,7 @@ Spec: Resources (Renewing what runs out). Glossary: Bog iron.
 
 - Headless tests: the digger gathers iron ore from Swamp; a dug tile refills at spring up to its cap; a Drained tile has none.
 - `pnpm check` passes.
+
+## Comments
+
+2026-10-01 — Done. Swamp holds up to 2 iron ore a tile (content `TerrainDef.ore`); `map.oreDug` keeps what's been dug since spring, emptied at spring's first Dawn. The bog-iron digger (Hamlet, radius 6) shares `systems/digging.ts` with the quarry, clay pit and mine; its worker stands on the tile, about 4 ore a day. A Drained tile is Meadow, so its ore is gone. Selecting a Swamp tile shows its bog iron; a Drain's preview warns how much it loses (`bogIronLost`); placing a digger notes the bog iron in reach (`bogIronNear`). See `docs/decisions.md`.

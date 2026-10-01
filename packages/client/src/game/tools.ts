@@ -102,6 +102,13 @@ export const TOOLS: readonly {
     hint: 'Click to place near iron Deposits on a Mountain face. Beside the Abandoned mine it costs only logs. Ore never comes back. Shift-click places more.',
   },
   {
+    id: 'bog_iron_digger',
+    label: 'Bog-iron digger',
+    key: null,
+    drag: false,
+    hint: 'Click to place near Swamp. Its worker slowly digs the bog iron every Swamp tile holds, which comes back each spring. Shift-click places more.',
+  },
+  {
     id: 'village_hall',
     label: 'Village hall',
     key: null,

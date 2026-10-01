@@ -13,7 +13,15 @@ export const terrain: Record<TerrainId, TerrainDef> = {
     speedPercent: 0,
   },
   // Buildable once Drained: a finished Drain turns the tile into Meadow.
-  swamp: { id: 'swamp', name: 'Swamp', walkable: true, buildable: false, speedPercent: 50 },
+  // Bog iron (spec, Renewing what runs out; numbers Proposed): a little iron ore a tile, dug slowly.
+  swamp: {
+    id: 'swamp',
+    name: 'Swamp',
+    walkable: true,
+    buildable: false,
+    speedPercent: 50,
+    ore: { resource: 'iron_ore', cap: 2, digTicks: 400, yieldPerDig: 1 }, // 20 s an ore
+  },
   river: { id: 'river', name: 'River', walkable: false, buildable: false, speedPercent: 0 },
   ford: { id: 'ford', name: 'Ford', walkable: true, buildable: false, speedPercent: 50 },
   // Open to everyone once a Pass road is built over it; before that the Hero alone wades it.

@@ -81,6 +81,8 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
   if (loaded.map?.revealed === undefined) state.map.revealed = allTiles(state.map);
   // Saves from before Reserves.
   if (loaded.map?.reserve === undefined) state.map.reserve = noTiles(state.map);
+  // Saves from before bog iron: nothing dug yet.
+  if (loaded.map?.oreDug === undefined) state.map.oreDug = {};
   // Saves from before forage patches kept their shade.
   const { mapObject } = state.components;
   if (

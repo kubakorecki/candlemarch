@@ -57,7 +57,7 @@ function sitesOf(state: GameState, type: BuildingId): Set<number> {
  * isn't groundwork, an end is off the map, any tile is unrevealed, any other tile isn't the
  * groundwork's terrain or holds a Road, a map object or a footprint, or no tile would get a site.
  */
-function groundworkLine(
+export function groundworkTiles(
   state: GameState,
   content: Content,
   type: BuildingId,
@@ -89,7 +89,7 @@ export function canLayGroundwork(
   from: Tile,
   to: Tile,
 ): boolean {
-  return groundworkLine(state, content, type, from, to) !== null;
+  return groundworkTiles(state, content, type, from, to) !== null;
 }
 
 /**
@@ -103,7 +103,7 @@ export function layGroundwork(
   from: Tile,
   to: Tile,
 ): void {
-  const line = groundworkLine(state, content, type, from, to);
+  const line = groundworkTiles(state, content, type, from, to);
   if (!line) return;
   clearGrowth(state, content, line);
   for (const t of line) {
@@ -122,8 +122,10 @@ export function finishGroundwork(state: GameState, id: EntityId, def: Groundwork
   destroyEntity(state, id);
   if (!t) return;
   const i = tileIndex(state.map, t.x, t.y);
-  if ('terrain' in def.becomes) state.map.terrain[i] = def.becomes.terrain;
-  else state.map.roads[i] = def.becomes.road;
+  if ('terrain' in def.becomes) {
+    state.map.terrain[i] = def.becomes.terrain;
+    delete state.map.oreDug[i]; // what the tile held went with the old terrain (bog iron)
+  } else state.map.roads[i] = def.becomes.road;
   mapChanged(state);
   staticChanged(state);
 }

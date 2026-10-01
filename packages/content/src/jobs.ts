@@ -73,6 +73,13 @@ export const jobs: Record<JobId, JobDef> = {
     carryCapacity: 1,
     idleRetryTicks: 20,
   },
+  bog_digger: {
+    id: 'bog_digger',
+    name: 'Bog digger',
+    walkSpeed: 75,
+    carryCapacity: 1,
+    idleRetryTicks: 20,
+  },
   carrier: {
     id: 'carrier',
     name: 'Carrier',

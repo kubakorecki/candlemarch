@@ -1,7 +1,9 @@
 // What renews each spring (spec, Resources: Renewing what runs out): at the first Dawn of each
 // spring, every Deposit that refills (clay) regains its `springRefillPercent` of its starting
-// amount, up to that amount, even once dug out. Stone and iron ore never come back.
+// amount, up to that amount, even once dug out, and every tile's bog iron is back up to its cap.
+// Stone and iron ore Deposits never come back.
 import type { Content } from '@candlemarch/content';
+import { refillOre } from '../bogIron';
 import { calendarAt, isDawn } from '../calendar';
 import { idsOf } from '../entities';
 import { staticChanged } from '../snapshot';
@@ -12,6 +14,7 @@ export function renewalSystem(state: GameState, content: Content): void {
   const { day, dayOfSeason, season } = calendarAt(state.tick, content);
   // The game starts in spring with everything full.
   if (season !== 'spring' || dayOfSeason !== 1 || day === 1) return;
+  refillOre(state);
   const { mapObject } = state.components;
   for (const id of idsOf(mapObject)) {
     const obj = mapObject[id];
