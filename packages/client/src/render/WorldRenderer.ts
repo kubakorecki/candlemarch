@@ -39,6 +39,7 @@ import {
 import { Application, Container, Graphics, Text } from 'pixi.js';
 import { drawBuilding, drawWindowLight } from './buildingArt';
 import { FogLayer } from './fogLayer';
+import { easeOffset, formationOffsets, type Offset, type StandingWalker } from './formation';
 import {
   type CameraView,
   depthOf,
@@ -338,6 +339,12 @@ export class WorldRenderer {
   private readonly healthBars = new Graphics();
   private bars: HealthBar[] = [];
   private barsState: GameState | null = null;
+  /** Each walker's slot among those standing still on its tile (`formationOffsets`), per state. */
+  private slots: Record<EntityId, Offset> = {};
+  private slotsState: GameState | null = null;
+  /** How far each walker is drawn from its sim position right now, easing to and from its slot. */
+  private readonly shifts = new Map<EntityId, Offset>();
+  private shiftsTime: number | null = null;
   private readonly statics = new Map<string, StaticView>();
   private readonly villagers = new Map<EntityId, VillagerView>();
   private hero: HeroView | null = null;
@@ -657,11 +664,58 @@ export class WorldRenderer {
     alpha: number,
     timeMs: number,
   ): void {
+    this.updateShifts(state, prevPositions, timeMs);
     this.drawVillagers(state, prevPositions, alpha, timeMs);
     this.drawHero(state, prevPositions, alpha, timeMs);
     this.drawGloamlings(state, prevPositions, alpha, timeMs);
     this.drawHealthBars(state, prevPositions, alpha);
     this.drawPuffs(timeMs);
+  }
+
+  /**
+   * Fans out walkers standing still on one tile (drawing only): each eases into its slot when it
+   * stops and back onto its path when it walks on.
+   */
+  private updateShifts(
+    state: GameState,
+    prevPositions: Record<EntityId, Point>,
+    timeMs: number,
+  ): void {
+    const { villager, hero, gloamling, position } = state.components;
+    const walkers = [
+      ...idsOf(villager).filter((id) => !isIndoors(state, this.content, id)),
+      ...idsOf(hero),
+      ...idsOf(gloamling),
+    ];
+    if (state !== this.slotsState) {
+      const standing: StandingWalker[] = [];
+      for (const id of walkers) {
+        const to = position[id];
+        const from = prevPositions[id] ?? to;
+        if (to && from && from.x === to.x && from.y === to.y)
+          standing.push({ id, tile: tileOfPoint(to) });
+      }
+      this.slots = formationOffsets(standing);
+      this.slotsState = state;
+    }
+    const dt = this.shiftsTime === null ? 0 : timeMs - this.shiftsTime;
+    this.shiftsTime = timeMs;
+    const still = { x: 0, y: 0 };
+    const kept = new Set<EntityId>();
+    for (const id of walkers) {
+      const target = this.slots[id] ?? still;
+      const shift = this.shifts.get(id);
+      this.shifts.set(id, shift ? easeOffset(shift, target, dt) : target);
+      kept.add(id);
+    }
+    for (const id of this.shifts.keys()) if (!kept.has(id)) this.shifts.delete(id);
+  }
+
+  /** Walker `id`'s drawn position in grid coordinates: between ticks, shifted into its slot. */
+  private walkerAt(id: EntityId, from: Point, to: Point, alpha: number): { x: number; y: number } {
+    const g = interpolate(from, to, alpha);
+    const shift = this.shifts.get(id);
+    return shift ? { x: g.x + shift.x, y: g.y + shift.y } : g;
   }
 
   /**
@@ -691,7 +745,7 @@ export class WorldRenderer {
       }
       const to = state.components.position[bar.id];
       if (!to || !seenAt(state, to)) continue;
-      const at = interpolate(prevPositions[bar.id] ?? to, to, alpha);
+      const at = this.walkerAt(bar.id, prevPositions[bar.id] ?? to, to, alpha);
       const w = gridToWorld(at.x, at.y);
       // Over a Gloamling's head, or over a villager's status icons.
       const above = state.components.gloamling[bar.id] ? 36 : 82;
@@ -732,7 +786,7 @@ export class WorldRenderer {
         this.gloamlings.set(id, node);
       }
       const from = prevPositions[id] ?? to;
-      const g = interpolate(from, to, alpha);
+      const g = this.walkerAt(id, from, to, alpha);
       const w = gridToWorld(g.x, g.y);
       // Off-screen, or out of sight under Fog (its eyes too).
       node.visible = overlaps(walkerBounds(w.x, w.y), this.view) && seenAt(state, to);
@@ -877,7 +931,7 @@ export class WorldRenderer {
     }
     const view = this.heroView();
     const from = prevPositions[id] ?? to;
-    const g = interpolate(from, to, alpha);
+    const g = this.walkerAt(id, from, to, alpha);
     const w = gridToWorld(g.x, g.y);
     view.node.visible = overlaps(walkerBounds(w.x, w.y), this.view) && seenAt(state, to);
     if (!view.node.visible) return;
@@ -923,7 +977,7 @@ export class WorldRenderer {
       seen.add(id);
       const view = this.villagerView(id, v.job);
       const from = prevPositions[id] ?? to;
-      const g = interpolate(from, to, alpha);
+      const g = this.walkerAt(id, from, to, alpha);
       const w = gridToWorld(g.x, g.y);
       // Off-screen, asleep inside its House (out of sight until it wakes or a Gloamling breaks
       // the door), or out of sight under Fog.
