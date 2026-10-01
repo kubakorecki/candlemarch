@@ -1,18 +1,17 @@
 # Imports
 
-Status: needs-info
+Status: ready-for-agent
 Type: task
 Blocked by: 14
 
 ## What
 
-- Buy goods the village can't make yet (seeds, iron bars before a mine, tools) from visiting merchants.
+Spec: Economy (The trade post in M5, Imports). Glossary: Import.
 
-## Open questions (design session 02, Q4)
-
-- What, at what price, how goods arrive.
+- Order goods at the trade post for twice their base price; the coin leaves the Treasury when ordered (refused if it can't cover it). The next merchant brings them into the trade post's Storage, and Carriers take them where they're wanted.
+- M5 catalogue (content): stone, clay, iron ore, iron bars, tools, grain, and turnip seeds (ticket 25 makes seeds do something).
 
 ## Done when
 
-- Headless test: an order spends coin and delivers goods.
+- Headless tests: an order spends coin and the goods arrive with the next merchant; an order the Treasury can't cover is refused.
 - `pnpm check` passes.

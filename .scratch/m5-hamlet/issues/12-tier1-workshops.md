@@ -1,12 +1,12 @@
 # Tier-1 master workshops
 
-Status: needs-info
+Status: ready-for-agent
 Type: task
 Blocked by: 09
 
 ## What
 
-Content and placeholder art for the master workshops, on the M2 recipe system:
+Content and placeholder art for the master workshops, on the M2 recipe system, all unlocked at Hamlet and idle until their Master (ticket 09):
 
 - Sawpit (Carpenter): logs → planks.
 - Stonecutter (Mason): stone → cut stone.

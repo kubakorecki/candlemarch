@@ -18,3 +18,7 @@ Blocked by: 01, 02, m5-hamlet/09
 
 - A headless test per trait effect; deterministic rolls.
 - `pnpm check` passes.
+
+## Comments
+
+2026-10-01 — m5-hamlet design session 01: from M6, each Charter on the notice board also shows the Master's traits, so the player can choose between two offers of one trade.

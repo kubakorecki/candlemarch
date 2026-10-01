@@ -15,18 +15,20 @@ Done when a player can rank up to Hamlet, invite a master, run their chain, sell
 From `docs/spec.md` (Progression; Trades and masters; Economy; Villagers):
 
 - Ranks and rank buildings; the village hall (logs, stone, 10 residents).
-- Raw gatherers: quarry (stone), clay pit (clay), mine (iron ore), farm (grain).
-- Masters: a trade exists only once its master has settled. Hamlet unlocks invitations for Carpenter, Mason, Butcher, Brewer, Smith.
-- Notice board with charter invitations (conditions + signing fee).
+- Deposits in groups; raw gatherers: quarry (stone), clay pit (clay, refills each spring), mine (iron ore), bog-iron digger (iron ore from Swamp), farm (grain, turnips from seeds, fieldstones).
+- Masters: a trade's workshops work only once its master has settled. Charters for Carpenter, Mason, Butcher, Brewer, Smith.
+- Notice board with Charters and one-off Delivery orders.
 - Workshops: charcoal kiln (no master), sawpit, stonecutter, brick kiln, smokehouse, bloomery, brewery.
-- Trade post, market stockpile, coin, merchants, imports.
-- Tools that wear out (Proposed default; revisited after this milestone's playtest).
-- Standing orders.
+- Trade post with its Storage, coin, merchants with wanted lists, imports and seeds.
+- Tools that speed work up and wear out (wear revisited after this milestone's playtest).
+- Standing orders; workers help carry when their Workplace can't use them.
 - Happiness (work speed, emigration) and adjacency.
+- Storage shown in the Granary's and trade post's panels.
 
 Roadmap correction: the bloomery, brewery and farm moved here from M6, because the Tavern's cost needs iron bars and ale in stock.
 
+Design sessions 01–03 were held on 2026-10-01; see `docs/spec.md` and each ticket. Moved to M6: reputation, Den bounties, the scrap smelter, deepening a mine, salvage, bricks for stone, bees and candles.
+
 ## Waiting on
 
-- **Design sessions 01–03.**
-- **Valley terrain** (`m4-valley/05`) for quarry, mine and clay pit placement.
+- Nothing outside this folder.

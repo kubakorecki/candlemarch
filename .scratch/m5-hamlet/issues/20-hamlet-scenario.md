@@ -1,6 +1,6 @@
 # Hamlet scenario
 
-Status: needs-info
+Status: ready-for-agent
 Type: task
 Blocked by: 05, 11, 12, 13, 16, 17, 19
 

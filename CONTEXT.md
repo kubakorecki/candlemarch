@@ -19,22 +19,72 @@ Any building that employs villagers, such as the woodcutter's hut, the quarry or
 _Avoid_: Job building, production building
 
 **Granary**:
-The building that stores Food and where villagers eat their Meal. Food never goes to a Stockpile.
+The building that keeps Food in its Storage and where villagers eat their Meal. Food never goes to a Stockpile.
 _Avoid_: Food store, pantry, storehouse
+
+**Storage**:
+The goods a building keeps inside it, such as the Granary's Food or the trade post's goods for sale. Not drawn on the ground; the building's panel lists it. A Workplace's yard is not Storage.
+_Avoid_: Store, connected stockpile, inventory
+
+**Trade post**:
+The building merchants visit. Goods for sale wait in its Storage, and imports arrive there.
+_Avoid_: Market, market stockpile (a market is a later Burghers building)
 
 **Chopping block**:
 The Workplace where Logs are split into Firewood. The woodcutter's hut only fells trees.
 _Avoid_: Woodshed, splitting hut
 
 **Rank building**:
-The building whose completion raises the village to its next rank: village hall, tavern, guildhall.
+The building whose completion raises the village to its next rank: village hall, tavern, guildhall. Its resident requirement must hold before it can be placed; its goods and coin are its construction cost.
 _Avoid_: Milestone building
+
+**Notice board**:
+A small building, one per village, unlocked at Hamlet, where Charters and side quests such as Delivery orders are posted.
+_Avoid_: Quest board, job board
 
 ### Progression
 
 **Rank**:
 The village's stage of growth: Camp, Hamlet, Village, Town. Each rank unlocks buildings, trades and invitations.
 _Avoid_: Level, era, age
+
+### Economy
+
+**Coin**:
+The village's money, held as one Treasury total. Not a good: it is never stored on a Stockpile or hauled.
+_Avoid_: Gold (as the term), money
+
+**Treasury**:
+The village's Coin total.
+_Avoid_: Bank, purse
+
+**Tools**:
+One good that Workplace workers use to work at full speed.
+_Avoid_: Axe, pick, sickle (as separate goods)
+
+**Merchant**:
+A trader who visits the trade post every few days outside winter, buys everything in its Storage at current prices, and brings ordered imports.
+_Avoid_: Trader, caravan (a caravan brings a travelling master)
+
+**Wanted list**:
+The 2–3 goods the next Merchant will pay extra for, announced when the previous one leaves.
+_Avoid_: Demand, request
+
+**Import**:
+A good ordered at the trade post for twice its base price, brought by the next Merchant.
+_Avoid_: Purchase, order (alone)
+
+**Delivery order**:
+A one-off side quest on the Notice board: deliver goods by a deadline for a reward.
+_Avoid_: Contract, quest (alone)
+
+**Charter**:
+A Master's offer, posted on the Notice board, to settle in the village. It lists conditions and a fee, and is withdrawn if not taken in time. Accepting it pays the fee and brings the Master.
+_Avoid_: Contract, job offer
+
+**Standing order**:
+A rule set on a Workplace, such as "pause while the village holds at least N of my output". The main automation tool.
+_Avoid_: Rule, production limit, quota
 
 ### Logistics
 
@@ -47,7 +97,7 @@ The first kind of Road: free, laid instantly, gives a modest speed bonus.
 _Avoid_: Trail, dirt road
 
 **Carrier**:
-A villager whose Job is moving goods between buildings. The default Job of a villager without a Workplace.
+A villager whose Job is moving goods between buildings. The default Job of a villager without a Workplace. A worker whose Workplace can't use them for now (paused, yard full, waiting for inputs) is **helping carry**: they take Hauls but keep their Job.
 _Avoid_: Hauler, porter (porters are a late magical upgrade)
 
 **Haul**:
@@ -59,6 +109,14 @@ An open-air patch of land, marked as bare dirt, where bulk goods (logs, firewood
 _Avoid_: Warehouse, depot, storage zone
 
 ### People
+
+**Master**:
+A villager who holds a trade (Carpenter, Mason, Butcher, Smith, Miller, Brewer, Baker) and 1–2 traits. A trade's workshops work only once its Master has settled; after the Master is lost they crawl. Lives in an ordinary House, and is marked with an icon.
+_Avoid_: Craftsman, specialist, expert
+
+**Happiness**:
+A score each villager has for themselves. House-level things such as warmth or neighbours feed each resident's score.
+_Avoid_: Morale, mood, satisfaction
 
 **Job**:
 What a villager currently does: the work of their Workplace, or Carrier if they have none. A villager's Job can change; the person stays the same.
@@ -197,8 +255,28 @@ A shallow stretch of River that villagers, the Hero and Gloamlings wade across s
 _Avoid_: Crossing, shallows
 
 **Deposit**:
-A map object holding a fixed amount of stone, clay or iron ore. What is dug out never comes back.
+A map object holding a fixed amount of stone, clay or iron ore. Deposits come in scattered groups; a bigger group is a richer site. Dug-out stone and iron ore never come back; a clay Deposit refills a little each spring. An empty Deposit stays on the map, dug out.
 _Avoid_: Node, vein (as a term), ore patch
+
+**Field**:
+Meadow tiles the player paints in a farm's radius, where its Crop is sown and harvested.
+_Avoid_: Farmland, plot, crop tile
+
+**Crop**:
+What a farm grows on all its Fields: grain, or a Crop unlocked with Seeds.
+_Avoid_: Plant, harvest (as the thing grown)
+
+**Seeds**:
+Bought once at the trade post to unlock a Crop for every farm for good. Grain needs none.
+_Avoid_: Seed stock
+
+**Fieldstone**:
+Stone that frost pushes up in a Field each spring; farmers clear it, and it leaves the farm as stone.
+_Avoid_: Rubble
+
+**Bog iron**:
+Iron ore in Swamp tiles, which builds back up each spring. Draining a tile loses it for good.
+_Avoid_: Bog ore, swamp iron
 
 **Reserve**:
 Forest tiles the player paints so woodcutters never fell there. Foragers, hunters and foresters still work in it.

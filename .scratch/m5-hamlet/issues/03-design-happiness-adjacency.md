@@ -1,6 +1,6 @@
 # Design session: happiness and adjacency
 
-Status: ready-for-human
+Status: resolved
 Type: grilling
 Blocked by: none
 
@@ -20,3 +20,7 @@ A `/grill-with-docs` session. Record answers in `docs/spec.md` and `CONTEXT.md`,
 ## Done when
 
 - Every question has an answer, and the dependent tickets are updated.
+
+## Comments
+
+2026-10-01 — Held together with 01 and 02. Recorded in `docs/spec.md` (Villagers: Happiness in M5, Adjacency in M5, Population) and `CONTEXT.md` (Happiness). Answers: a 0–100 score per villager from 50; about the good life, not survival (Hungry, Cold, Tired don't count); M5 sources are Homeless −30, −10 per death in 3 days, and adjacency (4 tiles, Homes only, once per kind: trees/Reserve, Shrine, brewery +10; smokehouse, charcoal kiln, brick kiln, bloomery, quarry −10); bands Happy ≥70 +20%, Unhappy <30 −20%; Unhappy 5 Dawns in a row leaves, not in winter; no Newcomers while the average is Unhappy; villager panel lists sources, placement preview shows ± badges. Tickets 18, 19 rewritten.

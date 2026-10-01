@@ -21,6 +21,7 @@ From `docs/spec.md` (Progression; Villagers; Trades and masters; Logistics upgra
 - Root cellar slows spoilage.
 - Invitations: passing caravan, rescue, recommendation. Master traits.
 - Crown tribute (leaning yes in the spec).
+- From the M5 design sessions: reputation, Den bounties, the scrap smelter, deepening a mine, salvage and bricks for stone, bees and candles (tickets 18–23).
 
 Roadmap correction: the smithy and carpenter's workshop are here (tools and furniture); the bloomery and brewery moved to M5.
 

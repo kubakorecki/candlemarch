@@ -1,6 +1,6 @@
 # Candlemarch — Design Spec v0.1
 
-Last updated: 2026-09-29
+Last updated: 2026-10-01
 
 A medieval-fantasy village builder where the fun is designing a settlement that runs itself. This is a living spec: it will change after every design round.
 
@@ -49,7 +49,7 @@ Each game is a procedurally generated valley seeded with handcrafted points of i
 - **View:** isometric, square tile grid. *(Decided)*
 - **Size** *(Decided at the M4 gate, [ADR-0004](adr/0004-valley-size-and-budget.md))*: the Valley is 128 × 128 tiles. It's a content number, so the playtest can move it. Hand-made maps stay for tests and debugging.
 - **Terrain gates expansion** *(Decided)*: a Swamp needs Draining, a snowed-in Pass needs a Pass road.
-- **Resources deplete and regrow.** Forests and game recover slowly; ore and stone do not. *(Decided)*
+- **Resources deplete and regrow.** Forests and game recover slowly; stone and iron Deposits do not. *(Decided)* Clay Deposits, Swamps (bog iron) and Fields (fieldstones) renew a little each spring; see **Renewing what runs out**. *(Decided in design session M5-02)*
 - **Rotating buildings:** a building is placed in one of four orientations: the layout it is designed with, then quarter turns clockwise (a south door faces west, north, then east). A turn swaps its width and height, and every placement rule (a fisher's hut's door on the riverbank, say) is checked on the turned layout, so a fisher's hut fits either bank of a river. `Q` and `E` turn the placement preview. *(Proposed)*
 
 **Terrain** *(Decided in design session M4-03; numbers Proposed)*. Forest isn't a Terrain: it's tiles with standing trees, and a tile stops being Forest when its tree is felled. Trees and Forage patches stand on Meadow.
@@ -73,23 +73,28 @@ Each game is a procedurally generated valley seeded with handcrafted points of i
 **The Valley** *(Decided in design session M4-03; numbers Proposed, for 128²)*
 
 - **Shape:** a Mountain rim all around. One river crosses the Valley from edge to edge, off-centre, with 2–3 Fords. One entry, a gap in the rim on an edge, holds the entry tile where Newcomers arrive; it isn't a Pass. Forest grows in noise-shaped patches that thin toward their edges, open into clearings and throw out lone trees across the open Meadow (*Proposed*), Swamp lies beside the river's slow bends, and Rock outcrops sit at the foot of the Mountains.
-- **Side valley:** a pocket behind the Pass through the rim. It holds both iron Deposits, the Abandoned mine and at least one Den, so the Pass road is what opens M5's metal chain.
+- **Side valley:** a pocket behind the Pass through the rim. It holds both groups of iron Deposits, the Abandoned mine and at least one Den, so the Pass road is what opens M5's metal chain.
 - **The Camp** (the Starting Camp: Granary, Stockpile, settlers and Hero) starts within 10 tiles of the entry. The generator guarantees near it:
     - 24 × 24 tiles of buildable Meadow at the Camp, with no Swamp. Trees stand scattered sparsely on it (they can be felled), but not in the Camp's yard: within 5 tiles of the Granary, where the Camp and the way in from the entry stay bare (*Proposed*);
     - at least 150 trees within 15 tiles, forming at least one Hunting ground;
     - at least 6 Forage patches within 20 tiles;
     - a Riverbank within 20 tiles and a Ford within 30;
-    - a stone Deposit and a clay Deposit within 30 tiles;
+    - a group of stone Deposits and a group of clay Deposits within 30 tiles;
     - no Den within 40 tiles.
-- **Per Valley:** 3 Dens at the start (each at least 40 tiles from the Camp, at least one in the Side valley), 2 Ruins, 1 Shrine (on the way from the entry toward the Pass), 1 Abandoned mine (Side valley), 5 stone, 4 clay and 2 iron Deposits, 2–4 Swamp patches.
+- **Per Valley:** 3 Dens at the start (each at least 40 tiles from the Camp, at least one in the Side valley), 2 Ruins, 1 Shrine (on the way from the entry toward the Pass), 1 Abandoned mine (Side valley), 5 groups of stone Deposits, 4 of clay and 2 of iron, 2–4 Swamp patches.
 - **Same seed, same Valley.** The generator uses only the seeded PRNG. If a guarantee fails, it retries with a seed derived from the first. The player doesn't choose where the Camp starts in v1 (see the backlog).
 
-**Deposits** *(Decided in design session M4-03; amounts come with M5's quarry, clay pit and mine)*: map objects holding a fixed amount of stone (on Rock), clay (on a Riverbank) or iron ore (on a Mountain face). The M4 generator places them; M5 works them. What is dug out never comes back. What happens when they run out is an open question.
+**Deposits** *(Decided in design session M4-03; groups and amounts decided in design session M5-02, numbers Proposed)*: map objects holding a fixed amount of stone (on Rock), clay (on a Riverbank) or iron ore (on a Mountain face). The M4 generator places them; M5 works them.
+
+- **Groups:** Deposits come in groups of 3–20, scattered over a patch of their ground, never one solid clump, though a few may touch. A group's size is how rich the site is, and the player can see it at a glance.
+- **Amount:** one Deposit lasts about 2 seasons of digging by one worker.
+- **Running out:** dug-out stone and iron ore never come back. A clay Deposit regains ¼ of its starting amount at the start of each spring, up to that amount, even once dug out. An empty Deposit stays on the map, drawn dug out; nothing else happens to it.
+- When the mountain runs dry, the village turns to bog iron, fieldstones, imports and (M6) scrap, deepened mines, salvage and bricks: see **Renewing what runs out**.
 
 **Points of interest** *(Decided in design session M4-03; numbers Proposed)*: handcrafted stamps the generator places. What a POI holds is unknown until it's Searched.
 
-- **Ruins:** the Hero **Searches** them by standing on the tile for 200 ticks by day. A searched Ruins leaves a Cache (M4: 15 firewood and 6 hides, each ±30% from the PRNG; M5 adds iron bars, tools and coin to the table) and can't be Searched again. Hook: Ruins can hold a trapped master (M6 rescue invitations).
-- **Abandoned mine:** on a Mountain face in the Side valley, over an iron Deposit, with a Den at its mouth. In M5 a mine placed on it costs less.
+- **Ruins:** the Hero **Searches** them by standing on the tile for 200 ticks by day. A searched Ruins leaves a Cache (M4: 15 firewood and 6 hides; M5 adds 50 coin and 2 tools; each ±30% from the PRNG) and can't be Searched again. Hook: Ruins can hold a trapped master (M6 rescue invitations).
+- **Abandoned mine:** on a Mountain face in the Side valley, over a group of iron Deposits, with a Den at its mouth. In M5 a mine placed on it costs less.
 - **Shrine:** no Den buds within 12 tiles of it. Hook for the Pious trait (M6). It gives no Light, since ADR-0003 keeps Light expensive.
 - **Den:** M3's Den, placed by the generator.
 
@@ -148,7 +153,7 @@ One in-game year lasts about 60 minutes at 1× speed. *(Decided: roughly an hour
 
 ## Resources and production chains (v1)
 
-v1 has 10 raw resources and 12 refined goods across three tiers. *(Proposed; the categories and wild food are Decided.)* Buildings can offer several recipes where it makes sense. *(Decided)*
+v1 has about a dozen raw resources and a dozen refined goods across three tiers. *(Proposed; the categories and wild food are Decided.)* Buildings can offer several recipes where it makes sense. *(Decided)*
 
 **Raw resources** — gathered by ordinary villagers, no master needed:
 
@@ -156,12 +161,14 @@ v1 has 10 raw resources and 12 refined goods across three tiers. *(Proposed; the
 | --- | --- | --- | --- |
 | Logs | Forest tiles | Woodcutter's hut | Removes trees |
 | Berries, mushrooms | Forage patches (need standing trees nearby) | Forager's hut | Seasonal; spoil fast |
-| Game meat, hides | Hunting ground | Hunter's lodge | Can be overhunted, and logging drives game away; hides are sold until the tannery arrives (v1.x) |
+| Game meat, hides | Hunting ground | Hunter's lodge | Can be overhunted, and logging drives game away; hides only with tools (M5); sold until the tannery arrives (v1.x) |
 | Fish | River | Fisher's hut | Stops when river freezes |
-| Stone | Rock | Quarry | Depletes |
-| Clay | Riverbank | Clay pit | Depletes slowly |
+| Stone | Rock | Quarry | Depletes; also fieldstones from Fields |
+| Clay | Riverbank | Clay pit | Refills a little each spring |
 | Iron ore | Mountain | Mine | Depletes |
-| Grain | Field tiles | Farm | Idle in winter |
+| Iron ore (bog iron) | Swamp | Bog-iron digger | Slow; refills each spring; lost when the Swamp is Drained |
+| Grain | Fields | Farm | Food; no seeds needed; idle in winter |
+| Turnips | Fields | Farm | Food; needs bought seeds once; keeps through winter |
 
 **Refined goods:**
 
@@ -180,11 +187,37 @@ v1 has 10 raw resources and 12 refined goods across three tiers. *(Proposed; the
 | 3 | Bread | Flour, firewood | Bakery | Baker |
 | 3 | Furniture | Planks, iron bars | Carpenter's workshop | Carpenter |
 
-**Firewood** *(Decided: its own building; details Proposed)*: the woodcutter's hut only fells trees. A **Chopping block** (1×1, cheap in logs) employs one Woodsplitter and splits 1 log into 2 firewood. It pauses while the village holds at least a target amount of firewood (Stockpiles plus House buffers; content default, e.g. 40), so it doesn't turn every log into firewood. The target becomes an editable standing order in M5. Logs go to construction sites first, then workshop inputs, then Stockpiles.
+**Firewood** *(Decided: its own building; details Proposed)*: the woodcutter's hut only fells trees. A **Chopping block** (1×1, cheap in logs) employs one Woodsplitter and splits 1 log into 2 firewood. It pauses while the village holds at least a target amount of firewood (Stockpiles plus House buffers; content default, e.g. 40), so it doesn't turn every log into firewood. In M5 the target becomes the chopping block's standing order, editable like any other. Logs go to construction sites first, then workshop inputs, then Stockpiles.
+
+**Farms and crops** *(Decided in design session M5-02; numbers Proposed)*
+
+- **Fields** are Meadow tiles the player paints in a farm's radius, painted and erased like a Reserve. Farmers sow, tend and harvest them.
+- **The year:** Fields are sown in spring, grow for about a season, and are harvested from late summer through autumn, one harvest per Field a year. Anything not harvested when winter starts is lost. Fields lie idle in winter.
+- **Crops:** each farm grows one crop, chosen in its panel; a change applies at the next spring sowing. M5 has two:
+    - **Grain** needs no seeds. It's Food (eaten as it is) and keeps long. It's also the brewery's input, and from M6 the mill's: bread gives more Meals per grain than eating it.
+    - **Turnips** need seeds. Food, more per Field than grain, and they keep through winter. Nothing processes them in M5.
+- **Seeds** are bought once at the trade post, and that crop is then known to every farm for good: the village keeps seed back from its harvests. More crops come with their chains (hops for better ale in M6, flax with textiles in v1.x).
+- **Fieldstones:** at the start of each spring, about 1 in 4 Field tiles throws up a stone. Farmers clear it before sowing, and it leaves the farm as stone.
+
+**Renewing what runs out** *(Decided in design session M5-02; numbers Proposed)*
+
+Deposits are a windfall, not a foundation: the easy stone and ore carry the village from Camp to Village. A mature village runs on what grows back (forests, fields, the river, the swamps) and buys the rest with its surplus. That's what pillar 1 means in the long run: a village that only eats what renews.
+
+- **Bog iron (M5):** every Swamp tile holds a little iron ore, which builds back up each spring to a cap. A **bog-iron digger** (no master, Hamlet) works the Swamp in its radius, slowly, for ordinary iron ore. Draining a tile loses its ore for good, so every Drain is a choice between land and iron, like the Reserve's choice between logs and food.
+- **Fieldstones (M5):** see Farms and crops.
+- **Clay refill (M5):** see Deposits.
+- **Imports (M5):** stone, clay, iron ore, iron bars and tools are always on sale at the trade post at twice base price, so a dry Deposit is a cost, never a dead end.
+- **Decided in principle, designed in M6:**
+    - a **scrap smelter**: worn tools come back as scrap, and charcoal plus scrap gives iron bars;
+    - **deepening a mine**: a dug-out mine can be deepened once, for planks and coin, for more ore;
+    - **salvage**: demolishing a building returns part of its stone;
+    - **bricks for stone**: some building costs accept bricks in place of stone.
+
+**Bees and candles** *(Decided in design session M5-02 for v1, M6; designed in M6)*: an apiary on Meadow by a forest edge gives honey (Food) and beeswax; a chandler turns beeswax (and the Butcher's tallow) into candles, a valuable export and later a need. Mead comes in v1.x. A game called Candlemarch should have candles.
 
 **Spoilage** *(Decided: food spoils and preservation is its own tech)*
 
-- Raw meat, fish, berries and mushrooms spoil in days; bread in about a season; smoked meat, grain and flour last much longer.
+- Raw meat, fish, berries and mushrooms spoil in days; bread in about a season; turnips over a winter; smoked meat, grain and flour last much longer.
 - A **root cellar** slows spoilage for food stored in it.
 - **Model** *(Decided, [ADR-0002](adr/0002-spoilage-daily-share.md))*: at each Dawn every stack of Food in a Granary or workplace buffer loses `ceil(amount × rate%)`. Food in someone's hands doesn't spoil. Rates are per Food in content (Proposed: berries and mushrooms 25%, fish and meat 15%, smoked goods about 3%).
 - **Cold keeps food** *(Decided)*: in winter every rate is multiplied by a content percentage (Proposed 20%, so meat loses 3% a day). With winter hunting, this is how a Camp gets through its first winter before the Butcher's smokehouse (M5). There is no no-master drying rack; it would undercut the smokehouse.
@@ -205,14 +238,16 @@ Flag relay (Settlers 2 style: one carrier per road segment between flags, handin
 
 **Construction** *(Decided for M2)*: no builder villagers. A site's build timer starts once every material has arrived and runs only by day. Builders come back only if a playtest asks for them.
 
-**Storage** *(Decided: a mix; details Proposed)*
+**Where goods are kept** *(Decided: a mix; details Proposed)*
 
 - **Workshop buffers:** each workshop holds a few units of inputs and outputs.
 - **Workplace yards** *(Decided, owner)*: every Workplace with an output buffer has a yard, a 1×1 tile of the building beside its door, turning with it, where its workers put what they make. It's part of the footprint (nothing else is built there, and it blocks walking like the building); Carriers pick up at the door. A yard holds 10 in total, shared by all the building's outputs (a hunter's meat and hides together), and a catch, basket or batch goes in only if it fits whole. The Granary and Houses have none; a fisher's hut's yard must stand on land. It's drawn like a Stockpile tile with the goods piled on it.
 - **Stockpile zones:** open-air areas for bulk raw goods (logs, stone, clay). Each tile holds 10 of one good. *(Proposed)*
-- **Food store (granary):** villagers eat from it. *(Decided)* The root cellar is its preserving upgrade. Food never goes to a Stockpile.
-- **Market stockpile:** goods set aside for sale. *(Decided)*
-- **Standing orders:** "keep 50 planks, pause the sawpit above 100." These are the main automation tool.
+- **Storage** *(Decided in design session M5-02)*: goods a building keeps inside it. It isn't drawn on the ground, and the building's panel lists all of it. The Granary's Food is its Storage, and so are the trade post's goods for sale.
+- **Granary:** villagers eat from its Storage. *(Decided)* The root cellar is its preserving upgrade. Food never goes to a Stockpile.
+- **Goods for sale** wait in the trade post's Storage (this replaces the earlier "market stockpile"; see Economy).
+- **Standing orders** *(Decided in design session M5-02; defaults Proposed)*: the main automation tool. Each Workplace with outputs has one number: it pauses while the village holds at least N of its output, and resumes below N. "The village holds" counts everything stored (Stockpiles, yards, Storage and House buffers), not goods being carried. Each output has a default N in content; the chopping block's firewood target is this rule. A resume level below N can come after the playtest if buildings flicker on and off.
+- **Helping carry** *(Decided in design session M5-02)*: a worker whose Workplace can't use them (paused by its standing order, its yard full, or waiting for inputs) takes Hauls as a Carrier, from their own yard first and then any. After each Haul they check whether their Workplace can use them again. Their Job doesn't change; the villager panel says "helping carry", and the building's "Output full" or "Waiting for X" icon still shows.
 
 **Logistics upgrades** *(Decided in principle; order Proposed)*
 
@@ -253,10 +288,27 @@ A house's residents rise a tier when their needs are met, and the house upgrades
 
 **Happiness** raises or lowers work speed. The tavern, for example, makes nearby villagers work a bit faster. *(Decided)* Long unhappiness makes villagers leave. *(Decided as an option)*
 
+**Happiness in M5** *(Decided in design session M5-03; numbers Proposed)*
+
+- **Per villager:** each villager has a score from 0 to 100, starting at 50. Things about a House (its neighbours) feed each resident's score.
+- **About the good life, not survival:** Hungry, Cold and Tired keep their own slowdowns and don't touch happiness, so nobody is punished twice.
+- **Sources in M5:** Homeless −30; −10 for each death in the village in the last 3 days; adjacency (below). The tavern, food variety and furniture join in M6. Sources add up and the score is clamped to 0–100.
+- **Bands:** Happy at 70 or above works 20% faster; Content (30–69) as normal; Unhappy below 30 works 20% slower. The band multiplies on top of the worst of Tired, Hungry and Cold, like the Hero's aura.
+- **Leaving:** a villager Unhappy for 5 Dawns in a row leaves at that Dawn, except in winter (the roads are snowed in). A Master who leaves is a lost master.
+- **Readable:** the villager panel lists each source with its value; a House's panel shows each resident's band.
+
+**Adjacency in M5** *(Decided in design session M5-03; numbers Proposed)*
+
+- A building's likes and dislikes reach 4 tiles (Chebyshev) from its footprint and touch the residents of Houses there. Workplaces aren't affected in M5.
+- Each kind counts once: ten trees nearby give +10, and two smokehouses still −10.
+- **Likes (+10):** a standing tree or Reserve, a Shrine, the brewery.
+- **Dislikes (−10):** smoke from the smokehouse, charcoal kiln and brick kiln; noise from the bloomery and the quarry.
+- **Preview:** while placing a building, a ± badge shows over every House it would touch; while placing a House, the preview shows what its neighbours would add up to.
+
 **Population** *(Proposed)*
 
 - v1: growth by **immigration only**. Newcomers arrive when there is free housing, surplus food and good happiness.
-- **Immigration rule (M2)** *(Decided in design session M2-01; numbers Proposed)*: checked at each Dawn. One Newcomer arrives when there's at least one free place in a House, Food in Granaries is at least 2 Meals × (population + 1) (Proposed; 5 was out of reach while Food spoils), and it isn't winter (the roads are snowed in). Newcomers enter at the map's entry tile, walk to the House they're given and start as Carriers. Happiness joins the rule in M5.
+- **Immigration rule (M2)** *(Decided in design session M2-01; numbers Proposed)*: checked at each Dawn. One Newcomer arrives when there's at least one free place in a House, Food in Granaries is at least 2 Meals × (population + 1) (Proposed; 5 was out of reach while Food spoils), and it isn't winter (the roads are snowed in). Newcomers enter at the map's entry tile, walk to the House they're given and start as Carriers. From M5, no Newcomer comes while the villagers' average happiness is in the Unhappy band.
 - v2: families, births and aging.
 - Villager-to-villager relationships (friendships, marriages) stay out of v1; they distract from management. A good home is what villagers care about. *(Decided)*
 
@@ -268,22 +320,43 @@ A house's residents rise a tier when their needs are met, and the house upgrades
 
 A trade exists in the village only once its master has settled there. *(Decided: trades are earned; masters are characters.)* v1 has 7 masters: Carpenter, Mason, Butcher, Smith, Miller, Brewer, Baker. *(Proposed)*
 
-**How a trade scales without apprentices** *(Proposed; apprentices are v2)*
+**What a master is** *(Decided in design session M5-01)*: an ordinary villager with a trade and (from M6) 1–2 traits, marked with an icon over their head and in panels. They live in an ordinary House, eat, sleep, freeze and die like anyone else. "Wants a better House" can come later as a trait or a happiness source.
 
-- The master runs their own workshop with a speed bonus.
-- Once the master lives in the village, you can build more workshops of that trade and staff them with ordinary villagers.
-- If the master dies or leaves, those workshops slow to a crawl until a new master is invited. Masters stay precious.
+**How a trade scales without apprentices** *(Decided in design session M5-01; numbers Proposed; apprentices are v2)*
+
+- A trade's workshops can be built from Hamlet on, before its master comes, but stand idle until the master settles.
+- The master works in a workshop of their trade (the first one built, if there are several) at +50% speed.
+- More workshops of the trade, staffed by ordinary villagers, work at normal speed while the master lives in the village.
+- If the master dies or leaves, every workshop of the trade slows to a crawl (25%) until a new master comes: the workers remember a little. Masters stay precious.
+- A master leaves only by dying or through long unhappiness (see Happiness), and takes nothing with them. Traits such as Proud add reasons in M6.
 
 **Ways to invite a master** *(Decided: conditions, with several types; types Proposed)*
 
 | Type | How it works | Example |
 | --- | --- | --- |
-| Charter | Meet listed conditions, then pay a signing fee | Smith: iron ore supply, 15 residents, a tavern, 500 gold |
+| Charter | A master posts an offer on the notice board; meet its conditions and pay their fee | "Smith looking for a village": a bloomery, a mine, a charcoal kiln, a free place in a House, 300 coin |
 | Passing caravan | A travelling master stays a few days; win them over in time | Brewer visits in autumn, wants 50 grain and a cottage |
 | Rescue | The hero finds the master at a point of interest | Mason trapped in the ruins by monsters |
 | Recommendation | A happy master vouches for a friend | Happy Miller brings a Baker |
 
-**Notice board** *(Decided)*: invitations and side quests are posted on a notice board building in the village. Charter conditions, caravan visits and rescue leads all appear there, alongside side quests that reward coin, goods or reputation.
+**Notice board** *(Decided)*: invitations and side quests are posted on a notice board building in the village. Charter conditions, caravan visits and rescue leads all appear there, alongside side quests that reward coin, goods or reputation. *(Decided in design session M5-01)* It's a cheap 1×1 building, one per village, unlocked at Hamlet.
+
+**Charters in M5** *(Decided in design session M5-01; numbers Proposed)*
+
+- From Hamlet, the notice board shows up to 2 Charters at a time: a named master of a trade the village doesn't have yet, offering to settle for a fee. Trades are drawn with the seeded PRNG; one master per trade in M5.
+- An offer stays up for 10 days, then is withdrawn; another offer of that trade turns up later. From M6, offers also show the master's traits, so two Smiths can be told apart.
+- When every condition holds, the player accepts, the fee leaves the Treasury, and the master arrives at the entry tile like a Newcomer and walks to their free place.
+- Fees run 100–300 coin, the Smith's the dearest. Conditions: a free place in a House, plus the master's workshop and a building that supplies it:
+
+| Master | Workshop | Supply |
+| --- | --- | --- |
+| Carpenter | sawpit | woodcutter's hut |
+| Mason | stonecutter or brick kiln | quarry |
+| Butcher | smokehouse | hunter's lodge or fisher's hut |
+| Brewer | brewery | farm |
+| Smith | bloomery | mine or bog-iron digger, and a charcoal kiln |
+
+**Side quests in M5** *(Decided in design session M5-02; numbers Proposed)*: one-off **delivery orders** on the notice board, such as "30 smoked fish within 10 days for 200 coin". One is open at a time; a new one is posted a few days after the last closes. No recurring orders. Den bounties come in M6.
 
 **Personality** *(Decided: masters have personalities)* — each master has 1–2 traits drawn from a pool. Examples:
 
@@ -292,20 +365,20 @@ A trade exists in the village only once its master has settled there. *(Decided:
 - *Early riser:* works longer days, grumpy if housed near the tavern's noise.
 - *Pious:* happiness boost from a nearby shrine or chapel.
 
-**Adjacency rules** *(Decided: yes)* — buildings have likes and dislikes that affect nearby homes and workshops. The tannery and smokehouse smell; the bakery makes neighbours happier; the smithy is loud. Layout becomes a social puzzle, not only a logistics one.
+**Adjacency rules** *(Decided: yes)* — buildings have likes and dislikes that affect nearby homes and workshops. The tannery and smokehouse smell; the bakery makes neighbours happier; the smithy is loud. Layout becomes a social puzzle, not only a logistics one. M5's table and rules are under Villagers (Adjacency in M5).
 
 **Fantasy races** *(Decided: optional)* — v1 masters are human. From v1.x a master can be a dwarf, elf or halfling, with a race bonus and extra needs (a dwarf smith wants ale and stone housing).
 
 ## Economy: goods, tools and coin
 
-Every good ends up in one of three places: consumed by the village, built into the village, or sold for coin. Coin buys what the village can't make itself. *(Proposed)*
+Every good ends up in one of three places: consumed by the village, built into the village, or sold for coin. Coin buys what the village can't make itself. *(Proposed)* Trade is part of the core loop, not a side feature: the trade post is where renewable surplus becomes what the Valley can't renew. *(Decided in design session M5-02)*
 
 ```mermaid
 flowchart LR
   P[Production] --> U[Upkeep<br/>food, firewood, tools]
   P --> B[Construction<br/>houses, milestones]
-  P --> S[Market stockpile]
-  S --> M[Trade post<br/>merchants buy]
+  P --> S[Trade post Storage<br/>goods for sale]
+  S --> M[Merchants buy]
   M --> C((Coin))
   C --> I[Invite masters]
   C --> B
@@ -313,22 +386,36 @@ flowchart LR
   C --> T[Crown tribute]
 ```
 
-**Tools: used and sold** *(Proposed; undecided, revisit once the first chains are playable)*
+**Coin** *(Decided in design session M5-02; prices Proposed)*: the village's money is one Treasury total in state, shown on the HUD. It's never stored or hauled. Scale: a log is worth about 2 coin, planks 6, hides 8, ale 8, iron bars 15, tools 40; Charter fees 100–300; turnip seeds 60; the Tavern's coin cost about 2,000. Refined goods are worth about 3× their inputs, so refining before selling pays. The balance harness tunes every number.
 
-- Gatherers and craftspeople need a tool to work at full speed (axe, pick, sickle, hammer). Without one they work at half speed, so there is no hard lock.
-- Tools wear out after about a year of use. The metal chain therefore has permanent demand, not a one-off build.
+**Tools: used and sold** *(Proposed; the wear question stays open until after the M5 playtest. Shape decided in design session M5-02)*
+
+- Tools are one good. A Workplace asks for one tool per worker; Carriers deliver it like an input.
+- A worker with a tool works 50% faster (each chop, catch or batch); walking is unchanged. Without one, they work as they always have, so nothing built before Hamlet changes. *(Changed from "half speed without a tool", which would have slowed every Camp, since tools come only from imports until the M6 smithy.)*
+- Some outputs need tools, set per output in content. In M5 that's only hides: hunters without tools bring meat alone.
+- A tool wears out after about a year of days worked. In M5 a worn tool is gone; from M6 it comes back as scrap for the scrap smelter.
 - Surplus tools are one of the best-selling goods at the trade post.
 
 **Coin sources** *(Proposed)*
 
-- **Trade post:** merchants visit on a schedule and buy from the market stockpile. Prices drop when you flood a good, which rewards a varied economy. Higher village reputation means more frequent and richer merchants.
+- **Trade post:** merchants visit on a schedule and buy from the trade post's Storage. Prices drop when you flood a good, which rewards a varied economy. Higher village reputation means more frequent and richer merchants (M6).
+
+**The trade post in M5** *(Decided in design session M5-02; numbers Proposed)*
+
+- Unlocked at Hamlet. Goods for sale wait in its Storage, listed in its panel.
+- **Selling:** every good the village produces can be sold. A rule per good at the trade post says "keep N in the village, sell the rest", and Carriers haul the surplus in. Nothing is sold without a rule.
+- **Merchants:** one arrives every 3 days and stays for a day, buying everything in the Storage at current prices. None come in winter (the roads are snowed in), so autumn is the big selling season.
+- **Wanted list:** each merchant brings 2–3 goods they pay 50% more for, announced when the previous merchant leaves, so the village can prepare.
+- **Prices:** each good has a base price. Each unit sold lowers that good's price by an amount set per good (cheap bulk goods fall slower per unit), down to 30% of base; it recovers 10% of base per day.
+- **Imports:** ordered at the trade post at twice base price and brought by the next merchant into its Storage. The M5 catalogue: stone, clay, iron ore, iron bars, tools, grain, and turnip seeds. Goods the village should make (planks, ale) are left out on purpose.
+- **Reputation** comes in M6.
 - **Taxes** from Craftsfolk and Burghers. *(v1.x)*
 
 **Coin sinks** *(Proposed)*
 
 - Master signing fees.
-- Milestone buildings, which cost coin plus goods. *(Decided)* Example: a tavern for 10,000 gold, 1,000 wood and 100 iron bars. Real numbers will come from balance simulations.
-- Imports: seeds, iron bars before you have a mine, goods you can't produce yet.
+- Milestone buildings, which cost coin plus goods. *(Decided)* They're built like any building; the coin is part of the construction cost. Example: a tavern for about 2,000 coin plus planks, iron bars and ale. Real numbers will come from balance simulations.
+- Imports: seeds, stone and ore once the Deposits run dry, iron bars before you have a mine, tools before the smithy.
 - **Crown tribute** *(leaning yes)*: the lord's tax collector demands a set sum each year. Paying keeps the charter safe; missing it brings penalties. A gentle, recurring pressure that gives surplus a purpose early on.
 - Mercenaries in an emergency. *(v1.x)*
 
@@ -391,7 +478,7 @@ Combat is light and automatic: the player positions and prepares, units fight on
 - **Monster rate:** a per-game setting in state, chosen at New game (dev panel for now) and changeable mid-game by a dev command. It scales each Dusk's spawns (`trunc(n × rate ÷ 100)`). 0 is off: no spawns, no budding, and Gloamlings out vanish at once. M7 turns it into player-facing levels.
 - **Pressure** grows through the seasons' spawn counts, longer winter nights and budding, not through a separate difficulty curve.
 
-**Bandits** *(Decided as a threat; Proposed for v1.x)*: daytime raids in summer that target the granary and market stockpile. Pushed to v1.x to keep v1 combat to one enemy type.
+**Bandits** *(Decided as a threat; Proposed for v1.x)*: daytime raids in summer that target the Granary and the trade post's Storage. Pushed to v1.x to keep v1 combat to one enemy type.
 
 **Other pressures** *(Decided)*: winter cold, hunger, unhappiness and emigration.
 
@@ -401,14 +488,16 @@ The village climbs four ranks; each rank-up is a milestone building you pour goo
 
 | Rank | Milestone building | Requires | Unlocks |
 | --- | --- | --- | --- |
-| Camp | — (start) | Hero + 5 settlers | Gathering, huts, carriers, stockpiles |
-| Hamlet | Village hall | Logs, stone, 10 residents | Trade post; invitations for Carpenter, Mason, Butcher, Brewer, Smith |
+| Camp | — (start) | Hero + 5 settlers | Gathering, huts, carriers, stockpiles; the quarry (the village hall needs stone) |
+| Hamlet | Village hall | Logs, stone, 10 residents | Trade post, notice board; clay pit, mine, bog-iron digger, farm, charcoal kiln; every M5 master's workshop; Charters for Carpenter, Mason, Butcher, Brewer, Smith |
 | Village | Tavern | Coin, planks, iron bars, ale in stock, 25 residents | Craftsfolk tier; Miller and Baker invitations; cobblestone roads, handcarts |
 | Town | Town charter (guildhall) | Coin, cut stone, bricks, tools, 50 residents, all tier-2 needs met | v1 "win" in sandbox; endless play continues |
 
 **Starting Camp** *(Decided in design session M2-01; amounts Proposed)*: a new game starts at Dawn on spring day 1 with a Granary holding 20 meat, a 2×2 Stockpile holding 30 logs, and 5 settlers (Carriers, all Homeless) plus the hero at the map's entry tile. No Houses or Workplaces. The first day's job is two Huts; anyone without a Home at Dusk is Tired on day 2.
 
-Exact numbers come from balance simulation. The example tavern cost (10,000 gold, 1,000 wood, 100 iron bars) sets the scale.
+**Rank requirements** *(Decided in design session M5-01)*: a rank building's resident requirement must hold before it can be placed (the build menu shows "needs 10 residents: 7/10"); its goods and coin are its construction cost, delivered and paid like any site's. Completing it raises the rank. The build menu shows only unlocked buildings; locked ones say what unlocks them.
+
+Exact numbers come from balance simulation. The example tavern cost (about 2,000 coin plus planks, iron bars and ale) sets the scale.
 
 **Game modes** *(Decided: campaign with missions, plus sandbox)*
 
@@ -489,11 +578,11 @@ v1 is a complete, winnable loop from Camp to Town on one procedural valley, with
 | --- | --- | --- |
 | Map | Procedural valley, isometric square grid, 4–5 handcrafted POI types | Multiple biomes, outposts, bigger regions |
 | Time | Day/night, 4 seasons, pause and 3 speeds | Weather events |
-| Resources | 10 raw, 12 refined, spoilage, root cellar, forest ecology | Textiles, leather, luxury goods |
+| Resources | About a dozen raw and a dozen refined, spoilage, root cellar, forest ecology, renewable sources, bees and candles | Textiles, leather, mead |
 | Logistics | Carriers, dirt and cobblestone roads, handcarts, standing orders | Ox carts, barges, magical porters |
 | People | Named villagers, 2 needs tiers, happiness, immigration, death | Burghers tier, families, births, relationships |
 | Trades | 7 human masters, 4 invitation types, traits, adjacency | Apprentices, fantasy races, more masters |
-| Economy | Trade post, coin, tools that wear out, imports, crown tribute | Taxes, mercenaries, dynamic markets |
+| Economy | Trade post, merchants with wanted lists, coin, tools that wear out, imports, seeds, crown tribute | Taxes, mercenaries |
 | Heroes | Ranger and Smith-lord, perks per rank | More heroes, hero gear |
 | Threats | Night monsters from dens, militia, palisades, watchtowers, torches | Bandits, sieges, bosses |
 | Modes | Endless sandbox with rank goals, campaign chapter 1 (5 missions) | Further chapters, challenge maps |
@@ -505,9 +594,10 @@ v1.x deepens the v1 loop; v2+ adds new layers. Order within each release is not 
 
 | Feature | Release | Idea |
 | --- | --- | --- |
-| Bandits | v1.x | Summer daytime raids on food and market stock |
+| Bandits | v1.x | Summer daytime raids on the Granary and the trade post |
 | Burghers tier | v1.x | Townhouses; bread, chapel, market, walls |
 | Leather and textiles | v1.x | Tannery, sheep, wool, weaver, tailor; clothing as a need |
+| Mead | v1.x | Honey from the M6 apiary brewed into a premium ale |
 | Fantasy races | v1.x | Dwarf, elf, halfling masters with bonuses and extra needs |
 | More heroes | v1.x | Priest, Merchant, Warden |
 | Ox carts and barges | v1.x | Route-based transport to outposts and along rivers |
@@ -554,7 +644,7 @@ These stay open until prototypes and playtests answer them. Everything tagged Pr
 - [ ] Economy: should tools wear out?
 - [ ] Hero role in the automation loop? Decided by playtest.
 - [x] Map size: 128² with a performance budget (ADR-0004).
-- [ ] Deposits: when a non-renewable Deposit runs out, can the village get stone or ore some other way? For the M5 design session.
+- [x] Deposits running out: renewable sources and imports (design session M5-02; Renewing what runs out).
 - [ ] Art: confirm cutout animation and a 256×128 base tile.
 - [x] Hero control: mouse, RTS style, no WASD.
 - [x] Master invitations: notice board, which also hosts side quests.

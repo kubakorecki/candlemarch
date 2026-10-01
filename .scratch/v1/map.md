@@ -68,10 +68,10 @@ Vocabulary follows `CONTEXT.md`. Design follows `docs/spec.md`.
 - 2026-09-26 — M1 playtest picked job dispatch over flag relay; Flags were fiddly to lay out. See `docs/adr/0001-logistics-model.md`.
 - 2026-09-29 — M4 gate: a 128² Valley with a performance budget; the worker steps in place and snapshots split into moving and static parts. See `docs/adr/0004-valley-size-and-budget.md`.
 - 2026-09-29 — M4 design session: Fog of three states, living in the sim (`docs/adr/0005-fog-lives-in-the-sim.md`); Fords cross the river, bridges come in M6; a Side valley behind a snowed-in Pass holds the iron; Reserves, Stumps and Game recovery. See `docs/spec.md`, World and map.
+- 2026-10-01 — M5 design sessions: Deposits stay finite but come in groups and aren't scarce; clay, Swamps (bog iron) and Fields (fieldstones) renew each spring; trade is part of the core loop (merchants with wanted lists, imports always on sale); tools speed work up rather than slowing it down without one; Charters are masters' own offers on the notice board. Reputation, Den bounties, the scrap smelter, deepening mines, salvage, bricks for stone, and bees and candles move to M6. See `docs/spec.md`.
 
 ## Fog
 
 - How the hero fits the automation loop, until the M1.5 playtest.
-- What happens when a non-renewable Deposit runs out (stone, ore), until the M5 design session.
 - Every number in the spec (costs, rank requirements, day length), until the balance harness and playtests.
 - Audio (music, sound effects): not in the spec at all yet.

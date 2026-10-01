@@ -2,11 +2,11 @@
 
 Status: ready-for-agent
 Type: task
-Blocked by: m2-camp-winter/06
+Blocked by: m2-camp-winter/06, 04
 
 ## What
 
-- Content: resource `charcoal` (stockpile); building `charcoal_kiln` (no master) with recipe logs → charcoal.
+- Content: resource `charcoal` (stockpile); building `charcoal_kiln` (no master, unlocked at Hamlet) with recipe logs → charcoal.
 - Uses the M2 recipe system.
 
 ## Done when

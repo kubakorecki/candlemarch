@@ -1,19 +1,21 @@
 # Adjacency likes and dislikes
 
-Status: needs-info
+Status: ready-for-agent
 Type: task
-Blocked by: 03, 18
+Blocked by: 03, 06, 08, 12, 13, 18
 
 ## What
 
-- Buildings have likes and dislikes that affect nearby homes and workshops (smell, noise, cheer).
-- A placement preview shows the effect before you build.
+Spec: Villagers (Adjacency in M5).
 
-## Open questions (design session 03, Q4–Q5)
-
-- The table, the radius, and what it affects.
+- Content: per building (and for standing trees and Reserves) a like or dislike of ±10.
+    - Likes (+10): a standing tree or Reserve tile, a Shrine, the brewery.
+    - Dislikes (−10): smokehouse, charcoal kiln, brick kiln (smoke); bloomery, quarry (noise).
+- Reach: 4 tiles (Chebyshev) from the source's footprint; it touches the residents of Houses there. Workplaces aren't affected in M5.
+- Each kind counts once per House: ten trees still +10, two smokehouses still −10.
+- Placement preview: placing a building shows a ± badge over every House it would touch; placing a House shows what its neighbours would add up to.
 
 ## Done when
 
-- Headless tests: a smelly building lowers neighbours' happiness; a liked one raises it.
+- Headless tests: a smokehouse lowers its neighbours' happiness; trees raise it once however many; out of reach does nothing.
 - `pnpm check` passes.

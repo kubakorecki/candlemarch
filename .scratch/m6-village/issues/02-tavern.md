@@ -18,3 +18,7 @@ Blocked by: 01, m5-hamlet/04, m5-hamlet/13
 
 - Headless tests: rank-up; ale consumption; the work-speed bonus nearby.
 - `pnpm check` passes.
+
+## Comments
+
+2026-10-01 — m5-hamlet design session 02: the Tavern is built like any rank building; its coin (about 2,000) is part of its construction cost alongside planks, iron bars and ale.

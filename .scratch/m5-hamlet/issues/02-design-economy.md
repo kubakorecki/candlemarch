@@ -1,6 +1,6 @@
 # Design session: coin, trade, tools, farms and standing orders
 
-Status: ready-for-human
+Status: resolved
 Type: grilling
 Blocked by: none
 
@@ -23,3 +23,7 @@ A `/grill-with-docs` session. Record answers in `docs/spec.md` and `CONTEXT.md`,
 ## Done when
 
 - Every question has an answer, and the dependent tickets are updated.
+
+## Comments
+
+2026-10-01 — Held together with 01 and 03. Recorded in `docs/spec.md` (Deposits; Farms and crops; Renewing what runs out; Bees and candles; Where goods are kept; Economy) and `CONTEXT.md`. Answers: coin is a Treasury number; goods for sale wait in the trade post's Storage (no separate market stockpile), sold by a per-good "keep N" rule, every produced good sellable; a merchant every 3 days outside winter with a wanted list; per-good price drop to a 30% floor, 10%/day recovery; imports at 2× (stone, clay, iron ore, iron bars, tools, grain, turnip seeds); reputation to M6. Tools: one good, +50% work speed with one (not a penalty without), hides need tools, wear after about a year, worn tools vanish until M6's scrap. Farms: painted Fields, grain (Food, no seeds) and turnips (seeds bought once), one crop per farm. Standing orders: one pause threshold per Workplace; idle workers help carry. Deposits: groups of 3–20, one Deposit ≈ 2 seasons for one worker, clay refills ¼ each spring, bog iron in Swamps, fieldstones from Fields; scrap smelter, deepening, salvage, bricks-for-stone in principle for M6. Ruins Caches gain 50 coin and 2 tools. Tickets 06, 07, 13–17 rewritten; new tickets 23–29.
