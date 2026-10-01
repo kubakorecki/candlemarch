@@ -29,6 +29,10 @@ export const JOB_COLORS: Record<JobId, number> = {
   bog_digger: palette.bogDigger,
   farmer: palette.farmer,
   charcoal_burner: palette.charcoalBurner,
+  sawyer: palette.sawyer,
+  stonecutter: palette.stonecutter,
+  brickmaker: palette.brickmaker,
+  smoker: palette.smoker,
 };
 
 /** A stick from (x1, y1) to (x2, y2): an ink edge round a line of `color`. */
@@ -286,8 +290,9 @@ function drawHead(g: Graphics, job: JobId): void {
 /**
  * The tool a villager holds for its Job, drawn over its body: the woodcutter's axe on its shoulder,
  * the woodsplitter's maul, the fisher's rod, the forager's basket, the hunter's bow, the spade of
- * the forester, clay digger, bog digger and charcoal burner, the pick of the quarryman and miner, the farmer's
- * scythe, the watchman's spear. Carriers carry nothing but their pack. Hidden while the villager swings its axe at work.
+ * the forester, clay digger, bog digger, charcoal burner and brickmaker, the pick of the
+ * quarryman, miner and stonecutter, the sawyer's saw, the farmer's scythe, the watchman's spear.
+ * Carriers and smokers carry nothing but their pack. Hidden while the villager swings its axe at work.
  */
 export function drawVillagerTool(g: Graphics, job: JobId): void {
   g.clear();
@@ -351,7 +356,7 @@ export function drawVillagerTool(g: Graphics, job: JobId): void {
     g.circle(-hx, hy, 2.8 * S)
       .fill(palette.skin)
       .stroke({ ...THIN_INK, width: 1.5 * S });
-  } else if (job === 'quarryman' || job === 'miner') {
+  } else if (job === 'quarryman' || job === 'miner' || job === 'stonecutter') {
     // A pick on the shoulder, its iron head curving either way behind the head.
     pole(g, hx, hy + 2 * S, 10 * S, -50 * S, 2.5 * S, palette.log);
     g.moveTo(1 * S, -46 * S)
@@ -364,13 +369,27 @@ export function drawVillagerTool(g: Graphics, job: JobId): void {
     job === 'forester' ||
     job === 'clay_digger' ||
     job === 'bog_digger' ||
-    job === 'charcoal_burner'
+    job === 'charcoal_burner' ||
+    job === 'brickmaker'
   ) {
     // A spade on the shoulder, its blade up behind the head.
     pole(g, hx, hy + 2 * S, 12 * S, -50 * S, 2.5 * S, palette.log);
     g.poly([8 * S, -52 * S, 17 * S, -49 * S, 18 * S, -60 * S, 12 * S, -63 * S])
       .fill(palette.axeHead)
       .stroke(THIN_INK);
+  } else if (job === 'sawyer') {
+    // A frame saw on the shoulder: a toothed blade behind the head, its handle in the hand.
+    pole(g, hx, hy + 2 * S, 8 * S, -50 * S, 2.5 * S, palette.log);
+    g.poly([6 * S, -50 * S, 22 * S, -58 * S, 23 * S, -55 * S, 8 * S, -47 * S])
+      .fill(palette.axeHead)
+      .stroke(THIN_INK);
+    for (let i = 0; i < 4; i++) {
+      const tx = 10 * S + i * 3.5 * S;
+      const ty = -47.5 * S - i * 1.8 * S;
+      g.moveTo(tx, ty)
+        .lineTo(tx + 1.5 * S, ty + 2 * S)
+        .stroke({ width: 1 * S, color: palette.ink });
+    }
   } else if (job === 'farmer') {
     // A scythe on the shoulder, its long blade curving down behind the head.
     pole(g, hx, hy + 2 * S, 6 * S, -56 * S, 2.5 * S, palette.log);

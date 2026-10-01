@@ -1102,6 +1102,47 @@ function drawCharcoal(g: Graphics, x: number, y: number, s: number): void {
     .stroke({ width: 1.2 * s, color: palette.charcoalSheen });
 }
 
+/** One sawn plank lying flat, centred on (x, y), its grain along it. */
+function drawPlank(g: Graphics, x: number, y: number, s: number): void {
+  g.rect(x - 11 * s, y - 2.5 * s, 22 * s, 5 * s)
+    .fill(palette.plank)
+    .stroke(THIN_INK);
+  g.moveTo(x - 8 * s, y - 0.5 * s)
+    .lineTo(x + 7 * s, y - 0.5 * s)
+    .stroke({ width: 1 * s, color: palette.plankDark });
+}
+
+/** One squared block of cut stone, centred on (x, y): a pale face under a lighter top. */
+function drawCutStone(g: Graphics, x: number, y: number, s: number): void {
+  g.rect(x - 7 * s, y - 2 * s, 14 * s, 6 * s)
+    .fill(palette.cutStoneDark)
+    .stroke(THIN_INK);
+  g.poly([x - 7 * s, y - 2 * s, x - 4 * s, y - 5 * s, x + 10 * s, y - 5 * s, x + 7 * s, y - 2 * s])
+    .fill(palette.cutStone)
+    .stroke(THIN_INK);
+}
+
+/** One fired brick, centred on (x, y). */
+function drawBrick(g: Graphics, x: number, y: number, s: number): void {
+  g.rect(x - 7 * s, y - 2.5 * s, 14 * s, 5 * s)
+    .fill(palette.brick)
+    .stroke(THIN_INK);
+  g.moveTo(x - 5 * s, y + 1 * s)
+    .lineTo(x + 5 * s, y + 1 * s)
+    .stroke({ width: 1 * s, color: palette.brickDark });
+}
+
+/** `draw`'s piece browned in smoke and hung on a loop of string: smoked fish or meat. */
+function smoked(draw: (g: Graphics, x: number, y: number, s: number) => void) {
+  return (g: Graphics, x: number, y: number, s: number): void => {
+    draw(g, x, y, s);
+    g.ellipse(x, y, 9 * s, 4 * s).fill({ color: palette.smoked, alpha: 0.55 });
+    g.moveTo(x - 6 * s, y - 3 * s)
+      .quadraticCurveTo(x - 6 * s, y - 8 * s, x - 2 * s, y - 4 * s)
+      .stroke({ width: 1 * s, color: palette.rope });
+  };
+}
+
 /** One lump of iron ore, centred on (x, y). */
 function drawIronOre(g: Graphics, x: number, y: number, s: number): void {
   g.poly([x - 8 * s, y + 3 * s, x - 5 * s, y - 4 * s, x + 4 * s, y - 4.5 * s, x + 8 * s, y + 3 * s])
@@ -1127,6 +1168,11 @@ const PIECES: Record<
   iron_ore: { draw: drawIronOre, w: 17, h: 8 },
   grain: { draw: drawGrain, w: 19, h: 8 },
   charcoal: { draw: drawCharcoal, w: 17, h: 8 },
+  planks: { draw: drawPlank, w: 22, h: 6 },
+  cut_stone: { draw: drawCutStone, w: 17, h: 8 },
+  bricks: { draw: drawBrick, w: 15, h: 6 },
+  smoked_fish: { draw: smoked(drawFish), w: 20, h: 8 },
+  smoked_meat: { draw: smoked(drawMeat), w: 20, h: 9 },
 };
 
 /** A pyramid of `count` pieces of `resource` whose bottom row is centred on (x, y). */

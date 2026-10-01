@@ -94,6 +94,22 @@ export const jobs: Record<JobId, JobDef> = {
     carryCapacity: 1,
     idleRetryTicks: 20,
   },
+  sawyer: { id: 'sawyer', name: 'Sawyer', walkSpeed: 75, carryCapacity: 1, idleRetryTicks: 20 },
+  stonecutter: {
+    id: 'stonecutter',
+    name: 'Stonecutter',
+    walkSpeed: 75,
+    carryCapacity: 1,
+    idleRetryTicks: 20,
+  },
+  brickmaker: {
+    id: 'brickmaker',
+    name: 'Brickmaker',
+    walkSpeed: 75,
+    carryCapacity: 1,
+    idleRetryTicks: 20,
+  },
+  smoker: { id: 'smoker', name: 'Smoker', walkSpeed: 75, carryCapacity: 1, idleRetryTicks: 20 },
   carrier: {
     id: 'carrier',
     name: 'Carrier',

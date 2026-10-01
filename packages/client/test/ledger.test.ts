@@ -46,6 +46,9 @@ describe('Ledger goods', () => {
       'clay',
       'iron_ore',
       'charcoal',
+      'planks',
+      'cut_stone',
+      'bricks',
     ]);
   });
 

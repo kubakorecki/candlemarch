@@ -150,6 +150,14 @@ export const palette = {
   charcoal: 0x2f2b28,
   charcoalSheen: 0x6a645e,
   smoke: 0x8c877f,
+  // The Mason's goods: squared pale stone and fired brick; the Butcher's smoked goods, browned.
+  cutStone: 0xb0aa9f,
+  cutStoneDark: 0x857f75,
+  brick: 0x9a5039,
+  brickDark: 0x6b3627,
+  smoked: 0x5a3622,
+  // A sawpit's sawdust, and its saw.
+  sawdust: 0xc9b07e,
 
   // Fields (render/shapes.ts `drawFields`): tilled earth with darker furrows, green shoots while it
   // grows, pale stubble once harvested.
@@ -180,6 +188,10 @@ export const palette = {
   bogDigger: 0x5c6648,
   farmer: 0x9a8a4a,
   charcoalBurner: 0x4e4640,
+  sawyer: 0x8a6a3e,
+  stonecutter: 0x7d7a72,
+  brickmaker: 0x8c4a36,
+  smoker: 0x5e4a3a,
   carrier: 0x8a7d63,
   skin: 0xd6b48e,
   axeHead: 0x9aa0a3,

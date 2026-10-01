@@ -32,4 +32,23 @@ export const resources: Record<ResourceId, ResourceDef> = {
   grain: { id: 'grain', name: 'Grain', storage: 'granary', spoilPercent: 1, standingOrder: 80 },
   // From the charcoal kiln; the bloomery's fuel (M5).
   charcoal: { id: 'charcoal', name: 'Charcoal', storage: 'stockpile', standingOrder: 30 },
+  // The Carpenter's and Mason's goods (M5 tier 1): building materials, and planks the smithy's.
+  planks: { id: 'planks', name: 'Planks', storage: 'stockpile', standingOrder: 40 },
+  cut_stone: { id: 'cut_stone', name: 'Cut stone', storage: 'stockpile', standingOrder: 30 },
+  bricks: { id: 'bricks', name: 'Bricks', storage: 'stockpile', standingOrder: 30 },
+  // The Butcher's smokehouse: Food that keeps (spec, Spoilage: smoked goods about 3%).
+  smoked_fish: {
+    id: 'smoked_fish',
+    name: 'Smoked fish',
+    storage: 'granary',
+    spoilPercent: 3,
+    standingOrder: 40,
+  },
+  smoked_meat: {
+    id: 'smoked_meat',
+    name: 'Smoked meat',
+    storage: 'granary',
+    spoilPercent: 3,
+    standingOrder: 40,
+  },
 };

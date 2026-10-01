@@ -12,8 +12,20 @@ export type ResourceId =
   | 'clay'
   | 'iron_ore'
   | 'grain'
-  | 'charcoal';
-export type RecipeId = 'split_logs' | 'burn_charcoal';
+  | 'charcoal'
+  | 'planks'
+  | 'cut_stone'
+  | 'bricks'
+  | 'smoked_fish'
+  | 'smoked_meat';
+export type RecipeId =
+  | 'split_logs'
+  | 'burn_charcoal'
+  | 'saw_planks'
+  | 'dress_stone'
+  | 'fire_bricks'
+  | 'smoke_fish'
+  | 'smoke_meat';
 export type TerrainId = 'meadow' | 'rock' | 'mountain' | 'swamp' | 'river' | 'ford' | 'pass_snow';
 export type MapObjectId =
   | 'tree'
@@ -48,7 +60,11 @@ export type BuildingId =
   | 'mine'
   | 'bog_iron_digger'
   | 'farm'
-  | 'charcoal_kiln';
+  | 'charcoal_kiln'
+  | 'sawpit'
+  | 'stonecutter'
+  | 'brick_kiln'
+  | 'smokehouse';
 export type JobId =
   | 'woodcutter'
   | 'carrier'
@@ -63,7 +79,11 @@ export type JobId =
   | 'miner'
   | 'bog_digger'
   | 'farmer'
-  | 'charcoal_burner';
+  | 'charcoal_burner'
+  | 'sawyer'
+  | 'stonecutter'
+  | 'brickmaker'
+  | 'smoker';
 export type RoadId = 'dirt_path' | 'pass_road';
 export type HeroId = 'placeholder';
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';

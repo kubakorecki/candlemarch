@@ -102,6 +102,60 @@ const PATHS = {
       <path d="M8 14l2 1" />
     </>
   ),
+  planks: (
+    <>
+      <path d="M3 7.5h18v4H3zM3 13.5h18v4H3z" />
+      <path d="M6 9.5h6M10 15.5h7" />
+    </>
+  ),
+  cutStone: (
+    <>
+      <path d="M3.5 10l4-4h13l-4 4z" />
+      <path d="M3.5 10v8h13v-8M16.5 18l4-4V6" />
+    </>
+  ),
+  bricks: (
+    <>
+      <path d="M3 6h18v12H3z" />
+      <path d="M3 10h18M3 14h18M9 6v4M15 6v4M6 10v4M12 10v4M18 10v4M9 14v4M15 14v4" />
+    </>
+  ),
+  smokedFish: (
+    <>
+      <path d="M2.5 15c3.5-5 10.5-5 14.5 0-4 5-11 5-14.5 0z" />
+      <path d="M17 15l4.5-3v6z" />
+      <path d="M9 9c-1.5-1.5 1.5-3 0-5M13 9c-1.5-1.5 1.5-3 0-5" />
+    </>
+  ),
+  smokedMeat: (
+    <>
+      <ellipse cx="14.5" cy="13" rx="5.5" ry="4.5" transform="rotate(-35 14.5 13)" />
+      <path d="M10 17L6 20.5" />
+      <path d="M8 9c-1.5-1.5 1.5-3 0-5M12 7.5c-1.5-1.5 1.5-3 0-5" />
+    </>
+  ),
+  saw: (
+    <>
+      <path d="M3 9h15l3 3H3z" />
+      <path d="M3 12l1.5 2 1.5-2 1.5 2 1.5-2 1.5 2 1.5-2 1.5 2 1.5-2 1.5 2 1.5-2" />
+      <path d="M18 9V5.5h3V12" />
+    </>
+  ),
+  chisel: (
+    <>
+      <path d="M4 20l9-9M13 11l2-2 3 3-2 2z" />
+      <path d="M15.5 8.5l3-3 3 3-3 3" />
+      <path d="M3 21h4" />
+    </>
+  ),
+  smokehouse: (
+    <>
+      <path d="M4 20V11l7-6 7 6v9z" />
+      <path d="M9 20v-5h4v5" />
+      <path d="M15 7V3.5h2.5V9" />
+      <path d="M16 3c-1-1 1-1.5 0-2.5" />
+    </>
+  ),
   kiln: (
     <>
       <path d="M3 20h18" />

@@ -376,4 +376,87 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 200, // 10 s
     },
   },
+  // The tier-1 master workshops (M5): built from Hamlet, idle until their trade's Master settles
+  // (`trade`). Numbers Proposed.
+  sawpit: {
+    id: 'sawpit',
+    name: 'Sawpit',
+    size: { w: 2, h: 1 },
+    door: { x: 1, y: 1 },
+    placeable: true,
+    employs: [{ job: 'sawyer', count: 1 }],
+    trade: 'carpenter',
+    recipes: ['saw_planks'],
+    inputBuffer: [{ resource: 'logs', capacity: 4 }],
+    outputBuffer: { resources: ['planks'], yard: { x: 2, y: 0 } },
+    construction: {
+      cost: [{ resource: 'logs', amount: 8 }],
+      buildTicks: 200, // 10 s
+    },
+  },
+  stonecutter: {
+    id: 'stonecutter',
+    name: 'Stonecutter',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [{ job: 'stonecutter', count: 1 }],
+    trade: 'mason',
+    recipes: ['dress_stone'],
+    inputBuffer: [{ resource: 'stone', capacity: 4 }],
+    outputBuffer: { resources: ['cut_stone'], yard: { x: 1, y: 0 } },
+    construction: {
+      cost: [
+        { resource: 'logs', amount: 6 },
+        { resource: 'stone', amount: 4 },
+      ],
+      buildTicks: 200, // 10 s
+    },
+  },
+  brick_kiln: {
+    id: 'brick_kiln',
+    name: 'Brick kiln',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [{ job: 'brickmaker', count: 1 }],
+    trade: 'mason',
+    recipes: ['fire_bricks'],
+    inputBuffer: [
+      { resource: 'clay', capacity: 6 },
+      { resource: 'firewood', capacity: 3 },
+    ],
+    outputBuffer: { resources: ['bricks'], yard: { x: 1, y: 0 } },
+    construction: {
+      cost: [
+        { resource: 'logs', amount: 4 },
+        { resource: 'stone', amount: 8 },
+      ],
+      buildTicks: 300, // 15 s
+    },
+  },
+  // Smokes fish or meat, whichever it has, with firewood; follows smoked fish for its standing order.
+  smokehouse: {
+    id: 'smokehouse',
+    name: 'Smokehouse',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [{ job: 'smoker', count: 1 }],
+    trade: 'butcher',
+    recipes: ['smoke_fish', 'smoke_meat'],
+    inputBuffer: [
+      { resource: 'fish', capacity: 6 },
+      { resource: 'meat', capacity: 6 },
+      { resource: 'firewood', capacity: 3 },
+    ],
+    outputBuffer: { resources: ['smoked_fish', 'smoked_meat'], yard: { x: 1, y: 0 } },
+    construction: {
+      cost: [
+        { resource: 'logs', amount: 10 },
+        { resource: 'stone', amount: 2 },
+      ],
+      buildTicks: 300, // 15 s
+    },
+  },
 };

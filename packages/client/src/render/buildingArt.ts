@@ -491,6 +491,10 @@ export function drawBuilding(g: Graphics, layout: BuildingLayout, type: Building
   else if (type === 'notice_board') drawNoticeBoard(g, layout);
   else if (type === 'farm') drawFarm(g, layout);
   else if (type === 'charcoal_kiln') drawCharcoalKiln(g, layout);
+  else if (type === 'sawpit') drawSawpit(g, layout);
+  else if (type === 'stonecutter') drawStonecutter(g, layout);
+  else if (type === 'brick_kiln') drawBrickKiln(g, layout);
+  else if (type === 'smokehouse') drawSmokehouse(g, layout);
   else drawCabin(g, layout);
 }
 
@@ -1438,6 +1442,242 @@ function drawCharcoalKiln(g: Graphics, layout: BuildingLayout): void {
       top.y - 30 * S,
     )
     .stroke({ width: 5 * S, color: palette.smoke, alpha: 0.55, cap: 'round' });
+}
+
+// ---------------------------------------------------------------- Tier-1 master workshops
+
+/** A stroke from `a` to `b` with an ink edge: a post, pole or log seen from the side. */
+function stick(g: Graphics, a: Vec, b: Vec, width: number, color: number): void {
+  g.moveTo(a.x, a.y)
+    .lineTo(b.x, b.y)
+    .stroke({ width: width + 3 * S, color: palette.ink, cap: 'round' });
+  g.moveTo(a.x, a.y).lineTo(b.x, b.y).stroke({ width, color, cap: 'round' });
+}
+
+/** Smoke curling up from `p`. */
+function drawSmoke(g: Graphics, p: Vec): void {
+  g.moveTo(p.x, p.y - 2 * S)
+    .bezierCurveTo(p.x - 8 * S, p.y - 12 * S, p.x + 8 * S, p.y - 18 * S, p.x + 2 * S, p.y - 30 * S)
+    .stroke({ width: 5 * S, color: palette.smoke, alpha: 0.55, cap: 'round' });
+}
+
+/**
+ * The sawpit: an open pit along the footprint's length, a log laid across trestles over it with
+ * the frame saw standing in its cut, and sawdust heaped at the pit's edge.
+ */
+function drawSawpit(g: Graphics, layout: BuildingLayout): void {
+  const { origin, size } = layout;
+  const long: 'x' | 'y' = size.w >= size.h ? 'x' : 'y';
+  const x0 = origin.x + 0.18;
+  const y0 = origin.y + 0.18;
+  const x1 = origin.x + size.w - 0.18;
+  const y1 = origin.y + size.h - 0.18;
+  // The pit, dark below a rim of trodden earth.
+  g.poly(flat([at(x0, y0), at(x1, y0), at(x1, y1), at(x0, y1)]))
+    .fill(palette.dirt)
+    .stroke(INK);
+  const i = 0.12;
+  g.poly(flat([at(x0 + i, y0 + i), at(x1 - i, y0 + i), at(x1 - i, y1 - i), at(x0 + i, y1 - i)]))
+    .fill(palette.ditch)
+    .stroke(THIN_INK);
+  // The log's line down the middle of the pit, and a trestle near each end.
+  const mid = long === 'x' ? (y0 + y1) / 2 : (x0 + x1) / 2;
+  const from = long === 'x' ? x0 + 0.1 : y0 + 0.1;
+  const to = long === 'x' ? x1 - 0.1 : y1 - 0.1;
+  const point = (u: number, z: number) => (long === 'x' ? at(u, mid, z) : at(mid, u, z));
+  const across = (u: number, side: number, z: number) =>
+    long === 'x' ? at(u, mid + side * 0.28, z) : at(mid + side * 0.28, u, z);
+  const logZ = WALL_H * 0.45;
+  for (const u of [from + 0.25, to - 0.25]) {
+    stick(g, across(u, -1, 0), point(u, logZ), 2.5 * S, palette.log);
+    stick(g, across(u, 1, 0), point(u, logZ), 2.5 * S, palette.log);
+  }
+  stick(g, point(from, logZ), point(to, logZ), 9 * S, palette.log);
+  const end = point(to, logZ);
+  g.circle(end.x, end.y, 6 * S)
+    .fill(palette.logEnd)
+    .stroke(THIN_INK);
+  // The frame saw standing in its cut, a third of the way along.
+  const cut = from + (to - from) * 0.4;
+  const foot = point(cut, logZ - 22 * S);
+  const head = point(cut, logZ + 26 * S);
+  g.poly([
+    foot.x - 2 * S,
+    foot.y,
+    foot.x + 2 * S,
+    foot.y,
+    head.x + 2 * S,
+    head.y,
+    head.x - 2 * S,
+    head.y,
+  ])
+    .fill(palette.axeHead)
+    .stroke(THIN_INK);
+  stick(
+    g,
+    { x: head.x - 7 * S, y: head.y },
+    { x: head.x + 7 * S, y: head.y },
+    2.5 * S,
+    palette.log,
+  );
+  // Sawdust heaped at the near corner.
+  const dust = at(x1, y1);
+  g.ellipse(dust.x - 10 * S, dust.y - 3 * S, 10 * S, 4 * S)
+    .fill(palette.sawdust)
+    .stroke(THIN_INK);
+}
+
+/**
+ * The stonecutter: a board shed under shingles, and before it a squared block on a bench with a
+ * mallet and chisel, on the front wall away from the door.
+ */
+function drawStonecutter(g: Graphics, layout: BuildingLayout): void {
+  const face = doorFace(layout);
+  const wall = propWall(face);
+  const box = bodyBox(layout, HUT_PAD, 0.36);
+  const eave = HUT_EAVE * 0.85;
+  const roof = gable(box, hutAxis(face), eave, ROOF_H * 0.7, 0.1);
+  drawGableBack(g, roof, SHINGLES);
+  drawWall(g, box, 'south', roof.south, PLANKS);
+  drawWall(g, box, 'east', roof.east, PLANKS);
+  drawDoor(g, layout, box, 0, WALL_H * 0.7);
+  drawGableFront(g, roof, SHINGLES);
+  // The bench: a plank on two legs, and the block on it.
+  const benchZ = WALL_H * 0.32;
+  for (const u of [0.25, 0.75]) {
+    stick(
+      g,
+      wallPoint(box, wall, u, 0.2, 0),
+      wallPoint(box, wall, u, 0.2, benchZ),
+      2.5 * S,
+      palette.log,
+    );
+  }
+  stick(
+    g,
+    wallPoint(box, wall, 0.15, 0.2, benchZ),
+    wallPoint(box, wall, 0.85, 0.2, benchZ),
+    5 * S,
+    palette.plank,
+  );
+  const c = wallPoint(box, wall, 0.5, 0.2, benchZ + 2 * S);
+  const w = 9 * S;
+  const h = 9 * S;
+  g.poly([c.x - w, c.y, c.x + w, c.y, c.x + w, c.y - h, c.x - w, c.y - h])
+    .fill(palette.cutStoneDark)
+    .stroke(THIN_INK);
+  g.poly([
+    c.x - w,
+    c.y - h,
+    c.x - w + 5 * S,
+    c.y - h - 4 * S,
+    c.x + w + 5 * S,
+    c.y - h - 4 * S,
+    c.x + w,
+    c.y - h,
+  ])
+    .fill(palette.cutStone)
+    .stroke(THIN_INK);
+  // A chisel standing on the block.
+  stick(
+    g,
+    { x: c.x + 3 * S, y: c.y - h - 2 * S },
+    { x: c.x + 6 * S, y: c.y - h - 14 * S },
+    1.5 * S,
+    palette.axeHead,
+  );
+}
+
+/**
+ * The brick kiln: a squat brick oven, its courses showing, a dark firing mouth on the door's
+ * wall and smoke from a stone chimney on top.
+ */
+function drawBrickKiln(g: Graphics, layout: BuildingLayout): void {
+  const box = bodyBox(layout, 0.14);
+  const h = WALL_H * 0.85;
+  const brick: Timber = { light: palette.brick, dark: palette.brickDark, grain: 'logs' };
+  const top = flatTop(h);
+  drawWall(g, box, 'south', top, brick);
+  drawWall(g, box, 'east', top, brick);
+  g.poly(
+    flat([
+      at(box.x0, box.y0, h),
+      at(box.x1, box.y0, h),
+      at(box.x1, box.y1, h),
+      at(box.x0, box.y1, h),
+    ]),
+  )
+    .fill(palette.brickDark)
+    .stroke(INK);
+  // The firing mouth, an arch on the door's wall when it faces the camera.
+  const face = doorFace(layout);
+  if (!isBackFace(face)) {
+    const wall = face as FrontWall;
+    const u = doorAlong(layout, box, wall) ?? 0.5;
+    const m = wallPoint(box, wall, u, 0, 0);
+    g.moveTo(m.x - 8 * S, m.y)
+      .lineTo(m.x - 8 * S, m.y - 10 * S)
+      .arc(m.x, m.y - 10 * S, 8 * S, Math.PI, 0)
+      .lineTo(m.x + 8 * S, m.y)
+      .closePath()
+      .fill(palette.door)
+      .stroke(INK);
+    g.ellipse(m.x, m.y - 4 * S, 4 * S, 2 * S).fill({ color: palette.windowLit, alpha: 0.8 });
+  }
+  const cx = (box.x0 + box.x1) / 2;
+  const cy = (box.y0 + box.y1) / 2;
+  drawChimney(g, cx, cy, h, h + ROOF_H * 0.8);
+  drawSmoke(g, at(cx, cy, h + ROOF_H * 0.8));
+}
+
+/**
+ * The smokehouse: a small, tall log house under bark, smoke seeping from its gable, and a rack of
+ * fish smoking before the front wall away from the door.
+ */
+function drawSmokehouse(g: Graphics, layout: BuildingLayout): void {
+  const face = doorFace(layout);
+  const wall = propWall(face);
+  const box = bodyBox(layout, HUT_PAD, 0.36);
+  const eave = HUT_EAVE;
+  const rise = ROOF_H * 0.85;
+  const roof = gable(box, hutAxis(face), eave, rise, 0.1);
+  drawGableBack(g, roof, BARK);
+  drawWall(g, box, 'south', roof.south, LOGS);
+  drawWall(g, box, 'east', roof.east, LOGS);
+  drawCorners(g, box, flatTop(eave), flatTop(eave));
+  drawDoor(g, layout, box, 0, WALL_H * 0.7);
+  drawGableFront(g, roof, BARK);
+  drawSmoke(g, at((box.x0 + box.x1) / 2, (box.y0 + box.y1) / 2, eave + rise));
+  // The rack: two posts, a pole, and fish hung from it.
+  const barZ = WALL_H * 0.75;
+  for (const u of [0.12, 0.88]) {
+    stick(
+      g,
+      wallPoint(box, wall, u, 0.22, 0),
+      wallPoint(box, wall, u, 0.22, barZ + 3 * S),
+      2.5 * S,
+      palette.log,
+    );
+  }
+  stick(
+    g,
+    wallPoint(box, wall, 0.1, 0.22, barZ),
+    wallPoint(box, wall, 0.9, 0.22, barZ),
+    2.5 * S,
+    palette.log,
+  );
+  for (const u of [0.3, 0.5, 0.7]) {
+    const p = wallPoint(box, wall, u, 0.22, barZ);
+    g.moveTo(p.x, p.y)
+      .lineTo(p.x, p.y + 3 * S)
+      .stroke({ width: 1 * S, color: palette.rope });
+    g.ellipse(p.x, p.y + 10 * S, 3 * S, 7 * S)
+      .fill(palette.smoked)
+      .stroke(THIN_INK);
+    g.poly([p.x - 3 * S, p.y + 20 * S, p.x, p.y + 16 * S, p.x + 3 * S, p.y + 20 * S]).fill(
+      palette.smoked,
+    );
+  }
 }
 
 // ---------------------------------------------------------------- Village hall
