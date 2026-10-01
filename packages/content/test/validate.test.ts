@@ -576,4 +576,29 @@ describe('content validation', () => {
       expect(['stockpile', 'granary'], `${r.id}.storage`).toContain(r.storage);
     }
   });
+
+  it('ranks run Camp to Town, each placeable building unlocked by exactly one of them', () => {
+    expect(content.ranks.map((r) => r.id)).toEqual(['camp', 'hamlet', 'village', 'town']);
+    const unlocked = content.ranks.flatMap((r) => r.unlocks.buildings);
+    for (const b of Object.values(buildings)) {
+      const times = unlocked.filter((id) => id === b.id).length;
+      expect(times, `${b.id} unlocked by ${times} ranks`).toBe(b.placeable ? 1 : 0);
+    }
+  });
+
+  it('a rank building is unlocked by the rank before, one a village, and residents climb', () => {
+    expect(content.ranks[0]?.building).toBeNull();
+    content.ranks.forEach((rank, i) => {
+      if (i > 0) {
+        const before = content.ranks[i - 1];
+        expect(rank.residents, `${rank.id}.residents`).toBeGreaterThan(before?.residents ?? 0);
+      }
+      if (rank.building === null) return;
+      expect(buildings, `${rank.id}.building`).toHaveProperty(rank.building);
+      expect(buildings[rank.building].onePerVillage, `${rank.building} one a village`).toBe(true);
+      expect(content.ranks[i - 1]?.unlocks.buildings, `${rank.building} unlocked before`).toContain(
+        rank.building,
+      );
+    });
+  });
 });

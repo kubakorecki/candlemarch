@@ -1,6 +1,7 @@
 // Bottom: the build menu. Category tabs along the bottom (Demolish at the end); the open category's
 // cards above them, and details of the card under the mouse or in hand. The status line (the last
-// message and any placement warning) floats above it.
+// message and any placement warning) floats above it. A card the village's rank keeps locked is
+// dimmed and says what it waits for: the rank that unlocks it, or a rank building's residents.
 import {
   type BuildingDef,
   type BuildingId,
@@ -10,6 +11,7 @@ import {
 import { TICKS_PER_SECOND } from '@candlemarch/sim';
 import { useEffect, useState } from 'react';
 import type { Game, HudState } from '../game/Game';
+import { lockCardText, lockText } from '../game/rankText';
 import { type TOOLS, type ToolId, toolDef } from '../game/tools';
 import { BUILD_CATEGORIES, type BuildCategoryId, categoryOf, TOOL_ICONS } from './buildCategories';
 import { Icon } from './icons';
@@ -49,11 +51,13 @@ function Card({
 }) {
   const building = buildingOf(tool.id);
   const inHand = hud.tool === tool.id;
+  const lock = building ? hud.locks[building.id] : undefined;
   return (
     <button
       type="button"
       className="build-card"
       aria-pressed={inHand}
+      aria-disabled={lock ? true : undefined}
       disabled={!hud.ready}
       onClick={() => (inHand ? game.cancelTool() : game.selectTool(tool.id))}
       onMouseEnter={() => onHover(tool.id)}
@@ -64,14 +68,22 @@ function Card({
       {tool.key && <span className="keycap">{tool.key.toUpperCase()}</span>}
       <Medallion icon={TOOL_ICONS[tool.id]} size={28} />
       <span className="name">{building?.name ?? tool.label}</span>
-      <Cost cost={building?.construction?.cost ?? []} />
+      {lock ? (
+        <span className="lock">
+          <Icon name="lock" size={15} />
+          {lockCardText(lock)}
+        </span>
+      ) : (
+        <Cost cost={building?.construction?.cost ?? []} />
+      )}
     </button>
   );
 }
 
 /** What a card's building costs, how long it takes, its size and who works or lives in it. */
-function Details({ tool }: { tool: Tool }) {
+function Details({ tool, hud }: { tool: Tool; hud: HudState }) {
   const building = buildingOf(tool.id);
+  const lock = building ? hud.locks[building.id] : undefined;
   const turns = building && !tool.drag ? ' Q/E turns it.' : '';
   const perTile = tool.drag ? ' a tile' : '';
   const employs = building ? employsText(building) : '';
@@ -82,6 +94,12 @@ function Details({ tool }: { tool: Tool }) {
         {tool.hint}
         {turns}
       </div>
+      {lock && (
+        <div className="lock">
+          <Icon name="lock" size={15} />
+          {lockText(lock)}
+        </div>
+      )}
       {building?.construction && (
         <div className="stats">
           <div>
@@ -172,7 +190,7 @@ export function BuildMenu({ hud, game }: { hud: HudState; game: Game }) {
               })}
             </div>
             {shownTool ? (
-              <Details tool={shownTool} />
+              <Details tool={shownTool} hud={hud} />
             ) : (
               <div className="build-details">
                 <div className="note italic">

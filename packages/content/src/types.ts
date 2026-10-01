@@ -38,7 +38,8 @@ export type BuildingId =
   | 'bell'
   | 'watchtower'
   | 'palisade'
-  | 'gate';
+  | 'gate'
+  | 'village_hall';
 export type JobId =
   | 'woodcutter'
   | 'carrier'
@@ -709,6 +710,26 @@ export interface PoiDef {
   wardTiles?: number;
 }
 
+/** The village's ranks (spec, Progression), lowest first. */
+export type RankId = 'camp' | 'hamlet' | 'village' | 'town';
+
+/**
+ * A rank. Completing its rank `building` raises the village to it; the building can be placed only
+ * while the village has at least `residents` villagers. Reaching it unlocks `unlocks`.
+ */
+export interface RankDef {
+  id: RankId;
+  name: string;
+  /**
+   * The rank building, unlocked by the rank before. Null for Camp (the start) and for a rank whose
+   * building isn't in the game yet, which can't be reached.
+   */
+  building: BuildingId | null;
+  residents: number;
+  /** Buildings placeable from this rank on. Every placeable building is in exactly one rank's list. */
+  unlocks: { buildings: BuildingId[] };
+}
+
 export interface Content {
   resources: Record<ResourceId, ResourceDef>;
   terrain: Record<TerrainId, TerrainDef>;
@@ -729,6 +750,8 @@ export interface Content {
   fog: FogDef;
   valley: ValleyDef;
   pois: Record<PoiId, PoiDef>;
+  /** The ranks in order, Camp first. */
+  ranks: readonly RankDef[];
   /** First names new villagers are drawn from. */
   villagerNames: readonly string[];
 }

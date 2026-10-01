@@ -691,6 +691,23 @@ body,
   color: var(--ui-gilt-lit);
 }
 
+/* The village's rank and the way to the next. */
+.rank-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ui-gilt);
+}
+.rank-name {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+}
+.rank-next {
+  color: var(--ui-text-soft);
+  font-style: italic;
+}
+
 .winter {
   display: flex;
   align-items: center;
@@ -1099,6 +1116,21 @@ body,
   line-height: 1.12;
   font-weight: 500;
 }
+/* A card the rank keeps locked: dimmed, saying what it waits for. */
+.build-card[aria-disabled="true"] {
+  color: var(--ui-muted);
+}
+.build-card[aria-disabled="true"] .medallion {
+  opacity: 0.55;
+}
+.lock {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--ui-muted);
+}
+
 .cost {
   display: flex;
   align-items: center;

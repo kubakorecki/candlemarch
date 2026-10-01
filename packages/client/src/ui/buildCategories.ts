@@ -3,7 +3,14 @@
 import type { ToolId } from '../game/tools';
 import type { IconName } from './icons';
 
-export type BuildCategoryId = 'homes' | 'gathering' | 'workshops' | 'night' | 'walls' | 'roads';
+export type BuildCategoryId =
+  | 'homes'
+  | 'gathering'
+  | 'workshops'
+  | 'village'
+  | 'night'
+  | 'walls'
+  | 'roads';
 
 export interface BuildCategory {
   id: BuildCategoryId;
@@ -21,6 +28,7 @@ export const BUILD_CATEGORIES: readonly BuildCategory[] = [
     tools: ['woodcutters_hut', 'foragers_hut', 'hunters_lodge', 'fishers_hut', 'foresters_lodge'],
   },
   { id: 'workshops', label: 'Workshops', icon: 'block', tools: ['chopping_block'] },
+  { id: 'village', label: 'Village', icon: 'hall', tools: ['village_hall'] },
   {
     id: 'night',
     label: 'Light & Watch',
@@ -46,6 +54,7 @@ export const TOOL_ICONS: Record<ToolId, IconName> = {
   fishers_hut: 'fish',
   foresters_lodge: 'sapling',
   chopping_block: 'block',
+  village_hall: 'hall',
   torch: 'torch',
   brazier: 'brazier',
   watchtower: 'tower',

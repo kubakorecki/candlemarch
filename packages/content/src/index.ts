@@ -13,6 +13,7 @@ import { logistics } from './logistics';
 import { mapObjects } from './mapObjects';
 import { needs } from './needs';
 import { pois } from './pois';
+import { ranks } from './ranks';
 import { recipes } from './recipes';
 import { resources } from './resources';
 import { roads } from './roads';
@@ -43,5 +44,6 @@ export const content: Content = {
   fog,
   valley,
   pois,
+  ranks,
   villagerNames,
 };

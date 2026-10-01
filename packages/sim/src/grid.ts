@@ -5,6 +5,7 @@ import { idsOf } from './entities';
 import { allRevealed } from './fog';
 import { cached } from './mapCache';
 import { tilesUnderPois } from './pois';
+import { rankAllows } from './ranks';
 import {
   type EntityId,
   type GameState,
@@ -424,6 +425,8 @@ export function canPlaceBuilding(
   const def = content.buildings[type];
   if (!def?.placeable || !def.construction) return false;
   if (def.onePerVillage && hasOne(state, type)) return false;
+  // Unlocked at the village's rank; a rank building only once the village has its residents.
+  if (!rankAllows(state, content, type)) return false;
   if (!isRotation(rotation)) return false;
   // Only on tiles the player has seen (Fog).
   if (!allRevealed(state, footprint(def, { x, y }, rotation))) return false;

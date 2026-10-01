@@ -81,6 +81,13 @@ export const TOOLS: readonly {
     hint: 'Click to place. Its forester plants Saplings on open meadow nearby, which grow into trees in about a year. Shift-click places more.',
   },
   {
+    id: 'village_hall',
+    label: 'Village hall',
+    key: null,
+    drag: false,
+    hint: 'Click to place once the village has its residents. Finishing it makes the village a Hamlet.',
+  },
+  {
     id: 'torch',
     label: 'Torch',
     key: 'l',

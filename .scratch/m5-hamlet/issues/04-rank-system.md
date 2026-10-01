@@ -1,6 +1,6 @@
 # Rank system and rank buildings
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 01
 
@@ -19,3 +19,7 @@ Spec: Progression (the rank table, Rank requirements).
 
 - Headless tests: placing the rank building is refused below its resident requirement and accepted at it; completing it ranks up; unlocks appear; determinism.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-10-01: Done. Content `ranks` (Camp, Hamlet, Village, Town: rank building, residents, unlocked buildings; every placeable building in exactly one list) and `state.rank` (old saves at Camp). `sim/ranks.ts`: `rankLock` (not unlocked yet, or a rank building short of residents) gates `canPlaceBuilding`; construction calls `rankUp`; `rankProgress` for the HUD. Differs from the ticket: the village hall itself joins content here (40 logs, 20 stone, 10 residents, Proposed), since the system needs a Hamlet building to test; ticket 05 keeps the Hero's recovery, tuning and art. Village and Town have no rank building yet, so nothing shows past Hamlet. Locked build cards are dimmed with what they wait for rather than hidden. The rank and its next step show in the Almanac. Tests in `sim/test/ranks.test.ts` (a test Content marks the woodcutter's hut Hamlet for the unlock case) and `client/test/rankText.test.ts`. Not looked at in the browser.

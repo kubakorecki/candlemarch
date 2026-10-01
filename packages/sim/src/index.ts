@@ -55,6 +55,7 @@ export { canMark } from './marks';
 export { bellOf, isBellRung } from './militia';
 export { campCentre, type NewGameMap, type NewGameSetup, newGame } from './newGame';
 export { isSearchable, poiAt } from './pois';
+export { type RankLock, type RankProgress, rankLock, rankProgress } from './ranks';
 export {
   addToReserve,
   canPaintReserve,

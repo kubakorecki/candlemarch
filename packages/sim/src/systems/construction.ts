@@ -1,11 +1,12 @@
 // Construction sites turn into buildings once all materials are in and the build time has passed.
 // There are no builders: the timer runs by itself, but only by day. Groundwork (a Drain, a Pass
-// road) leaves no building: it changes its tile instead.
+// road) leaves no building: it changes its tile instead. A finished rank building raises the rank.
 import type { Content } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
 import { finishGroundwork, groundworkOf } from '../groundwork';
 import { mapChanged } from '../mapCache';
+import { rankUp } from '../ranks';
 import { defaultStandingOrder } from '../standingOrders';
 import type { GameState } from '../state';
 import { fullHp } from '../walls';
@@ -42,6 +43,7 @@ export function constructionSystem(state: GameState, content: Content): void {
         hp: fullHp(content, site.type),
         standingOrder: defaultStandingOrder(content, site.type),
       };
+      rankUp(state, content, site.type);
     }
   }
 }

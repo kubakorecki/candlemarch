@@ -54,7 +54,10 @@ import {
   maxWorkers,
   type NewGameSetup,
   poiAt,
+  type RankLock,
   type Rotation,
+  rankLock,
+  rankProgress,
   reassignTargets,
   reserveNear,
   reserveRect,
@@ -89,6 +92,7 @@ import { SAVE_SLOTS, type SaveSlot, seasonName, slotDateLabel } from './autosave
 import type { Speed } from './clock';
 import { keyAction } from './keys';
 import { stockpileGoods } from './ledger';
+import { lockText, rankText } from './rankText';
 import { SimBridge } from './SimBridge';
 import { type ToolId, toolDef } from './tools';
 
@@ -314,6 +318,10 @@ export interface HudState {
   heroHp: { hp: number; max: number } | null;
   /** The Militia bell: whether it's ringing, or null while the village has none built. */
   bell: { ringing: boolean } | null;
+  /** The village's rank and its next step, e.g. "Camp", "Toward Hamlet: 7/10 residents". */
+  rank: { rank: string; next: string | null };
+  /** Buildings the rank keeps the player from placing, and why (`rankLock`). */
+  locks: Partial<Record<BuildingId, RankLock>>;
   message: string | null;
 }
 
@@ -379,6 +387,8 @@ export class Game {
     heroKnockout: null,
     heroHp: null,
     bell: null,
+    rank: { rank: '', next: null },
+    locks: {},
     message: null,
   };
   private readonly listeners = new Set<() => void>();
@@ -424,6 +434,11 @@ export class Game {
   }
 
   selectTool(tool: ToolId): void {
+    const lock = this.lockOf(tool);
+    if (lock) {
+      this.setHud({ message: lockText(lock) });
+      return;
+    }
     this.dragStart = null;
     this.clearSelection();
     // The build menu shows the tool's hint.
@@ -439,6 +454,11 @@ export class Game {
     this.dragStart = null;
     this.setHud({ tool: this.hud.tool === tool ? null : tool, message: null });
     this.updateGhost();
+  }
+
+  /** What the rank keeps `tool` from, or null when it isn't a building or isn't locked. */
+  private lockOf(tool: ToolId): RankLock | null {
+    return tool in content.buildings ? (this.hud.locks[tool as BuildingId] ?? null) : null;
   }
 
   /** Leaves the current tool and clears any selection. */
@@ -751,9 +771,22 @@ export class Game {
       monsterRate: state.monsterRate,
       fog: state.fog,
     });
+    this.refreshRank(state);
     const bell = bellOf(state, content) === null ? null : { ringing: isBellRung(state) };
     if (JSON.stringify(bell) !== JSON.stringify(this.hud.bell)) this.setHud({ bell });
     this.refreshAlerts(state);
+  }
+
+  /** The rank line and the build menu's locks; each changes only when its words do. */
+  private refreshRank(state: GameState): void {
+    const rank = rankText(rankProgress(state, content));
+    const locks: Partial<Record<BuildingId, RankLock>> = {};
+    for (const type of Object.keys(content.buildings) as BuildingId[]) {
+      const lock = rankLock(state, content, type);
+      if (lock) locks[type] = lock;
+    }
+    if (!sameJson(rank, this.hud.rank)) this.setHud({ rank });
+    if (!sameJson(locks, this.hud.locks)) this.setHud({ locks });
   }
 
   /** Alerts, the winter countdown and the death log. Lists only change when their text does. */
@@ -799,7 +832,8 @@ export class Game {
     if (isBuilding(tool)) {
       const { rotation } = this;
       if (!canPlaceBuilding(state, content, tool, tile.x, tile.y, rotation)) {
-        this.setHud({ message: "Can't build there." });
+        const lock = rankLock(state, content, tool);
+        this.setHud({ message: lock ? lockText(lock) : "Can't build there." });
         return;
       }
       this.bridge.command({ type: 'placeBuilding', building: tool, ...tile, rotation });

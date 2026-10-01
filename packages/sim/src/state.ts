@@ -5,6 +5,7 @@ import type {
   JobId,
   MapObjectId,
   PoiId,
+  RankId,
   RecipeId,
   ResourceAmount,
   ResourceId,
@@ -476,4 +477,6 @@ export interface GameState {
   fog: boolean;
   /** One per Den cleared in the last `calmDays` days, oldest first; dropped at the Dawn it ends. */
   calms: CalmArea[];
+  /** The village's rank (`ranks.ts`); a new game, and a save from before ranks, is at Camp. */
+  rank: RankId;
 }

@@ -87,6 +87,21 @@ const PATHS = {
       <path d="M10 20v-5.5h4V20" />
     </>
   ),
+  hall: (
+    <>
+      <path d="M2.5 12.5L12 6l9.5 6.5" />
+      <path d="M4.5 11v9h15v-9" />
+      <path d="M10 20v-4.5a2 2 0 0 1 4 0V20" />
+      <path d="M12 6V2.5h4.5l-1.3 1.3 1.3 1.3H12" />
+    </>
+  ),
+  lock: (
+    <>
+      <path d="M6 11h12v9H6z" />
+      <path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" />
+      <path d="M12 14.5v2" />
+    </>
+  ),
   granary: (
     <>
       <path d="M3 10l9-6 9 6" />

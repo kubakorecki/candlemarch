@@ -192,6 +192,7 @@ export function createEmptyState(seed: number): GameState {
     monsterRate: DEFAULT_MONSTER_RATE,
     fog: false,
     calms: [],
+    rank: 'camp',
   };
 }
 

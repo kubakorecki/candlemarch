@@ -236,4 +236,22 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 600, // 30 s
     },
   },
+  // The Hamlet rank building (spec, Progression). Placed once the village has Hamlet's residents
+  // (`ranks.ts`); completing it makes the village a Hamlet. Numbers Proposed.
+  village_hall: {
+    id: 'village_hall',
+    name: 'Village hall',
+    size: { w: 3, h: 2 },
+    door: { x: 1, y: 2 },
+    placeable: true,
+    employs: [],
+    onePerVillage: true,
+    construction: {
+      cost: [
+        { resource: 'logs', amount: 40 },
+        { resource: 'stone', amount: 20 },
+      ],
+      buildTicks: 1200, // 60 s
+    },
+  },
 };

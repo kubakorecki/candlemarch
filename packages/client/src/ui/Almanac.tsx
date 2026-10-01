@@ -1,5 +1,5 @@
-// Top left: the date on a vellum ribbon, the day track, the winter countdown, game speed and the
-// Militia bell.
+// Top left: the date on a vellum ribbon, the village's rank and its next step, the day track, the
+// winter countdown, game speed and the Militia bell.
 import type { DayPhase } from '../game/almanac';
 import { SPEEDS, type Speed } from '../game/clock';
 import type { Game, HudState } from '../game/Game';
@@ -51,6 +51,12 @@ export function Almanac({ hud, game }: { hud: HudState; game: Game }) {
               </span>
             ))}
           </div>
+        </div>
+
+        <div className="rank-line" title="The village's rank">
+          <Icon name="hall" size={18} />
+          <span className="caps rank-name">{hud.rank.rank}</span>
+          {hud.rank.next && <span className="rank-next">{hud.rank.next}</span>}
         </div>
 
         {hud.winter && (
