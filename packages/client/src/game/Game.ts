@@ -58,6 +58,7 @@ import {
   oreAt,
   oreCap,
   poiAt,
+  postings,
   type RankLock,
   type Rotation,
   rankLock,
@@ -97,6 +98,7 @@ import { SAVE_SLOTS, type SaveSlot, seasonName, slotDateLabel } from './autosave
 import type { Speed } from './clock';
 import { keyAction } from './keys';
 import { stockpileGoods } from './ledger';
+import { type PostingView, postingView } from './postingText';
 import { lockText, rankText } from './rankText';
 import { SimBridge } from './SimBridge';
 import { type ToolId, toolDef } from './tools';
@@ -241,6 +243,8 @@ export interface BuildingInfo {
   bell: boolean;
   /** It fells trees (a woodcutter's hut), so the panel has the tree tools (`TREE_TOOLS`). */
   treeTools: boolean;
+  /** What's posted on it, for the notice board; null for any other building. */
+  postings: PostingView[] | null;
 }
 
 /** One save slot in the Load menu: its name and when it was saved, or null when it's empty. */
@@ -1332,15 +1336,19 @@ function stockpileAt(state: GameState, tile: Tile): EntityId | null {
 }
 
 /**
- * The building with a panel covering `tile`, if any: a Workplace (it employs anyone) or one that
- * keeps Storage (a Granary).
+ * The building with a panel covering `tile`, if any: a Workplace (it employs anyone), one that
+ * keeps Storage (a Granary), or the notice board.
  */
 function inspectableAt(state: GameState, tile: Tile): EntityId | null {
   const { building } = state.components;
   for (const id of idsOf(building)) {
     const b = building[id];
     if (!b) continue;
-    if (maxWorkers(content, b.type) === 0 && storageOf(state, content, id) === null) continue;
+    const panel =
+      maxWorkers(content, b.type) > 0 ||
+      storageOf(state, content, id) !== null ||
+      content.buildings[b.type].noticeBoard === true;
+    if (!panel) continue;
     if (onFootprint(state, id, tile)) return id;
   }
   return null;
@@ -1519,6 +1527,9 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
     status: status && workplaceStatusText(status),
     bell: content.buildings[b.type].bell !== undefined,
     treeTools: fellsTrees(content, b.type),
+    postings: content.buildings[b.type].noticeBoard
+      ? postings(state, content).map((p) => postingView(p, state.tick))
+      : null,
   };
 }
 

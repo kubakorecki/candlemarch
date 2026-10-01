@@ -38,7 +38,7 @@ export const BUILD_CATEGORIES: readonly BuildCategory[] = [
     ],
   },
   { id: 'workshops', label: 'Workshops', icon: 'block', tools: ['chopping_block'] },
-  { id: 'village', label: 'Village', icon: 'hall', tools: ['village_hall'] },
+  { id: 'village', label: 'Village', icon: 'hall', tools: ['village_hall', 'notice_board'] },
   {
     id: 'night',
     label: 'Light & Watch',
@@ -69,6 +69,7 @@ export const TOOL_ICONS: Record<ToolId, IconName> = {
   bog_iron_digger: 'drain',
   chopping_block: 'block',
   village_hall: 'hall',
+  notice_board: 'board',
   torch: 'torch',
   brazier: 'brazier',
   watchtower: 'tower',

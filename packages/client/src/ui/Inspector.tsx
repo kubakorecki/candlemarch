@@ -20,6 +20,7 @@ import type {
   VillagerInfo,
   WorkersView,
 } from '../game/Game';
+import type { PostingView } from '../game/postingText';
 import { TREE_TOOLS, toolDef } from '../game/tools';
 import { TOOL_ICONS } from './buildCategories';
 import { Icon, type IconName } from './icons';
@@ -237,6 +238,50 @@ function TreeTools({ hud, game }: { hud: HudState; game: Game }) {
   );
 }
 
+/**
+ * What's posted on the notice board: each Charter or Delivery order with its conditions (those
+ * that hold ticked), its fee or reward, how long it stays up, and Accept once every condition
+ * holds and there's a way to accept it (`onAccept`).
+ */
+function NoticeBoardFacts({
+  postings,
+  onAccept,
+}: {
+  postings: PostingView[];
+  onAccept?: (id: number) => void;
+}) {
+  return (
+    <div className="stack">
+      <SectionHead title="Posted" aside={postings.length} />
+      {postings.length === 0 && <div className="muted small">Nothing posted yet</div>}
+      {postings.map((posting) => (
+        <article key={posting.id} className="posting">
+          <div className="posting-head">
+            <span className="caps">{posting.title}</span>
+            <span className="muted">{posting.ends}</span>
+          </div>
+          <ul className="conditions">
+            {posting.conditions.map((c) => (
+              <li key={c.text} className={c.met ? 'met' : undefined}>
+                <Icon name={c.met ? 'check' : 'close'} size={14} className={c.met ? 'tick' : ''} />
+                {c.text}
+              </li>
+            ))}
+          </ul>
+          <div className="fact">
+            <span>{posting.coin}</span>
+            {posting.canAccept && onAccept && (
+              <button type="button" className="btn-small" onClick={() => onAccept(posting.id)}>
+                Accept
+              </button>
+            )}
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function BuildingPanel({
   building,
   hud,
@@ -267,6 +312,7 @@ function BuildingPanel({
         </div>
       )}
       {building.treeTools && <TreeTools hud={hud} game={game} />}
+      {building.postings && <NoticeBoardFacts postings={building.postings} />}
       {building.grounds.length > 0 && <SectionHead title="Hunting grounds" />}
       {building.grounds.length > 0 && (
         <div className="fact">

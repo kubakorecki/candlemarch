@@ -56,6 +56,12 @@ export { type MapName, maps } from './maps';
 export { canMark } from './marks';
 export { bellOf, isBellRung } from './militia';
 export { campCentre, type NewGameMap, type NewGameSetup, newGame } from './newGame';
+export {
+  noticeBoardOf,
+  type Posting,
+  type PostingCondition,
+  postings,
+} from './noticeBoard';
 export { isSearchable, poiAt } from './pois';
 export { type RankLock, type RankProgress, rankLock, rankProgress } from './ranks';
 export {

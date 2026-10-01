@@ -116,6 +116,13 @@ export const TOOLS: readonly {
     hint: 'Click to place once the village has its residents. Finishing it makes the village a Hamlet.',
   },
   {
+    id: 'notice_board',
+    label: 'Notice board',
+    key: null,
+    drag: false,
+    hint: 'Click to place. Charters and Delivery orders are posted on it; click it to read them.',
+  },
+  {
     id: 'torch',
     label: 'Torch',
     key: 'l',

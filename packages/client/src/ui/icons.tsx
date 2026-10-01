@@ -95,6 +95,14 @@ const PATHS = {
       <path d="M12 6V2.5h4.5l-1.3 1.3 1.3 1.3H12" />
     </>
   ),
+  board: (
+    <>
+      <path d="M3 7.5L12 3.5l9 4" />
+      <path d="M4.5 8.5h15v8h-15z" />
+      <path d="M6.5 16.5V21M17.5 16.5V21" />
+      <path d="M7.5 10.5H11v4H7.5zM13 10.5h3.5v3H13z" />
+    </>
+  ),
   lock: (
     <>
       <path d="M6 11h12v9H6z" />

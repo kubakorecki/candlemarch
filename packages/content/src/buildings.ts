@@ -256,6 +256,22 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 1200, // 60 s
     },
   },
+  // The notice board (spec, Trades and masters): where Charters and Delivery orders are posted.
+  // Cheap, one a village, unlocked at Hamlet. Numbers Proposed.
+  notice_board: {
+    id: 'notice_board',
+    name: 'Notice board',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [],
+    noticeBoard: true,
+    onePerVillage: true,
+    construction: {
+      cost: [{ resource: 'logs', amount: 6 }],
+      buildTicks: 200, // 10 s
+    },
+  },
   // Raw gatherers (M5, no master): each worker digs within the radius and piles the yard.
   quarry: {
     id: 'quarry',

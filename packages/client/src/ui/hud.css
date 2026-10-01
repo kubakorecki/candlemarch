@@ -996,6 +996,44 @@ body,
   flex-direction: column;
   gap: 6px;
 }
+/* A posting on the notice board: its title and time left, its conditions (gilt ticks for those
+   that hold), then its coin and Accept. */
+.posting {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--ui-card);
+  border: 1px solid var(--line-soft);
+}
+.posting-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+}
+.posting .conditions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 14px;
+  color: var(--ui-muted);
+}
+.posting .conditions li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.posting .conditions li.met {
+  color: var(--ui-text);
+}
+.posting .tick {
+  color: var(--ui-gilt);
+}
 .facts {
   display: grid;
   grid-template-columns: 88px 1fr;

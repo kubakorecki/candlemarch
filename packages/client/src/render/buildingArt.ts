@@ -488,6 +488,7 @@ export function drawBuilding(g: Graphics, layout: BuildingLayout, type: Building
   else if (type === 'hunters_lodge') drawHuntersLodge(g, layout);
   else if (type === 'granary') drawGranary(g, layout);
   else if (type === 'village_hall') drawVillageHall(g, layout);
+  else if (type === 'notice_board') drawNoticeBoard(g, layout);
   else drawCabin(g, layout);
 }
 
@@ -1462,4 +1463,80 @@ function drawBanner(g: Graphics, box: Box, wall: FrontWall, top: number, bottom:
   g.moveTo(pole[0].x, pole[0].y)
     .lineTo(pole[1].x, pole[1].y)
     .stroke({ width: 2.5 * S, color: palette.log, cap: 'round' });
+}
+
+// ---------------------------------------------------------------- Notice board
+
+/**
+ * The notice board: a plank board between two posts across the middle of its tile, facing its
+ * door, under a little shingled cap, with sheets pinned to it (only its back shows when the door
+ * is on a back face).
+ */
+function drawNoticeBoard(g: Graphics, layout: BuildingLayout): void {
+  const face = doorFace(layout);
+  const { origin } = layout;
+  const cx = origin.x + 0.5;
+  const cy = origin.y + 0.5;
+  const alongX = face === 'south' || face === 'north';
+  const half = 0.36;
+  // The board's line on the ground, left to right on screen, and the way out toward the camera.
+  const a = alongX ? { x: cx - half, y: cy } : { x: cx, y: cy + half };
+  const b = alongX ? { x: cx + half, y: cy } : { x: cx, y: cy - half };
+  const n = alongX ? { x: 0, y: 1 } : { x: 1, y: 0 };
+  const p = (t: number, z: number, out = 0): Vec =>
+    at(a.x + (b.x - a.x) * t + n.x * out, a.y + (b.y - a.y) * t + n.y * out, z);
+  const bottom = 12 * S;
+  const top = 44 * S;
+  const postTop = 50 * S;
+  const ridge = postTop + 8 * S;
+  const posts: [Vec, Vec][] = [0.06, 0.94].map((t) => [p(t, 0), p(t, postTop)]);
+  for (const [q, r] of posts) g.moveTo(q.x, q.y).lineTo(r.x, r.y);
+  g.stroke({ width: 8 * S, color: palette.ink, cap: 'round' });
+  for (const [q, r] of posts) g.moveTo(q.x, q.y).lineTo(r.x, r.y);
+  g.stroke({ width: 4.5 * S, color: palette.log, cap: 'round' });
+  // The cap's back slope, behind the board.
+  g.poly(
+    flat([p(-0.1, top + 2 * S, -0.2), p(1.1, top + 2 * S, -0.2), p(1.1, ridge), p(-0.1, ridge)]),
+  )
+    .fill(palette.roofDark)
+    .stroke(INK);
+  const board = [p(0, bottom), p(1, bottom), p(1, top), p(0, top)];
+  g.poly(flat(board)).fill(alongX ? palette.plank : palette.plankDark);
+  for (const z of [bottom + (top - bottom) / 3, bottom + (2 * (top - bottom)) / 3]) {
+    const q = p(0, z);
+    const r = p(1, z);
+    g.moveTo(q.x, q.y).lineTo(r.x, r.y);
+  }
+  g.stroke(GRAIN);
+  g.poly(flat(board)).stroke(INK);
+  if (!isBackFace(face)) {
+    for (const [t0, t1, z0, z1] of [
+      [0.12, 0.4, 17, 38],
+      [0.47, 0.7, 23, 40],
+      [0.75, 0.9, 16, 31],
+    ] as const) {
+      const sheet = [
+        p(t0, z0 * S, 0.01),
+        p(t1, z0 * S, 0.01),
+        p(t1, z1 * S, 0.01),
+        p(t0, z1 * S, 0.01),
+      ];
+      g.poly(flat(sheet)).fill(palette.paper).stroke(THIN_INK);
+      for (let z = z1 - 6; z > z0 + 3; z -= 4) {
+        const q = p(t0 + 0.03, z * S, 0.01);
+        const r = p(t1 - 0.03, z * S, 0.01);
+        g.moveTo(q.x, q.y).lineTo(r.x, r.y);
+      }
+      g.stroke({ width: 1.2 * S, color: palette.paperShade });
+      const pin = p((t0 + t1) / 2, (z1 - 2) * S, 0.01);
+      g.circle(pin.x, pin.y, 1.5 * S).fill(palette.iron);
+    }
+  }
+  // The cap's front slope, over the board.
+  drawSlope(
+    g,
+    [p(-0.1, top + 2 * S, 0.2), p(1.1, top + 2 * S, 0.2), p(1.1, ridge), p(-0.1, ridge)],
+    palette.roof,
+    SHINGLES,
+  );
 }
