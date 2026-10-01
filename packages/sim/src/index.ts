@@ -78,6 +78,7 @@ export {
 export * from './state';
 export { cloneState, step, stepInPlace } from './step';
 export { canPlaceStockpile, isStockpileGood, STOCKPILE_PRIORITIES } from './stockpiles';
+export { type Storage, storageOf } from './storage';
 export { immigrationFoodNeeded, newcomerHome } from './systems/immigration';
 export { openPositions } from './systems/staffing';
 export { carrierUtilization, roadTraffic } from './traffic';

@@ -1,7 +1,7 @@
 // Bottom left: the workers view and whatever is selected (a building, villager, Stockpile, forage
 // patch, point of interest or Hunting ground), one inspector panel each.
 import { content, type PoiId, type ResourceId } from '@candlemarch/content';
-import { STOCKPILE_PRIORITIES, type StockpilePriority } from '@candlemarch/sim';
+import { STOCKPILE_PRIORITIES, type StockpilePriority, type Storage } from '@candlemarch/sim';
 import type { ReactNode } from 'react';
 import type {
   BuildingInfo,
@@ -133,6 +133,29 @@ function YardFacts({ yard }: { yard: NonNullable<BuildingInfo['yard']> }) {
 }
 
 /**
+ * What a building keeps inside it (its Storage: a Granary's Food), all of it against what fits,
+ * then a line per good it holds. Any building with Storage shows it this way.
+ */
+function StorageFacts({ storage }: { storage: Storage }) {
+  return (
+    <div className="stack">
+      <SectionHead title="Storage" aside={`${storage.amount} / ${storage.capacity}`} />
+      <Fill amount={storage.amount} capacity={storage.capacity} />
+      {storage.goods.length === 0 && <div className="muted small">Nothing stored</div>}
+      {storage.goods.map((g) => (
+        <div key={g.resource} className="fact good">
+          <span>
+            <Icon name={RESOURCE_ICONS[g.resource]} size={18} />
+            {content.resources[g.resource].name}
+          </span>
+          <span>{g.amount}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
  * A woodcutter's hut's tools for the trees around it: Fell, Keep (the Reserve), Dig stumps and
  * Erase, each dragged as a rectangle on the map. The one in hand is lit; its hint shows in the
  * status line above the build menu.
@@ -182,6 +205,7 @@ function BuildingPanel({
       />
       {building.status && <Callout tone="warn" title={building.status} />}
       {building.yard && <YardFacts yard={building.yard} />}
+      {building.storage && <StorageFacts storage={building.storage} />}
       {building.bell && hud.bell && (
         <div className="fact">
           <span>{hud.bell.ringing ? 'The militia is out' : 'Quiet'}</span>

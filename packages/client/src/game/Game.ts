@@ -57,6 +57,8 @@ import {
   reserveNear,
   reserveRect,
   type StockpilePriority,
+  type Storage,
+  storageOf,
   type Tile,
   villageFood,
   winterIn,
@@ -186,7 +188,7 @@ export interface GroundInfo {
   regrowth: string | null;
 }
 
-/** What the building panel shows for the selected Workplace. */
+/** What the building panel shows for the selected building. */
 export interface BuildingInfo {
   type: BuildingId;
   name: string;
@@ -199,6 +201,8 @@ export interface BuildingInfo {
     capacity: number;
     goods: { resource: ResourceId; amount: number }[];
   } | null;
+  /** What it keeps inside (a Granary's Food), or null for a building that keeps nothing. */
+  storage: Storage | null;
   /** Hunting grounds its hunters reach; empty unless it hunts. */
   grounds: GroundInfo[];
   /** The ground a hunter's lodge is set to hunt, or null for the nearest with Game. */
@@ -860,7 +864,7 @@ export class Game {
       this.selectHero(hero);
       this.selectVillager(villager);
       this.selectPile(pile);
-      const workplace = unit ? null : workplaceAt(state, tile);
+      const workplace = unit ? null : inspectableAt(state, tile);
       this.selectBuilding(workplace);
       const patch = unit || workplace !== null ? null : patchAt(state, tile);
       this.selectPatch(patch);
@@ -972,7 +976,7 @@ export class Game {
     this.updateGhost();
   }
 
-  /** Copies the selected Workplace into the HUD, or deselects it once it's gone. */
+  /** Copies the selected building into the HUD, or deselects it once it's gone. */
   private refreshBuilding(state: GameState): void {
     const id = this.selectedBuilding;
     const info = id === null ? null : buildingInfo(state, id);
@@ -1225,12 +1229,16 @@ function stockpileAt(state: GameState, tile: Tile): EntityId | null {
   return null;
 }
 
-/** The Workplace (a building that employs anyone) covering `tile`, if any. */
-function workplaceAt(state: GameState, tile: Tile): EntityId | null {
+/**
+ * The building with a panel covering `tile`, if any: a Workplace (it employs anyone) or one that
+ * keeps Storage (a Granary).
+ */
+function inspectableAt(state: GameState, tile: Tile): EntityId | null {
   const { building } = state.components;
   for (const id of idsOf(building)) {
     const b = building[id];
-    if (!b || maxWorkers(content, b.type) === 0) continue;
+    if (!b) continue;
+    if (maxWorkers(content, b.type) === 0 && storageOf(state, content, id) === null) continue;
     if (onFootprint(state, id, tile)) return id;
   }
   return null;
@@ -1358,7 +1366,7 @@ function yardInfo(state: GameState, id: EntityId): BuildingInfo['yard'] {
   };
 }
 
-/** Workplace `id`'s name, workers and worker limit for the panel, or null if it's gone. */
+/** Building `id`'s name, workers, Storage and the rest for the panel, or null if it's gone. */
 function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
   const b = state.components.building[id];
   if (!b) return null;
@@ -1368,6 +1376,7 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
     type: b.type,
     name: buildingNames(state)[id] ?? content.buildings[b.type].name,
     yard: yardInfo(state, id),
+    storage: storageOf(state, content, id),
     grounds: content.buildings[b.type].hunts
       ? groundsInReach(state, content, id).flatMap((g) => groundInfo(state, g) ?? [])
       : [],

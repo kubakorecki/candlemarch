@@ -962,6 +962,15 @@ body,
 .fact.priority {
   align-items: center;
 }
+/* A good in a building's Storage: its icon before its name. */
+.fact.good > :first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fact.good .ic {
+  color: var(--ui-gilt);
+}
 .fact.priority .seg {
   flex-grow: 1;
 }

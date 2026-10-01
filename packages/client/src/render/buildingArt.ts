@@ -4,7 +4,7 @@
 // Buildings are drawn in grid coordinates plus a height: `at(gx, gy, z)` is grid point (gx, gy)
 // raised `z` world pixels. Only the south and east walls face the camera, so only they are drawn;
 // roofs go back to front.
-import type { BuildingId, ResourceAmount } from '@candlemarch/content';
+import type { BuildingId } from '@candlemarch/content';
 import type { BuildingLayout } from '@candlemarch/sim';
 import type { Graphics } from 'pixi.js';
 import { gridToWorld, TILE_H, type Vec } from './iso';
@@ -14,7 +14,6 @@ import {
   doorFace,
   doorway,
   drawGlow,
-  drawGoodsPile,
   flat,
   groundShadowAt,
   INK,
@@ -466,14 +465,6 @@ function drawChimney(g: Graphics, gx: number, gy: number, z0: number, top: numbe
   g.poly(flat(cap)).fill(palette.shadow).stroke(INK);
 }
 
-/** Grid offset from the door tile's centre to its goods pile: one tile along the wall. */
-const PILE_BESIDE: Record<DoorFace, Vec> = {
-  south: { x: -0.8, y: 0.1 },
-  west: { x: -0.1, y: -0.8 },
-  north: { x: 0.8, y: -0.1 },
-  east: { x: 0.1, y: 0.8 },
-};
-
 /** Wall height of a building `size` tiles across: bigger buildings stand a little taller. */
 function wallHeight(size: { w: number; h: number }): number {
   return WALL_H * (0.8 + 0.2 * Math.max(size.w, size.h));
@@ -481,26 +472,11 @@ function wallHeight(size: { w: number; h: number }): number {
 
 /**
  * A finished building in world coordinates, drawn as its own kind of timber house (a generic log
- * cabin for any kind without art yet). `stock` is piled beside the door (a Granary's Food; a
- * Workplace's goods are in its yard, drawn apart).
+ * cabin for any kind without art yet). What it keeps inside (its Storage, a Granary's Food) isn't
+ * drawn; a Workplace's goods are in its yard, drawn apart.
  */
-export function drawBuilding(
-  g: Graphics,
-  layout: BuildingLayout,
-  type: BuildingId,
-  stock: ResourceAmount | null,
-): void {
+export function drawBuilding(g: Graphics, layout: BuildingLayout, type: BuildingId): void {
   g.clear();
-  const face = doorFace(layout);
-  const back = isBackFace(face);
-  const drawPile = () => {
-    if (!stock || stock.amount <= 0) return;
-    const beside = PILE_BESIDE[face];
-    const c = gridToWorld(layout.door.x + 0.5 + beside.x, layout.door.y + 0.5 + beside.y);
-    drawGoodsPile(g, stock.resource, c.x, c.y, stock.amount);
-  };
-  // A pile behind the building goes first so the walls hide what they should.
-  if (back) drawPile();
   const { origin, size } = layout;
   const c = gridToWorld(origin.x + size.w / 2, origin.y + size.h / 2);
   groundShadowAt(g, c.x, c.y, size.w * TILE_H * 0.62, size.h * TILE_H * 0.31);
@@ -512,7 +488,6 @@ export function drawBuilding(
   else if (type === 'hunters_lodge') drawHuntersLodge(g, layout);
   else if (type === 'granary') drawGranary(g, layout);
   else drawCabin(g, layout);
-  if (!back) drawPile();
 }
 
 /** A plain log cabin under a hip roof. */

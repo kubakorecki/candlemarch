@@ -1,11 +1,10 @@
 // Draws sim snapshots with PixiJS. Reads state only; all game rules stay in the sim.
-import type { BuildingId, Content, JobId, ResourceAmount, ResourceId } from '@candlemarch/content';
+import type { BuildingId, Content, JobId, ResourceId } from '@candlemarch/content';
 import {
   boostedWorkplaces,
   buildingLayout,
   type EntityId,
   entityLayout,
-  foodIds,
   type GameState,
   type GroundHealth,
   groundHealth,
@@ -221,22 +220,6 @@ function hitsNode(node: Container, sx: number, sy: number): boolean {
     sy >= b.minY - HIT_PADDING &&
     sy <= b.maxY + HIT_PADDING
   );
-}
-
-/** Pieces drawn in front of a Granary at most, however much it holds. */
-const GRANARY_PILE_MAX = 6;
-
-/** What a Granary shows in front: a few pieces of the Food it holds most of, or null if empty. */
-function granaryPile(
-  content: Content,
-  stock: Partial<Record<ResourceId, number>>,
-): ResourceAmount | null {
-  let best: ResourceAmount | null = null;
-  for (const resource of foodIds(content)) {
-    const amount = stock[resource] ?? 0;
-    if (amount > 0 && (!best || amount > best.amount)) best = { resource, amount };
-  }
-  return best && { resource: best.resource, amount: Math.min(best.amount, GRANARY_PILE_MAX) };
 }
 
 /** Draws the icon for why a Workplace is idle, centred on (x, y). */
@@ -554,7 +537,6 @@ export class WorldRenderer {
       const { size } = layout;
       const buffered = (resource: ResourceId | undefined, amounts: typeof b.stock) =>
         resource ? { resource, amount: amounts[resource] ?? 0 } : null;
-      const output = def.foodCapacity !== undefined ? granaryPile(this.content, b.stock) : null;
       const input = buffered(def.inputBuffer?.[0]?.resource, b.input);
       const status = workplaceStatus(state, this.content, id);
       const cold = isColdHouse(state, this.content, id) || isDarkLight(state, this.content, id);
@@ -566,14 +548,14 @@ export class WorldRenderer {
         staticBounds(at.x, at.y, size.w, size.h),
         shown(at.x, at.y, size.w, size.h),
       );
-      const key = `${b.type}@${at.x},${at.y}r${b.rotation}:${input?.amount}:${output?.resource}${output?.amount}:${JSON.stringify(status)}:${cold}:${fuel}:${ringing}`;
+      const key = `${b.type}@${at.x},${at.y}r${b.rotation}:${input?.amount}:${JSON.stringify(status)}:${cold}:${fuel}:${ringing}`;
       if (view.key !== key) {
         if (b.type === 'chopping_block') drawChoppingBlock(view.graphics, layout, input);
         else if (b.type === 'torch' || b.type === 'brazier') {
           drawLight(view.graphics, layout, b.type, fuel);
         } else if (def.bell) drawBell(view.graphics, layout, ringing);
         else if (def.watch) drawWatchtower(view.graphics, layout);
-        else drawBuilding(view.graphics, layout, b.type, output);
+        else drawBuilding(view.graphics, layout, b.type);
         if (status) {
           const c = gridToWorld(at.x + size.w / 2, at.y + size.h / 2);
           drawStatusIcon(view.graphics, status, c.x, c.y - TILE_H * 2.4);
