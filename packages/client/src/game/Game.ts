@@ -50,6 +50,7 @@ import {
   isRevealed,
   isWithered,
   lShapeTiles,
+  MAX_STANDING_ORDER,
   maxWorkers,
   type NewGameSetup,
   poiAt,
@@ -57,8 +58,10 @@ import {
   reassignTargets,
   reserveNear,
   reserveRect,
+  type StandingOrder,
   type StockpilePriority,
   type Storage,
+  standingOrderOf,
   storageOf,
   type Tile,
   villageFood,
@@ -206,6 +209,8 @@ export interface BuildingInfo {
   } | null;
   /** What it keeps inside (a Granary's Food), or null for a building that keeps nothing. */
   storage: Storage | null;
+  /** Its standing order (pause at N of its output), or null for a building without outputs. */
+  standingOrder: StandingOrder | null;
   /** Hunting grounds its hunters reach; empty unless it hunts. */
   grounds: GroundInfo[];
   /** The ground a hunter's lodge is set to hunt, or null for the nearest with Game. */
@@ -509,7 +514,6 @@ export class Game {
     this.bridge.command({ type: 'reassignWorker', villager, workplace });
   }
 
-  /** Raises or lowers the selected Workplace's worker limit by `delta`. */
   /** Sets the selected hunter's lodge to hunt only `ground`, or with null the nearest with Game. */
   setHuntingGround(ground: EntityId | null): void {
     const id = this.selectedBuilding;
@@ -517,11 +521,21 @@ export class Game {
     this.bridge.command({ type: 'setHuntingGround', building: id, ground });
   }
 
+  /** Raises or lowers the selected Workplace's worker limit by `delta`. */
   changeWorkerLimit(delta: number): void {
     const id = this.selectedBuilding;
     const info = this.hud.building;
     if (id === null || !info) return;
     this.bridge.command({ type: 'setWorkerLimit', building: id, limit: info.workerLimit + delta });
+  }
+
+  /** Raises or lowers the selected Workplace's standing order by `delta`, within 0 and the most. */
+  changeStandingOrder(delta: number): void {
+    const id = this.selectedBuilding;
+    const order = this.hud.building?.standingOrder;
+    if (id === null || !order) return;
+    const amount = Math.min(MAX_STANDING_ORDER, Math.max(0, order.amount + delta));
+    this.bridge.command({ type: 'setStandingOrder', building: id, amount });
   }
 
   /** Starts a new game from `setup` (by default the last game's again), replacing this one. */
@@ -1380,6 +1394,7 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
     name: buildingNames(state)[id] ?? content.buildings[b.type].name,
     yard: yardInfo(state, id),
     storage: storageOf(state, content, id),
+    standingOrder: standingOrderOf(state, content, id),
     grounds: content.buildings[b.type].hunts
       ? groundsInReach(state, content, id).flatMap((g) => groundInfo(state, g) ?? [])
       : [],

@@ -129,6 +129,11 @@ export interface BuildingComponent {
    */
   hp: number | null;
   /**
+   * A Workplace's standing order: it pauses while the village holds at least this many of its
+   * output (`standingOrders.ts`). Null for a building without outputs.
+   */
+  standingOrder: number | null;
+  /**
    * A hunter's lodge's chosen Hunting ground, in its reach: its hunters hunt only there. Absent
    * (always, for other buildings): the nearest ground in reach with Game.
    */

@@ -12,6 +12,7 @@ import { isMarked } from '../marks';
 import { inReserve } from '../reserves';
 import { staticChanged } from '../snapshot';
 import { workTicks } from '../speed';
+import { isPaused } from '../standingOrders';
 import type { EntityId, GameState } from '../state';
 import { isAtWork, isHelpingCarry } from '../villagers';
 import { outputRoom } from '../yards';
@@ -54,6 +55,10 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
     switch (task.kind) {
       case 'idle': {
         if (state.tick < task.retryAt) break;
+        if (isPaused(state, content, hutId)) {
+          idle(); // paused by its standing order
+          break;
+        }
         const types = [...(hutDef.gathers ?? []), ...digs];
         const targets = gatherTargets(state, content, hutId, workable, types);
         // Marked trees and Stumps first, then any tree.

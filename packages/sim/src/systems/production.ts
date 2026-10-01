@@ -4,40 +4,12 @@
 import type { Content, RecipeId, ResourceAmount, ResourceId } from '@candlemarch/content';
 import { idsOf } from '../entities';
 import { doorTile } from '../grid';
-import { lightDef, lightFuelIn } from '../lights';
 import { workTicks } from '../speed';
+import { isPaused } from '../standingOrders';
 import type { EntityId, GameState } from '../state';
 import { isAtWork, isHelpingCarry } from '../villagers';
-import { fuelIn } from '../warmth';
 import { fitsInYard } from '../yards';
 import { isAt, walkTo } from './movement';
-
-/**
- * Units of `resource` the village holds: on Stockpiles, and for fuel in Houses and lights too.
- */
-export function villageStock(state: GameState, content: Content, resource: ResourceId): number {
-  let total = 0;
-  for (const id of idsOf(state.components.building)) {
-    if (resource === content.needs.cold.fuel) total += fuelIn(state, content, id);
-    if (lightDef(state, content, id)?.fuel === resource) total += lightFuelIn(state, content, id);
-  }
-  for (const pile of Object.values(state.components.stockpile)) {
-    for (const goods of Object.values(pile.goods)) {
-      if (goods.resource === resource) total += goods.amount;
-    }
-  }
-  return total;
-}
-
-/**
- * Whether workshop `building` is paused because the village holds its stock target: it starts no
- * new work and its input buffer asks for nothing. Work already started still finishes.
- */
-export function isPaused(state: GameState, content: Content, building: EntityId): boolean {
-  const b = state.components.building[building];
-  const target = b ? content.buildings[b.type].stockTarget : undefined;
-  return target !== undefined && villageStock(state, content, target.resource) >= target.amount;
-}
 
 /** What crafters working at `building` will put in its yard once their batches finish. */
 function outputsInProgress(

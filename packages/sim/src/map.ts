@@ -28,6 +28,7 @@ import {
 } from './grid';
 import { addHuntingGround } from './huntingGrounds';
 import { seedRng } from './rng';
+import { defaultStandingOrder } from './standingOrders';
 import {
   DEFAULT_MONSTER_RATE,
   type GameState,
@@ -301,6 +302,7 @@ export function createInitialState(
       cold: false,
       lit: false,
       hp: fullHp(content, b.type),
+      standingOrder: defaultStandingOrder(content, b.type),
     };
     for (const slot of def.employs) {
       for (let i = 0; i < slot.count; i++) {

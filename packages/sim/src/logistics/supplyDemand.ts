@@ -4,9 +4,9 @@ import { idsOf } from '../entities';
 import { foodIds, granaryRoom } from '../granary';
 import { stockpileTileIndices } from '../grid';
 import { lightDef, lightFuelRoom } from '../lights';
+import { isPaused } from '../standingOrders';
 import type { EntityId, GameState } from '../state';
 import { amountOnTile, roomOnTile, STOCKPILE_PRIORITIES, stockpileTakes } from '../stockpiles';
-import { isPaused } from '../systems/production';
 import { houseFuelRoom } from '../warmth';
 
 /** Goods waiting in a building's output buffer, on a stockpile, or in a cleared Den's cache. */

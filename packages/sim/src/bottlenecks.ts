@@ -3,8 +3,9 @@
 import type { Content, ResourceId } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { lodgeGrounds } from './huntingGrounds';
+import { isPaused } from './standingOrders';
 import type { EntityId, GameState } from './state';
-import { isPaused, recipeBlockers } from './systems/production';
+import { recipeBlockers } from './systems/production';
 import { openPositions } from './systems/staffing';
 import { gathererNoRoom } from './yards';
 
@@ -23,7 +24,7 @@ export type WorkplaceStatus =
 
 /**
  * Why Workplace `building` is idle, or null when it isn't (or is idle on purpose: paused at its
- * stock target). "Waiting for" applies to workshops (buildings with recipes), "output full" to
+ * standing order). "Waiting for" applies to workshops (buildings with recipes), "output full" to
  * workshops and gathering Workplaces (`gathererNoRoom`), "no Game" to hunter's lodges.
  */
 export function workplaceStatus(
@@ -34,13 +35,13 @@ export function workplaceStatus(
   const b = state.components.building[building];
   if (!b) return null;
   if (openPositions(state, content, building).length > 0) return { kind: 'noWorker' };
+  if (isPaused(state, content, building)) return null;
   const recipes = content.buildings[b.type].recipes ?? [];
   if (recipes.length === 0) {
     const noRoom = gathererNoRoom(state, content, building);
     if (noRoom.length > 0) return { kind: 'outputFull', resources: noRoom };
     return outOfGame(state, content, building) ? { kind: 'noGame' } : null;
   }
-  if (isPaused(state, content, building)) return null;
   const { crafter, villager } = state.components;
   const working = idsOf(crafter).some(
     (id) => crafter[id]?.kind === 'working' && villager[id]?.workplace === building,

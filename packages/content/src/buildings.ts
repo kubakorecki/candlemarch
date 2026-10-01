@@ -120,8 +120,6 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     recipes: ['split_logs'],
     inputBuffer: [{ resource: 'logs', capacity: 4 }],
     outputBuffer: { resources: ['firewood'], yard: { x: 1, y: 0 } },
-    // Enough not to turn every log into firewood (spec, Firewood). Standing orders make it editable in M5.
-    stockTarget: { resource: 'firewood', amount: 40 },
     construction: {
       cost: [{ resource: 'logs', amount: 3 }],
       buildTicks: 100, // 5 s

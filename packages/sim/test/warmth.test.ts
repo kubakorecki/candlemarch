@@ -6,9 +6,9 @@ import { stockpileTileIndices } from '../src/grid';
 import { createInitialState, type MapDef } from '../src/map';
 import { deserialize, serialize } from '../src/save';
 import { speedPercent } from '../src/speed';
+import { isPaused } from '../src/standingOrders';
 import type { EntityId, GameState } from '../src/state';
 import { addToTile } from '../src/stockpiles';
-import { isPaused } from '../src/systems/production';
 import { content, run } from './helpers';
 
 /**
@@ -145,7 +145,7 @@ describe('the firewood target', () => {
         (id) => s.components.building[Number(id)]?.type === 'chopping_block',
       ),
     );
-    expect(content.buildings.chopping_block.stockTarget?.amount).toBe(40);
+    expect(content.resources.firewood.standingOrder).toBe(40);
     expect(isPaused(s, content, block)).toBe(false);
     expect(isPaused(stocked(s, 4), content, block)).toBe(true);
   });

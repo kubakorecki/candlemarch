@@ -5,8 +5,8 @@ import { dawnTick, duskTick } from '../src/calendar';
 import { tileCenter } from '../src/grid';
 import { lightSources } from '../src/lights';
 import { createInitialState, type MapDef } from '../src/map';
+import { villageStock } from '../src/standingOrders';
 import type { GameState } from '../src/state';
-import { villageStock } from '../src/systems/production';
 import { content, run } from './helpers';
 
 /**

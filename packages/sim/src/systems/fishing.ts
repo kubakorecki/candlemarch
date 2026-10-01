@@ -7,6 +7,7 @@ import { isRiverFrozen } from '../calendar';
 import { idsOf } from '../entities';
 import { doorTile } from '../grid';
 import { workTicks } from '../speed';
+import { isPaused } from '../standingOrders';
 import type { GameState } from '../state';
 import { isAtWork, isHelpingCarry } from '../villagers';
 import { fitsInYard } from '../yards';
@@ -36,8 +37,8 @@ export function fishingSystem(state: GameState, content: Content): void {
     switch (task.kind) {
       case 'idle': {
         if (state.tick < task.retryAt) break;
-        if (!fitsInYard(state, content, hutId, haul)) {
-          idle(); // yard full: wait where it stands (helping carry) for room
+        if (isPaused(state, content, hutId) || !fitsInYard(state, content, hutId, haul)) {
+          idle(); // paused by its standing order, or yard full: wait where it stands (helping carry)
           break;
         }
         const door = doorTile(def, origin, hut.rotation);

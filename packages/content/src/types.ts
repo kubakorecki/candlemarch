@@ -71,6 +71,11 @@ export type ResourceDef = GoodsDef | FoodDef;
 interface ResourceBase {
   id: ResourceId;
   name: string;
+  /**
+   * The standing order a Workplace making it (as its first output) starts with: it pauses while the
+   * village holds at least this many. Every resource a Workplace makes has one.
+   */
+  standingOrder?: number;
 }
 
 /** Bulk goods, kept on Stockpiles. */
@@ -663,11 +668,6 @@ export interface BuildingDef {
   recipes?: RecipeId[];
   /** What a workshop holds of each of its recipes' inputs. Carriers fill it. */
   inputBuffer?: { resource: ResourceId; capacity: number }[];
-  /**
-   * A workshop pauses while the village holds at least this much of the resource: it starts no
-   * new work and asks for no inputs.
-   */
-  stockTarget?: ResourceAmount;
   /** Units of Food it stores, all Foods together: a building with it is a Granary. */
   foodCapacity?: number;
   /** Villagers it houses: a building with residents is a House. */

@@ -8,9 +8,9 @@ import { idsOf } from './entities';
 import { isGranary, villageFood } from './granary';
 import { residentsOf } from './homes';
 import { groundHealth, groundMiddle } from './huntingGrounds';
+import { villageStock } from './standingOrders';
 import type { EntityId, GameState, Tile, VillagerComponent } from './state';
 import { villagerTile } from './systems/movement';
-import { villageStock } from './systems/production';
 import { fuelIn, isColdHouse, isColdSeason, isHouse, isStockingUp } from './warmth';
 
 export type AlertSeverity = 'red' | 'amber';

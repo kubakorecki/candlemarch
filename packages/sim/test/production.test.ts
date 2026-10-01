@@ -95,7 +95,7 @@ describe('production', () => {
     ]);
   });
 
-  it('pauses while the village holds the firewood target, and resumes below it', () => {
+  it('pauses while the village holds its standing order of firewood, and resumes below it', () => {
     // Five stockpile tiles of 8 hold exactly the target of 40.
     const s0 = createInitialState(
       1,
@@ -124,9 +124,9 @@ describe('production', () => {
       resource: 'logs',
       amount: 2,
     });
+    // One batch of 2: its yard counts too, so 41 pauses it again with a log left.
     const resumed = run(paused, 100);
-    expect(logsIn(resumed)).toBe(0);
-    // 4 made: the woodsplitter, out of logs, helps carry some of it off to the stockpile.
+    expect(logsIn(resumed)).toBe(1);
     const piledNow = Object.values(
       resumed.components.stockpile[idsOf(resumed.components.stockpile)[0] as EntityId]?.goods ?? {},
     ).reduce((sum, g) => sum + g.amount, 0);
@@ -134,7 +134,7 @@ describe('production', () => {
       (sum, v) => sum + (v.carrying?.amount ?? 0),
       0,
     );
-    expect(firewood(resumed) + inHand + piledNow).toBe(39 + 4);
+    expect(firewood(resumed) + inHand + piledNow).toBe(39 + 2);
   });
 });
 

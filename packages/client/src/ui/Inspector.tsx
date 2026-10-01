@@ -1,7 +1,13 @@
 // Bottom left: the workers view and whatever is selected (a building, villager, Stockpile, forage
 // patch, point of interest or Hunting ground), one inspector panel each.
 import { content, type PoiId, type ResourceId } from '@candlemarch/content';
-import { STOCKPILE_PRIORITIES, type StockpilePriority, type Storage } from '@candlemarch/sim';
+import {
+  MAX_STANDING_ORDER,
+  STOCKPILE_PRIORITIES,
+  type StandingOrder,
+  type StockpilePriority,
+  type Storage,
+} from '@candlemarch/sim';
 import type { ReactNode } from 'react';
 import type {
   BuildingInfo,
@@ -132,6 +138,50 @@ function YardFacts({ yard }: { yard: NonNullable<BuildingInfo['yard']> }) {
   );
 }
 
+/** Steps the standing order's − and + buttons move it by. */
+const STANDING_ORDER_STEP = 5;
+
+/**
+ * A Workplace's standing order: it pauses while the village holds at least that many of its
+ * output. − and + move it; what the village holds now is shown beside it.
+ */
+function StandingOrderFacts({ order, game }: { order: StandingOrder; game: Game }) {
+  const name = content.resources[order.resource].name.toLowerCase();
+  return (
+    <div className="stack">
+      <div className="section-head">
+        <span className="caps">Standing order</span>
+        <span className="rule" />
+        <span className="muted">{order.paused ? 'Paused' : 'Working'}</span>
+        <IconButton
+          icon="minus"
+          label={`Pause sooner (−${STANDING_ORDER_STEP})`}
+          size="small"
+          disabled={order.amount <= 0}
+          onClick={() => game.changeStandingOrder(-STANDING_ORDER_STEP)}
+        />
+        <IconButton
+          icon="plus"
+          label={`Pause later (+${STANDING_ORDER_STEP})`}
+          size="small"
+          disabled={order.amount >= MAX_STANDING_ORDER}
+          onClick={() => game.changeStandingOrder(STANDING_ORDER_STEP)}
+        />
+      </div>
+      <div className="fact">
+        <span>Pause at</span>
+        <span>
+          {order.amount} {name}
+        </span>
+      </div>
+      <div className="fact">
+        <span>The village holds</span>
+        <span>{order.held}</span>
+      </div>
+    </div>
+  );
+}
+
 /**
  * What a building keeps inside it (its Storage: a Granary's Food), all of it against what fits,
  * then a line per good it holds. Any building with Storage shows it this way.
@@ -206,6 +256,7 @@ function BuildingPanel({
       {building.status && <Callout tone="warn" title={building.status} />}
       {building.yard && <YardFacts yard={building.yard} />}
       {building.storage && <StorageFacts storage={building.storage} />}
+      {building.standingOrder && <StandingOrderFacts order={building.standingOrder} game={game} />}
       {building.bell && hud.bell && (
         <div className="fact">
           <span>{hud.bell.ringing ? 'The militia is out' : 'Quiet'}</span>

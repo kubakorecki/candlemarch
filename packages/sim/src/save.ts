@@ -5,6 +5,7 @@ import { allTiles, noTiles } from './fog';
 import { refreshShade } from './forage';
 import { rectTiles, tileIndex } from './grid';
 import { createEmptyState } from './map';
+import { defaultStandingOrder } from './standingOrders';
 import {
   type Components,
   type GameState,
@@ -69,6 +70,8 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     b.rotation ??= 0;
     // Houses before door battering were saved with null.
     if (b.hp === undefined || b.hp === null) b.hp = fullHp(content, b.type);
+    // Saves from before standing orders: the default (the chopping block's old firewood target).
+    if (b.standingOrder === undefined) b.standingOrder = defaultStandingOrder(content, b.type);
   }
   for (const site of Object.values(state.components.site)) site.rotation ??= 0;
   // Saves from before Terrain types called Meadow "grass" (the only rename; kept to one line

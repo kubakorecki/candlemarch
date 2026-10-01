@@ -9,6 +9,7 @@ import { groundTilesInReach, huntChancePermille, lodgeGrounds, loseGame } from '
 import { tileDistance } from '../pathfinding';
 import { randomInt } from '../rng';
 import { workTicks } from '../speed';
+import { isPaused } from '../standingOrders';
 import type { EntityId, GameState, Tile } from '../state';
 import { isAtWork, isHelpingCarry } from '../villagers';
 import { fitsInYard } from '../yards';
@@ -70,10 +71,12 @@ export function huntingSystem(state: GameState, content: Content): void {
     switch (task.kind) {
       case 'idle': {
         if (state.tick < task.retryAt) break;
-        // Yard too full for a whole catch, or no Game in reach: wait and look again.
-        const ground = fitsInYard(state, content, lodgeId, def.hunts.catch)
-          ? walkToGround(state, content, id, lodgeId)
-          : null;
+        // Paused by its standing order, yard too full for a whole catch, or no Game in reach: wait
+        // and look again.
+        const ground =
+          !isPaused(state, content, lodgeId) && fitsInYard(state, content, lodgeId, def.hunts.catch)
+            ? walkToGround(state, content, id, lodgeId)
+            : null;
         if (ground === null) {
           tasks[id] = { kind: 'idle', retryAt: state.tick + content.jobs[v.job].idleRetryTicks };
         } else {

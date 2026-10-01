@@ -6,6 +6,7 @@ import { isNight } from '../calendar';
 import { idsOf } from '../entities';
 import { finishGroundwork, groundworkOf } from '../groundwork';
 import { mapChanged } from '../mapCache';
+import { defaultStandingOrder } from '../standingOrders';
 import type { GameState } from '../state';
 import { fullHp } from '../walls';
 import { maxWorkers } from '../workers';
@@ -39,6 +40,7 @@ export function constructionSystem(state: GameState, content: Content): void {
         cold: false,
         lit: false,
         hp: fullHp(content, site.type),
+        standingOrder: defaultStandingOrder(content, site.type),
       };
     }
   }

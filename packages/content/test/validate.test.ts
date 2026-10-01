@@ -313,9 +313,9 @@ describe('content validation', () => {
         expect(resources, `${b.id}.inputBuffer`).toHaveProperty(slot.resource);
         expectPositiveInt(slot.capacity, `${b.id}.inputBuffer.${slot.resource}`);
       }
-      if (b.stockTarget) {
-        expect(resources, `${b.id}.stockTarget`).toHaveProperty(b.stockTarget.resource);
-        expectPositiveInt(b.stockTarget.amount, `${b.id}.stockTarget.amount`);
+      for (const r of b.outputBuffer?.resources ?? []) {
+        // Each output has a default standing order.
+        expectPositiveInt(resources[r].standingOrder ?? 0, `${r}.standingOrder (${b.id} makes it)`);
       }
       if (b.recipes === undefined) continue;
       expect(b.employs.length, `${b.id} employs someone`).toBeGreaterThan(0);

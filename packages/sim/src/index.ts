@@ -75,6 +75,11 @@ export {
   staticLayers,
   staticPatch,
 } from './snapshot';
+export {
+  MAX_STANDING_ORDER,
+  type StandingOrder,
+  standingOrderOf,
+} from './standingOrders';
 export * from './state';
 export { cloneState, step, stepInPlace } from './step';
 export { canPlaceStockpile, isStockpileGood, STOCKPILE_PRIORITIES } from './stockpiles';

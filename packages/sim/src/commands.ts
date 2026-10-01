@@ -12,6 +12,7 @@ import { clearMarks, markObjects, paintKeep } from './marks';
 import { ringBell } from './militia';
 import { eraseReserve } from './reserves';
 import { layPath, removePath } from './roads';
+import { setStandingOrder } from './standingOrders';
 import {
   type EntityId,
   type GameState,
@@ -68,6 +69,8 @@ export type Command =
   | { type: 'unassignWorker'; villager: EntityId }
   | { type: 'reassignWorker'; villager: EntityId; workplace: EntityId }
   | { type: 'setWorkerLimit'; building: EntityId; limit: number }
+  /** Sets a Workplace's standing order: it pauses while the village holds at least `amount`. */
+  | { type: 'setStandingOrder'; building: EntityId; amount: number }
   /** Sets a hunter's lodge to hunt only `ground` (in its reach), or with null the nearest again. */
   | { type: 'setHuntingGround'; building: EntityId; ground: EntityId | null }
   /** Rings the Militia bell: calls the village to arms, or stands it down if it's ringing. */
@@ -182,6 +185,10 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'setWorkerLimit': {
       setWorkerLimit(state, content, command.building, command.limit);
+      return;
+    }
+    case 'setStandingOrder': {
+      setStandingOrder(state, content, command.building, command.amount);
       return;
     }
     case 'setHuntingGround': {
