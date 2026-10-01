@@ -48,7 +48,7 @@ describe('production', () => {
     expect(firewood(done)).toBe(2);
   });
 
-  it('waits at the door while the input buffer is empty, and starts once logs arrive', () => {
+  it('waits while the input buffer is empty, and starts once logs arrive', () => {
     const waiting = run(yardWithLogs(0), 200);
     expect(firewood(waiting)).toBe(0);
     const splitter = idsOf(waiting.components.crafter)[0] as EntityId;
@@ -126,7 +126,15 @@ describe('production', () => {
     });
     const resumed = run(paused, 100);
     expect(logsIn(resumed)).toBe(0);
-    expect(firewood(resumed)).toBe(4);
+    // 4 made: the woodsplitter, out of logs, helps carry some of it off to the stockpile.
+    const piledNow = Object.values(
+      resumed.components.stockpile[idsOf(resumed.components.stockpile)[0] as EntityId]?.goods ?? {},
+    ).reduce((sum, g) => sum + g.amount, 0);
+    const inHand = Object.values(resumed.components.villager).reduce(
+      (sum, v) => sum + (v.carrying?.amount ?? 0),
+      0,
+    );
+    expect(firewood(resumed) + inHand + piledNow).toBe(39 + 4);
   });
 });
 
@@ -166,7 +174,7 @@ const onPile = (s: GameState, resource: 'logs' | 'firewood') =>
     .reduce((n, g) => n + (g.resource === resource ? g.amount : 0), 0);
 
 /** A tick of the depot run at which the woodsplitter is splitting a log. */
-const SPLITTING_AT = 580;
+const SPLITTING_AT = 420;
 
 describe('production logistics', () => {
   it('brings logs to a construction site before the chopping block', () => {

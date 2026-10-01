@@ -83,6 +83,7 @@ export { immigrationFoodNeeded, newcomerHome } from './systems/immigration';
 export { openPositions } from './systems/staffing';
 export { carrierUtilization, roadTraffic } from './traffic';
 export { generateValley, type Valley } from './valley/generate';
+export { isHelpingCarry } from './villagers';
 export { canLayWall, fullHp, isBrokenWall, isWall, isWallType } from './walls';
 export { isColdHouse } from './warmth';
 export { isOnWatch, isWatchman, towerFoe, towerOf } from './watchtowers';

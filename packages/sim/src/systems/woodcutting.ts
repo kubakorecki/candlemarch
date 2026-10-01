@@ -13,7 +13,7 @@ import { inReserve } from '../reserves';
 import { staticChanged } from '../snapshot';
 import { workTicks } from '../speed';
 import type { EntityId, GameState } from '../state';
-import { isAtWork } from '../villagers';
+import { isAtWork, isHelpingCarry } from '../villagers';
 import { outputRoom } from '../yards';
 import { isAt, walkTo } from './movement';
 
@@ -23,8 +23,8 @@ export function woodcuttingSystem(state: GameState, content: Content): void {
   for (const id of idsOf(tasks)) {
     const task = tasks[id];
     const v = villager[id];
-    // Still walking, or off work for the night.
-    if (!task || !v || path[id] || !isAtWork(v)) continue;
+    // Still walking, off work for the night, or helping carry.
+    if (!task || !v || path[id] || !isAtWork(v) || isHelpingCarry(state, id)) continue;
 
     const job = content.jobs[v.job];
     const hutId = v.workplace;

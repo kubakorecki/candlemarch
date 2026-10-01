@@ -8,7 +8,7 @@ import { idsOf } from '../entities';
 import { doorTile } from '../grid';
 import { workTicks } from '../speed';
 import type { GameState } from '../state';
-import { isAtWork } from '../villagers';
+import { isAtWork, isHelpingCarry } from '../villagers';
 import { fitsInYard } from '../yards';
 import { isAt, walkTo } from './movement';
 
@@ -18,8 +18,9 @@ export function fishingSystem(state: GameState, content: Content): void {
   for (const id of idsOf(tasks)) {
     const task = tasks[id];
     const v = villager[id];
-    // Still walking, or off work for the night.
+    // Still walking, off work for the night, or helping carry.
     if (!task || !v || path[id] || v.workplace === null || !isAtWork(v)) continue;
+    if (isHelpingCarry(state, id)) continue;
     const hutId = v.workplace;
     const hut = building[hutId];
     const origin = tile[hutId];
@@ -35,13 +36,17 @@ export function fishingSystem(state: GameState, content: Content): void {
     switch (task.kind) {
       case 'idle': {
         if (state.tick < task.retryAt) break;
+        if (!fitsInYard(state, content, hutId, haul)) {
+          idle(); // yard full: wait where it stands (helping carry) for room
+          break;
+        }
         const door = doorTile(def, origin, hut.rotation);
         if (!isAt(state, id, door)) {
           if (!walkTo(state, content, id, [door])) idle();
           break;
         }
-        if (frozen || !fitsInYard(state, content, hutId, haul)) {
-          idle(); // frozen river, or yard full: wait for a carrier to take something
+        if (frozen) {
+          idle(); // frozen river: wait at the door
           break;
         }
         // A hero's aura near the hut when the catch starts speeds up the whole catch.

@@ -10,7 +10,7 @@ import { tileDistance } from '../pathfinding';
 import { randomInt } from '../rng';
 import { workTicks } from '../speed';
 import type { EntityId, GameState, Tile } from '../state';
-import { isAtWork } from '../villagers';
+import { isAtWork, isHelpingCarry } from '../villagers';
 import { fitsInYard } from '../yards';
 import { isAt, villagerTile, walkTo } from './movement';
 
@@ -56,8 +56,9 @@ export function huntingSystem(state: GameState, content: Content): void {
   for (const id of idsOf(tasks)) {
     const task = tasks[id];
     const v = villager[id];
-    // Still walking, or off work for the night.
+    // Still walking, off work for the night, or helping carry.
     if (!task || !v || path[id] || v.workplace === null || !isAtWork(v)) continue;
+    if (isHelpingCarry(state, id)) continue;
     const lodgeId = v.workplace;
     const lodge = building[lodgeId];
     const origin = tile[lodgeId];

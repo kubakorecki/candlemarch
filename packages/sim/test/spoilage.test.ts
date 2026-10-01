@@ -36,6 +36,7 @@ const FISHERS_HUT = 1;
 const FISHER = 2;
 const GRANARY = 3;
 const CHOPPING_BLOCK = 4;
+const WOODSPLITTER = 5;
 
 /** Content where logs are a Food too, spoiling at 50% a day. */
 const logsAreFood: Content = {
@@ -71,6 +72,8 @@ describe('spoilage at Dawn', () => {
   it('happens only at Dawn', () => {
     const s = dawnWith(2, { fish: 10 });
     s.tick += 1;
+    // Nobody brings more fish: the fisher and the woodsplitter would help carry it to the Granary.
+    for (const id of [FISHER, WOODSPLITTER]) delete s.components.villager[id];
     expect(stockOf(run(s, 2000), GRANARY).fish).toBe(10); // before Dusk, so nobody eats
   });
 

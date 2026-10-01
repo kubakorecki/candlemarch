@@ -298,7 +298,7 @@ function VillagerPanel({ villager, game }: { villager: VillagerInfo; game: Game 
       <Head
         lead={<Avatar name={villager.name} job={villager.jobId} big />}
         name={villager.name}
-        sub={`${villager.job} · ${villager.workplace ?? 'no Workplace'}`}
+        sub={`${villager.job} · ${villager.workplace ?? 'no Workplace'}${villager.helpingCarry ? ' · helping carry' : ''}`}
         game={game}
       />
       {needs && (

@@ -37,6 +37,15 @@ export function isAtWork(v: VillagerComponent): boolean {
 }
 
 /**
+ * Whether villager `id` is a worker helping carry: it keeps its Job but holds a Haul, because its
+ * Workplace couldn't use it (`logistics/helping.ts`). A Carrier holding one isn't.
+ */
+export function isHelpingCarry(state: GameState, id: EntityId): boolean {
+  const v = state.components.villager[id];
+  return v !== undefined && v.job !== 'carrier' && state.logistics.hauls[id] !== undefined;
+}
+
+/**
  * Gives villager `id` a Job and Workplace, replacing its old Job's task state with a fresh one
  * for the new Job. Anyone working at a workshop (a building with recipes) is a crafter. The
  * villager keeps whatever it carries and any walk in progress.

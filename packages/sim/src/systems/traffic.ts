@@ -5,7 +5,10 @@ import type { GameState } from '../state';
 import { currentSlice, isCarrier } from '../traffic';
 import { isAtWork } from '../villagers';
 
-/** Adds this tick's Carriers at work (`isAtWork`) and those of them holding a Haul. */
+/**
+ * Adds this tick's Carriers at work (`isAtWork`; a worker helping carry while it holds a Haul) and
+ * those of them holding a Haul.
+ */
 export function trafficSystem(state: GameState, content: Content): void {
   const { villager } = state.components;
   const atWork = idsOf(villager).filter((id) => {

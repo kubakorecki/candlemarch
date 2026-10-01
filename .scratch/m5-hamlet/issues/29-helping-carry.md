@@ -1,6 +1,6 @@
 # Workers help carry
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: none
 
@@ -18,3 +18,7 @@ Spec: Logistics (Where goods are kept: Helping carry). Glossary: Carrier (helpin
 - Headless tests: a gatherer with a full yard hauls its own output to a Stockpile and goes back to work; a workshop waiting for inputs lends its worker; determinism.
 - Balance scenarios re-run; changes logged in `docs/decisions.md`.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-10-01: Done. `logistics/helping.ts` (`canHelpCarry`, `cantUseWorkers`) decides when a worker is lent; `updateHauls` dispatches it from its own yard first, then any; `isHelpingCarry` (a worker holding a Haul) is what work systems skip, what traffic counts as a Carrier, and what the villager panel shows ("· helping carry" on its sub-line). Tests in `sim/test/helpingCarry.test.ts`; production and spoilage tests adjusted where an idle woodsplitter or fisher now carries. A helper carries a Carrier's load (1), not its Job's. Balance scenarios re-run and logged in `docs/decisions.md`. Not looked at in the browser.

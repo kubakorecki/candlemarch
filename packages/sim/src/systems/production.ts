@@ -7,7 +7,7 @@ import { doorTile } from '../grid';
 import { lightDef, lightFuelIn } from '../lights';
 import { workTicks } from '../speed';
 import type { EntityId, GameState } from '../state';
-import { isAtWork } from '../villagers';
+import { isAtWork, isHelpingCarry } from '../villagers';
 import { fuelIn } from '../warmth';
 import { fitsInYard } from '../yards';
 import { isAt, walkTo } from './movement';
@@ -95,8 +95,9 @@ export function productionSystem(state: GameState, content: Content): void {
   for (const id of idsOf(tasks)) {
     const task = tasks[id];
     const v = villager[id];
-    // Still walking, or off work for the night.
+    // Still walking, off work for the night, or helping carry.
     if (!task || !v || path[id] || v.workplace === null || !isAtWork(v)) continue;
+    if (isHelpingCarry(state, id)) continue;
     const workshopId = v.workplace;
     const workshop = building[workshopId];
     const origin = tile[workshopId];
@@ -108,14 +109,14 @@ export function productionSystem(state: GameState, content: Content): void {
     switch (task.kind) {
       case 'idle': {
         if (state.tick < task.retryAt) break;
+        const recipeId = startableRecipe(state, content, workshopId);
+        if (recipeId === null) {
+          idle(); // missing inputs, output full, or paused: wait where it stands (helping carry)
+          break;
+        }
         const door = doorTile(content.buildings[workshop.type], origin, workshop.rotation);
         if (!isAt(state, id, door)) {
           if (!walkTo(state, content, id, [door])) idle();
-          break;
-        }
-        const recipeId = startableRecipe(state, content, workshopId);
-        if (recipeId === null) {
-          idle(); // missing inputs, output full, or paused
           break;
         }
         const recipe = content.recipes[recipeId];

@@ -45,6 +45,7 @@ import {
   idsOf,
   isBellRung,
   isForagePatch,
+  isHelpingCarry,
   isKnockedOut,
   isRevealed,
   isWithered,
@@ -131,6 +132,8 @@ export interface VillagerInfo {
   hunger: string | null;
   /** "1 cold night; freezes after 2" while Cold, otherwise null. */
   cold: string | null;
+  /** A worker holding a Haul because its Workplace can't use it now. */
+  helpingCarry: boolean;
 }
 
 /** A row of the workers view: one villager, as display text, and where it can be reassigned. */
@@ -1443,6 +1446,7 @@ function villagerInfo(state: GameState, id: EntityId): VillagerInfo | null {
     tired: v.tired,
     hunger: v.missedMeals > 0 ? hungerLabel(v.missedMeals) : null,
     cold: v.coldNights > 0 ? coldLabel(v.coldNights) : null,
+    helpingCarry: isHelpingCarry(state, id),
   };
 }
 

@@ -14,6 +14,7 @@ import { addToTile, amountOnTile, roomOnTile, takeFromTile } from '../stockpiles
 import { isAt, stopAtNextTile, villagerTile, walkCosts, walkTo } from '../systems/movement';
 import { isAtWork } from '../villagers';
 import { isHouse } from '../warmth';
+import { canHelpCarry } from './helping';
 import {
   canServe,
   type Demand,
@@ -50,11 +51,6 @@ export interface LogisticsState {
    * so a steady supply of one good never starves another. Absent until the first such Haul.
    */
   lastToStockpile?: ResourceId;
-}
-
-function carrierIds(state: GameState): EntityId[] {
-  const { villager } = state.components;
-  return idsOf(villager).filter((id) => villager[id]?.job === 'carrier');
 }
 
 /** Units of `resource` at `source` already promised to hauls that haven't picked up yet. */
@@ -405,20 +401,36 @@ function take(state: GameState, haul: Haul): number {
 }
 
 /**
- * Gives an idle carrier the first unmet demand group (sites one by one, then workshop input
- * buffers one by one, then stockpiles by priority), served from the source quickest to walk to
- * with goods free to take. Among a group's demands the carrier takes the one quickest to walk to
- * from the pickup, roads included, so goods go to the nearest stockpile with room.
+ * Gives an idle carrier, or a worker helping carry, the first unmet demand group (sites one by
+ * one, then workshop input buffers one by one, then stockpiles by priority), served from the
+ * source quickest to walk to with goods free to take. Among a group's demands the carrier takes
+ * the one quickest to walk to from the pickup, roads included, so goods go to the nearest
+ * stockpile with room. A worker helping carry first looks for a Haul from its own Workplace's yard
+ * (`ownYard`), then any.
  */
-function dispatch(state: GameState, content: Content, id: EntityId): void {
+function dispatch(state: GameState, content: Content, id: EntityId, ownYard?: EntityId): void {
+  const supplies = listSupplies(state, content);
+  if (ownYard !== undefined) {
+    const own = supplies.filter((s) => s.source === ownYard);
+    if (own.length > 0 && dispatchFrom(state, content, id, own)) return;
+  }
+  dispatchFrom(state, content, id, supplies);
+}
+
+/** `dispatch` from `supplies` only. Returns whether the carrier got a Haul. */
+function dispatchFrom(
+  state: GameState,
+  content: Content,
+  id: EntityId,
+  supplies: readonly Supply[],
+): boolean {
   const { hauls } = state.logistics;
   const { map } = state;
-  const carrier = state.components.villager[id];
   const here = villagerTile(state, id);
-  if (!carrier || !here) return;
-  const capacity = content.jobs[carrier.job].carryCapacity;
+  if (!here) return false;
+  // A worker helping carry takes what a Carrier would.
+  const capacity = content.jobs.carrier.carryCapacity;
   const hereIndex = tileIndex(map, here.x, here.y);
-  const supplies = listSupplies(state, content);
   const fromHere = walkCosts(state, content, hereIndex);
 
   for (const group of demandGroups(state, listDemands(state, content))) {
@@ -468,24 +480,30 @@ function dispatch(state: GameState, content: Content, id: EntityId): void {
       if (dropoff.onTile) haul.toTile = dropoff.tile;
       hauls[id] = haul;
       if (demand.kind === 'stockpile') state.logistics.lastToStockpile = demand.resource;
-      return;
+      return true;
     }
   }
+  return false;
 }
 
-/** Advances every carrier's haul by one tick, and hands idle carriers new ones. */
+/**
+ * Advances every haul by one tick, and hands new ones to idle Carriers and to workers free to help
+ * carry (`canHelpCarry`), in villager ID order.
+ */
 export function updateHauls(state: GameState, content: Content): void {
   const { hauls } = state.logistics;
-  const { villager } = state.components;
+  const { villager, path } = state.components;
   const night = isNight(state.tick, content);
-  for (const id of carrierIds(state)) {
+  for (const id of idsOf(villager)) {
     const haul = hauls[id];
+    const v = villager[id];
     if (haul) advanceHaul(state, content, id, haul);
     // A carrier freed this tick waits until the next one; this keeps each step simple. No new
     // Haul starts after Dusk.
-    else {
-      const v = villager[id];
-      if (v && !state.components.path[id] && !night && isAtWork(v)) dispatch(state, content, id);
+    else if (!v || path[id] || night || !isAtWork(v)) continue;
+    else if (v.job === 'carrier') dispatch(state, content, id);
+    else if (v.workplace !== null && canHelpCarry(state, content, id)) {
+      dispatch(state, content, id, v.workplace);
     }
   }
 }

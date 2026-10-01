@@ -45,3 +45,33 @@ export function fitsInYard(
   const total = goods.reduce((sum, g) => sum + g.amount, 0);
   return total <= yardRoom(state, content, id);
 }
+
+/**
+ * What a gathering Workplace's yard has no room for, when that stops its worker: a hunter's
+ * whole catch, a fisher's catch, or everything a gatherer gathers (a basket of mushrooms that
+ * still fits keeps a forager working). Empty for any other building.
+ */
+export function gathererNoRoom(
+  state: GameState,
+  content: Content,
+  building: EntityId,
+): ResourceId[] {
+  const b = state.components.building[building];
+  if (!b) return [];
+  const def = content.buildings[b.type];
+  const full = (resource: ResourceId, amount: number) =>
+    outputRoom(state, content, building, resource) < amount;
+  if (def.hunts) {
+    const { catch: bag } = def.hunts;
+    return fitsInYard(state, content, building, bag) ? [] : bag.map((c) => c.resource);
+  }
+  const fish = def.outputBuffer?.resources[0];
+  if (def.fishes && fish) return full(fish, def.fishes.yieldPerCatch) ? [fish] : [];
+  const yields = new Map<ResourceId, number>();
+  for (const type of def.gathers ?? []) {
+    const obj = content.mapObjects[type];
+    yields.set(obj.resource, Math.max(yields.get(obj.resource) ?? 0, obj.yieldPerGather));
+  }
+  const noRoom = [...yields].filter(([resource, amount]) => full(resource, amount));
+  return noRoom.length > 0 && noRoom.length === yields.size ? noRoom.map(([r]) => r) : [];
+}

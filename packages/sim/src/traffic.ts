@@ -3,6 +3,7 @@
 // `state.traffic`; the numbers the client shows are derived from them.
 import type { Content } from '@candlemarch/content';
 import type { EntityId, GameState, TrafficSlice } from './state';
+import { isHelpingCarry } from './villagers';
 
 /** Slices a day is counted in. The window is the current slice and the ones before it. */
 export const TRAFFIC_SLICES = 24;
@@ -33,9 +34,12 @@ export function currentSlice(state: GameState, content: Content): TrafficSlice {
   return slice;
 }
 
-/** Whether villager `id` is a Carrier. */
+/**
+ * Whether villager `id` counts as a Carrier here: a Carrier, or a worker helping carry, who counts
+ * only while it holds a Haul.
+ */
 export function isCarrier(state: GameState, id: EntityId): boolean {
-  return state.components.villager[id]?.job === 'carrier';
+  return state.components.villager[id]?.job === 'carrier' || isHelpingCarry(state, id);
 }
 
 /** Counts walker `id` stepping onto tile `index`: a Carrier onto a Road tile. */

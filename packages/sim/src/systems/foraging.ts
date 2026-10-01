@@ -10,7 +10,7 @@ import { doorTile } from '../grid';
 import { staticChanged } from '../snapshot';
 import { workTicks } from '../speed';
 import type { GameState } from '../state';
-import { isAtWork } from '../villagers';
+import { isAtWork, isHelpingCarry } from '../villagers';
 import { outputRoom } from '../yards';
 import { isAt, walkTo } from './movement';
 
@@ -20,8 +20,9 @@ export function foragingSystem(state: GameState, content: Content): void {
   for (const id of idsOf(tasks)) {
     const task = tasks[id];
     const v = villager[id];
-    // Still walking, or off work for the night.
+    // Still walking, off work for the night, or helping carry.
     if (!task || !v || path[id] || v.workplace === null || !isAtWork(v)) continue;
+    if (isHelpingCarry(state, id)) continue;
     const hutId = v.workplace;
     const hut = building[hutId];
     const origin = tile[hutId];
