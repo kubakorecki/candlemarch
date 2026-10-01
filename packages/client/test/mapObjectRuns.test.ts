@@ -1,6 +1,11 @@
 import type { MapObjectComponent, Store, Tile } from '@candlemarch/sim';
 import { describe, expect, it } from 'vitest';
-import { MapObjectRuns, ROW_RUN_TILES } from '../src/render/mapObjectRuns';
+import {
+  MapObjectRuns,
+  ROW_RUN_TILES,
+  TREE_OFFSET_TILES,
+  treeOffset,
+} from '../src/render/mapObjectRuns';
 
 /** A map-object store and its tiles from `[id, x, y, amount]` rows, all trees. */
 function trees(rows: [number, number, number, number][]): {
@@ -16,8 +21,12 @@ function trees(rows: [number, number, number, number][]): {
   return { mapObject, tile };
 }
 
+/** The tiles of the objects in run `key`, west to east. */
 const tilesOf = (runs: MapObjectRuns, key: string) =>
-  runs.objectsIn(key).map((o) => `${o.x},${o.y}`);
+  runs
+    .objectsIn(key)
+    .sort((a, b) => a.x - b.x)
+    .map((o) => `${o.x},${o.y}`);
 
 describe('map object runs', () => {
   it('groups objects on one diagonal of tiles, a run at a time, and reports them all at first', () => {
@@ -126,5 +135,57 @@ describe('map object runs', () => {
     revealedUpTo = 10;
     const revealed = [...runs.update(mapObject, tile, shown)];
     expect(revealed.map((key) => tilesOf(runs, key))).toEqual([['3,5', '6,2']]);
+  });
+});
+
+describe("a tree's place in its tile", () => {
+  it('is the same every time for its tile, within the tile, and varies from tile to tile', () => {
+    const offsets = new Set<string>();
+    for (let y = 0; y < 10; y++) {
+      for (let x = 0; x < 10; x++) {
+        const offset = treeOffset(x, y);
+        expect(treeOffset(x, y)).toEqual(offset);
+        expect(Math.abs(offset.x)).toBeLessThanOrEqual(TREE_OFFSET_TILES);
+        expect(Math.abs(offset.y)).toBeLessThanOrEqual(TREE_OFFSET_TILES);
+        offsets.add(`${offset.x},${offset.y}`);
+      }
+    }
+    // Its foot stays well inside the tile, so it sorts with the tile.
+    expect(TREE_OFFSET_TILES).toBeLessThan(0.5);
+    expect(offsets.size).toBeGreaterThan(50);
+  });
+
+  it('is shared by the Sapling and the Stump on that tile; other objects stand centred', () => {
+    const runs = new MapObjectRuns();
+    const mapObject: Store<MapObjectComponent> = {
+      1: { type: 'tree', amount: 10 },
+      2: { type: 'stump', amount: 1 },
+      3: { type: 'sapling', amount: 0, stage: 1 },
+      4: { type: 'berry_bush', amount: 4 },
+    };
+    const tile: Store<Tile> = {
+      1: { x: 3, y: 4 },
+      2: { x: 4, y: 3 },
+      3: { x: 5, y: 2 },
+      4: { x: 6, y: 1 },
+    };
+    const [key] = [...runs.update(mapObject, tile)];
+    const drawn = runs.objectsIn(key as string);
+    const at = (x: number) => drawn.find((o) => o.x === x);
+    expect(at(3)?.offset).toEqual(treeOffset(3, 4));
+    expect(at(4)?.offset).toEqual(treeOffset(4, 3));
+    expect(at(5)?.offset).toEqual(treeOffset(5, 2));
+    expect(at(6)?.offset).toEqual({ x: 0, y: 0 });
+  });
+
+  it('sets the draw order along a run: back to front by where each foot stands', () => {
+    const runs = new MapObjectRuns();
+    const row: [number, number, number, number][] = [];
+    for (let x = 0; x < ROW_RUN_TILES; x++) row.push([x + 1, x, 20 - x, 10]);
+    const { mapObject, tile } = trees(row);
+    const [key] = [...runs.update(mapObject, tile)];
+    const depths = runs.objectsIn(key as string).map((o) => o.offset.x + o.offset.y);
+    expect(depths).toEqual([...depths].sort((a, b) => a - b));
+    expect(new Set(depths).size).toBeGreaterThan(1);
   });
 });

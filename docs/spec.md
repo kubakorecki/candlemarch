@@ -72,10 +72,10 @@ Each game is a procedurally generated valley seeded with handcrafted points of i
 
 **The Valley** *(Decided in design session M4-03; numbers Proposed, for 128²)*
 
-- **Shape:** a Mountain rim all around. One river crosses the Valley from edge to edge, off-centre, with 2–3 Fords. One entry, a gap in the rim on an edge, holds the entry tile where Newcomers arrive; it isn't a Pass. Forest grows in noise-shaped patches, Swamp lies beside the river's slow bends, and Rock outcrops sit at the foot of the Mountains.
+- **Shape:** a Mountain rim all around. One river crosses the Valley from edge to edge, off-centre, with 2–3 Fords. One entry, a gap in the rim on an edge, holds the entry tile where Newcomers arrive; it isn't a Pass. Forest grows in noise-shaped patches that thin toward their edges, open into clearings and throw out lone trees across the open Meadow (*Proposed*), Swamp lies beside the river's slow bends, and Rock outcrops sit at the foot of the Mountains.
 - **Side valley:** a pocket behind the Pass through the rim. It holds both iron Deposits, the Abandoned mine and at least one Den, so the Pass road is what opens M5's metal chain.
 - **The Camp** (the Starting Camp: Granary, Stockpile, settlers and Hero) starts within 10 tiles of the entry. The generator guarantees near it:
-    - 24 × 24 tiles of buildable Meadow at the Camp, with no Swamp;
+    - 24 × 24 tiles of buildable Meadow at the Camp, with no Swamp. Trees stand scattered sparsely on it (they can be felled), but not in the Camp's yard: within 5 tiles of the Granary, where the Camp and the way in from the entry stay bare (*Proposed*);
     - at least 150 trees within 15 tiles, forming at least one Hunting ground;
     - at least 6 Forage patches within 20 tiles;
     - a Riverbank within 20 tiles and a Ford within 30;

@@ -348,10 +348,12 @@ export interface ValleyDef {
   entry: { gapTiles: number; alongPercent: IntRange; nearThickness: number };
   /**
    * The Starting Camp, within `entryTiles` of the entry: a Granary holding `granaryStock`, a 2×2
-   * Stockpile holding `stockpileGoods`, `carriers` Homeless Carriers and the Hero.
+   * Stockpile holding `stockpileGoods`, `carriers` Homeless Carriers and the Hero. Every tile
+   * within `yardTiles` of the Granary's origin is its yard, kept bare of trees.
    */
   camp: {
     entryTiles: number;
+    yardTiles: number;
     granaryStock: ResourceAmount[];
     stockpileGoods: ResourceAmount[];
     carriers: number;
@@ -394,16 +396,30 @@ export interface ValleyDef {
     passWidthTiles: number;
   };
   /**
-   * Forest: where value noise over cells of `cellTiles` passes `thresholdPercent`, trees stand on
-   * `treePercent` of the Meadow and Forage patches on `foragePercent`. The Camp's own wood, beside
-   * it, stands at `campTreePercent`.
+   * Forest: where value noise over cells of `cellTiles` passes `thresholdPercent`, the Meadow is
+   * Forest. How far the noise passes it (its depth, in noise percent) sets the trees: `treePercent`
+   * of the tiles from `rampPercent` deep, thinning to `edgeTreePercent` at the edge; past the edge
+   * they thin on over `fringePercent` to `outlierPercent`, lone trees on open Meadow. A second
+   * noise over cells of `clearing.cellTiles` opens clearings inside the woods where it passes
+   * `clearing.thresholdPercent`, with trees on only `clearing.treePercent`. Forage patches stand on
+   * `foragePercent` of the Forest. The Camp's own wood, beside it, stands at `campTreePercent`,
+   * thinning to `edgeTreePercent` over its last `campRampTiles` toward the Camp and the east, with
+   * no clearings. Trees stand on `scatterPercent` of the clear square round the Camp, off its
+   * yard.
    */
   forest: {
     cellTiles: number;
     thresholdPercent: number;
     treePercent: number;
+    edgeTreePercent: number;
+    rampPercent: number;
+    fringePercent: number;
+    outlierPercent: number;
+    clearing: { cellTiles: number; thresholdPercent: number; treePercent: number };
     campTreePercent: number;
+    campRampTiles: number;
     foragePercent: number;
+    scatterPercent: number;
   };
   /** Swamp patches beside the river's slow bends, each a noisy blob of these radii. */
   swamp: { patches: IntRange; radiusTiles: IntRange };

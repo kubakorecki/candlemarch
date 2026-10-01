@@ -148,11 +148,13 @@ function valleyProblems(layout: Layout, grounds: Ground[], content: Content): st
   const count = (tiles: number[], type: MapObjectId) =>
     tiles.filter((i) => object[i] === type).length;
 
+  // The clear square: Meadow, bare but for scattered trees, round the Camp's bare yard.
   const { clear } = layout;
   for (let y = clear.y; y < clear.y + clear.h; y++) {
     for (let x = clear.x; x < clear.x + clear.w; x++) {
       const i = y * n + x;
-      if (terrain[i] !== 'meadow' || object[i] !== null || den[i]) {
+      const kept = (object[i] ?? 'tree') === 'tree' && !den[i];
+      if (terrain[i] !== 'meadow' || !kept || (object[i] && near(i, v.camp.yardTiles))) {
         problems.push(`the clear square has ${terrain[i]} ${object[i] ?? ''} at ${x},${y}`);
         break;
       }

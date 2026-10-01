@@ -1,6 +1,6 @@
 # Trees at the start, and forests that grow organically
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by:
 
@@ -16,3 +16,5 @@ Blocked by:
 - Screenshots of seed 1 before and after. `pnpm check` passes.
 
 ## Comments
+
+- 2026-10-01: Done. Woods thin from 85% trees deep inside to 35% at the edge, then to 1% lone outliers across open Meadow, with clearings from a second noise; the Camp's wood thins toward the Camp and the east (no clearings there, to keep 150 trees within 15). The clear square has trees on 6% of it, none within 5 tiles of the Granary (the yard, which meets the entry gap). The client stands each tree, Sapling and Stump up to a quarter tile off its tile's centre (a hash of the tile) and draws a run back to front. Beyond the issue: `connect` no longer plants over 1–2-tile gaps in the Forest (trees are walked through, so it only refilled the gaps). Retries over seeds 1–100: 8 → 4. `valley` placements still fit and keep their roles, so unchanged; it ends Y2 Spring 1 with 6 villagers, nobody lost, 2 meat (was 5). Numbers in `docs/decisions.md`.

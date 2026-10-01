@@ -2,7 +2,14 @@
 // from west to east north of the Camp, the Side valley in the south-east corner. `generate.ts`
 // turns or mirrors the result. Every number is in `content.valley`; the PRNG is the only source
 // of chance, drawn in a fixed order.
-import type { Content, IntRange, MapObjectId, PoiId, TerrainId } from '@candlemarch/content';
+import type {
+  Content,
+  IntRange,
+  MapObjectId,
+  PoiId,
+  TerrainId,
+  ValleyDef,
+} from '@candlemarch/content';
 import { type RngHolder, randomInt } from '../rng';
 import type { Tile } from '../state';
 import { valueNoise } from './noise';
@@ -31,7 +38,7 @@ export interface Layout {
   entry: Tile;
   /** The Granary's origin. The Camp's other pieces stand within `CAMP_MARGIN` of it. */
   camp: Tile;
-  /** The clear square of buildable Meadow round the Camp. */
+  /** The clear square of buildable Meadow round the Camp: trees scattered on it, off the yard. */
   clear: Rect;
 }
 
@@ -47,9 +54,6 @@ const RIVER_EASE_TILES = 20;
 
 /** Tiles either way of a river column that must lie no further from the bank for a slow bend. */
 const BEND_REACH = 4;
-
-/** Open pockets of at most this many tiles inside the Forest are planted over, not reached. */
-const POCKET_TILES = 2;
 
 /** What taking away a Forage patch on the way in costs; bare ground and trees cost nothing. */
 const FORAGE_COST = 4;
@@ -85,6 +89,7 @@ export function layOutValley(rng: RngHolder, content: Content): Layout {
   const swampNoise = valueNoise(rng, n, v.swamp.radiusTiles.max);
   const rockNoise = valueNoise(rng, n, v.rock.cellTiles);
   const forestNoise = valueNoise(rng, n, v.forest.cellTiles);
+  const clearingNoise = valueNoise(rng, n, v.forest.clearing.cellTiles);
   const scaled = (noise: number, range: IntRange) =>
     range.min + Math.floor(noise * (range.max - range.min + 1));
 
@@ -272,22 +277,43 @@ export function layOutValley(rng: RngHolder, content: Content): Layout {
   const reached = flood(n, at(0, ey), walkable);
   for (let i = 0; i < n * n; i++) if (walkable(i) && !reached[i]) terrain[i] = 'mountain';
 
-  // Forest, and the Camp's own wood between it and the river.
+  // Forest, the Camp's own wood between it and the river, and trees scattered on the clear
+  // square, all off the Camp's yard.
   const object: (MapObjectId | null)[] = new Array(n * n).fill(null);
   const forest: Tiles = new Uint8Array(n * n);
   const reach = g.trees.withinTiles;
-  const { thresholdPercent, treePercent, campTreePercent, foragePercent } = v.forest;
+  const f = v.forest;
+  const inYard = (x: number, y: number) =>
+    Math.max(Math.abs(x - camp.x), Math.abs(y - camp.y)) <= v.camp.yardTiles;
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
       const i = at(x, y);
-      if (terrain[i] !== 'meadow' || keepClear[i]) continue;
+      if (terrain[i] !== 'meadow' || inYard(x, y)) continue;
+      if (keepClear[i]) {
+        if (inRect(clear, x, y) && randomInt(rng, 100) < f.scatterPercent) object[i] = 'tree';
+        continue;
+      }
+      const depth = forestNoise(x, y) * 100 - f.thresholdPercent;
+      const clearing = clearingNoise(x, y) * 100 >= f.clearing.thresholdPercent;
+      let percent = woodTreePercent(depth, f, clearing);
       const campWood = Math.abs(x - camp.x) <= reach && y >= camp.y - reach && y < clear.y;
-      if (!campWood && forestNoise(x, y) * 100 < thresholdPercent) continue;
-      forest[i] = 1;
+      if (campWood) {
+        // Thinning toward the Camp's square (south) and the open valley (east); no clearings, so
+        // the Camp keeps its wood.
+        const inward = Math.min(camp.x + reach - x, clear.y - 1 - y);
+        const ramp = Math.min(f.campRampTiles, inward) / f.campRampTiles;
+        const campPercent = Math.floor(
+          f.edgeTreePercent + (f.campTreePercent - f.edgeTreePercent) * ramp,
+        );
+        percent = Math.max(woodTreePercent(depth, f, false), campPercent);
+      }
+      const wooded = campWood || depth >= 0;
+      if (wooded) forest[i] = 1;
+      const forage = wooded ? f.foragePercent : 0;
       const roll = randomInt(rng, 100);
-      if (roll < foragePercent) {
+      if (roll < forage) {
         object[i] = randomInt(rng, 2) === 0 ? 'berry_bush' : 'mushroom_patch';
-      } else if (roll < foragePercent + (campWood ? campTreePercent : treePercent)) {
+      } else if (roll < forage + percent) {
         object[i] = 'tree';
       }
     }
@@ -366,6 +392,27 @@ export function layOutValley(rng: RngHolder, content: Content): Layout {
   return layout;
 }
 
+/**
+ * The percent of tiles that grow a tree `depth` noise percent inside a wood's edge (negative:
+ * outside it), in a `clearing` or not (`content.valley.forest`): full from `rampPercent` deep,
+ * thinning to `edgeTreePercent` at the edge, then over `fringePercent` past it to the lone
+ * outliers of `outlierPercent`. A clearing inside a wood holds `clearing.treePercent`.
+ */
+export function woodTreePercent(depth: number, f: ValleyDef['forest'], clearing: boolean): number {
+  if (depth >= 0) {
+    if (clearing) return f.clearing.treePercent;
+    const ramp = Math.min(depth, f.rampPercent) / f.rampPercent;
+    return Math.floor(f.edgeTreePercent + (f.treePercent - f.edgeTreePercent) * ramp);
+  }
+  const fringe = Math.max(0, f.fringePercent + depth) / f.fringePercent;
+  return Math.floor(f.outlierPercent + (f.edgeTreePercent / 2 - f.outlierPercent) * fringe);
+}
+
+/** Whether tile (x, y) lies on `rect`. */
+export function inRect(rect: Rect, x: number, y: number): boolean {
+  return x >= rect.x && y >= rect.y && x < rect.x + rect.w && y < rect.y + rect.h;
+}
+
 /** Chebyshev distance between tile indices `a` and `b` on a map `n` wide. */
 export function chebyshev(n: number, a: number, b: number): number {
   return Math.max(Math.abs((a % n) - (b % n)), Math.abs(Math.floor(a / n) - Math.floor(b / n)));
@@ -425,8 +472,7 @@ export function flood(n: number, start: number, open: (i: number) => boolean): T
  * Joins every open tile to the entry (over the Pass when `passOpen`), and gives every Forage patch
  * and Deposit an open side tile joined to it. Trees are walked through (`walkSpeedPercent`), so
  * they cost nothing and stay; a Forage patch in the way goes only where there's no other way, and
- * Deposits never. Tiny pockets inside the Forest are planted over. Walking is 4-connected here,
- * as the sim's reach test is.
+ * Deposits never. Walking is 4-connected here, as the sim's reach test is.
  */
 function connect(layout: Layout, content: Content, passOpen: boolean): void {
   const { size: n, terrain, object } = layout;
@@ -510,14 +556,6 @@ function connect(layout: Layout, content: Content, passOpen: boolean): void {
   const startRegion = region[start] as number;
   for (const u of members[startRegion] ?? []) joined[u] = 1;
 
-  // A pocket of a tile or two walled in by the Forest gets a tree instead: cheaper than felling.
-  const planted = (t: number) =>
-    terrain[t] === 'meadow' && layout.forest[t] && !layout.den[t] && layout.poi[t] === null;
-  for (const tiles of members) {
-    if (tiles.length === 0 || tiles.length > POCKET_TILES || joined[tiles[0] as number]) continue;
-    if (!tiles.every(planted)) continue;
-    for (const t of tiles) object[t] = 'tree';
-  }
   for (let i = 0; i < n * n; i++) {
     if (open(i) && !joined[i] && (clearing[i] as number) >= 0) join(i);
   }

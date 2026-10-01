@@ -6,6 +6,7 @@ import { createInitialState } from '../src/map';
 import { regions } from '../src/pathfinding';
 import type { Tile } from '../src/state';
 import { generateValley, type Valley } from '../src/valley/generate';
+import { woodTreePercent } from '../src/valley/layout';
 import { content } from './helpers';
 
 const { valley } = content;
@@ -102,32 +103,40 @@ function reach(v: Valley, blocked: string): boolean[] {
   return reached;
 }
 
-/** Whether some `size`×`size` square holding the Granary is all bare Meadow ('.'). */
-function hasClearSquare(v: Valley, size: number): boolean {
+/**
+ * Some `size`×`size` square holding the Granary that is all buildable Meadow once its trees are
+ * felled ('.' or 'T'), with the fewest trees on it of any such square; null when there's none.
+ */
+function clearSquare(v: Valley, size: number): { x: number; y: number; trees: number } | null {
   const n = v.rows.length;
-  // Prefix sums of tiles that aren't bare Meadow.
-  const sums = new Int32Array((n + 1) * (n + 1));
-  for (let y = 0; y < n; y++) {
-    for (let x = 0; x < n; x++) {
-      const bad = charAt(v, { x, y }) === '.' ? 0 : 1;
-      sums[(y + 1) * (n + 1) + x + 1] =
-        bad +
-        (sums[y * (n + 1) + x + 1] as number) +
-        (sums[(y + 1) * (n + 1) + x] as number) -
-        (sums[y * (n + 1) + x] as number);
+  // Prefix sums over the map of `count(char)`.
+  const sums = (count: (c: string) => number) => {
+    const table = new Int32Array((n + 1) * (n + 1));
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        table[(y + 1) * (n + 1) + x + 1] =
+          count(charAt(v, { x, y })) +
+          (table[y * (n + 1) + x + 1] as number) +
+          (table[(y + 1) * (n + 1) + x] as number) -
+          (table[y * (n + 1) + x] as number);
+      }
     }
-  }
-  const bad = (x: number, y: number) =>
-    (sums[(y + size) * (n + 1) + x + size] as number) -
-    (sums[y * (n + 1) + x + size] as number) -
-    (sums[(y + size) * (n + 1) + x] as number) +
-    (sums[y * (n + 1) + x] as number);
+    return (x: number, y: number) =>
+      (table[(y + size) * (n + 1) + x + size] as number) -
+      (table[y * (n + 1) + x + size] as number) -
+      (table[(y + size) * (n + 1) + x] as number) +
+      (table[y * (n + 1) + x] as number);
+  };
+  const bad = sums((c) => (c === '.' || c === 'T' ? 0 : 1));
+  const trees = sums((c) => (c === 'T' ? 1 : 0));
+  let best: { x: number; y: number; trees: number } | null = null;
   for (let y = v.camp.y + 2 - size; y <= v.camp.y; y++) {
     for (let x = v.camp.x + 2 - size; x <= v.camp.x; x++) {
-      if (x >= 0 && y >= 0 && x + size <= n && y + size <= n && bad(x, y) === 0) return true;
+      if (x < 0 || y < 0 || x + size > n || y + size > n || bad(x, y) !== 0) continue;
+      if (!best || trees(x, y) < best.trees) best = { x, y, trees: trees(x, y) };
     }
   }
-  return false;
+  return best;
 }
 
 /** The ways `v` misses the Valley's rules, checked from its rows alone. */
@@ -188,7 +197,19 @@ function problems(v: Valley): string[] {
   expectThat(dens.filter(inSide).length >= valley.dens.sideValley, 'a Den in the Side valley');
 
   // Guarantees near the Camp.
-  expectThat(hasClearSquare(v, g.clearTiles), 'a clear square at the Camp');
+  // The start area: buildable Meadow with trees scattered sparsely on it, round a bare yard.
+  const square = clearSquare(v, g.clearTiles);
+  expectThat(square !== null, 'a clear square at the Camp');
+  const scattered = square?.trees ?? 0;
+  expectThat(scattered > 0, 'no trees scattered on the clear square');
+  expectThat(scattered * 100 <= g.clearTiles ** 2 * 10, `${scattered} trees on the clear square`);
+  const yard = valley.camp.yardTiles;
+  for (let y = camp.y - yard; y <= camp.y + yard; y++) {
+    for (let x = camp.x - yard; x <= camp.x + yard; x++) {
+      const c = charAt(v, { x, y });
+      if ('TbmD'.includes(c)) found.push(`${c} in the Camp's yard at ${x},${y}`);
+    }
+  }
   const trees = near(tilesOf(v, 'T'), g.trees.withinTiles).length;
   expectThat(trees >= g.trees.count, `${trees} trees near the Camp`);
   const grounds = (v.huntingGrounds ?? []).map((ground) => ('tiles' in ground ? ground.tiles : []));
@@ -272,6 +293,16 @@ function problems(v: Valley): string[] {
     expectThat(distance(t, passMiddle) < distance(entry, passMiddle), 'the Shrine off the way');
   }
 
+  // Lone trees out in the open, away from the start area: outliers of the woods.
+  const lone = tilesOf(v, 'T').filter(
+    (t) =>
+      distance(t, camp) > g.clearTiles &&
+      [-1, 0, 1].every((dy) =>
+        [-1, 0, 1].every((dx) => (!dx && !dy) || charAt(v, { x: t.x + dx, y: t.y + dy }) !== 'T'),
+      ),
+  ).length;
+  expectThat(lone >= 10, `${lone} lone trees`);
+
   // Hunting grounds: at most `maxTiles` each, apart, 1 Game per `treesPerGame` trees.
   const seen = new Set<number>();
   for (const ground of v.huntingGrounds ?? []) {
@@ -295,6 +326,35 @@ function problems(v: Valley): string[] {
   expectThat(new Set(names).size === names.length, 'ground names are unique');
   return found;
 }
+
+describe("a wood's tree density", () => {
+  const forest = valley.forest;
+  const at = (depth: number) => woodTreePercent(depth, forest, false);
+
+  it('is full deep in a wood and thins to its edge', () => {
+    expect(at(100)).toBe(forest.treePercent);
+    expect(at(forest.rampPercent)).toBe(forest.treePercent);
+    expect(at(0)).toBe(forest.edgeTreePercent);
+    expect(at(0)).toBeLessThan(forest.treePercent);
+  });
+
+  it('falls off past the edge to lone outliers, never to nothing', () => {
+    expect(at(-1)).toBeLessThan(at(0));
+    expect(at(-100)).toBe(forest.outlierPercent);
+    expect(forest.outlierPercent).toBeGreaterThan(0);
+  });
+
+  it('never rises as the depth falls', () => {
+    for (let depth = -100; depth < 100; depth++) {
+      expect(at(depth)).toBeLessThanOrEqual(at(depth + 1));
+    }
+  });
+
+  it('opens to a clearing wherever the clearing noise says so', () => {
+    expect(woodTreePercent(100, forest, true)).toBe(forest.clearing.treePercent);
+    expect(forest.clearing.treePercent).toBeLessThan(forest.edgeTreePercent);
+  });
+});
 
 describe('the generated Valley', () => {
   it('is the same Valley for the same seed, and another for another seed', () => {

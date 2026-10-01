@@ -489,6 +489,7 @@ describe('content validation', () => {
       valley.entry.nearThickness,
       valley.camp.entryTiles,
       valley.camp.carriers,
+      valley.camp.yardTiles,
       ...Object.values(valley.guarantees).flatMap((g) =>
         typeof g === 'number' ? [g] : Object.values(g),
       ),
@@ -496,7 +497,9 @@ describe('content validation', () => {
       valley.sideValley.widthTiles,
       valley.sideValley.heightTiles,
       valley.sideValley.passWidthTiles,
-      ...Object.values(valley.forest),
+      ...Object.values(valley.forest).flatMap((f) =>
+        typeof f === 'number' ? [f] : Object.values(f),
+      ),
       ...Object.values(valley.rock),
       ...Object.values(valley.deposits),
       ...Object.values(valley.dens),
@@ -510,6 +513,12 @@ describe('content validation', () => {
     expect(forest.foragePercent + Math.max(forest.treePercent, forest.campTreePercent) <= 100).toBe(
       true,
     );
+    // A wood thins from full to its edge, and past it to lone outliers; a clearing is thinner still.
+    expect(forest.edgeTreePercent <= Math.min(forest.treePercent, forest.campTreePercent)).toBe(
+      true,
+    );
+    expect(forest.outlierPercent * 2 <= forest.edgeTreePercent, 'outliers').toBe(true);
+    expect(forest.clearing.treePercent <= forest.edgeTreePercent, 'clearings').toBe(true);
     expect(valley.dens.sideValley <= valley.dens.count, 'Side valley Dens').toBe(true);
     const { pois } = valley;
     expect(pois.shrineAlongPercent.max <= 100, 'Shrine along the way').toBe(true);

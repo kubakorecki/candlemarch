@@ -1,7 +1,8 @@
 // Which map objects (trees, forage patches) are drawn together, and which groups need redrawing.
-// Objects on one diagonal of tiles (x + y) share a draw depth, and on one diagonal they stand a
-// tile width apart, so they never overlap: drawing a run of them as one shape sorts against
-// villagers and buildings exactly as the objects one by one would. No Pixi here.
+// Objects on one diagonal of tiles (x + y) share a draw depth: drawing a run of them as one shape,
+// back to front, sorts against villagers and buildings exactly as the objects one by one would.
+// Trees stand off their tile's centre (`treeOffset`) so woods don't read as rows, but never off
+// their tile, so they still sort with it. No Pixi here.
 import type { MapObjectId } from '@candlemarch/content';
 import type { EntityId, MapObjectComponent, Store, Tile } from '@candlemarch/sim';
 
@@ -19,7 +20,42 @@ export interface DrawnObject {
   marked: boolean;
   x: number;
   y: number;
+  /** Where it stands off its tile's centre, in tiles (`treeOffset`; 0, 0 for most kinds). */
+  offset: Offset;
 }
+
+/** An offset in grid tiles. */
+export interface Offset {
+  x: number;
+  y: number;
+}
+
+/** How far a tree may stand off its tile's centre along each grid axis, in tiles. */
+export const TREE_OFFSET_TILES = 0.25;
+
+/** Offset steps either side of the centre along each axis. */
+const OFFSET_STEPS = 8;
+
+/** Kinds that stand where the tree on their tile stands, or stood. */
+const TREE_KINDS: ReadonlySet<MapObjectId> = new Set(['tree', 'sapling', 'stump']);
+
+/**
+ * Where a tree on tile (x, y) stands off the tile's centre: within `TREE_OFFSET_TILES` either way
+ * on each axis, from a hash of the tile alone, so it's the same every time it's drawn.
+ */
+export function treeOffset(x: number, y: number): Offset {
+  let h = Math.imul(x, 0x27d4eb2d) ^ Math.imul(y, 0x165667b1);
+  h = Math.imul(h ^ (h >>> 15), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  h ^= h >>> 16;
+  const step = (bits: number) => ((bits % (2 * OFFSET_STEPS + 1)) - OFFSET_STEPS) / OFFSET_STEPS;
+  return {
+    x: step((h >>> 0) & 0xffff) * TREE_OFFSET_TILES,
+    y: step(h >>> 16) * TREE_OFFSET_TILES,
+  };
+}
+
+const CENTRED: Offset = { x: 0, y: 0 };
 
 /** The run tile (x, y) belongs to: its diagonal, and which stretch of `ROW_RUN_TILES` along it. */
 function runKey(x: number, y: number): string {
@@ -80,6 +116,7 @@ export class MapObjectRuns {
         marked,
         x: at.x,
         y: at.y,
+        offset: TREE_KINDS.has(obj.type) ? treeOffset(at.x, at.y) : CENTRED,
       });
       let ids = this.members.get(run);
       if (!ids) {
@@ -92,14 +129,17 @@ export class MapObjectRuns {
     return dirty;
   }
 
-  /** The objects in run `key`, west to east. */
+  /**
+   * The objects in run `key` in draw order: back to front by where each stands (its offset),
+   * then west to east.
+   */
   objectsIn(key: string): DrawnObject[] {
     const objects: DrawnObject[] = [];
     for (const id of this.members.get(key) ?? []) {
       const obj = this.drawn.get(id);
       if (obj) objects.push(obj);
     }
-    return objects.sort((a, b) => a.x - b.x);
+    return objects.sort((a, b) => a.offset.x + a.offset.y - (b.offset.x + b.offset.y) || a.x - b.x);
   }
 
   /** The diagonal (x + y) of run `key`: every tile in it has this depth. */

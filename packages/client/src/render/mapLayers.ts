@@ -10,7 +10,7 @@ import {
   type TileBits,
 } from '@candlemarch/sim';
 import { Container, Graphics } from 'pixi.js';
-import { overlaps, type Rect, TILE_H, tileAreaBounds, tileCenterWorld } from './iso';
+import { gridToWorld, overlaps, type Rect, TILE_H, tileAreaBounds, tileCenterWorld } from './iso';
 import { type DrawnObject, MapObjectRuns } from './mapObjectRuns';
 import {
   drawBerryBush,
@@ -260,10 +260,18 @@ export class MapObjectLayer {
     g.clear();
     let bounds: Rect | null = null;
     for (const obj of objects) {
+      // Where it stands: its tile's centre, moved by its offset (a tree off the centre).
       const c = tileCenterWorld(obj.x, obj.y);
-      g.setTransform(1, 0, 0, 1, c.x, c.y);
+      const at = gridToWorld(obj.x + 0.5 + obj.offset.x, obj.y + 0.5 + obj.offset.y);
+      g.setTransform(1, 0, 0, 1, at.x, at.y);
       drawMapObject(g, obj, this.content);
-      const b = tileAreaBounds(obj.x, obj.y, 1, 1, MAP_OBJECT_ABOVE);
+      const tileBounds = tileAreaBounds(obj.x, obj.y, 1, 1, MAP_OBJECT_ABOVE);
+      const b = {
+        minX: tileBounds.minX + at.x - c.x,
+        minY: tileBounds.minY + at.y - c.y,
+        maxX: tileBounds.maxX + at.x - c.x,
+        maxY: tileBounds.maxY + at.y - c.y,
+      };
       bounds = bounds
         ? {
             minX: Math.min(bounds.minX, b.minX),
