@@ -28,4 +28,6 @@ export const resources: Record<ResourceId, ResourceDef> = {
   stone: { id: 'stone', name: 'Stone', storage: 'stockpile', standingOrder: 60 },
   clay: { id: 'clay', name: 'Clay', storage: 'stockpile', standingOrder: 40 },
   iron_ore: { id: 'iron_ore', name: 'Iron ore', storage: 'stockpile', standingOrder: 40 },
+  // From the farm's Fields: Food eaten as it is, and it keeps long (spec, Spoilage).
+  grain: { id: 'grain', name: 'Grain', storage: 'granary', spoilPercent: 1, standingOrder: 80 },
 };

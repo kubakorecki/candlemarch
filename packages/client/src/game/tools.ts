@@ -1,5 +1,6 @@
-// The build and demolish tools, in toolbar order, with their keyboard shortcuts and hints; and the
-// tree tools of the woodcutter's hut panel (`TREE_TOOLS`).
+// The build and demolish tools, in toolbar order, with their keyboard shortcuts and hints; the
+// tree tools of the woodcutter's hut panel (`TREE_TOOLS`) and the farm panel's Field tools
+// (`FIELD_TOOLS`).
 import type { BuildingId } from '@candlemarch/content';
 
 export type ToolId =
@@ -10,6 +11,8 @@ export type ToolId =
   | 'reserve'
   | 'digStumps'
   | 'eraseMarks'
+  | 'paintFields'
+  | 'eraseFields'
   | 'stockpile'
   | 'demolish';
 
@@ -107,6 +110,13 @@ export const TOOLS: readonly {
     key: null,
     drag: false,
     hint: 'Click to place near Swamp. Its worker slowly digs the bog iron every Swamp tile holds, which comes back each spring. Shift-click places more.',
+  },
+  {
+    id: 'farm',
+    label: 'Farm',
+    key: null,
+    drag: false,
+    hint: 'Click to place on open meadow, then paint its Fields from its panel. Fields are sown in spring and harvested from late summer through autumn. Shift-click places more.',
   },
   {
     id: 'village_hall',
@@ -210,6 +220,21 @@ export const TOOLS: readonly {
     drag: true,
     hint: 'Drag a rectangle to take Fell and Dig marks and the Reserve off it.',
   },
+  // The Field tools, in the farm panel.
+  {
+    id: 'paintFields',
+    label: 'Fields',
+    key: null,
+    drag: true,
+    hint: "Drag a rectangle over open meadow in the farm's reach to make it Fields. Free; its farmers sow them each spring.",
+  },
+  {
+    id: 'eraseFields',
+    label: 'Erase',
+    key: null,
+    drag: true,
+    hint: 'Drag a rectangle to take Fields away, with whatever grows on them.',
+  },
   {
     id: 'demolish',
     label: 'Demolish',
@@ -221,6 +246,9 @@ export const TOOLS: readonly {
 
 /** The woodcutter's hut panel's tools, in order. The build menu leaves them out. */
 export const TREE_TOOLS: readonly ToolId[] = ['fellTrees', 'reserve', 'digStumps', 'eraseMarks'];
+
+/** The farm panel's tools, in order. The build menu leaves them out. */
+export const FIELD_TOOLS: readonly ToolId[] = ['paintFields', 'eraseFields'];
 
 /** Tool `id`'s definition. */
 export function toolDef(id: ToolId): (typeof TOOLS)[number] | undefined {

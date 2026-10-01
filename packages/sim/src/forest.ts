@@ -89,14 +89,21 @@ export function grow(state: GameState, content: Content, id: EntityId): void {
 }
 
 /**
- * Clears everything growing on `tiles`: a building, Road, Stockpile or groundwork put there
- * takes its place.
+ * Clears everything growing on `tiles`, Fields (`fields.ts`) included: a building, Road, Stockpile
+ * or groundwork put there takes its place.
  */
 export function clearGrowth(state: GameState, content: Content, tiles: readonly Tile[]): void {
   const { map } = state;
   const under = new Set(
     tiles.filter((t) => inBounds(map, t.x, t.y)).map((t) => tileIndex(map, t.x, t.y)),
   );
+  let fieldsLost = false;
+  for (const i of under) {
+    if (map.fields[i] === undefined) continue;
+    delete map.fields[i];
+    fieldsLost = true;
+  }
+  if (fieldsLost) staticChanged(state);
   for (const id of idsOf(state.components.mapObject)) {
     const at = state.components.tile[id];
     if (at && isGrowing(state, content, id) && under.has(tileIndex(map, at.x, at.y))) {
@@ -134,6 +141,16 @@ function unplantableGrid(state: GameState, content: Content): Uint8Array {
   });
 }
 
+/**
+ * Whether nothing stands on `tile` (`unplantableGrid`): no map object, Road, Stockpile, building
+ * or site, Den or cache, and it isn't the entry. False off the map. Fields must be open ground.
+ */
+export function isOpenGround(state: GameState, content: Content, tile: Tile): boolean {
+  const { map } = state;
+  if (!inBounds(map, tile.x, tile.y)) return false;
+  return unplantableGrid(state, content)[tileIndex(map, tile.x, tile.y)] === 0;
+}
+
 /** The planting rules of lodge `lodgeId`, or undefined if it isn't a building that plants. */
 function plantsOf(state: GameState, content: Content, lodgeId: EntityId): PlantsDef | undefined {
   const b = state.components.building[lodgeId];
@@ -142,8 +159,8 @@ function plantsOf(state: GameState, content: Content, lodgeId: EntityId): Plants
 
 /**
  * Whether lodge `lodgeId`'s foresters may plant on `tile` now: within its work radius, on its
- * `on` terrain, on the `spacing` grid, and with nothing on it (`unplantableGrid`). Fog doesn't
- * matter: it hides the world from the player, not from the forester.
+ * `on` terrain, on the `spacing` grid, with nothing on it (`unplantableGrid`) and not a Field.
+ * Fog doesn't matter: it hides the world from the player, not from the forester.
  */
 export function canPlant(
   state: GameState,
@@ -169,6 +186,7 @@ function fitsPlot(
   return (
     map.terrain[i] === plants.on &&
     unplantableGrid(state, content)[i] === 0 &&
+    map.fields[i] === undefined &&
     inWorkRadius(state, content, lodgeId, tile)
   );
 }

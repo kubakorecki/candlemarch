@@ -31,6 +31,7 @@ export const RESOURCE_ICONS: Record<ResourceId, IconName> = {
   stone: 'stone',
   clay: 'clay',
   iron_ore: 'ore',
+  grain: 'grain',
 };
 
 /** Tracked capitals with a hairline to the right, and an optional note after it. */

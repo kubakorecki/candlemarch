@@ -2,6 +2,7 @@
 // (speed, build mode); everything about the world comes from sim snapshots.
 import {
   type BuildingId,
+  type CropId,
   content,
   type JobId,
   type PoiId,
@@ -17,6 +18,7 @@ import {
   type Command,
   calendarAt,
   campCentre,
+  canBeField,
   canLayGroundwork,
   canLayPath,
   canLayWall,
@@ -30,7 +32,11 @@ import {
   denAt,
   type EntityId,
   entityLayout,
+  farmCrop,
+  farmFields,
+  farmNextCrop,
   fellsTrees,
+  fieldAt,
   type GameState,
   type GroundHealth,
   groundAt,
@@ -46,6 +52,7 @@ import {
   huntChancePermille,
   idsOf,
   isBellRung,
+  isFarm,
   isForagePatch,
   isHelpingCarry,
   isKnockedOut,
@@ -243,8 +250,23 @@ export interface BuildingInfo {
   bell: boolean;
   /** It fells trees (a woodcutter's hut), so the panel has the tree tools (`TREE_TOOLS`). */
   treeTools: boolean;
+  /** A farm's Fields and Crop, for its panel (with the Field tools); null for any other building. */
+  farm: FarmInfo | null;
   /** What's posted on it, for the notice board; null for any other building. */
   postings: PostingView[] | null;
+}
+
+/** What a farm's panel shows. */
+export interface FarmInfo {
+  /** Fields in its reach, and of those how many are sown and ripe. */
+  fields: number;
+  sown: number;
+  ripe: number;
+  /** Its Crop this year, and the one picked for the next spring (the same unless changed). */
+  crop: CropId;
+  nextCrop: CropId;
+  /** The Crops the picker offers, in content order. */
+  crops: { id: CropId; name: string }[];
 }
 
 /** One save slot in the Load menu: its name and when it was saved, or null when it's empty. */
@@ -474,10 +496,10 @@ export class Game {
   }
 
   /**
-   * Takes up tree tool `tool` from the woodcutter's hut panel, keeping the hut selected so its
-   * panel stays open; puts it down again if it's already in hand.
+   * Takes up a panel's tool `tool` (the woodcutter's hut's tree tools, the farm's Field tools),
+   * keeping the building selected so its panel stays open; puts it down again if it's in hand.
    */
-  toggleTreeTool(tool: ToolId): void {
+  togglePanelTool(tool: ToolId): void {
     this.dragStart = null;
     this.setHud({ tool: this.hud.tool === tool ? null : tool, message: null });
     this.updateGhost();
@@ -566,6 +588,13 @@ export class Game {
     const id = this.selectedBuilding;
     if (id === null) return;
     this.bridge.command({ type: 'setHuntingGround', building: id, ground });
+  }
+
+  /** Picks the Crop the selected farm sows from the next spring on. */
+  setCrop(crop: CropId): void {
+    const id = this.selectedBuilding;
+    if (id === null) return;
+    this.bridge.command({ type: 'setCrop', building: id, crop });
   }
 
   /** Raises or lowers the selected Workplace's worker limit by `delta`. */
@@ -915,6 +944,13 @@ export class Game {
     } else if (tool === 'eraseMarks') {
       this.bridge.command({ type: 'eraseReserve', from, to });
       this.bridge.command({ type: 'clearMarks', from, to });
+    } else if (tool === 'paintFields') {
+      const farm = this.selectedBuilding;
+      if (farm !== null && this.fieldTiles(state, from, to).length > 0) {
+        this.bridge.command({ type: 'paintFields', farm, from, to });
+      } else this.setHud({ message: "No open meadow in the farm's reach there." });
+    } else if (tool === 'eraseFields') {
+      this.bridge.command({ type: 'eraseFields', from, to });
     } else if (tool === 'stockpile') {
       const r = rect(from, to);
       if (canPlaceStockpile(state, content, r.x, r.y, r.w, r.h))
@@ -1214,6 +1250,13 @@ export class Game {
       : [];
   }
 
+  /** The tiles of the rectangle `from`–`to` the selected farm may paint as Fields. */
+  private fieldTiles(state: GameState, from: Tile, to: Tile): Tile[] {
+    const farm = this.selectedBuilding;
+    if (farm === null) return [];
+    return reserveRect(from, to).filter((t) => canBeField(state, content, farm, t));
+  }
+
   private ghostFor(state: GameState, tool: ToolId, hover: Tile): PlacementGhost {
     const { x, y } = hover;
     if (isWallTool(tool)) {
@@ -1270,7 +1313,14 @@ export class Game {
           valid: canMark(state, from, hover),
         };
       case 'eraseMarks':
+      case 'eraseFields':
         return { kind: 'tiles', tiles: reserveRect(from, hover), valid: true };
+      case 'paintFields': {
+        const tiles = this.fieldTiles(state, from, hover);
+        return tiles.length > 0
+          ? { kind: 'tiles', tiles, valid: true }
+          : { kind: 'tiles', tiles: reserveRect(from, hover), valid: false };
+      }
       case 'stockpile': {
         const r = rect(from, hover);
         return {
@@ -1527,9 +1577,23 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
     status: status && workplaceStatusText(status),
     bell: content.buildings[b.type].bell !== undefined,
     treeTools: fellsTrees(content, b.type),
+    farm: isFarm(state, content, id) ? farmInfo(state, id) : null,
     postings: content.buildings[b.type].noticeBoard
       ? postings(state, content).map((p) => postingView(p, state.tick))
       : null,
+  };
+}
+
+/** Farm `id`'s Fields and Crops for its panel. */
+function farmInfo(state: GameState, id: EntityId): FarmInfo {
+  const fields = farmFields(state, content, id).map((t) => fieldAt(state, t));
+  return {
+    fields: fields.length,
+    sown: fields.filter((f) => f?.stage === 'sown').length,
+    ripe: fields.filter((f) => f?.stage === 'ripe').length,
+    crop: farmCrop(state, content, id),
+    nextCrop: farmNextCrop(state, content, id),
+    crops: Object.values(content.crops).map((c) => ({ id: c.id, name: c.name })),
   };
 }
 

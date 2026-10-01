@@ -339,4 +339,21 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 200, // 10 s
     },
   },
+  // The farm (M5, no master): its farmers work the Fields the player paints in its radius
+  // (`content.farming`). Fieldstones leave through its yard as stone. Numbers Proposed.
+  farm: {
+    id: 'farm',
+    name: 'Farm',
+    size: { w: 2, h: 2 },
+    door: { x: 0, y: 2 },
+    placeable: true,
+    employs: [{ job: 'farmer', count: 2 }],
+    farm: true,
+    workRadius: 5,
+    outputBuffer: { resources: ['grain', 'stone'], yard: { x: 1, y: 2 } },
+    construction: {
+      cost: [{ resource: 'logs', amount: 12 }],
+      buildTicks: 300, // 15 s
+    },
+  },
 };

@@ -489,6 +489,7 @@ export function drawBuilding(g: Graphics, layout: BuildingLayout, type: Building
   else if (type === 'granary') drawGranary(g, layout);
   else if (type === 'village_hall') drawVillageHall(g, layout);
   else if (type === 'notice_board') drawNoticeBoard(g, layout);
+  else if (type === 'farm') drawFarm(g, layout);
   else drawCabin(g, layout);
 }
 
@@ -1355,6 +1356,27 @@ function drawSacks(g: Graphics, box: Box, wall: FrontWall): void {
       .lineTo(c.x + 5 * S, c.y - 21 * S)
       .stroke({ width: 1.5 * S, color: palette.ink });
   }
+}
+
+// ---------------------------------------------------------------- Farm
+
+/**
+ * The farm: a plank barn under a steep thatched gable, its ridge across the door so the door is in
+ * the gable end, with grain sacks propped against its side.
+ */
+function drawFarm(g: Graphics, layout: BuildingLayout): void {
+  const face = doorFace(layout);
+  const box = bodyBox(layout, 0.1);
+  const axis = face === 'south' || face === 'north' ? 'y' : 'x';
+  const eave = wallHeight(layout.size) * 0.85;
+  const roof = gable(box, axis, eave, ROOF_H * 1.5, 0.1);
+  drawGableBack(g, roof, THATCH);
+  drawWall(g, box, 'south', roof.south, PLANKS);
+  drawWall(g, box, 'east', roof.east, PLANKS);
+  drawCorners(g, box, flatTop(eave), flatTop(eave));
+  drawDoor(g, layout, box, 0, WALL_H * 0.85);
+  drawSacks(g, box, propWall(face));
+  drawGableFront(g, roof, THATCH);
 }
 
 // ---------------------------------------------------------------- Village hall

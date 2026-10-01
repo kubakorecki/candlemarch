@@ -314,6 +314,7 @@ describe('static patches', () => {
       roads: null,
       revealed: null,
       reserve: null,
+      fields: null,
       groundTiles: null,
       mapObject: { [TREE]: tree },
       mapObjectTile: { [TREE]: { x: 1, y: 1 } },

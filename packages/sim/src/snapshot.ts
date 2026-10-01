@@ -1,11 +1,12 @@
 // Snapshots for the client, split in two: the static layers (terrain, Roads, map objects, the
-// Revealed tiles, the Reserve, Hunting grounds' tiles), which
+// Revealed tiles, the Reserve, the Fields, Hunting grounds' tiles), which
 // change seldom and hold most of the bytes, and the moving part (everything else). The sim bumps
 // `state.staticVersion` whenever a static layer changes, so the worker sends those layers whole
 // once per game and afterwards, when the version moves on, only a patch of what changed.
 // ADR-0004.
 import type {
   EntityId,
+  FieldTile,
   GameState,
   HuntingGroundComponent,
   MapObjectComponent,
@@ -16,8 +17,8 @@ import type {
 
 /**
  * Records that a static layer changed: terrain, a Road, a map object (added, removed, its
- * `amount` or `withered`), a tile Revealed, the Reserve painted or erased, or a Hunting ground
- * added. Call it after every such
+ * `amount` or `withered`), a tile Revealed, the Reserve painted or erased, a Field painted, erased
+ * or worked, or a Hunting ground added. Call it after every such
  * change, and only then.
  */
 export function staticChanged(state: GameState): void {
@@ -34,6 +35,8 @@ export interface StaticLayers {
   revealed: MapState['revealed'];
   /** The Reserve's tiles (`TileBits`). */
   reserve: MapState['reserve'];
+  /** The Fields, by tile index. */
+  fields: MapState['fields'];
   mapObject: Store<MapObjectComponent>;
   /** The `tile` of each map object. */
   mapObjectTile: Store<Tile>;
@@ -68,6 +71,7 @@ export function staticLayers(state: GameState): StaticLayers {
     roads: state.map.roads,
     revealed: state.map.revealed,
     reserve: state.map.reserve,
+    fields: state.map.fields,
     mapObject,
     mapObjectTile,
     groundTiles: groundTilesOf(state),
@@ -76,7 +80,7 @@ export function staticLayers(state: GameState): StaticLayers {
 
 /**
  * What changed in the static layers since they were last sent: terrain, Roads, the Revealed
- * tiles, the Reserve and the Hunting grounds' tiles whole, or null when unchanged, and only the map objects added or changed (with their tiles) or removed. A chop
+ * tiles, the Reserve, the Fields and the Hunting grounds' tiles whole, or null when unchanged, and only the map objects added or changed (with their tiles) or removed. A chop
  * changes one tree, so its patch is a few bytes where the whole layers are hundreds of KB.
  */
 export interface StaticPatch {
@@ -86,6 +90,7 @@ export interface StaticPatch {
   roads: MapState['roads'] | null;
   revealed: MapState['revealed'] | null;
   reserve: MapState['reserve'] | null;
+  fields: MapState['fields'] | null;
   /** Every Hunting ground's tiles when any changed (a ground added or gone), else null. */
   groundTiles: Store<number[]> | null;
   mapObject: Store<MapObjectComponent>;
@@ -113,10 +118,27 @@ export function sentStaticLayers(state: GameState): StaticLayers {
     roads: { ...layers.roads },
     revealed: [...layers.revealed],
     reserve: [...layers.reserve],
+    fields: copyFields(layers.fields),
     mapObject,
     mapObjectTile,
     groundTiles: copyGroundTiles(layers.groundTiles),
   };
+}
+
+function copyFields(fields: MapState['fields']): MapState['fields'] {
+  const copy: MapState['fields'] = {};
+  for (const key in fields) copy[Number(key)] = { ...(fields[Number(key)] as FieldTile) };
+  return copy;
+}
+
+/** Whether two sets of Fields hold the same tiles, each the same. */
+function sameFieldTiles(a: MapState['fields'], b: MapState['fields']): boolean {
+  const keys = Object.keys(a);
+  if (keys.length !== Object.keys(b).length) return false;
+  return keys.every((k) => {
+    const other = b[Number(k)];
+    return other !== undefined && sameFields(a[Number(k)] as FieldTile, other);
+  });
 }
 
 function copyGroundTiles(groundTiles: Store<number[]>): Store<number[]> {
@@ -151,7 +173,7 @@ function sameList<T>(a: readonly T[], b: readonly T[]): boolean {
  * up to date. Shares objects with `state`, like `staticLayers`: post it before `state` steps on.
  */
 export function staticPatch(sent: StaticLayers, state: GameState): StaticPatch {
-  const { terrain, roads, revealed, reserve } = state.map;
+  const { terrain, roads, revealed, reserve, fields } = state.map;
   const { mapObject, tile } = state.components;
   const patch: StaticPatch = {
     version: state.staticVersion,
@@ -159,6 +181,7 @@ export function staticPatch(sent: StaticLayers, state: GameState): StaticPatch {
     roads: null,
     revealed: null,
     reserve: null,
+    fields: null,
     groundTiles: null,
     mapObject: {},
     mapObjectTile: {},
@@ -179,6 +202,10 @@ export function staticPatch(sent: StaticLayers, state: GameState): StaticPatch {
   if (!sameList(sent.reserve, reserve)) {
     patch.reserve = reserve;
     sent.reserve = [...reserve];
+  }
+  if (!sameFieldTiles(sent.fields, fields)) {
+    patch.fields = fields;
+    sent.fields = copyFields(fields);
   }
   const groundTiles = groundTilesOf(state);
   if (!sameGroundTiles(sent.groundTiles, groundTiles)) {
@@ -230,6 +257,7 @@ export function applyStaticPatch(layers: StaticLayers, patch: StaticPatch): Stat
     roads: patch.roads ?? layers.roads,
     revealed: patch.revealed ?? layers.revealed,
     reserve: patch.reserve ?? layers.reserve,
+    fields: patch.fields ?? layers.fields,
     mapObject,
     mapObjectTile,
     groundTiles: patch.groundTiles ?? layers.groundTiles,
@@ -238,7 +266,7 @@ export function applyStaticPatch(layers: StaticLayers, patch: StaticPatch): Stat
 
 /**
  * Everything in `state` but its static layers: a `GameState` whose terrain, Roads, Revealed tiles,
- * Reserve and map objects are empty, whose `tile` store leaves out the map objects' tiles and whose Hunting
+ * Reserve, Fields and map objects are empty, whose `tile` store leaves out the map objects' tiles and whose Hunting
  * grounds have no `tiles`. Shallow: it shares every other object with `state`, so post it or copy
  * it before `state` steps on.
  */
@@ -256,7 +284,7 @@ export function movingPart(state: GameState): GameState {
   }
   return {
     ...state,
-    map: { ...state.map, terrain: [], roads: {}, revealed: [], reserve: [] },
+    map: { ...state.map, terrain: [], roads: {}, revealed: [], reserve: [], fields: {} },
     components: {
       ...state.components,
       mapObject: {},
@@ -276,6 +304,7 @@ export function joinSnapshot(moving: GameState, layers: StaticLayers): GameState
       roads: layers.roads,
       revealed: layers.revealed,
       reserve: layers.reserve,
+      fields: layers.fields,
     },
     components: {
       ...moving.components,

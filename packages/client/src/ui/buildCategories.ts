@@ -1,5 +1,6 @@
 // How the build menu groups the tools: one tab per category, each tool in exactly one. Demolish sits
-// apart at the end of the tab row; the tree tools (`TREE_TOOLS`) are in the woodcutter's hut panel.
+// apart at the end of the tab row; the tree tools (`TREE_TOOLS`) are in the woodcutter's hut panel,
+// the Field tools (`FIELD_TOOLS`) in the farm's.
 import type { ToolId } from '../game/tools';
 import type { IconName } from './icons';
 
@@ -35,6 +36,7 @@ export const BUILD_CATEGORIES: readonly BuildCategory[] = [
       'clay_pit',
       'mine',
       'bog_iron_digger',
+      'farm',
     ],
   },
   { id: 'workshops', label: 'Workshops', icon: 'block', tools: ['chopping_block'] },
@@ -67,6 +69,7 @@ export const TOOL_ICONS: Record<ToolId, IconName> = {
   clay_pit: 'clay',
   mine: 'ore',
   bog_iron_digger: 'drain',
+  farm: 'grain',
   chopping_block: 'block',
   village_hall: 'hall',
   notice_board: 'board',
@@ -83,12 +86,14 @@ export const TOOL_ICONS: Record<ToolId, IconName> = {
   reserve: 'reserve',
   digStumps: 'spade',
   eraseMarks: 'unreserve',
+  paintFields: 'field',
+  eraseFields: 'unfield',
   drain: 'drain',
   pass_road: 'pass',
   demolish: 'pick',
 };
 
-/** The category `tool` is listed in, or null for Demolish and the tree tools. */
+/** The category `tool` is listed in, or null for Demolish and the panels' tools. */
 export function categoryOf(tool: ToolId): BuildCategoryId | null {
   return BUILD_CATEGORIES.find((c) => c.tools.includes(tool))?.id ?? null;
 }

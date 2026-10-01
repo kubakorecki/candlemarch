@@ -143,6 +143,16 @@ export const palette = {
   bone: 0xe0d3b4,
   hide: 0x8a6a48,
   hideDark: 0x6c5137,
+  // Grain: a tied sheaf (the yard), and ripe stalks on a Field.
+  grain: 0xc4a35a,
+  grainDark: 0x957a3e,
+
+  // Fields (render/shapes.ts `drawFields`): tilled earth with darker furrows, green shoots while it
+  // grows, pale stubble once harvested.
+  fieldSoil: 0x7a6447,
+  fieldFurrow: 0x5b4934,
+  sprout: 0x7f9a4c,
+  stubble: 0xb9a675,
 
   // Hunting ground health, outline and word.
   thriving: 0x8fae62,
@@ -164,6 +174,7 @@ export const palette = {
   clayDigger: 0x8a5a43,
   miner: 0x4f4a45,
   bogDigger: 0x5c6648,
+  farmer: 0x9a8a4a,
   carrier: 0x8a7d63,
   skin: 0xd6b48e,
   axeHead: 0x9aa0a3,

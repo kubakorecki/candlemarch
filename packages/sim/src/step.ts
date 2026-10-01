@@ -9,6 +9,8 @@ import { combatSystem } from './systems/combat';
 import { constructionSystem } from './systems/construction';
 import { densSystem } from './systems/dens';
 import { diggingSystem } from './systems/digging';
+import { farmingSystem } from './systems/farming';
+import { fieldsSystem } from './systems/fields';
 import { fishingSystem } from './systems/fishing';
 import { fogSystem } from './systems/fog';
 import { foragingSystem } from './systems/foraging';
@@ -56,37 +58,41 @@ export function step(state: GameState, commands: readonly Command[], content: Co
  * 6. hunting grounds: at Dawn, Game comes back to grounds under their ceiling or emptied long
  *    enough (after growth, so a tree grown this Dawn already raises the ceiling)
  * 7. patches: at a season's first Dawn, forage patches refill if shaded
- * 8. renewal: at spring's first Dawn, clay Deposits regain a share of their amount
- * 9. warmth: at a winter Dusk, Houses burn firewood or go cold; at Dawn, villagers count the
+ * 8. renewal: at spring's first Dawn, clay Deposits regain a share of their amount, bog iron
+ *    comes back and Fields throw up Fieldstones (PRNG)
+ * 9. fields: at Dawn, sown Fields whose time has come are ripe; at winter's first Dawn whatever
+ *    stands on them is lost; at spring's first Dawn each farm's picked Crop becomes this year's
+ * 10. warmth: at a winter Dusk, Houses burn firewood or go cold; at Dawn, villagers count the
  *    night as warm or cold
- * 10. lights: at every Dusk torches and braziers burn their night's firewood and are lit, or
+ * 11. lights: at every Dusk torches and braziers burn their night's firewood and are lit, or
  *    stay dark; at Dawn they go out
- * 11. routine: at Dusk villagers finish what they hold, eat at a Granary and go Home to sleep; at
+ * 12. routine: at Dusk villagers finish what they hold, eat at a Granary and go Home to sleep; at
  *    Dawn back to work (or starve, a Meal too many missed). Watchmen go to their towers after
  *    the Meal and sleep at Home by day
- * 12. immigration: at Dawn, after its deaths, maybe one Newcomer arrives at the entry tile
- * 13. dens: at Dawn Gloamlings vanish and, at a season's first Dawn, Dens bud (PRNG); at Dusk Dens
+ * 13. immigration: at Dawn, after its deaths, maybe one Newcomer arrives at the entry tile
+ * 14. dens: at Dawn Gloamlings vanish and, at a season's first Dawn, Dens bud (PRNG); at Dusk Dens
  *    spawn Gloamlings; at Monster rate 0 Gloamlings vanish at once
- * 14. militia: while the bell rings, the villagers it called walk after Gloamlings near it, or
+ * 15. militia: while the bell rings, the villagers it called walk after Gloamlings near it, or
  *    to it; at Dawn they stand down
- * 15. combat: Gloamlings pick targets out of Light and walk after them, around lit tiles;
+ * 16. combat: Gloamlings pick targets out of Light and walk after them, around lit tiles;
  *    villagers they reach drop their work and fight back, the militia hits Gloamlings near the
  *    bell, a watchtower with its Watchman in it shoots the nearest in range; hits in entity-ID
  *    order; villagers back to full HP at Dawn
- * 16. hero: works the player's order (chop, pick up, deliver)
- * 17. woodcutting
- * 18. fishing
- * 19. foraging
- * 20. hunting: hunters roll for a catch with the PRNG
- * 21. forestry: foresters plant Saplings
- * 22. digging: quarrymen, clay diggers and miners dig Deposits
- * 23. production: workshop crafters take inputs, work, and fill output buffers
- * 24. hauling (job dispatch)
- * 25. construction, by day only
- * 26. staffing: workplaces below their worker limit draft idle carriers
- * 27. fog: while Fog is on, the tiles In sight are worked out again when a source moved to
+ * 17. hero: works the player's order (chop, pick up, deliver)
+ * 18. woodcutting
+ * 19. fishing
+ * 20. foraging
+ * 21. hunting: hunters roll for a catch with the PRNG
+ * 22. forestry: foresters plant Saplings
+ * 23. digging: quarrymen, clay diggers and miners dig Deposits
+ * 24. farming: farmers clear Fieldstones, sow and harvest Fields
+ * 25. production: workshop crafters take inputs, work, and fill output buffers
+ * 26. hauling (job dispatch)
+ * 27. construction, by day only
+ * 28. staffing: workplaces below their worker limit draft idle carriers
+ * 29. fog: while Fog is on, the tiles In sight are worked out again when a source moved to
  *    another tile or its reach changed, and are Revealed for good
- * 28. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
+ * 30. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
  * then `tick` increments.
  */
 export function stepInPlace(next: GameState, commands: readonly Command[], content: Content): void {
@@ -98,6 +104,7 @@ export function stepInPlace(next: GameState, commands: readonly Command[], conte
   huntingGroundsSystem(next, content);
   patchesSystem(next, content);
   renewalSystem(next, content);
+  fieldsSystem(next, content);
   warmthSystem(next, content);
   lightsSystem(next, content);
   routineSystem(next, content);
@@ -112,6 +119,7 @@ export function stepInPlace(next: GameState, commands: readonly Command[], conte
   huntingSystem(next, content);
   forestrySystem(next, content);
   diggingSystem(next, content);
+  farmingSystem(next, content);
   productionSystem(next, content);
   haulingSystem(next, content);
   constructionSystem(next, content);

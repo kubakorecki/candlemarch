@@ -1,6 +1,7 @@
 // The game state: plain, JSON-serializable data. See CLAUDE.md "Simulation rules".
 import type {
   BuildingId,
+  CropId,
   HeroId,
   JobId,
   MapObjectId,
@@ -66,6 +67,28 @@ export interface MapState {
    * index (absent: none dug). `bogIron.ts` reads it; spring empties it.
    */
   oreDug: Record<number, number>;
+  /**
+   * Fields (`fields.ts`): the Meadow tiles the player painted for farms, by tile index. A static
+   * layer.
+   */
+  fields: Record<number, FieldTile>;
+}
+
+/**
+ * Where a Field is in its year. `bare`: waiting to be sown (in the sowing season). `sown`: growing.
+ * `ripe`: ready to harvest. `stubble`: harvested this year, bare again once winter comes.
+ */
+export type FieldStage = 'bare' | 'sown' | 'ripe' | 'stubble';
+
+/** One Field tile. */
+export interface FieldTile {
+  stage: FieldStage;
+  /** The Crop sown on it while `sown` or `ripe`; null otherwise. */
+  crop: CropId | null;
+  /** While `sown`: the tick from which it's ripe, at the first Dawn from then. Null otherwise. */
+  ripensAt: number | null;
+  /** A Fieldstone the frost pushed up: farmers clear it before they sow the Field. */
+  stone: boolean;
 }
 
 /**
@@ -144,6 +167,13 @@ export interface BuildingComponent {
    * (always, for other buildings): the nearest ground in reach with Game.
    */
   huntingGround?: EntityId;
+  /**
+   * A farm's Crop this year: what its farmers sow. Absent (always, for other buildings): the
+   * content's default Crop.
+   */
+  crop?: CropId;
+  /** A farm's Crop picked in its panel, sown from the next spring on. Absent: same as `crop`. */
+  nextCrop?: CropId;
 }
 
 export interface SiteComponent {
@@ -318,6 +348,19 @@ export type ForesterTask =
   | { kind: 'toPlot'; plot: Tile }
   | { kind: 'planting'; plot: Tile; ticksLeft: number };
 
+/** What a farmer does on a Field: clear its Fieldstone, sow it, or harvest it. */
+export type FieldWork = 'clear' | 'sow' | 'harvest';
+
+/**
+ * A farmer: walks onto a Field in its farm's radius with work to do, does it, and carries what it
+ * gives (a harvest, a Fieldstone) back to the yard.
+ */
+export type FarmerTask =
+  | { kind: 'idle'; retryAt: number }
+  | { kind: 'toField'; field: Tile }
+  | { kind: 'working'; field: Tile; work: FieldWork; ticksLeft: number }
+  | { kind: 'toYard' };
+
 /** A hunter: walks into a Hunting ground in its lodge's radius, hunts, and brings back its bag. */
 export type HunterTask =
   | { kind: 'idle'; retryAt: number }
@@ -419,6 +462,7 @@ export interface Components {
   hunter: Store<HunterTask>;
   forester: Store<ForesterTask>;
   digger: Store<DiggerTask>;
+  farmer: Store<FarmerTask>;
   huntingGround: Store<HuntingGroundComponent>;
   den: Store<DenComponent>;
   gloamling: Store<GloamlingComponent>;

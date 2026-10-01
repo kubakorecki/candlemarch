@@ -2,6 +2,7 @@
 // (`BuildingDef.outputBuffer`). A yard holds `logistics.yardCapacity` units in total, all the
 // building's outputs together; a catch, basket or batch goes in only if it fits whole.
 import type { Content, ResourceAmount, ResourceId } from '@candlemarch/content';
+import { farmNoRoom } from './fields';
 import type { EntityId, GameState } from './state';
 
 /** Units in building `id`'s yard, all its outputs together; 0 without a yard. */
@@ -48,8 +49,9 @@ export function fitsInYard(
 
 /**
  * What a gathering Workplace's yard has no room for, when that stops its worker: a hunter's
- * whole catch, a fisher's catch, or everything a gatherer gathers or digs (bog iron included) (a basket of mushrooms that
- * still fits keeps a forager working). Empty for any other building.
+ * whole catch, a fisher's catch, everything a gatherer gathers or digs (bog iron included) (a
+ * basket of mushrooms that still fits keeps a forager working), or a farm's waiting Field work
+ * (`farmNoRoom`). Empty for any other building.
  */
 export function gathererNoRoom(
   state: GameState,
@@ -59,6 +61,7 @@ export function gathererNoRoom(
   const b = state.components.building[building];
   if (!b) return [];
   const def = content.buildings[b.type];
+  if (def.farm) return farmNoRoom(state, content, building);
   const full = (resource: ResourceId, amount: number) =>
     outputRoom(state, content, building, resource) < amount;
   if (def.hunts) {

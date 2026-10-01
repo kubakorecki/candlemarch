@@ -70,6 +70,7 @@ import {
   drawDarkRing,
   drawDen,
   drawDizzyStars,
+  drawFields,
   drawFledPuff,
   drawGate,
   drawGloamling,
@@ -290,6 +291,9 @@ export class WorldRenderer {
   /** Den dark rings on the ground, while a building is being placed. */
   private readonly darkRing = new Graphics();
   private darkRingKey = '';
+  /** The Fields on the ground, redrawn when the layer changes. */
+  private readonly fields = new Graphics();
+  private drawnFields: GameState['map']['fields'] | null = null;
   /** The Reserve on the ground, redrawn when the layer changes. */
   private readonly reserve = new Graphics();
   private drawnReserve: GameState['map']['reserve'] | null = null;
@@ -357,6 +361,7 @@ export class WorldRenderer {
       this.roads,
       this.heat,
       this.pileGround,
+      this.fields,
       this.reserve,
       this.grounds,
       this.aura,
@@ -427,6 +432,7 @@ export class WorldRenderer {
     this.syncRoads(state);
     this.syncHeat(state);
     this.syncReserve(state);
+    this.syncFields(state);
 
     this.fog.sync(state);
 
@@ -1162,6 +1168,19 @@ export class WorldRenderer {
     if (key === this.heatKey) return;
     this.heatKey = key;
     drawHeatMap(this.heat, tiles);
+  }
+
+  /** Redraws the Fields when their layer is a new object. */
+  private syncFields(state: GameState): void {
+    const { map } = state;
+    if (map.fields === this.drawnFields) return;
+    this.drawnFields = map.fields;
+    const fields = Object.entries(map.fields).map(([i, field]) => ({
+      tile: { x: Number(i) % map.width, y: Math.floor(Number(i) / map.width) },
+      field,
+    }));
+    this.fields.clear();
+    drawFields(this.fields, fields);
   }
 
   /** Redraws the Reserve when its layer is a new object and holds other tiles. */

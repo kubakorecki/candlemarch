@@ -4,6 +4,7 @@ import { buildings } from './buildings';
 import { calendar } from './calendar';
 import { combat } from './combat';
 import { dens } from './dens';
+import { crops, farming } from './farming';
 import { fog } from './fog';
 import { heroes } from './heroes';
 import { hunting } from './hunting';
@@ -30,6 +31,8 @@ export const content: Content = {
   mapObjects,
   jobs,
   recipes,
+  crops,
+  farming,
   buildings,
   heroes,
   roads,

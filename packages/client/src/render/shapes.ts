@@ -1,6 +1,6 @@
 // Placeholder art drawn in code: bold ink outlines, flat earthy fills. Colours come from palette.ts.
 import type { ResourceAmount, ResourceId, RoadId, TerrainId } from '@candlemarch/content';
-import type { BuildingLayout, Tile } from '@candlemarch/sim';
+import type { BuildingLayout, FieldTile, Tile } from '@candlemarch/sim';
 import type { Graphics } from 'pixi.js';
 import { gridToWorld, TILE_H, TILE_W, type Vec } from './iso';
 import { palette } from './palette';
@@ -1072,6 +1072,26 @@ function drawClay(g: Graphics, x: number, y: number, s: number): void {
   g.ellipse(x - 2.5 * s, y - 1.5 * s, 3 * s, 1.2 * s).fill(palette.clayWet);
 }
 
+/** One sheaf of grain, lying on its side, centred on (x, y): stalks tied in the middle. */
+function drawGrain(g: Graphics, x: number, y: number, s: number): void {
+  g.poly([
+    x - 9 * s,
+    y - 3 * s,
+    x + 9 * s,
+    y - 4.5 * s,
+    x + 9 * s,
+    y + 3.5 * s,
+    x - 9 * s,
+    y + 3 * s,
+  ])
+    .fill(palette.grain)
+    .stroke(THIN_INK);
+  g.moveTo(x - 6 * s, y)
+    .lineTo(x + 6 * s, y - 0.5 * s)
+    .stroke({ width: 1 * s, color: palette.grainDark });
+  g.rect(x - 1 * s, y - 4.5 * s, 2.5 * s, 8.5 * s).fill(palette.rope);
+}
+
 /** One lump of iron ore, centred on (x, y). */
 function drawIronOre(g: Graphics, x: number, y: number, s: number): void {
   g.poly([x - 8 * s, y + 3 * s, x - 5 * s, y - 4 * s, x + 4 * s, y - 4.5 * s, x + 8 * s, y + 3 * s])
@@ -1095,6 +1115,7 @@ const PIECES: Record<
   stone: { draw: drawStone, w: 17, h: 8 },
   clay: { draw: drawClay, w: 17, h: 8 },
   iron_ore: { draw: drawIronOre, w: 17, h: 8 },
+  grain: { draw: drawGrain, w: 19, h: 8 },
 };
 
 /** A pyramid of `count` pieces of `resource` whose bottom row is centred on (x, y). */
@@ -2459,6 +2480,69 @@ export function drawReserve(g: Graphics, tiles: readonly Tile[], strong = false)
   }
   g.stroke({ width: 1.5, color: palette.reserve, alpha: strong ? 0.9 : 0.45 });
   drawTileArea(g, tiles, palette.reserve, strong ? 0.35 : 0.14);
+}
+
+/**
+ * Fields on the ground: tilled earth with furrows, then by stage green shoots (sown), golden stalks
+ * (ripe) or pale stubble (harvested), and a Fieldstone where the frost pushed one up.
+ */
+export function drawFields(g: Graphics, fields: readonly { tile: Tile; field: FieldTile }[]): void {
+  const FURROWS = [0.2, 0.4, 0.6, 0.8];
+  for (const { tile } of fields) {
+    const [top, right, bottom, left] = diamond(tile.x, tile.y);
+    const c = gridToWorld(tile.x + 0.5, tile.y + 0.5);
+    const inset = (v: Vec) => lerp(c, v, 0.92);
+    g.poly(flat([inset(top), inset(right), inset(bottom), inset(left)]));
+  }
+  g.fill({ color: palette.fieldSoil, alpha: 0.9 });
+  for (const { tile } of fields) {
+    const [top, right, bottom, left] = diamond(tile.x, tile.y);
+    for (const f of FURROWS) {
+      const from = lerp(lerp(top, left, f), lerp(right, bottom, f), 0.08);
+      const to = lerp(lerp(top, left, f), lerp(right, bottom, f), 0.92);
+      g.moveTo(from.x, from.y).lineTo(to.x, to.y);
+    }
+  }
+  g.stroke({ width: 2, color: palette.fieldFurrow, alpha: 0.8, cap: 'round' });
+  // Along each furrow, a few plants: shoots, stalks or stubble by the Field's stage.
+  const plants = (stage: FieldTile['stage']) =>
+    fields.flatMap(({ tile, field }) => {
+      if (field.stage !== stage) return [];
+      const [top, right, bottom, left] = diamond(tile.x, tile.y);
+      return FURROWS.flatMap((f) =>
+        [0.25, 0.5, 0.75].map((along) => lerp(lerp(top, left, f), lerp(right, bottom, f), along)),
+      );
+    });
+  const s = TILE_H / 64;
+  for (const p of plants('sown')) {
+    g.moveTo(p.x - 2 * s, p.y - 4 * s)
+      .lineTo(p.x, p.y)
+      .lineTo(p.x + 2 * s, p.y - 4 * s);
+  }
+  g.stroke({ width: 1.6 * s, color: palette.sprout, cap: 'round' });
+  const ripe = plants('ripe');
+  for (const p of ripe) g.moveTo(p.x, p.y).lineTo(p.x, p.y - 9 * s);
+  g.stroke({ width: 1.4 * s, color: palette.grainDark, cap: 'round' });
+  for (const p of ripe) g.ellipse(p.x, p.y - 10 * s, 1.8 * s, 3 * s);
+  g.fill(palette.grain);
+  for (const p of plants('stubble')) g.moveTo(p.x, p.y).lineTo(p.x, p.y - 2.5 * s);
+  g.stroke({ width: 1.4 * s, color: palette.stubble, cap: 'round' });
+  for (const { tile, field } of fields) {
+    if (!field.stone) continue;
+    const c = gridToWorld(tile.x + 0.5, tile.y + 0.5);
+    g.poly([
+      c.x - 7 * s,
+      c.y + 2 * s,
+      c.x - 4 * s,
+      c.y - 4 * s,
+      c.x + 3 * s,
+      c.y - 5 * s,
+      c.x + 7 * s,
+      c.y + 2 * s,
+    ])
+      .fill(palette.stone)
+      .stroke(THIN_INK);
+  }
 }
 
 /** A wash of `color` over `tiles`, outlined where a tile meets one off the set. */

@@ -1,7 +1,8 @@
 // Player commands: the only way the outside world changes the sim.
-import type { BuildingId, Content, ResourceId } from '@candlemarch/content';
+import type { BuildingId, Content, CropId, ResourceId } from '@candlemarch/content';
 import { isMonsterRate } from './dens';
 import { createEntity, destroyEntity } from './entities';
+import { eraseFields, paintFields, setCrop } from './fields';
 import { setFog } from './fog';
 import { clearGrowth } from './forest';
 import { buildingLayout, canPlaceBuilding } from './grid';
@@ -61,6 +62,15 @@ export type Command =
   | { type: 'markStumps'; from: Tile; to: Tile }
   /** Takes every Fell and Dig mark off the rectangle with corners `from` and `to`. */
   | { type: 'clearMarks'; from: Tile; to: Tile }
+  /**
+   * Paints the tiles of the rectangle with corners `from` and `to` that may be Fields of farm
+   * `farm` as Fields (`canBeField`); the rest are skipped.
+   */
+  | { type: 'paintFields'; farm: EntityId; from: Tile; to: Tile }
+  /** Erases the Fields in the rectangle with corners `from` and `to`. */
+  | { type: 'eraseFields'; from: Tile; to: Tile }
+  /** Picks the Crop farm `building` sows from the next spring on. */
+  | { type: 'setCrop'; building: EntityId; crop: CropId }
   | { type: 'placeStockpile'; x: number; y: number; w: number; h: number }
   | { type: 'removeStockpile'; id: EntityId }
   | { type: 'setStockpilePriority'; id: EntityId; priority: StockpilePriority }
@@ -143,6 +153,18 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'clearMarks': {
       clearMarks(state, content, command.from, command.to);
+      return;
+    }
+    case 'paintFields': {
+      paintFields(state, content, command.farm, command.from, command.to);
+      return;
+    }
+    case 'eraseFields': {
+      eraseFields(state, command.from, command.to);
+      return;
+    }
+    case 'setCrop': {
+      setCrop(state, content, command.building, command.crop);
       return;
     }
     case 'placeStockpile': {

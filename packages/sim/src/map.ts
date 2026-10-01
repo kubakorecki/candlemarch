@@ -163,6 +163,7 @@ export function createEmptyState(seed: number): GameState {
       inSight: [],
       reserve: [],
       oreDug: {},
+      fields: {},
     },
     components: {
       tile: {},
@@ -181,6 +182,7 @@ export function createEmptyState(seed: number): GameState {
       hunter: {},
       forester: {},
       digger: {},
+      farmer: {},
       huntingGround: {},
       den: {},
       gloamling: {},
@@ -230,6 +232,7 @@ export function createInitialState(
     inSight: [],
     reserve: [],
     oreDug: {},
+    fields: {},
   };
   state.map.reserve = noTiles(state.map);
 

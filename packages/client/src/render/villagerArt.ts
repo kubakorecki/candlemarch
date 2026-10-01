@@ -27,6 +27,7 @@ export const JOB_COLORS: Record<JobId, number> = {
   clay_digger: palette.clayDigger,
   miner: palette.miner,
   bog_digger: palette.bogDigger,
+  farmer: palette.farmer,
 };
 
 /** A stick from (x1, y1) to (x2, y2): an ink edge round a line of `color`. */
@@ -260,6 +261,14 @@ function drawHead(g: Graphics, job: JobId): void {
     g.poly([-9 * S, y - 2 * S, -3 * S, y - 10 * S, 7 * S, y - 8 * S, 12 * S, y - 1 * S])
       .fill(palette.hunterCap)
       .stroke(INK);
+  } else if (job === 'farmer') {
+    // A wide straw hat.
+    g.ellipse(0, y - 1 * S, 13 * S, 3.5 * S)
+      .fill(palette.thatch)
+      .stroke(INK);
+    g.ellipse(0, y - 4 * S, 6 * S, 4 * S)
+      .fill(palette.thatch)
+      .stroke(INK);
   } else if (job === 'watchman') {
     // An iron kettle helmet.
     g.moveTo(-7 * S, y - 2 * S)
@@ -276,8 +285,8 @@ function drawHead(g: Graphics, job: JobId): void {
 /**
  * The tool a villager holds for its Job, drawn over its body: the woodcutter's axe on its shoulder,
  * the woodsplitter's maul, the fisher's rod, the forager's basket, the hunter's bow, the spade of
- * the forester, clay digger and bog digger, the pick of the quarryman and miner, the watchman's
- * spear. Carriers carry nothing but their pack. Hidden while the villager swings its axe at work.
+ * the forester, clay digger and bog digger, the pick of the quarryman and miner, the farmer's
+ * scythe, the watchman's spear. Carriers carry nothing but their pack. Hidden while the villager swings its axe at work.
  */
 export function drawVillagerTool(g: Graphics, job: JobId): void {
   g.clear();
@@ -356,6 +365,15 @@ export function drawVillagerTool(g: Graphics, job: JobId): void {
     g.poly([8 * S, -52 * S, 17 * S, -49 * S, 18 * S, -60 * S, 12 * S, -63 * S])
       .fill(palette.axeHead)
       .stroke(THIN_INK);
+  } else if (job === 'farmer') {
+    // A scythe on the shoulder, its long blade curving down behind the head.
+    pole(g, hx, hy + 2 * S, 6 * S, -56 * S, 2.5 * S, palette.log);
+    g.moveTo(6 * S, -56 * S)
+      .quadraticCurveTo(-8 * S, -60 * S, -16 * S, -48 * S)
+      .stroke({ width: 4.5 * S, color: palette.ink, cap: 'round' });
+    g.moveTo(6 * S, -56 * S)
+      .quadraticCurveTo(-8 * S, -60 * S, -16 * S, -48 * S)
+      .stroke({ width: 2 * S, color: palette.axeHead, cap: 'round' });
   } else if (job === 'watchman') {
     // A spear stood upright beside it, gripped in the right hand.
     pole(g, hx + 1 * S, 0, hx + 1 * S, -56 * S, 2.5 * S, palette.torchPole);

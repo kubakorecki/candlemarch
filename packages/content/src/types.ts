@@ -10,7 +10,8 @@ export type ResourceId =
   | 'hides'
   | 'stone'
   | 'clay'
-  | 'iron_ore';
+  | 'iron_ore'
+  | 'grain';
 export type RecipeId = 'split_logs';
 export type TerrainId = 'meadow' | 'rock' | 'mountain' | 'swamp' | 'river' | 'ford' | 'pass_snow';
 export type MapObjectId =
@@ -44,7 +45,8 @@ export type BuildingId =
   | 'quarry'
   | 'clay_pit'
   | 'mine'
-  | 'bog_iron_digger';
+  | 'bog_iron_digger'
+  | 'farm';
 export type JobId =
   | 'woodcutter'
   | 'carrier'
@@ -57,11 +59,14 @@ export type JobId =
   | 'quarryman'
   | 'clay_digger'
   | 'miner'
-  | 'bog_digger';
+  | 'bog_digger'
+  | 'farmer';
 export type RoadId = 'dirt_path' | 'pass_road';
 export type HeroId = 'placeholder';
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
 export type PoiId = 'ruins' | 'abandoned_mine' | 'shrine';
+/** What a farm grows on its Fields (spec, Resources: Farms and crops). */
+export type CropId = 'grain';
 
 /** A number of units of one resource. */
 export interface ResourceAmount {
@@ -231,6 +236,40 @@ export interface PlantsDef {
   on: TerrainId;
   spacing: number;
   plantTicks: number;
+}
+
+/**
+ * A Crop: sown on a Field, ripe `growDays` after (at the first Dawn from then), harvested once for
+ * `yieldPerField` of `resource`.
+ */
+export interface CropDef {
+  id: CropId;
+  name: string;
+  resource: ResourceId;
+  growDays: number;
+  yieldPerField: number;
+}
+
+/**
+ * Farming (spec, Resources: Farms and crops): Fields are painted on `fieldOn` terrain in a farm's
+ * radius. Farmers sow them in `sowSeason`, harvest each once when ripe, and clear Fieldstones;
+ * whatever still stands at the first Dawn of `idleSeason` is lost, and nothing is done in it.
+ */
+export interface FarmingDef {
+  fieldOn: TerrainId;
+  /** The Crop a new farm grows until the player picks another. */
+  defaultCrop: CropId;
+  sowSeason: SeasonId;
+  idleSeason: SeasonId;
+  sowTicks: number;
+  harvestTicks: number;
+  clearTicks: number;
+  /**
+   * At the first Dawn of `sowSeason` each Field without one throws up a Fieldstone with this
+   * chance, in percent; clearing it gives `fieldstone`.
+   */
+  fieldstonePercent: number;
+  fieldstone: ResourceAmount;
 }
 
 export interface JobDef {
@@ -708,6 +747,8 @@ export interface BuildingDef {
   hunts?: { huntTicks: number; catch: ResourceAmount[] };
   /** Its workers plant `object` (a Sapling) on tiles within its work radius (see `PlantsDef`). */
   plants?: PlantsDef;
+  /** Makes it a farm: its workers sow and harvest the Fields in its work radius (`FarmingDef`). */
+  farm?: boolean;
   /** Its door must be on a riverbank tile. */
   doorOnRiverbank?: boolean;
   /**
@@ -791,6 +832,8 @@ export interface Content {
   mapObjects: Record<MapObjectId, MapObjectDef>;
   jobs: Record<JobId, JobDef>;
   recipes: Record<RecipeId, RecipeDef>;
+  crops: Record<CropId, CropDef>;
+  farming: FarmingDef;
   buildings: Record<BuildingId, BuildingDef>;
   heroes: Record<HeroId, HeroDef>;
   roads: Record<RoadId, RoadDef>;

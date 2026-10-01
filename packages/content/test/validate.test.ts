@@ -145,6 +145,40 @@ describe('content validation', () => {
     }
   });
 
+  it('crops grow a Food that exists, and farms keep what their Fields give', () => {
+    const { crops, farming } = content;
+    for (const [key, crop] of Object.entries(crops)) {
+      expect(crop.id).toBe(key);
+      expect(resources[crop.resource].storage, `${crop.id} is Food`).toBe('granary');
+      expectPositiveInt(crop.growDays, `${crop.id}.growDays`);
+      expectPositiveInt(crop.yieldPerField, `${crop.id}.yieldPerField`);
+      expect(crop.yieldPerField, `${crop.id}'s harvest fits a yard`).toBeLessThanOrEqual(
+        content.logistics.yardCapacity,
+      );
+    }
+    expect(crops).toHaveProperty(farming.defaultCrop);
+    expect(terrain, 'farming.fieldOn').toHaveProperty(farming.fieldOn);
+    expect(terrain[farming.fieldOn].buildable, 'Fields on buildable ground').toBe(true);
+    const seasons = content.calendar.seasons.map((s) => s.id);
+    expect(seasons).toContain(farming.sowSeason);
+    expect(seasons).toContain(farming.idleSeason);
+    expect(farming.sowSeason).not.toBe(farming.idleSeason);
+    expectPositiveInt(farming.sowTicks, 'farming.sowTicks');
+    expectPositiveInt(farming.harvestTicks, 'farming.harvestTicks');
+    expectPositiveInt(farming.clearTicks, 'farming.clearTicks');
+    expectPositiveInt(farming.fieldstonePercent, 'farming.fieldstonePercent');
+    expect(farming.fieldstonePercent).toBeLessThanOrEqual(100);
+    expectPositiveInt(farming.fieldstone.amount, 'farming.fieldstone.amount');
+    const farms = Object.values(buildings).filter((b) => b.farm);
+    expect(farms.map((b) => b.id)).toEqual(['farm']);
+    for (const b of farms) {
+      expect(b.workRadius, `${b.id} farms without a radius`).toBeDefined();
+      const keeps = b.outputBuffer?.resources ?? [];
+      for (const crop of Object.values(crops)) expect(keeps, b.id).toContain(crop.resource);
+      expect(keeps, b.id).toContain(farming.fieldstone.resource);
+    }
+  });
+
   it('jobs use positive integers', () => {
     for (const job of Object.values(jobs)) {
       expectPositiveInt(job.walkSpeed, `${job.id}.walkSpeed`);

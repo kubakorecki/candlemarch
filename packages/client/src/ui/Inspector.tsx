@@ -11,6 +11,7 @@ import {
 import type { ReactNode } from 'react';
 import type {
   BuildingInfo,
+  FarmInfo,
   Game,
   GroundInfo,
   HudState,
@@ -21,7 +22,7 @@ import type {
   WorkersView,
 } from '../game/Game';
 import type { PostingView } from '../game/postingText';
-import { TREE_TOOLS, toolDef } from '../game/tools';
+import { FIELD_TOOLS, type ToolId, TREE_TOOLS, toolDef } from '../game/tools';
 import { TOOL_ICONS } from './buildCategories';
 import { Icon, type IconName } from './icons';
 import {
@@ -208,16 +209,26 @@ function StorageFacts({ storage }: { storage: Storage }) {
 }
 
 /**
- * A woodcutter's hut's tools for the trees around it: Fell, Keep (the Reserve), Dig stumps and
- * Erase, each dragged as a rectangle on the map. The one in hand is lit; its hint shows in the
- * status line above the build menu.
+ * A panel's tools, each dragged as a rectangle on the map: a woodcutter's hut's for the trees
+ * around it (Fell, Keep (the Reserve), Dig stumps, Erase), a farm's for its Fields. The one in
+ * hand is lit; its hint shows in the status line above the build menu.
  */
-function TreeTools({ hud, game }: { hud: HudState; game: Game }) {
+function PanelTools({
+  title,
+  tools,
+  hud,
+  game,
+}: {
+  title: string;
+  tools: readonly ToolId[];
+  hud: HudState;
+  game: Game;
+}) {
   return (
     <>
-      <SectionHead title="Trees" />
-      <fieldset className="seg tools" aria-label="Tree tools">
-        {TREE_TOOLS.map((id) => {
+      <SectionHead title={title} />
+      <fieldset className="seg tools" aria-label={`${title} tools`}>
+        {tools.map((id) => {
           const tool = toolDef(id);
           if (!tool) return null;
           return (
@@ -226,7 +237,7 @@ function TreeTools({ hud, game }: { hud: HudState; game: Game }) {
               type="button"
               aria-pressed={hud.tool === id}
               title={tool.key ? `${tool.hint} (${tool.key.toUpperCase()})` : tool.hint}
-              onClick={() => game.toggleTreeTool(id)}
+              onClick={() => game.togglePanelTool(id)}
             >
               <Icon name={TOOL_ICONS[id]} size={20} />
               {tool.label}
@@ -234,6 +245,37 @@ function TreeTools({ hud, game }: { hud: HudState; game: Game }) {
           );
         })}
       </fieldset>
+    </>
+  );
+}
+
+/**
+ * A farm's Fields (how many, sown, ripe) and its Crop picker: a pick applies from the next spring.
+ */
+function FarmFacts({ farm, game }: { farm: FarmInfo; game: Game }) {
+  const next = farm.crops.find((c) => c.id === farm.nextCrop)?.name;
+  return (
+    <>
+      <div className="fact">
+        <span>Fields</span>
+        <span>
+          {farm.fields} · {farm.sown} growing · {farm.ripe} ripe
+        </span>
+      </div>
+      <SectionHead title="Crop" />
+      <fieldset className="seg joined" aria-label="Crop">
+        {farm.crops.map((crop) => (
+          <button
+            key={crop.id}
+            type="button"
+            aria-pressed={farm.nextCrop === crop.id}
+            onClick={() => game.setCrop(crop.id)}
+          >
+            {crop.name}
+          </button>
+        ))}
+      </fieldset>
+      {farm.nextCrop !== farm.crop && <div className="muted small">{next} from next spring</div>}
     </>
   );
 }
@@ -311,7 +353,9 @@ function BuildingPanel({
           </button>
         </div>
       )}
-      {building.treeTools && <TreeTools hud={hud} game={game} />}
+      {building.treeTools && <PanelTools title="Trees" tools={TREE_TOOLS} hud={hud} game={game} />}
+      {building.farm && <FarmFacts farm={building.farm} game={game} />}
+      {building.farm && <PanelTools title="Fields" tools={FIELD_TOOLS} hud={hud} game={game} />}
       {building.postings && <NoticeBoardFacts postings={building.postings} />}
       {building.grounds.length > 0 && <SectionHead title="Hunting grounds" />}
       {building.grounds.length > 0 && (

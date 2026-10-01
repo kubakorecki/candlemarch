@@ -80,6 +80,13 @@ export const jobs: Record<JobId, JobDef> = {
     carryCapacity: 1,
     idleRetryTicks: 20,
   },
+  farmer: {
+    id: 'farmer',
+    name: 'Farmer',
+    walkSpeed: 75,
+    carryCapacity: 3, // a sack: a Field's whole harvest
+    idleRetryTicks: 20,
+  },
   carrier: {
     id: 'carrier',
     name: 'Carrier',
