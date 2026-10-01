@@ -1,6 +1,6 @@
 # Tree species and variety
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 06
 
@@ -16,3 +16,4 @@ Default: visual only. Trees stay one map object (`tree`, logs, shade, Game); the
 - `pnpm check` passes.
 
 ## Comments
+- 2026-10-01 — Done, visual only as the default says: three kinds of wood, oakwood (round crowns), pinewood (tiered, reddish bark) and birchwood (pale streaked trunks, airy light crowns), each a patch round a hashed "wood heart" every 14 tiles (`client/src/render/treeLooks.ts`); inside a wood every tree has its own size, lean, crown shade (three a species) and crown shape (four a species) from a hash of its tile. Saplings and Stumps take their tile's species (a birch Stump is pale and streaked). The Fell pennant flies above whichever crown. The sim and saves are unchanged; logged in `docs/decisions.md`.

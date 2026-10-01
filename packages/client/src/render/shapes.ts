@@ -4,6 +4,7 @@ import type { BuildingLayout, Tile } from '@candlemarch/sim';
 import type { Graphics } from 'pixi.js';
 import { gridToWorld, TILE_H, TILE_W, type Vec } from './iso';
 import { palette } from './palette';
+import type { TreeLook, TreeSpecies } from './treeLooks';
 
 export const INK = { width: 3, color: palette.ink, join: 'round', cap: 'round' } as const;
 export const THIN_INK = { width: 2, color: palette.ink, join: 'round', cap: 'round' } as const;
@@ -305,41 +306,255 @@ export function groundShadowAt(g: Graphics, x: number, y: number, rx: number, ry
   g.ellipse(x, y, rx, ry).fill({ color: palette.shadow, alpha: 0.35 });
 }
 
+/** A crown's three shades: dark (shaded side), mid, light (top, lit). */
+type Tones = readonly [number, number, number];
+
+/** Each species' crown shades, picked by a tree's `shade` (`TreeLook`). */
+const TREE_TONES: Record<TreeSpecies, readonly [Tones, Tones, Tones]> = {
+  oak: [
+    [palette.canopyDark, palette.canopy, palette.canopyLight],
+    [palette.oakDeepDark, palette.oakDeep, palette.oakDeepLight],
+    [palette.oakOliveDark, palette.oakOlive, palette.oakOliveLight],
+  ],
+  pine: [
+    [palette.pineDark, palette.pine, palette.pineLight],
+    [palette.pineBlueDark, palette.pineBlue, palette.pineBlueLight],
+    [palette.pineMossDark, palette.pineMoss, palette.pineMossLight],
+  ],
+  birch: [
+    [palette.birchDark, palette.birch, palette.birchLight],
+    [palette.birchGoldDark, palette.birchGold, palette.birchGoldLight],
+    [palette.birchPaleDark, palette.birchPale, palette.birchPaleLight],
+  ],
+};
+
+/** Each species' bark: a trunk, and the side of a Stump. */
+const BARK: Record<TreeSpecies, number> = {
+  oak: palette.trunk,
+  pine: palette.pineBark,
+  birch: palette.birchBark,
+};
+
+function tonesOf(look: TreeLook): Tones {
+  return TREE_TONES[look.species][look.shade] ?? TREE_TONES[look.species][0];
+}
+
 /**
- * A tree, drawn around (0, 0) = the centre of its tile on the ground. Map objects add to `g`
- * without clearing it, so a row of them can share one Graphics (see `mapObjectRuns.ts`).
+ * A tree, drawn around (0, 0) = the centre of its tile on the ground, as `look` says: its
+ * species (an oak's round crown, a pine's tiers, a birch's pale trunk and airy crown), size, lean,
+ * shade and shape. A thinned tree (`amount` below `fullAmount`) has a smaller crown. Map objects
+ * add to `g` without clearing it, so a row of them can share one Graphics (see
+ * `mapObjectRuns.ts`).
  */
-export function drawTree(g: Graphics, amount: number, fullAmount: number, marked = false): void {
-  const s = TILE_H / 64; // art scale
+export function drawTree(
+  g: Graphics,
+  look: TreeLook,
+  amount: number,
+  fullAmount: number,
+  marked = false,
+): void {
+  const s = (TILE_H / 64) * look.size; // art scale
   const fullness = 0.75 + 0.25 * (amount / fullAmount);
-  groundShadow(g, 30 * s, 14 * s);
+  const lean = look.lean * 5 * s;
+  let crownTop: number;
+  if (look.species === 'pine') crownTop = drawPine(g, s, lean, look, fullness);
+  else if (look.species === 'birch') crownTop = drawBirch(g, s, lean, look, fullness);
+  else crownTop = drawOak(g, s, lean, look, fullness);
+  // Marked to fell: a pennant above the crown, seen over the trees in front.
+  if (marked) drawPennant(g, s, lean + 2 * s, crownTop + 14 * s, crownTop - 16 * s);
+}
+
+/** A trunk from ±`base` wide on the ground up to ±`top` wide at `height`, its top moved by `lean`. */
+function drawTrunk(
+  g: Graphics,
+  base: number,
+  top: number,
+  height: number,
+  lean: number,
+  bark: number,
+): void {
   g.poly(
     flat([
-      { x: -7 * s, y: 0 },
-      { x: -5 * s, y: -38 * s },
-      { x: 5 * s, y: -38 * s },
-      { x: 7 * s, y: 0 },
+      { x: -base, y: 0 },
+      { x: lean - top, y: -height },
+      { x: lean + top, y: -height },
+      { x: base, y: 0 },
     ]),
   )
-    .fill(palette.trunk)
+    .fill(bark)
     .stroke(INK);
-  const r = 22 * s * fullness;
-  g.circle(-15 * s, -46 * s, r)
-    .fill(palette.canopyDark)
-    .stroke(INK);
-  g.circle(15 * s, -48 * s, r)
-    .fill(palette.canopy)
-    .stroke(INK);
-  g.circle(0, -66 * s, r * 1.15)
-    .fill(palette.canopyLight)
-    .stroke(INK);
-  // A few leaf strokes for texture.
-  g.moveTo(-6 * s, -70 * s).lineTo(2 * s, -62 * s);
-  g.moveTo(8 * s, -48 * s).lineTo(14 * s, -42 * s);
-  g.stroke({ ...THIN_INK, alpha: 0.6 });
-  // Marked to fell: a pennant above the crown, seen over the trees in front.
-  if (marked) drawPennant(g, s, 2 * s, -66 * s - r, -66 * s - r * 1.15 - 16 * s);
 }
+
+/**
+ * Where an oak's crown blobs sit, per `shape`: x, y and radius (in art units, before the crown's
+ * fullness) and which shade (`Tones` index), back to front. The plain one; a broad, flat one; a
+ * tall one; a lopsided one.
+ */
+const OAK_CROWNS: readonly (readonly [number, number, number, number])[][] = [
+  [
+    [-15, -46, 22, 0],
+    [15, -48, 22, 1],
+    [0, -66, 25, 2],
+  ],
+  [
+    [-20, -44, 20, 0],
+    [20, -45, 20, 1],
+    [-8, -61, 21, 1],
+    [9, -63, 21, 2],
+  ],
+  [
+    [-12, -50, 19, 0],
+    [12, -54, 19, 1],
+    [0, -74, 22, 2],
+  ],
+  [
+    [15, -44, 21, 0],
+    [-14, -50, 22, 1],
+    [4, -68, 24, 2],
+  ],
+];
+
+/** An oak: a stout trunk under a crown of round blobs. Returns the crown's top. */
+function drawOak(g: Graphics, s: number, lean: number, look: TreeLook, fullness: number): number {
+  const tones = tonesOf(look);
+  groundShadow(g, 30 * s, 14 * s);
+  drawTrunk(g, 7 * s, 5 * s, 38 * s, lean * 0.6, BARK.oak);
+  const crown = OAK_CROWNS[look.shape] ?? OAK_CROWNS[0] ?? [];
+  let top = 0;
+  for (const [x, y, r, tone] of crown) {
+    const radius = r * s * fullness;
+    g.circle(lean + x * s, y * s, radius)
+      .fill(tones[tone] ?? tones[1])
+      .stroke(INK);
+    top = Math.min(top, y * s - radius);
+  }
+  // A few leaf strokes for texture.
+  g.moveTo(lean - 6 * s, top + 16 * s).lineTo(lean + 2 * s, top + 24 * s);
+  g.moveTo(lean + 8 * s, -48 * s).lineTo(lean + 14 * s, -42 * s);
+  g.stroke({ ...THIN_INK, alpha: 0.6 });
+  return top;
+}
+
+/**
+ * A pine: a short reddish trunk under three or four tiers of needles, each narrower than the one
+ * below, shaded on the east. `shape` picks the tier count (3 or 4) and how broad they spread.
+ * Returns the crown's top.
+ */
+function drawPine(g: Graphics, s: number, lean: number, look: TreeLook, fullness: number): number {
+  const tones = tonesOf(look);
+  const tiers = look.shape < 2 ? 3 : 4;
+  const broad = look.shape % 2 === 1 ? 1.15 : 1;
+  groundShadow(g, 24 * s * broad, 11 * s);
+  drawTrunk(g, 5 * s, 3.5 * s, 24 * s, lean * 0.2, BARK.pine);
+  const tip = -(96 + (tiers - 3) * 10) * s;
+  const bottom = -14 * s;
+  // Each tier's base climbs evenly from `bottom`; each spans 40% of the whole height.
+  const span = (tip - bottom) * 0.42;
+  let top = 0;
+  for (let i = 0; i < tiers; i++) {
+    const t = i / tiers;
+    const base = bottom + (tip - bottom - span) * (i / (tiers - 1));
+    const peak = base + span;
+    const half = (27 - 14 * t) * s * broad * fullness;
+    const shift = lean * (0.3 + 0.7 * ((i + 1) / tiers));
+    const left = { x: shift - half, y: base };
+    const right = { x: shift + half, y: base };
+    const sag = { x: shift, y: base + 5 * s };
+    const apex = { x: lean * (0.3 + 0.7 * ((i + 1.4) / tiers)), y: peak };
+    g.poly(flat([left, apex, right, sag])).fill(tones[1]);
+    g.poly(flat([apex, right, sag])).fill(tones[0]);
+    // A lit fringe along the west slope.
+    g.poly(flat([apex, left, lerp(left, sag, 0.35), lerp(apex, sag, 0.25)])).fill(tones[2]);
+    g.poly(flat([left, apex, right, sag])).stroke(INK);
+    top = Math.min(top, peak);
+  }
+  return top;
+}
+
+/**
+ * A birch: a slender pale trunk streaked dark, rising into a loose crown of small ovals that
+ * lets the trunk show beneath. `shape` picks the crown's layout and, for 2 and 3, a forked branch.
+ * Returns the crown's top.
+ */
+function drawBirch(g: Graphics, s: number, lean: number, look: TreeLook, fullness: number): number {
+  const tones = tonesOf(look);
+  groundShadow(g, 22 * s, 10 * s);
+  drawTrunk(g, 4 * s, 2.5 * s, 70 * s, lean, BARK.birch);
+  // The shaded east side of the trunk.
+  g.poly(
+    flat([
+      { x: 1.5 * s, y: -1 * s },
+      { x: lean + 1 * s, y: -68 * s },
+      { x: lean + 2.5 * s, y: -68 * s },
+      { x: 4 * s, y: -1 * s },
+    ]),
+  ).fill(palette.birchBarkShade);
+  if (look.shape >= 2) {
+    const side = look.shape === 2 ? -1 : 1;
+    const from = { x: lean * 0.55, y: -38 * s };
+    const to = { x: lean * 0.8 + side * 13 * s, y: -56 * s };
+    g.moveTo(from.x, from.y)
+      .lineTo(to.x, to.y)
+      .stroke({ width: 5 * s, color: palette.ink, cap: 'round' });
+    g.moveTo(from.x, from.y)
+      .lineTo(to.x, to.y)
+      .stroke({ width: 2.5 * s, color: palette.birchBark, cap: 'round' });
+  }
+  // The dark streaks across the bark.
+  for (const [y, w] of [
+    [-9, 3],
+    [-19, 2],
+    [-28, 3],
+    [-39, 2],
+  ] as const) {
+    const x = lean * (-y / 70);
+    g.moveTo(x - w * s, y * s).lineTo(x + w * 0.4 * s, (y - 1) * s);
+  }
+  g.stroke({ width: 2 * s, color: palette.ink, cap: 'round' });
+  const crown = BIRCH_CROWNS[look.shape] ?? BIRCH_CROWNS[0] ?? [];
+  let top = 0;
+  for (const [x, y, rx, ry, tone] of crown) {
+    const w = rx * s * fullness;
+    const h = ry * s * fullness;
+    g.ellipse(lean + x * s, y * s, w, h)
+      .fill(tones[tone] ?? tones[1])
+      .stroke(INK);
+    top = Math.min(top, y * s - h);
+  }
+  // Hanging twigs under the crown.
+  g.moveTo(lean - 9 * s, -50 * s).lineTo(lean - 11 * s, -42 * s);
+  g.moveTo(lean + 10 * s, -52 * s).lineTo(lean + 12 * s, -45 * s);
+  g.stroke({ ...THIN_INK, alpha: 0.7 });
+  return top;
+}
+
+/**
+ * Where a birch's crown ovals sit, per `shape`: x, y, the two radii (art units, before fullness)
+ * and which shade, back to front.
+ */
+const BIRCH_CROWNS: readonly (readonly [number, number, number, number, number])[][] = [
+  [
+    [-11, -62, 13, 15, 0],
+    [11, -66, 13, 15, 1],
+    [0, -82, 13, 16, 2],
+  ],
+  [
+    [-13, -58, 12, 13, 0],
+    [12, -60, 12, 13, 0],
+    [-4, -72, 13, 13, 1],
+    [6, -86, 11, 13, 2],
+  ],
+  [
+    [10, -62, 12, 14, 0],
+    [-12, -66, 12, 15, 1],
+    [-2, -80, 13, 16, 2],
+  ],
+  [
+    [-10, -60, 12, 14, 0],
+    [12, -64, 12, 14, 1],
+    [1, -84, 12, 17, 2],
+  ],
+];
 
 /**
  * A mark's pennant: a stick from (x, `foot`) up to (x, `top`) flying a flag of paint-coloured
@@ -364,11 +579,13 @@ function drawPennant(g: Graphics, s: number, x: number, foot: number, top: numbe
 }
 
 /**
- * A Stump, what a felled tree leaves: a short cut log end, pale on top, with a root or two; with
- * a pennant staked beside it when `marked` to be dug out.
+ * A Stump, what a felled tree leaves: a short cut log end in its species' bark (a birch's
+ * streaked), pale on top, with a root or two; with a pennant staked beside it when `marked` to be
+ * dug out.
  */
-export function drawStump(g: Graphics, marked = false): void {
+export function drawStump(g: Graphics, species: TreeSpecies, marked = false): void {
   const s = TILE_H / 64;
+  const bark = BARK[species];
   groundShadow(g, 12 * s, 6 * s);
   g.moveTo(-7 * s, -2 * s)
     .quadraticCurveTo(-11 * s, 1 * s, -13 * s, 3 * s)
@@ -379,15 +596,20 @@ export function drawStump(g: Graphics, marked = false): void {
     .quadraticCurveTo(-11 * s, 1 * s, -13 * s, 3 * s)
     .moveTo(6 * s, -1 * s)
     .quadraticCurveTo(10 * s, 2 * s, 12 * s, 2 * s)
-    .stroke({ width: 1.5 * s, color: palette.trunk, cap: 'round' });
+    .stroke({ width: 1.5 * s, color: bark, cap: 'round' });
   // The side, round at the bottom like the cut top.
   g.moveTo(-7 * s, -9 * s)
     .lineTo(7 * s, -9 * s)
     .lineTo(7 * s, 0)
     .quadraticCurveTo(0, 6 * s, -7 * s, 0)
     .closePath()
-    .fill(palette.trunk)
+    .fill(bark)
     .stroke(INK);
+  if (species === 'birch') {
+    g.moveTo(-5 * s, -4 * s).lineTo(-1 * s, -5 * s);
+    g.moveTo(2 * s, -1 * s).lineTo(5 * s, -2 * s);
+    g.stroke({ width: 1.8 * s, color: palette.ink, cap: 'round' });
+  }
   g.ellipse(0, -9 * s, 7 * s, 3 * s)
     .fill(palette.log)
     .stroke(INK);
@@ -396,11 +618,14 @@ export function drawStump(g: Graphics, marked = false): void {
 }
 
 /**
- * A Sapling, drawn like `drawTree` but small, taller at each `stage` (0 a twig with two leaves, 1
- * a whip with a tuft, 2 a young tree with a thin crown). It stands in a ring of turned earth.
+ * A Sapling, drawn like `drawTree` but small and in its species' look, taller at each `stage`
+ * (0 a shoot, 1 a whip with a tuft, 2 a young tree with a thin crown). It stands in a ring of
+ * turned earth.
  */
-export function drawSapling(g: Graphics, stage: number): void {
+export function drawSapling(g: Graphics, stage: number, species: TreeSpecies): void {
   const s = TILE_H / 64;
+  const [dark, mid, light] = TREE_TONES[species][0];
+  const bark = BARK[species];
   g.ellipse(0, 0, 10 * s, 5 * s)
     .fill(palette.dirt)
     .stroke(THIN_INK);
@@ -410,18 +635,59 @@ export function drawSapling(g: Graphics, stage: number): void {
       .stroke({ width: 2.5 * s, color: palette.ink });
     g.moveTo(0, 0)
       .lineTo(0, -12 * s)
-      .stroke({ width: 1.2 * s, color: palette.trunk });
+      .stroke({ width: 1.2 * s, color: bark });
+    if (species === 'pine') {
+      g.poly(
+        flat([
+          { x: -4 * s, y: -9 * s },
+          { x: 0, y: -19 * s },
+          { x: 4 * s, y: -9 * s },
+        ]),
+      )
+        .fill(mid)
+        .stroke(THIN_INK);
+      return;
+    }
     g.ellipse(-4 * s, -12 * s, 4 * s, 2.2 * s)
-      .fill(palette.canopyLight)
+      .fill(light)
       .stroke(THIN_INK);
     g.ellipse(4 * s, -14 * s, 4 * s, 2.2 * s)
-      .fill(palette.canopy)
+      .fill(mid)
       .stroke(THIN_INK);
     return;
   }
   const height = stage === 1 ? 20 : 28;
   const r = stage === 1 ? 7 : 11;
   groundShadow(g, (r + 6) * s, (r / 2 + 3) * s);
+  if (species === 'pine') {
+    // A trunk stub under one tier, or two.
+    g.poly(
+      flat([
+        { x: -2 * s, y: 0 },
+        { x: -1.5 * s, y: -8 * s },
+        { x: 1.5 * s, y: -8 * s },
+        { x: 2 * s, y: 0 },
+      ]),
+    )
+      .fill(bark)
+      .stroke(THIN_INK);
+    const tiers = stage === 1 ? 1 : 2;
+    for (let i = 0; i < tiers; i++) {
+      const base = -(6 + i * 10) * s;
+      const half = (r + 2 - i * 4) * s;
+      const tip = base - (stage === 1 ? 16 : 18) * s;
+      g.poly(
+        flat([
+          { x: -half, y: base },
+          { x: 0, y: tip },
+          { x: half, y: base },
+        ]),
+      )
+        .fill(i === tiers - 1 ? mid : dark)
+        .stroke(INK);
+    }
+    return;
+  }
   g.poly(
     flat([
       { x: -2 * s, y: 0 },
@@ -430,18 +696,24 @@ export function drawSapling(g: Graphics, stage: number): void {
       { x: 2 * s, y: 0 },
     ]),
   )
-    .fill(palette.trunk)
+    .fill(bark)
     .stroke(THIN_INK);
+  if (species === 'birch') {
+    g.ellipse(0, -(height + r * 0.6) * s, r * 0.8 * s, r * 1.1 * s)
+      .fill(light)
+      .stroke(INK);
+    return;
+  }
   if (stage >= 2) {
     g.circle(-6 * s, -(height + 2) * s, r * 0.8 * s)
-      .fill(palette.canopyDark)
+      .fill(dark)
       .stroke(INK);
     g.circle(6 * s, -(height + 3) * s, r * 0.8 * s)
-      .fill(palette.canopy)
+      .fill(mid)
       .stroke(INK);
   }
   g.circle(0, -(height + r * 0.6) * s, r * s)
-    .fill(palette.canopyLight)
+    .fill(light)
     .stroke(INK);
 }
 

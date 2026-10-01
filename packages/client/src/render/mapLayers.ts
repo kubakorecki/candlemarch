@@ -30,12 +30,13 @@ import {
   type GroundMap,
   type TileChunk,
 } from './shapes';
+import { treeLook } from './treeLooks';
 
 /** Tiles a side of one ground chunk. */
 const GROUND_CHUNK_TILES = 16;
 
-/** How far a map object's art reaches over its tile's top corner (the tallest tree, and some). */
-const MAP_OBJECT_ABOVE = TILE_H * 1.6;
+/** How far a map object's art reaches over its tile's top corner (the tallest pine with its Fell pennant, and some). */
+const MAP_OBJECT_ABOVE = TILE_H * 2;
 
 /**
  * A row run's draw depth under its tiles' own (x + y + 1, the depth of their centres), by a hair:
@@ -164,13 +165,13 @@ export class GroundLayer {
 function drawMapObject(g: Graphics, obj: DrawnObject, content: Content): void {
   switch (obj.type) {
     case 'tree':
-      drawTree(g, obj.amount, content.mapObjects.tree.amount, obj.marked);
+      drawTree(g, treeLook(obj.x, obj.y), obj.amount, content.mapObjects.tree.amount, obj.marked);
       break;
     case 'sapling':
-      drawSapling(g, obj.stage);
+      drawSapling(g, obj.stage, treeLook(obj.x, obj.y).species);
       break;
     case 'stump':
-      drawStump(g, obj.marked);
+      drawStump(g, treeLook(obj.x, obj.y).species, obj.marked);
       break;
     case 'berry_bush':
       drawBerryBush(g, obj.amount, obj.withered);
