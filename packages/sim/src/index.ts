@@ -44,7 +44,16 @@ export {
   tileOfPoint,
 } from './grid';
 export { canLayGroundwork, groundworkOf } from './groundwork';
+export {
+  type HappinessBand,
+  type HappinessSource,
+  happiness,
+  happinessBand,
+  happinessSources,
+  isLeaving,
+} from './happiness';
 export { type HeroOrder, heroOf, heroOrderAt, heroSearch, recoveryTile } from './hero';
+export { residentsOf } from './homes';
 export {
   addHuntingGround,
   type GroundHealth,

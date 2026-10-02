@@ -501,6 +501,12 @@ const PATHS = {
     </>
   ),
   zzz: <path d="M4 8h5l-5 6h5M13 4h4l-4 5h4M14 14h6l-6 6.5h6" />,
+  unhappy: (
+    <>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M8.5 16.5c1.8-1.8 5.2-1.8 7 0M9 9.5v1M15 9.5v1" />
+    </>
+  ),
   sword: (
     <>
       <path d="M20.5 3.5L9 15" />

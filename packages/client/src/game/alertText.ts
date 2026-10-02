@@ -6,6 +6,7 @@ import {
   type Alert,
   type Death,
   type DeathCause,
+  type Departure,
   type GameOver,
   type GroundRegrowth,
   TICKS_PER_SECOND,
@@ -56,9 +57,45 @@ export function deathText(death: Death): string {
   return `${death.name} ${DIED[death.cause]}, day ${death.day}`;
 }
 
+/** A chronicle line: "Ada left the village, day 14", "Brenna the Smith left the village, day 9". */
+export function departureText(departure: Departure): string {
+  const who = departure.trade
+    ? `${departure.name} the ${content.trades[departure.trade].name}`
+    : departure.name;
+  return `${who} left the village, day ${departure.day}`;
+}
+
+/** A line of the chronicle: what happened, and whether it was a death or a departure. */
+export interface ChronicleLine {
+  kind: 'death' | 'departure';
+  text: string;
+}
+
+/**
+ * The chronicle's last `length` lines, newest first: deaths and departures by day, a day's deaths
+ * before its departures.
+ */
+export function chronicleLines(
+  deaths: readonly Death[],
+  departures: readonly Departure[],
+  length: number,
+): ChronicleLine[] {
+  const lines = [
+    ...deaths.map((d) => ({ day: d.day, kind: 'death' as const, text: deathText(d) })),
+    ...departures.map((d) => ({ day: d.day, kind: 'departure' as const, text: departureText(d) })),
+  ];
+  // A stable sort keeps each list's own order within a day.
+  lines.sort((a, b) => a.day - b.day);
+  return lines
+    .slice(-length)
+    .reverse()
+    .map(({ kind, text }) => ({ kind, text }));
+}
+
 /** The game-over screen's line: "The last villager froze on day 17." */
 export function gameOverText(over: GameOver): string {
-  return `The last villager ${DIED[over.cause]} on day ${over.day}.`;
+  const how = over.cause === 'left' ? 'left the village' : DIED[over.cause];
+  return `The last villager ${how} on day ${over.day}.`;
 }
 
 /** The autumn countdown: "Winter in 3 days". */

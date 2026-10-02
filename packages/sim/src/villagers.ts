@@ -115,6 +115,7 @@ export function spawnVillager(
     readyAt: 0,
     fighting: false,
     militia: false,
+    unhappyDawns: 0,
   };
   state.components.position[id] = tileCenter(tile);
   assignJob(state, content, id, job, workplace);

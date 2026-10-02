@@ -468,6 +468,34 @@ function TradePostFacts({ post, game }: { post: TradePostInfo; game: Game }) {
   );
 }
 
+/** A House's residents: a row each, its name selecting it and its happiness band beside. */
+function ResidentRows({
+  residents,
+  game,
+}: {
+  residents: NonNullable<BuildingInfo['residents']>;
+  game: Game;
+}) {
+  return (
+    <>
+      <SectionHead title="Residents" aside={`${residents.rows.length} of ${residents.places}`} />
+      {residents.rows.map((resident) => (
+        <div key={resident.id} className="person">
+          <Avatar name={resident.name} job={resident.jobId} master={resident.master !== null} />
+          <div className="who">
+            <button type="button" className="link" onClick={() => game.focusVillager(resident.id)}>
+              {resident.name}
+            </button>
+            <span className={resident.band === 'unhappy' ? 'tone-warn' : 'muted'}>
+              {resident.word}
+            </span>
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
 function BuildingPanel({
   building,
   hud,
@@ -512,6 +540,7 @@ function BuildingPanel({
         <NoticeBoardFacts postings={building.postings} onAccept={(id) => game.acceptPosting(id)} />
       )}
       {building.tradePost && <TradePostFacts post={building.tradePost} game={game} />}
+      {building.residents && <ResidentRows residents={building.residents} game={game} />}
       {building.grounds.length > 0 && <SectionHead title="Hunting grounds" />}
       {building.grounds.length > 0 && (
         <div className="fact">
@@ -589,9 +618,26 @@ function BuildingPanel({
   );
 }
 
+/** A villager's happiness: its score and band, then a row per source with its value. */
+function HappinessFacts({ happiness }: { happiness: VillagerInfo['happiness'] }) {
+  return (
+    <>
+      <SectionHead title="Happiness" aside={`${happiness.score} · ${happiness.word}`} />
+      {happiness.sources.map((source) => (
+        <div key={source.label} className="fact">
+          <span>{source.label}</span>
+          <span>{source.value}</span>
+        </div>
+      ))}
+    </>
+  );
+}
+
 function VillagerPanel({ villager, game }: { villager: VillagerInfo; game: Game }) {
-  const homeless = villager.home === null;
-  const needs = homeless || villager.hunger || villager.cold || villager.tired;
+  const homeless = villager.home === null && !villager.leaving;
+  const unhappy = villager.happiness.band === 'unhappy';
+  const needs =
+    homeless || villager.hunger || villager.cold || villager.tired || unhappy || villager.leaving;
   return (
     <section className="inspector panel" aria-label="Selected villager">
       <Head
@@ -624,6 +670,16 @@ function VillagerPanel({ villager, game }: { villager: VillagerInfo; game: Game 
               Tired
             </Chip>
           )}
+          {unhappy && !villager.leaving && (
+            <Chip tone="warn" icon="unhappy">
+              Unhappy
+            </Chip>
+          )}
+          {villager.leaving && (
+            <Chip tone="muted" icon="steps">
+              Leaving the village
+            </Chip>
+          )}
         </div>
       )}
       <div className="facts">
@@ -650,6 +706,7 @@ function VillagerPanel({ villager, game }: { villager: VillagerInfo; game: Game 
           </>
         )}
       </div>
+      <HappinessFacts happiness={villager.happiness} />
     </section>
   );
 }

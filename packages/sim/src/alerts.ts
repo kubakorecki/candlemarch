@@ -146,7 +146,8 @@ function deathAlerts(state: GameState, content: Content): Alert[] {
   const list: Alert[] = [];
   for (const id of ids) {
     const v = villager[id];
-    if (!v) continue;
+    // One leaving the village is no longer the player's to save.
+    if (!v || v.routine === 'leaving') continue;
     const target = villagerTile(state, id);
     if (mealsShort && v.missedMeals + 1 >= starveAfterMissedMeals) {
       // Still at work or on the way to a Granary at night: the Meal is missed at Dawn.
@@ -167,7 +168,7 @@ function villagerAlerts(state: GameState): Alert[] {
   const needs = {
     hungry: (v: VillagerComponent) => v.missedMeals > 0,
     cold: (v: VillagerComponent) => v.coldNights > 0,
-    homeless: (v: VillagerComponent) => v.home === null,
+    homeless: (v: VillagerComponent) => v.home === null && v.routine !== 'leaving',
   };
   const list: Alert[] = [];
   for (const kind of ['hungry', 'cold', 'homeless'] as const) {

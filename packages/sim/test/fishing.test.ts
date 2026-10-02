@@ -1,13 +1,30 @@
 // Fisher's hut: fish from the river at a riverbank door; the river freezes in winter.
 import { describe, expect, it } from 'vitest';
 import { dawnTick } from '../src/calendar';
+import type { Command } from '../src/commands';
 import { idsOf } from '../src/entities';
 import { canPlaceBuilding } from '../src/grid';
 import { createInitialState, type MapDef } from '../src/map';
 import { deserialize, serialize } from '../src/save';
 import type { GameState } from '../src/state';
 import { step } from '../src/step';
-import { content, run, runUntil } from './helpers';
+import {
+  content as base,
+  homelessContent,
+  runUntil as runUntilWith,
+  run as runWith,
+} from './helpers';
+
+// Nobody here has a Home: the timings assume they don't mind (`homelessContent`).
+const content = homelessContent(base);
+const run = (s: GameState, ticks: number, commandsAt: Record<number, Command[]> = {}) =>
+  runWith(s, ticks, commandsAt, content);
+const runUntil = (
+  s: GameState,
+  done: (x: GameState) => boolean,
+  max: number,
+  commandsAt: Record<number, Command[]> = {},
+) => runUntilWith(s, done, max, commandsAt, content);
 
 /** 8×7 with a river along row 3. A fisher's hut at (x, 1) has its door (x, 2) on the north bank. */
 const bank: MapDef = {

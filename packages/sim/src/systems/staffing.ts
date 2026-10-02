@@ -64,7 +64,11 @@ export function staffingSystem(state: GameState, content: Content): void {
   for (const building of idsOf(state.components.building)) {
     for (const job of openPositions(state, content, building)) {
       const carrier = idsOf(villager).find(
-        (id) => villager[id]?.job === 'carrier' && !master[id] && isCarrierIdle(state, id),
+        (id) =>
+          villager[id]?.job === 'carrier' &&
+          villager[id]?.routine !== 'leaving' &&
+          !master[id] &&
+          isCarrierIdle(state, id),
       );
       if (carrier === undefined) return;
       assignJob(state, content, carrier, job, building);

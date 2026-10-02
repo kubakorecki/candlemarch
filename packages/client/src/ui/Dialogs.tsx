@@ -6,7 +6,15 @@ import { CloseButton, Corners, SectionHead } from './kit';
 
 const SLOT_ICONS: Record<SaveSlot, IconName> = { manual: 'quill', autosave: 'sun' };
 
-export function GameOver({ text, deaths, game }: { text: string; deaths: string[]; game: Game }) {
+export function GameOver({
+  text,
+  deaths,
+  game,
+}: {
+  text: string;
+  deaths: HudState['deathLog'];
+  game: Game;
+}) {
   return (
     <>
       <div className="backdrop" />
@@ -26,7 +34,7 @@ export function GameOver({ text, deaths, game }: { text: string; deaths: string[
               {/* Oldest first, as a chronicle reads. */}
               {[...deaths].reverse().map((line, i) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: lines can repeat; replaced whole
-                <span key={i}>{line}</span>
+                <span key={i}>{line.text}</span>
               ))}
             </div>
           </>

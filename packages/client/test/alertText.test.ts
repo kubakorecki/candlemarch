@@ -2,7 +2,9 @@ import type { Alert } from '@candlemarch/sim';
 import { describe, expect, it } from 'vitest';
 import {
   alertText,
+  chronicleLines,
   deathText,
+  departureText,
   gameOverText,
   knockoutText,
   regrowthText,
@@ -60,6 +62,30 @@ describe('death and winter text', () => {
 
   it('says how the game ended', () => {
     expect(gameOverText({ cause: 'freezing', day: 17 })).toBe('The last villager froze on day 17.');
+    expect(gameOverText({ cause: 'left', day: 9 })).toBe(
+      'The last villager left the village on day 9.',
+    );
+  });
+
+  it('records who left the village, Masters by trade', () => {
+    expect(departureText({ name: 'Ada', trade: null, day: 14 })).toBe(
+      'Ada left the village, day 14',
+    );
+    expect(departureText({ name: 'Brenna', trade: 'smith', day: 9 })).toBe(
+      'Brenna the Smith left the village, day 9',
+    );
+  });
+
+  it('keeps one chronicle of deaths and departures, newest first', () => {
+    const deaths = [
+      { name: 'Ada', cause: 'starvation' as const, day: 3 },
+      { name: 'Oda', cause: 'freezing' as const, day: 8 },
+    ];
+    const departures = [{ name: 'Wynn', trade: null, day: 5 }];
+    expect(chronicleLines(deaths, departures, 2)).toEqual([
+      { kind: 'death', text: 'Oda froze, day 8' },
+      { kind: 'departure', text: 'Wynn left the village, day 5' },
+    ]);
   });
 
   it('counts down to winter', () => {

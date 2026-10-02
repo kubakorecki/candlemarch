@@ -40,7 +40,7 @@ export function ringBell(state: GameState, content: Content): void {
   const { villager } = state.components;
   for (const id of idsOf(villager)) {
     const v = villager[id];
-    if (!v || isWatchman(v)) continue;
+    if (!v || isWatchman(v) || v.routine === 'leaving') continue;
     dropWork(state, content, id);
     v.militia = true;
   }

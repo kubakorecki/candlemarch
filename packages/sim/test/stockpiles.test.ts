@@ -352,6 +352,7 @@ describe('stockpile tile capacity with returns', () => {
       readyAt: 0,
       fighting: false,
       militia: false,
+      unhappyDawns: 0,
     };
     s1.components.position[id] = { x: 6500, y: 7500 };
     const tile = tileIndex(s1.map, 6, 6);

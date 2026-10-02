@@ -11,11 +11,11 @@ import { masterOf, settleMaster } from '../src/masters';
 import { deserialize, serialize } from '../src/save';
 import type { EntityId, GameState } from '../src/state';
 import { step } from '../src/step';
-import { content } from './helpers';
+import { content, homelessContent } from './helpers';
 
-/** Content whose chopping block is a Carpenter's workshop. */
+/** Content whose chopping block is a Carpenter's workshop (and nobody minds being Homeless). */
 const crafty: Content = {
-  ...content,
+  ...homelessContent(),
   buildings: {
     ...content.buildings,
     chopping_block: { ...content.buildings.chopping_block, trade: 'carpenter' },
@@ -97,7 +97,7 @@ describe('a trade with no Master', () => {
     const s = play(createInitialState(1, shop, content), 1);
     const b = s.components.building[FIRST];
     if (b) b.input.logs = 6;
-    expect(batchTicks(s, FIRST, content)).toBe(BATCH);
+    expect(batchTicks(s, FIRST, homelessContent())).toBe(BATCH);
   });
 });
 

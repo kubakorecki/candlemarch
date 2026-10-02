@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Command } from '../src/commands';
 import { idsOf } from '../src/entities';
 import { heroOf, heroOrderAt } from '../src/hero';
 import { listDemands, listSupplies } from '../src/logistics/supplyDemand';
@@ -6,7 +7,23 @@ import { createInitialState, type MapDef } from '../src/map';
 import { deserialize, serialize } from '../src/save';
 import type { EntityId, GameState, StockpileComponent } from '../src/state';
 import { step } from '../src/step';
-import { content, run, runUntil } from './helpers';
+import {
+  content as base,
+  homelessContent,
+  runUntil as runUntilWith,
+  run as runWith,
+} from './helpers';
+
+// Nobody here has a Home: the timings assume they don't mind (`homelessContent`).
+const content = homelessContent(base);
+const run = (s: GameState, ticks: number, commandsAt: Record<number, Command[]> = {}) =>
+  runWith(s, ticks, commandsAt, content);
+const runUntil = (
+  s: GameState,
+  done: (x: GameState) => boolean,
+  max: number,
+  commandsAt: Record<number, Command[]> = {},
+) => runUntilWith(s, done, max, commandsAt, content);
 
 // A chopping block at (2,2) with its door at (2,3), and its woodsplitter.
 const yard: MapDef = {

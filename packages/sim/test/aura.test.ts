@@ -5,7 +5,7 @@ import { idsOf } from '../src/entities';
 import { createInitialState, type MapDef } from '../src/map';
 import { maps } from '../src/maps';
 import type { GameState } from '../src/state';
-import { content, run, runUntil } from './helpers';
+import { content, homelessContent, run, runUntil } from './helpers';
 
 /**
  * A woodcutter's hut at (1,2) (footprint x 1-2, y 2-3, door (2,4)) with two trees to the
@@ -41,11 +41,12 @@ function hutId(s: GameState): number {
   return idsOf(s.components.building)[0] as number;
 }
 
-/** Ticks the woodcutter spends in its first chop. */
+/** Ticks the woodcutter (Homeless, but not minding) spends in its first chop. */
 function firstChopTicks(s0: GameState, commandsAt: Record<number, Command[]> = {}): number {
   const chopping = (s: GameState) => s.components.woodcutter[woodcutterId(s)]?.kind === 'chopping';
-  const start = runUntil(s0, chopping, 500, commandsAt);
-  const end = runUntil(start, (s) => !chopping(s), 500, commandsAt);
+  const c = homelessContent();
+  const start = runUntil(s0, chopping, 500, commandsAt, c);
+  const end = runUntil(start, (s) => !chopping(s), 500, commandsAt, c);
   return end.tick - start.tick;
 }
 

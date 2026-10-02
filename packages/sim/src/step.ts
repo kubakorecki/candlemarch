@@ -18,6 +18,7 @@ import { fogSystem } from './systems/fog';
 import { foragingSystem } from './systems/foraging';
 import { forestrySystem } from './systems/forestry';
 import { growthSystem } from './systems/growth';
+import { happinessSystem } from './systems/happiness';
 import { haulingSystem } from './systems/hauling';
 import { huntingSystem } from './systems/hunting';
 import { huntingGroundsSystem } from './systems/huntingGrounds';
@@ -80,30 +81,32 @@ export function step(state: GameState, commands: readonly Command[], content: Co
  * 16. routine: at Dusk villagers finish what they hold, eat at a Granary and go Home to sleep; at
  *    Dawn back to work (or starve, a Meal too many missed). Watchmen go to their towers after
  *    the Meal and sleep at Home by day
- * 17. immigration: at Dawn, after its deaths, maybe one Newcomer arrives at the entry tile
- * 18. dens: at Dawn Gloamlings vanish and, at a season's first Dawn, Dens bud (PRNG); at Dusk Dens
+ * 17. happiness: at Dawn, each villager counts an Unhappy Dawn or starts again; Unhappy 5 in a
+ *    row it quits and walks out of the entry (not in winter). Leavers who got there are gone
+ * 18. immigration: at Dawn, after its deaths, maybe one Newcomer arrives at the entry tile
+ * 19. dens: at Dawn Gloamlings vanish and, at a season's first Dawn, Dens bud (PRNG); at Dusk Dens
  *    spawn Gloamlings; at Monster rate 0 Gloamlings vanish at once
- * 19. militia: while the bell rings, the villagers it called walk after Gloamlings near it, or
+ * 20. militia: while the bell rings, the villagers it called walk after Gloamlings near it, or
  *    to it; at Dawn they stand down
- * 20. combat: Gloamlings pick targets out of Light and walk after them, around lit tiles;
+ * 21. combat: Gloamlings pick targets out of Light and walk after them, around lit tiles;
  *    villagers they reach drop their work and fight back, the militia hits Gloamlings near the
  *    bell, a watchtower with its Watchman in it shoots the nearest in range; hits in entity-ID
  *    order; villagers back to full HP at Dawn
- * 21. hero: works the player's order (chop, pick up, deliver)
- * 22. woodcutting
- * 23. fishing
- * 24. foraging
- * 25. hunting: hunters roll for a catch with the PRNG
- * 26. forestry: foresters plant Saplings
- * 27. digging: quarrymen, clay diggers and miners dig Deposits
- * 28. farming: farmers clear Fieldstones, sow and harvest Fields
- * 29. production: workshop crafters take inputs, work, and fill output buffers
- * 30. hauling (job dispatch)
- * 31. construction, by day only
- * 32. staffing: workplaces below their worker limit draft idle carriers
- * 33. fog: while Fog is on, the tiles In sight are worked out again when a source moved to
+ * 22. hero: works the player's order (chop, pick up, deliver)
+ * 23. woodcutting
+ * 24. fishing
+ * 25. foraging
+ * 26. hunting: hunters roll for a catch with the PRNG
+ * 27. forestry: foresters plant Saplings
+ * 28. digging: quarrymen, clay diggers and miners dig Deposits
+ * 29. farming: farmers clear Fieldstones, sow and harvest Fields
+ * 30. production: workshop crafters take inputs, work, and fill output buffers
+ * 31. hauling (job dispatch)
+ * 32. construction, by day only
+ * 33. staffing: workplaces below their worker limit draft idle carriers
+ * 34. fog: while Fog is on, the tiles In sight are worked out again when a source moved to
  *    another tile or its reach changed, and are Revealed for good
- * 34. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
+ * 35. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
  * then `tick` increments.
  */
 export function stepInPlace(next: GameState, commands: readonly Command[], content: Content): void {
@@ -123,6 +126,7 @@ export function stepInPlace(next: GameState, commands: readonly Command[], conte
   lightsSystem(next, content);
   toolsSystem(next, content);
   routineSystem(next, content);
+  happinessSystem(next, content);
   immigrationSystem(next, content);
   densSystem(next, content);
   militiaSystem(next, content);

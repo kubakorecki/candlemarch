@@ -11,6 +11,7 @@ import { killVillager } from '../deaths';
 import { idsOf } from '../entities';
 import { nearestGranaryWithMeal, takeMeal } from '../granary';
 import { entityDoor } from '../grid';
+import { isLeaving } from '../happiness';
 import { homeDoor, isAtHome } from '../homes';
 import { abandonHaul } from '../logistics/jobDispatch';
 import type { EntityId, GameState } from '../state';
@@ -166,7 +167,8 @@ export function routineSystem(state: GameState, content: Content): void {
 
   for (const id of idsOf(villager)) {
     const v = villager[id];
-    if (!v) continue;
+    // Leaving the village (`systems/happiness.ts`): it has no routine left.
+    if (!v || isLeaving(v)) continue;
     const watchman = isWatchman(v);
     if (dusk && watchman) {
       // Wakes for its shift, Tired if it slept too little at Home by day.

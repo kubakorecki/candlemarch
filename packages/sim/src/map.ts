@@ -192,6 +192,7 @@ export function createEmptyState(seed: number): GameState {
     },
     logistics: { hauls: {} },
     deaths: [],
+    departures: [],
     gameOver: null,
     traffic: [],
     monsterRate: DEFAULT_MONSTER_RATE,

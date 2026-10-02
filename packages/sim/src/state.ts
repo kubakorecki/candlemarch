@@ -218,8 +218,17 @@ export interface StockpileComponent {
  * Home after that. `asleep`: at Home, or where it stood when Homeless, until Dawn. A Watchman
  * (`watchtowers.ts`) works nights: after its Meal it's `toTower`, walking to its watchtower, then
  * `onWatch` in it until Dawn; by day it's `goingHome`, then `asleep` at Home until Dusk.
+ * `leaving`: Unhappy too long, it has quit its Job and Home and walks out of the entry, where it's
+ * gone (`happiness.ts`).
  */
-export type Routine = 'work' | 'toGranary' | 'goingHome' | 'asleep' | 'toTower' | 'onWatch';
+export type Routine =
+  | 'work'
+  | 'toGranary'
+  | 'goingHome'
+  | 'asleep'
+  | 'toTower'
+  | 'onWatch'
+  | 'leaving';
 
 export interface VillagerComponent {
   /** First name, drawn from content's pool on arrival. Not unique once the pool runs out. */
@@ -256,6 +265,8 @@ export interface VillagerComponent {
    * bell or fights Gloamlings near it, until the bell is rung again or Dawn. Its `routine` waits.
    */
   militia: boolean;
+  /** Dawns in a row it was Unhappy (`happiness.ts`); it leaves at `leaveAfterDawns`. */
+  unhappyDawns: number;
 }
 
 /**
@@ -518,10 +529,19 @@ export interface TrafficSlice {
   roadSteps: Record<number, number>;
 }
 
-/** How the game ended: the day and cause of the last villager's death. */
+/** A villager who left the village Unhappy (`happiness.ts`), kept for the chronicle. */
+export interface Departure {
+  name: string;
+  /** The Master's trade, or null for anyone else. */
+  trade: TradeId | null;
+  /** The day it walked out, counting from 1. */
+  day: number;
+}
+
+/** How the game ended: the day and cause of the last villager's death, or `left` (Unhappy). */
 export interface GameOver {
   day: number;
-  cause: DeathCause;
+  cause: DeathCause | 'left';
 }
 
 export interface GameState {
@@ -546,6 +566,8 @@ export interface GameState {
   logistics: LogisticsState;
   /** Every villager who has died, oldest first. */
   deaths: Death[];
+  /** Every villager who has left the village, oldest first. Old saves: none. */
+  departures: Departure[];
   /** Set when the last villager dies (the hero alone doesn't count); null while the game runs. */
   gameOver: GameOver | null;
   /** Carrier and road counts over the last in-game day, oldest slice first. */

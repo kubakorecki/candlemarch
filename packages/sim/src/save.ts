@@ -116,6 +116,7 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
     v.readyAt ??= 0;
     v.fighting ??= false;
     v.militia ??= false;
+    v.unhappyDawns ??= 0;
   }
   for (const g of Object.values(state.components.gloamling)) {
     g.hp ??= content.combat.gloamling.hp;

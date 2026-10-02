@@ -427,6 +427,29 @@ export interface ImmigrationDef {
   closedSeasons: SeasonId[];
 }
 
+/**
+ * Happiness (spec, Villagers: Happiness and Adjacency in M5): a score per villager from 0 to
+ * `max`, starting at `start`, plus its sources. Hungry, Cold and Tired don't count.
+ */
+export interface HappinessDef {
+  start: number;
+  max: number;
+  /** Added while Homeless. */
+  homeless: number;
+  /** Added for each death in the village on the last `deathDays` days, today included. */
+  death: number;
+  deathDays: number;
+  /** Happy at or above this: works at `happySpeedPercent`. */
+  happyAt: number;
+  happySpeedPercent: number;
+  /** Unhappy below this: works at `unhappySpeedPercent`. */
+  unhappyBelow: number;
+  unhappySpeedPercent: number;
+  /** Unhappy at this many Dawns in a row: it leaves at that Dawn, unless in `closedSeasons`. */
+  leaveAfterDawns: number;
+  closedSeasons: SeasonId[];
+}
+
 /** Thresholds for the HUD's death-spiral alerts. */
 export interface AlertsDef {
   /** "About N days of Food left" shows when the Granaries hold Meals for fewer days than this. */
@@ -1021,6 +1044,7 @@ export interface Content {
   needs: NeedsDef;
   hunting: HuntingDef;
   immigration: ImmigrationDef;
+  happiness: HappinessDef;
   alerts: AlertsDef;
   dens: DensDef;
   combat: CombatDef;

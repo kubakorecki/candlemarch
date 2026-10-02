@@ -8,6 +8,7 @@ import { deliveries } from './deliveries';
 import { dens } from './dens';
 import { crops, farming } from './farming';
 import { fog } from './fog';
+import { happiness } from './happiness';
 import { heroes } from './heroes';
 import { hunting } from './hunting';
 import { immigration } from './immigration';
@@ -52,6 +53,7 @@ export const content: Content = {
   needs,
   hunting,
   immigration,
+  happiness,
   alerts,
   dens,
   combat,

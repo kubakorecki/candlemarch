@@ -7,6 +7,7 @@ import type { Content } from '@candlemarch/content';
 import { calendarAt, isDawn } from '../calendar';
 import { idsOf } from '../entities';
 import { villageFood } from '../granary';
+import { isVillageUnhappy } from '../happiness';
 import { homeDoor, homesSystem, nearestHouseWithRoom } from '../homes';
 import type { EntityId, GameState } from '../state';
 import { spawnVillager } from '../villagers';
@@ -20,8 +21,8 @@ export function immigrationFoodNeeded(state: GameState, content: Content): numbe
 
 /**
  * The House a Newcomer arriving now would live in: the one with a free place nearest the entry by
- * walking cost. Null when immigration is shut: no entry, no such House, too little Food, a
- * closed season, or the game is over (nobody comes to a dead village).
+ * walking cost. Null when immigration is shut: no entry, no such House, too little Food, the
+ * villagers' average happiness Unhappy, a closed season, or the game is over (nobody comes to a dead village).
  */
 export function newcomerHome(state: GameState, content: Content): EntityId | null {
   const { entry } = state.map;
@@ -29,6 +30,7 @@ export function newcomerHome(state: GameState, content: Content): EntityId | nul
   const { season } = calendarAt(state.tick, content);
   if (content.immigration.closedSeasons.includes(season)) return null;
   if (villageFood(state, content) < immigrationFoodNeeded(state, content)) return null;
+  if (isVillageUnhappy(state, content)) return null;
   return nearestHouseWithRoom(state, content, entry);
 }
 

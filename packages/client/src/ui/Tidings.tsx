@@ -1,4 +1,5 @@
-// Right: alerts by weight (lives at stake first, then warnings) and the chronicle of deaths.
+// Right: alerts by weight (lives at stake first, then warnings) and the chronicle of deaths and
+// departures.
 // Homeless, Hungry and Cold counts live on the Ledger, so their alerts aren't repeated here.
 import type { AlertKind, AlertView, Game, HudState } from '../game/Game';
 import { Icon } from './icons';
@@ -52,8 +53,8 @@ export function Tidings({ hud, game }: { hud: HudState; game: Game }) {
         // Lines can repeat (villagers can share a name); the list is only replaced whole.
         // biome-ignore lint/suspicious/noArrayIndexKey: see above
         <div key={i} className="chronicle-line">
-          <Icon name="skull" size={15} />
-          {line}
+          <Icon name={line.kind === 'death' ? 'skull' : 'steps'} size={15} />
+          {line.text}
         </div>
       ))}
     </section>

@@ -48,7 +48,11 @@ import {
   groundsNear,
   groundTiles,
   groundworkOf,
+  type HappinessBand,
   type HeroOrder,
+  happiness,
+  happinessBand,
+  happinessSources,
   heroOf,
   heroOrderAt,
   huntChancePermille,
@@ -59,6 +63,7 @@ import {
   isForagePatch,
   isHelpingCarry,
   isKnockedOut,
+  isLeaving,
   isRevealed,
   isWithered,
   knownCrops,
@@ -82,6 +87,7 @@ import {
   recoveryTile,
   reserveNear,
   reserveRect,
+  residentsOf,
   type StandingOrder,
   type StockpilePriority,
   type Storage,
@@ -106,7 +112,8 @@ import { nightLook } from '../render/night';
 import { HEALTH_WORDS, type PlacementGhost, WorldRenderer } from '../render/WorldRenderer';
 import {
   alertText,
-  deathText,
+  type ChronicleLine,
+  chronicleLines,
   gameOverText,
   knockoutText,
   regrowthText,
@@ -117,6 +124,7 @@ import {
 import { type DayTrack, dayTrack } from './almanac';
 import { SAVE_SLOTS, type SaveSlot, seasonName, slotDateLabel } from './autosave';
 import type { Speed } from './clock';
+import { bandText, sourceText } from './happinessText';
 import { keyAction } from './keys';
 import { stockpileGoods } from './ledger';
 import { type PostingView, postingView } from './postingText';
@@ -172,6 +180,25 @@ export interface VillagerInfo {
   helpingCarry: boolean;
   /** A Master's title ("Carpenter"), or null for anyone else. */
   master: string | null;
+  /** Its happiness: score, band (its key and word) and what makes it up, as panel rows. */
+  happiness: {
+    score: number;
+    band: HappinessBand;
+    word: string;
+    sources: { label: string; value: string }[];
+  };
+  /** Unhappy too long: it has quit and walks out of the village. */
+  leaving: boolean;
+}
+
+/** One resident in a House's panel, with its happiness band (key and word). */
+export interface ResidentRow {
+  id: EntityId;
+  name: string;
+  jobId: JobId;
+  master: string | null;
+  band: HappinessBand;
+  word: string;
 }
 
 /** A row of the workers view: one villager, as display text, and where it can be reassigned. */
@@ -280,6 +307,8 @@ export interface BuildingInfo {
   postings: PostingView[] | null;
   /** Sell rules, prices and Merchants, for the trade post; null for any other building. */
   tradePost: TradePostInfo | null;
+  /** A House's residents and how happy each is, with its places; null for any other building. */
+  residents: { rows: ResidentRow[]; places: number } | null;
 }
 
 /** What the trade post's panel shows. */
@@ -404,8 +433,8 @@ export interface HudState {
   winter: string | null;
   /** The sim's alerts, red first. */
   alerts: AlertView[];
-  /** The latest deaths, newest first, e.g. "Ada starved, day 14". */
-  deathLog: string[];
+  /** The latest deaths and departures, newest first, e.g. "Ada starved, day 14". */
+  deathLog: ChronicleLine[];
   /** Set once the last villager has died: how and when, e.g. "The last villager froze on day 17." */
   gameOver: string | null;
   /** The stockpile selected by clicking it with no tool, and its settings. */
@@ -972,7 +1001,7 @@ export class Game {
       text: alertText(alert),
       target: alert.target,
     }));
-    const log = state.deaths.slice(-DEATH_LOG_LENGTH).reverse().map(deathText);
+    const log = chronicleLines(state.deaths, state.departures, DEATH_LOG_LENGTH);
     const days = winterIn(state, content);
     this.setHud({
       winter: days === null ? null : winterText(days),
@@ -1515,7 +1544,8 @@ function inspectableAt(state: GameState, tile: Tile): EntityId | null {
     const panel =
       maxWorkers(content, b.type) > 0 ||
       storageOf(state, content, id) !== null ||
-      content.buildings[b.type].noticeBoard === true;
+      content.buildings[b.type].noticeBoard === true ||
+      (content.buildings[b.type].residents ?? 0) > 0;
     if (!panel) continue;
     if (onFootprint(state, id, tile)) return id;
   }
@@ -1712,7 +1742,24 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
       ? postings(state, content).map((p) => postingView(p, state.tick))
       : null,
     tradePost: content.buildings[b.type].tradePost ? tradePostInfo(state) : null,
+    residents: residentsInfo(state, id),
   };
+}
+
+/** A House's residents with each one's band, and its places; null for any other building. */
+function residentsInfo(state: GameState, id: EntityId): BuildingInfo['residents'] {
+  const type = state.components.building[id]?.type;
+  const places = type ? (content.buildings[type].residents ?? 0) : 0;
+  if (places === 0) return null;
+  const rows = residentsOf(state, id).flatMap((r) => {
+    const v = state.components.villager[r];
+    if (!v) return [];
+    const band = happinessBand(content, happiness(state, content, r));
+    return [
+      { id: r, name: v.name, jobId: v.job, master: title(state, r), band, word: bandText(band) },
+    ];
+  });
+  return { rows, places };
 }
 
 /** The trade post's sell rules, prices, Wanted list and next Merchant, for its panel. */
@@ -1832,7 +1879,19 @@ function villagerInfo(state: GameState, id: EntityId): VillagerInfo | null {
     cold: v.coldNights > 0 ? coldLabel(v.coldNights) : null,
     helpingCarry: isHelpingCarry(state, id),
     master: title(state, id),
+    happiness: happinessInfo(state, id),
+    leaving: isLeaving(v),
   };
+}
+
+/** Villager `id`'s happiness for its panel. */
+function happinessInfo(state: GameState, id: EntityId): VillagerInfo['happiness'] {
+  const score = happiness(state, content, id);
+  const band = happinessBand(content, score);
+  const sources = happinessSources(state, content, id).map((source) =>
+    sourceText(source, content.happiness.deathDays),
+  );
+  return { score, band, word: bandText(band), sources };
 }
 
 /** Villager `id`'s title as a Master ("Carpenter"), or null when it isn't one. */

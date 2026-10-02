@@ -3,6 +3,7 @@
 import type { Content } from '@candlemarch/content';
 import { idsOf } from './entities';
 import { entityDoor, tileIndex } from './grid';
+import { isLeaving } from './happiness';
 import type { EntityId, GameState, Tile } from './state';
 import { isAt, villagerTile, walkCosts } from './systems/movement';
 
@@ -92,7 +93,7 @@ export function homesSystem(state: GameState, content: Content): void {
   const free = freePlaces(state, content);
   for (const id of idsOf(villager)) {
     const v = villager[id];
-    if (!v || v.home !== null) continue;
+    if (!v || v.home !== null || isLeaving(v)) continue;
     if (!idsOf(free).some((h) => (free[h] ?? 0) > 0)) return;
     const from =
       v.workplace !== null ? entityDoor(state, content, v.workplace) : villagerTile(state, id);

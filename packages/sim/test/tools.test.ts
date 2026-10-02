@@ -8,7 +8,7 @@ import { createInitialState, type MapDef } from '../src/map';
 import { deserialize, serialize } from '../src/save';
 import type { EntityId, GameState } from '../src/state';
 import { amountOnTile } from '../src/stockpiles';
-import { content, run, runUntil } from './helpers';
+import { content, homelessContent, run, runUntil } from './helpers';
 
 /**
  * A woodcutter's hut at (1,1) (door (1,2), yard (2,1)) and its woodcutter, six trees on row 4.
@@ -31,9 +31,10 @@ function woodsWith(tools: number[]): GameState {
   return s;
 }
 
-/** Ticks the woodcutter's first chop is given. */
+/** Ticks the woodcutter's first chop is given (Homeless, but not minding). */
 function firstChop(s0: GameState): number {
-  const s = runUntil(s0, (x) => x.components.woodcutter[WOODCUTTER]?.kind === 'chopping', 2000);
+  const chopping = (x: GameState) => x.components.woodcutter[WOODCUTTER]?.kind === 'chopping';
+  const s = runUntil(s0, chopping, 2000, {}, homelessContent());
   const task = s.components.woodcutter[WOODCUTTER];
   if (task?.kind !== 'chopping') throw new Error('no chop');
   return task.ticksLeft;

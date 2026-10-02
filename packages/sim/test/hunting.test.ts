@@ -17,7 +17,7 @@ import { createInitialState, type MapDef } from '../src/map';
 import { randomInt } from '../src/rng';
 import { deserialize, serialize } from '../src/save';
 import type { EntityId, GameState } from '../src/state';
-import { content, run, runUntil } from './helpers';
+import { content, homelessContent, run, runUntil } from './helpers';
 
 /**
  * An 8-tree wood (4×2, from (1,1)) that is the "Old Wood" Hunting ground, max Game 20. IDs: trees
@@ -465,7 +465,9 @@ describe('choosing a Hunting ground', () => {
 
   it('keeps to the chosen ground, however far', () => {
     const { s, lodge, near, far } = setup();
-    const after = run(s, 3600, { 0: [{ type: 'setHuntingGround', building: lodge, ground: far }] });
+    const choose = { 0: [{ type: 'setHuntingGround' as const, building: lodge, ground: far }] };
+    // The hunter is Homeless; at Unhappy speed the far ground's first catch comes too late.
+    const after = run(s, 3600, choose, homelessContent());
     expect(after.components.building[lodge]?.huntingGround).toBe(far);
     expect(catches(after, far)).toBeGreaterThan(0);
     expect(catches(after, near)).toBe(0);

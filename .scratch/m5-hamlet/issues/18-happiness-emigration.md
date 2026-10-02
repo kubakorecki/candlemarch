@@ -1,6 +1,6 @@
 # Happiness and emigration
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 03, m2-camp-winter/13
 
@@ -18,3 +18,7 @@ Spec: Villagers (Happiness in M5; Population). Glossary: Happiness.
 
 - Headless tests: being Homeless lowers the score and a death lowers it for 3 days; the bands change work speed; 5 Unhappy Dawns make a villager leave, not in winter; immigration stops while the average is Unhappy.
 - `pnpm check` passes.
+
+## Comments
+
+2026-10-02 — Built. `happiness.ts` works the score out from its sources (Homeless, deaths on the last 3 days; adjacency comes with ticket 19); the band multiplies into `speedPercent` for work, not walking; `systems/happiness.ts` (step 17) counts Unhappy Dawns and sends a villager out of the entry at the 5th (in winter, at the first Dawn after); immigration waits while the average is Unhappy. Added beyond the issue: `state.departures` and chronicle lines ("Ada left the village, day 14", Masters by trade), game over when the last villager leaves, and a House panel listing residents with their bands. Tests on maps without a House now use `homelessContent` so their timings hold. Details in `docs/decisions.md`.
