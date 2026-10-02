@@ -146,6 +146,10 @@ export const palette = {
   // Grain: a tied sheaf (the yard), and ripe stalks on a Field.
   grain: 0xc4a35a,
   grainDark: 0x957a3e,
+  // Turnips: a pale root with a purple shoulder under dark leaves (the yard, a ripe Field).
+  turnip: 0xd6ccb4,
+  turnipShoulder: 0x7d4a6a,
+  turnipLeaf: 0x5b7340,
   // Charcoal: black lumps with a grey sheen; the kiln's smoke.
   charcoal: 0x2f2b28,
   charcoalSheen: 0x6a645e,

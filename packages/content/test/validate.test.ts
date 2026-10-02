@@ -155,8 +155,10 @@ describe('content validation', () => {
       expect(crop.yieldPerField, `${crop.id}'s harvest fits a yard`).toBeLessThanOrEqual(
         content.logistics.yardCapacity,
       );
+      if (crop.seeds !== null) expectPositiveInt(crop.seeds, `${crop.id}.seeds`);
     }
     expect(crops).toHaveProperty(farming.defaultCrop);
+    expect(crops[farming.defaultCrop].seeds, 'the default Crop needs no Seeds').toBeNull();
     expect(terrain, 'farming.fieldOn').toHaveProperty(farming.fieldOn);
     expect(terrain[farming.fieldOn].buildable, 'Fields on buildable ground').toBe(true);
     const seasons = content.calendar.seasons.map((s) => s.id);

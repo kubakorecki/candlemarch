@@ -32,6 +32,7 @@ export const RESOURCE_ICONS: Record<ResourceId, IconName> = {
   clay: 'clay',
   iron_ore: 'ore',
   grain: 'grain',
+  turnips: 'turnip',
   charcoal: 'charcoal',
   planks: 'planks',
   cut_stone: 'cutStone',

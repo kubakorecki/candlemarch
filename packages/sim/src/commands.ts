@@ -28,7 +28,7 @@ import {
   removeStockpile,
   STOCKPILE_PRIORITIES,
 } from './stockpiles';
-import { orderImport, setSellRule } from './tradePost';
+import { orderImport, orderSeeds, setSellRule } from './tradePost';
 import { spendCoin } from './treasury';
 import { layWall } from './walls';
 import { reassignWorker, releaseWorkers, setWorkerLimit, unassignWorker } from './workers';
@@ -90,6 +90,8 @@ export type Command =
   | { type: 'setSellRule'; resource: ResourceId; keep: number | null }
   /** Orders `amount` of `resource` from the next Merchant, paid at once (an Import). */
   | { type: 'orderImport'; resource: ResourceId; amount: number }
+  /** Orders `crop`'s Seeds from the next Merchant, paid at once; they make it known for good. */
+  | { type: 'orderSeeds'; crop: CropId }
   /** Sets a hunter's lodge to hunt only `ground` (in its reach), or with null the nearest again. */
   | { type: 'setHuntingGround'; building: EntityId; ground: EntityId | null }
   /** Rings the Militia bell: calls the village to arms, or stands it down if it's ringing. */
@@ -229,6 +231,10 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'orderImport': {
       orderImport(state, content, command.resource, command.amount);
+      return;
+    }
+    case 'orderSeeds': {
+      orderSeeds(state, content, command.crop);
       return;
     }
     case 'setHuntingGround': {

@@ -15,9 +15,11 @@ import {
   bellOf,
   bogIronLost,
   bogIronNear,
+  COIN,
   type Command,
   calendarAt,
   campCentre,
+  canAfford,
   canBeField,
   canLayGroundwork,
   canLayPath,
@@ -59,6 +61,7 @@ import {
   isKnockedOut,
   isRevealed,
   isWithered,
+  knownCrops,
   lShapeTiles,
   MAX_SELL_KEEP,
   MAX_STANDING_ORDER,
@@ -82,6 +85,7 @@ import {
   type StandingOrder,
   type StockpilePriority,
   type Storage,
+  seedsOrderable,
   standingOrderOf,
   storageOf,
   type Tile,
@@ -288,6 +292,8 @@ export interface TradePostInfo {
   goods: SellRow[];
   /** A row per good in the Import catalogue. */
   imports: ImportRow[];
+  /** A row per Crop whose Seeds are on sale: not known yet. */
+  seeds: SeedRow[];
   /** Imports the last Merchant brought that Carriers haven't taken yet. */
   arrived: { resource: ResourceId; amount: number }[];
 }
@@ -300,6 +306,19 @@ export interface ImportRow {
   /** Units ordered and paid for, waiting for the next Merchant. */
   ordered: number;
   /** The Treasury covers another `IMPORT_BATCH`. */
+  canOrder: boolean;
+}
+
+/** A Crop whose Seeds the trade post can order: bought once, it's known to every farm. */
+export interface SeedRow {
+  crop: CropId;
+  /** "Turnip seeds". */
+  name: string;
+  /** What they cost, e.g. "60.00". */
+  price: string;
+  /** Paid for, waiting for the next Merchant. */
+  ordered: boolean;
+  /** Orderable now, the Treasury covering them. */
   canOrder: boolean;
 }
 
@@ -327,7 +346,7 @@ export interface FarmInfo {
   /** Its Crop this year, and the one picked for the next spring (the same unless changed). */
   crop: CropId;
   nextCrop: CropId;
-  /** The Crops the picker offers, in content order. */
+  /** The Crops the picker offers: those the village knows, in content order. */
   crops: { id: CropId; name: string }[];
 }
 
@@ -687,6 +706,11 @@ export class Game {
     const row = this.hud.building?.tradePost?.goods.find((g) => g.resource === resource);
     const keep = row?.keep === null ? (content.resources[resource].standingOrder ?? 20) : null;
     this.bridge.command({ type: 'setSellRule', resource, keep });
+  }
+
+  /** Orders `crop`'s Seeds from the next Merchant, paid now. */
+  orderSeeds(crop: CropId): void {
+    this.bridge.command({ type: 'orderSeeds', crop });
   }
 
   /** Orders `IMPORT_BATCH` units of `resource` from the next Merchant, paid now. */
@@ -1716,6 +1740,20 @@ function tradePostInfo(state: GameState): TradePostInfo {
       ordered: trade.orders[resource] ?? 0,
       canOrder: state.treasury >= importCost(content, resource, IMPORT_BATCH),
     })),
+    seeds: (Object.keys(content.crops) as CropId[]).flatMap((crop) => {
+      const cost = content.crops[crop].seeds;
+      const ordered = trade.seedOrders.includes(crop);
+      if (cost === null || (!ordered && !seedsOrderable(state, content, crop))) return [];
+      return [
+        {
+          crop,
+          name: `${content.crops[crop].name.replace(/s$/, '')} seeds`,
+          price: priceText(cost * COIN),
+          ordered,
+          canOrder: !ordered && canAfford(state, cost),
+        },
+      ];
+    }),
     arrived: (Object.keys(content.resources) as ResourceId[]).flatMap((resource) => {
       const amount = stock[resource] ?? 0;
       return amount > 0 ? [{ resource, amount }] : [];
@@ -1732,7 +1770,7 @@ function farmInfo(state: GameState, id: EntityId): FarmInfo {
     ripe: fields.filter((f) => f?.stage === 'ripe').length,
     crop: farmCrop(state, content, id),
     nextCrop: farmNextCrop(state, content, id),
-    crops: Object.values(content.crops).map((c) => ({ id: c.id, name: c.name })),
+    crops: knownCrops(state, content).map((c) => ({ id: c, name: content.crops[c].name })),
   };
 }
 

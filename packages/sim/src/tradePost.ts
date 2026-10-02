@@ -7,11 +7,13 @@
 // next Dawn, when the next Merchant's Wanted list is drawn (`systems/merchants.ts`). Each unit
 // sold lowers its good's price; prices climb back each Dawn. What's stored is `state.tradePost`;
 // goods for sale aren't part of what "the village holds", Imports that arrived are.
-import type { Content, ResourceId } from '@candlemarch/content';
+import type { Content, CropId, ResourceId } from '@candlemarch/content';
 import { calendarAt } from './calendar';
 import { idsOf } from './entities';
+import { isKnownCrop } from './fields';
 import { villageStock } from './standingOrders';
 import type { EntityId, GameState } from './state';
+import { spendCoin } from './treasury';
 
 /** The most a sell rule may keep. */
 export const MAX_SELL_KEEP = 999;
@@ -151,4 +153,33 @@ export function orderImport(
   state.treasury -= cost;
   const { orders } = state.tradePost;
   orders[resource] = (orders[resource] ?? 0) + amount;
+}
+
+/**
+ * Whether `crop`'s Seeds may be ordered now, the Treasury aside: it needs Seeds, isn't known yet
+ * (`isKnownCrop`) and isn't ordered already.
+ */
+export function seedsOrderable(state: GameState, content: Content, crop: CropId): boolean {
+  const def = content.crops[crop];
+  return (
+    def !== undefined &&
+    def.seeds !== null &&
+    !isKnownCrop(state, content, crop) &&
+    !state.tradePost.seedOrders.includes(crop)
+  );
+}
+
+/**
+ * Orders `crop`'s Seeds from the next Merchant (the `orderSeeds` command), paid out of the
+ * Treasury at once (`CropDef.seeds`, whole coins). Ignored unless a trade post stands, they're
+ * `seedsOrderable` and the Treasury covers them. Seeds aren't goods: the Merchant's arrival makes
+ * the Crop known (`systems/merchants.ts`).
+ */
+export function orderSeeds(state: GameState, content: Content, crop: CropId): void {
+  if (!seedsOrderable(state, content, crop) || tradePostOf(state, content) === null) return;
+  if (!spendCoin(state, content.crops[crop].seeds ?? 0)) return;
+  const ordered = [...state.tradePost.seedOrders, crop];
+  state.tradePost.seedOrders = (Object.keys(content.crops) as CropId[]).filter((c) =>
+    ordered.includes(c),
+  );
 }

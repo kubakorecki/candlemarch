@@ -334,7 +334,8 @@ const SELL_KEEP_STEP = 5;
  * The trade post's Merchants, sell rules and Imports: when the next Merchant comes and what it
  * wants, then a row per good with what a unit fetches now (a gilt star when Wanted) and its rule:
  * Sell starts one, − / + move what the village keeps, × stops it; then the Import catalogue (Order
- * pays at once; the next Merchant brings them) and what the last one brought, still waiting.
+ * pays at once; the next Merchant brings them), Seeds not yet known (bought once, the Crop is
+ * every farm's for good), and what the last Merchant brought, still waiting.
  */
 function TradePostFacts({ post, game }: { post: TradePostInfo; game: Game }) {
   const wanted = post.wanted?.map((r) => content.resources[r].name).join(', ');
@@ -425,6 +426,31 @@ function TradePostFacts({ post, game }: { post: TradePostInfo; game: Game }) {
           </div>
         );
       })}
+      {post.seeds.map((row) => (
+        <div key={row.crop} className="sell-row">
+          <span className="sell-good">
+            <Icon
+              name={RESOURCE_ICONS[content.crops[row.crop].resource]}
+              size={18}
+              className="tone-gilt"
+            />
+            <span>
+              {row.name}
+              {row.ordered && <span className="muted small"> · ordered</span>}
+            </span>
+          </span>
+          <button
+            type="button"
+            className="btn-small"
+            disabled={!row.canOrder}
+            title={`Order ${row.name.toLowerCase()}, paid now; once the next Merchant brings them, every farm can grow ${content.crops[row.crop].name.toLowerCase()}`}
+            onClick={() => game.orderSeeds(row.crop)}
+          >
+            Order
+          </button>
+          <span className="price">{row.price}</span>
+        </div>
+      ))}
       {post.arrived.length > 0 && <SectionHead title="Brought in" />}
       {post.arrived.map((g) => (
         <div key={g.resource} className="fact good">

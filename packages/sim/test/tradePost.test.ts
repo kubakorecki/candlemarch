@@ -4,6 +4,7 @@
 import type { Content, ResourceId } from '@candlemarch/content';
 import { describe, expect, it } from 'vitest';
 import { calendarAt, dawnTick } from '../src/calendar';
+import { knownCrops } from '../src/fields';
 import { canPlaceBuilding } from '../src/grid';
 import { createInitialState, type MapDef } from '../src/map';
 import { villageStock } from '../src/standingOrders';
@@ -243,5 +244,38 @@ describe('coin construction costs', () => {
     const after = step(s, [place], dear);
     expect(Object.keys(after.components.site)).toHaveLength(1);
     expect(treasuryCoin(after)).toBe(10);
+  });
+});
+
+describe('Seeds', () => {
+  const orderTurnips = { type: 'orderSeeds' as const, crop: 'turnips' as const };
+
+  it('are paid for at once, and the next Merchant makes the Crop known for good, storing nothing', () => {
+    const s = hamlet();
+    s.treasury = 100 * COIN;
+    const ordered = step(s, [orderTurnips], content);
+    expect(treasuryCoin(ordered)).toBe(100 - 60);
+    expect(knownCrops(ordered, content)).toEqual(['grain']);
+    expect(ordered.tradePost.seedOrders).toEqual(['turnips']);
+    ordered.tick = dawnTick(3, content);
+    const arrived = run(ordered, 1);
+    expect(knownCrops(arrived, content)).toEqual(['grain', 'turnips']);
+    expect(arrived.tradePost.seedOrders).toEqual([]);
+    expect(arrived.components.building[POST]?.stock).toEqual({});
+    expect(storageOf(arrived, content, POST)?.amount).toBe(0);
+  });
+
+  it('are refused once known or ordered, for a Crop needing none, unpaid, or without a trade post', () => {
+    const s = hamlet();
+    s.treasury = 1000 * COIN;
+    const once = step(s, [orderTurnips, orderTurnips], content);
+    expect(treasuryCoin(once)).toBe(1000 - 60);
+    expect(step(s, [{ type: 'orderSeeds', crop: 'grain' }], content).treasury).toBe(s.treasury);
+    const known = { ...s, seeds: ['turnips' as const] };
+    expect(step(known, [orderTurnips], content).treasury).toBe(s.treasury);
+    const poor = { ...s, treasury: 59 * COIN };
+    expect(step(poor, [orderTurnips], content).tradePost.seedOrders).toEqual([]);
+    delete s.components.building[POST];
+    expect(step(s, [orderTurnips], content).tradePost.seedOrders).toEqual([]);
   });
 });

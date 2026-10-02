@@ -2,7 +2,8 @@
 // terrain (Meadow) the player paints in a farm's work radius, free and at once, Revealed tiles
 // only; painted ground nothing stands on, so a building, Road, Stockpile or wall put there
 // takes it (`clearGrowth`). Kept as `map.fields` by tile index, a static layer. Every farm works
-// the Fields in its radius, whoever painted them; its Crop is the farm's (`farmCrop`). The year:
+// the Fields in its radius, whoever painted them; its Crop is the farm's (`farmCrop`), one the
+// village knows (`isKnownCrop`: grain, or one whose Seeds were bought). The year:
 // farmers sow bare Fields in the sowing season (spring), a Field is ripe `growDays` later at a
 // Dawn, they harvest it once, and whatever stands at the first Dawn of the idle season (winter) is
 // lost (`systems/fields.ts`). Each spring some Fields throw up a Fieldstone (`throwUpFieldstones`),
@@ -108,9 +109,20 @@ export function farmNextCrop(state: GameState, content: Content, id: EntityId): 
   return state.components.building[id]?.nextCrop ?? farmCrop(state, content, id);
 }
 
+/** Whether every farm may grow `crop`: it needs no Seeds, or a Merchant has brought them. */
+export function isKnownCrop(state: GameState, content: Content, crop: CropId): boolean {
+  const def = content.crops[crop];
+  return def !== undefined && (def.seeds === null || state.seeds.includes(crop));
+}
+
+/** The Crops every farm may grow (`isKnownCrop`), in content order. */
+export function knownCrops(state: GameState, content: Content): CropId[] {
+  return (Object.keys(content.crops) as CropId[]).filter((c) => isKnownCrop(state, content, c));
+}
+
 /**
  * Picks the Crop farm `building` grows from the next sowing season on (the `setCrop` command).
- * Ignored unless it's a farm and `crop` is a Crop.
+ * Ignored unless it's a farm and `crop` is a known Crop (`isKnownCrop`).
  */
 export function setCrop(
   state: GameState,
@@ -119,7 +131,7 @@ export function setCrop(
   crop: CropId,
 ): void {
   const b = state.components.building[building];
-  if (!b || !isFarm(state, content, building) || !(crop in content.crops)) return;
+  if (!b || !isFarm(state, content, building) || !isKnownCrop(state, content, crop)) return;
   b.nextCrop = crop;
 }
 

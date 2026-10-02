@@ -91,6 +91,16 @@ export const resources: Record<ResourceId, ResourceDef> = {
     standingOrder: 80,
     price: { base: 150, dropPerUnit: 1 },
   },
+  // From the farm's Fields once turnip Seeds are bought: Food, more per Field than grain, and it
+  // keeps through a winter (spec, Spoilage).
+  turnips: {
+    id: 'turnips',
+    name: 'Turnips',
+    storage: 'granary',
+    spoilPercent: 2,
+    standingOrder: 80,
+    price: { base: 120, dropPerUnit: 1 },
+  },
   // From the charcoal kiln; the bloomery's fuel (M5).
   charcoal: {
     id: 'charcoal',

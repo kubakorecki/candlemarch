@@ -12,6 +12,7 @@ export type ResourceId =
   | 'clay'
   | 'iron_ore'
   | 'grain'
+  | 'turnips'
   | 'charcoal'
   | 'planks'
   | 'cut_stone'
@@ -99,7 +100,7 @@ export type HeroId = 'placeholder';
 export type SeasonId = 'spring' | 'summer' | 'autumn' | 'winter';
 export type PoiId = 'ruins' | 'abandoned_mine' | 'shrine';
 /** What a farm grows on its Fields (spec, Resources: Farms and crops). */
-export type CropId = 'grain';
+export type CropId = 'grain' | 'turnips';
 /** The master trades (spec, Trades and masters). A trade's workshops name it (`BuildingDef.trade`). */
 export type TradeId = 'carpenter' | 'mason' | 'butcher' | 'smith' | 'miller' | 'brewer' | 'baker';
 
@@ -296,6 +297,11 @@ export interface CropDef {
   resource: ResourceId;
   growDays: number;
   yieldPerField: number;
+  /**
+   * What its Seeds cost at the trade post, in whole coins: bought once, they make the Crop known
+   * to every farm for good. Null: needs no Seeds, always known (grain).
+   */
+  seeds: number | null;
 }
 
 /**

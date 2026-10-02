@@ -1,8 +1,8 @@
 // Merchants (spec, Economy: The trade post in M5): at each Dawn but the first, prices recover, a
 // Merchant here leaves and the next one's Wanted list is drawn, and on a Merchant day one arrives
 // and buys everything in the trade post's Storage into the Treasury, then unloads the Imports
-// ordered (`tradePost.ts`).
-import type { Content, ResourceId } from '@candlemarch/content';
+// ordered and brings the Seeds ordered (`tradePost.ts`).
+import type { Content, CropId, ResourceId } from '@candlemarch/content';
 import { calendarAt, isDawn } from '../calendar';
 import { randomInt } from '../rng';
 import type { EntityId, GameState } from '../state';
@@ -65,6 +65,13 @@ function unloadImports(state: GameState, content: Content, post: EntityId): void
   state.tradePost.orders = {};
 }
 
+/** The Merchant brings every Seeds ordered: their Crops are known for good, nothing is stored. */
+function bringSeeds(state: GameState, content: Content): void {
+  const known = [...state.seeds, ...state.tradePost.seedOrders];
+  state.seeds = (Object.keys(content.crops) as CropId[]).filter((c) => known.includes(c));
+  state.tradePost.seedOrders = [];
+}
+
 /**
  * At each Dawn but the first: prices recover; a Merchant here leaves, and while a trade post
  * stands the next one's Wanted list is drawn (or the first list, the first Dawn one stands); on a
@@ -85,5 +92,6 @@ export function merchantSystem(state: GameState, content: Content): void {
   if (!isMerchantDay(content, calendarAt(state.tick, content).day)) return;
   buyEverything(state, content, post);
   unloadImports(state, content, post);
+  bringSeeds(state, content);
   trade.merchantHere = true;
 }

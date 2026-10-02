@@ -1,6 +1,7 @@
 // Standing orders (spec, Logistics: Where goods are kept): each Workplace with outputs keeps one
 // number N, `building.standingOrder`. It pauses while the village holds at least N of its output
-// (its first, `outputBuffer.resources[0]`), and resumes below N. A new one starts at that output's
+// (its first, `outputBuffer.resources[0]`; a farm's, the Crop it grows this year), and resumes
+// below N. A new one starts at that output's
 // default (`ResourceDef.standingOrder`). Paused, it starts no new work and asks for no inputs, and
 // its workers help carry (`logistics/helping.ts`).
 import type { BuildingId, Content, ResourceId } from '@candlemarch/content';
@@ -16,6 +17,23 @@ export const MAX_STANDING_ORDER = 999;
 /** The output a `type` building's standing order counts: its first, or null without outputs. */
 export function standingOrderResource(content: Content, type: BuildingId): ResourceId | null {
   return content.buildings[type].outputBuffer?.resources[0] ?? null;
+}
+
+/**
+ * The output Workplace `building`'s standing order counts: a farm's Crop this year, else its
+ * type's (`standingOrderResource`). Null without outputs.
+ */
+export function standingOrderResourceOf(
+  state: GameState,
+  content: Content,
+  building: EntityId,
+): ResourceId | null {
+  const b = state.components.building[building];
+  if (!b) return null;
+  if (content.buildings[b.type].farm) {
+    return content.crops[b.crop ?? content.farming.defaultCrop].resource;
+  }
+  return standingOrderResource(content, b.type);
 }
 
 /** The standing order a new `type` building starts with, or null for one without outputs. */
@@ -61,7 +79,7 @@ export function villageStock(state: GameState, content: Content, resource: Resou
 export function isPaused(state: GameState, content: Content, building: EntityId): boolean {
   const b = state.components.building[building];
   if (!b || b.standingOrder === null) return false;
-  const resource = standingOrderResource(content, b.type);
+  const resource = standingOrderResourceOf(state, content, building);
   return resource !== null && villageStock(state, content, resource) >= b.standingOrder;
 }
 
@@ -80,7 +98,7 @@ export function standingOrderOf(
   building: EntityId,
 ): StandingOrder | null {
   const b = state.components.building[building];
-  const resource = b ? standingOrderResource(content, b.type) : null;
+  const resource = standingOrderResourceOf(state, content, building);
   if (!b || b.standingOrder === null || resource === null) return null;
   const held = villageStock(state, content, resource);
   return { resource, amount: b.standingOrder, held, paused: held >= b.standingOrder };

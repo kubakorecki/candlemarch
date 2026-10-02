@@ -19,7 +19,16 @@ export { constructionCost, siteCost } from './costs';
 export { darkRingTiles, denAt } from './dens';
 export { depositFits, isDeposit } from './deposits';
 export { idsOf } from './entities';
-export { canBeField, farmCrop, farmFields, farmNextCrop, fieldAt, isFarm } from './fields';
+export {
+  canBeField,
+  farmCrop,
+  farmFields,
+  farmNextCrop,
+  fieldAt,
+  isFarm,
+  isKnownCrop,
+  knownCrops,
+} from './fields';
 export { hasTile, isInSight, isRevealed } from './fog';
 export { isForagePatch, isWithered } from './forage';
 export { foodIds, villageFood } from './granary';
@@ -106,6 +115,7 @@ export {
   merchantPays,
   nextMerchantDay,
   priceOf,
+  seedsOrderable,
   tradePostOf,
 } from './tradePost';
 export { carrierUtilization, roadTraffic } from './traffic';

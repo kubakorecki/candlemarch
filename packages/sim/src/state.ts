@@ -576,6 +576,11 @@ export interface GameState {
   treasury: number;
   /** Sell rules, prices and Merchants at the trade post (`tradePost.ts`). */
   tradePost: TradePostState;
+  /**
+   * Crops whose Seeds a Merchant has brought, in content order: known to every farm for good
+   * (`knownCrops` adds those needing none). Seeds aren't goods: nothing is stored. Old saves: none.
+   */
+  seeds: CropId[];
 }
 
 /**
@@ -596,4 +601,6 @@ export interface TradePostState {
   merchantHere: boolean;
   /** Imports paid for and waiting for the next Merchant to bring them, by good. */
   orders: Partial<Record<ResourceId, number>>;
+  /** Crops whose Seeds are paid for and waiting for the next Merchant, in content order. */
+  seedOrders: CropId[];
 }

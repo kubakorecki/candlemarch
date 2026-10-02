@@ -6,16 +6,18 @@ import type { Content } from '@candlemarch/content';
 import { describe, expect, it } from 'vitest';
 import { dawnTick } from '../src/calendar';
 import type { Command } from '../src/commands';
-import { fieldAt } from '../src/fields';
+import { farmCrop, farmNextCrop, fieldAt, knownCrops } from '../src/fields';
 import { canPlant } from '../src/forest';
 import { villageFood } from '../src/granary';
 import { cantUseWorkers } from '../src/logistics/helping';
 import { createInitialState, type MapDef } from '../src/map';
 import { deserialize, serialize } from '../src/save';
 import { applyStaticPatch, sentStaticLayers, staticLayers, staticPatch } from '../src/snapshot';
+import { isPaused, villageStock } from '../src/standingOrders';
 import type { FieldStage, GameState, Tile } from '../src/state';
 import { cloneState, stepInPlace } from '../src/step';
 import { amountOnTile } from '../src/stockpiles';
+import { COIN } from '../src/treasury';
 import { content, run } from './helpers';
 
 /**
@@ -284,5 +286,94 @@ describe('grain', () => {
     const s = play(s0, (x) => x.tick > dawnTick(2, content), 4000, content);
     expect(grainIn(s)).toBeLessThan(30);
     for (const v of Object.values(s.components.villager)) expect(v.missedMeals).toBe(0);
+  });
+});
+
+describe('turnips', () => {
+  /** The acre with a trade post at (12,1) (ID 6) and 100 coin; the Granary holds 30 fish. */
+  const withPost = (): GameState => {
+    const s = createInitialState(1, { ...acre, buildings: [...acre.buildings, POST_AT] }, content);
+    s.rank = 'hamlet';
+    s.treasury = 100 * COIN;
+    const granary = s.components.building[GRANARY];
+    if (granary) granary.stock = { fish: 30 };
+    return s;
+  };
+  const POST_AT = { type: 'trade_post' as const, x: 12, y: 1 };
+  const ORDER: Command = { type: 'orderSeeds', crop: 'turnips' };
+  const TURNIPS: Command = { type: 'setCrop', building: FARM, crop: 'turnips' };
+  const turning: Content = {
+    ...keeping,
+    resources: {
+      ...keeping.resources,
+      turnips: { ...content.resources.turnips, storage: 'granary', spoilPercent: 0 },
+    },
+  };
+
+  /** `s` jumped to the Dawn of `day` and run through it, nobody counting the Meals jumped over. */
+  const dawnFed = (s: GameState, day: number) => {
+    const next = run({ ...s, tick: dawnTick(day, content) }, 1, {}, turning);
+    for (const v of Object.values(next.components.villager)) v.missedMeals = 0;
+    return next;
+  };
+
+  it('can’t be picked before their Seeds arrive', () => {
+    const s = run(withPost(), 1, { 0: [ORDER, TURNIPS] }, turning);
+    expect(farmNextCrop(s, content, FARM)).toBe('grain');
+    expect(knownCrops(s, content)).toEqual(['grain']);
+  });
+
+  it('once the Merchant brings the Seeds, a farm set to turnips grows them from next spring', () => {
+    const ordered = run(withPost(), 1, { 0: [PAINT, ORDER] }, turning);
+    // Grain is sown this spring; the Seeds come with day 3's Merchant.
+    const year1 = play(ordered, (x) => all(x, 'sown'), 3600, turning);
+    const seeded = dawnFed(year1, 3);
+    expect(knownCrops(seeded, content)).toEqual(['grain', 'turnips']);
+    const picked = run(seeded, 1, { [seeded.tick]: [TURNIPS] }, turning);
+    expect(farmNextCrop(picked, content, FARM)).toBe('turnips');
+    expect(farmCrop(picked, content, FARM)).toBe('grain');
+    for (const t of FIELDS) expect(fieldAt(picked, t)?.crop).toBe('grain');
+
+    // Winter clears the Fields; the next spring they are sown with turnips.
+    const winter = dawnFed(picked, 16);
+    const spring = dawnFed(winter, 21);
+    expect(farmCrop(spring, content, FARM)).toBe('turnips');
+    const sownTurnips = play(spring, (x) => all(x, 'sown'), 3600, turning);
+    for (const t of FIELDS) expect(fieldAt(sownTurnips, t)?.crop).toBe('turnips');
+
+    const ripe = dawnFed(sownTurnips, 29);
+    expect(all(ripe, 'ripe')).toBe(true);
+    const harvest = FIELDS.length * content.crops.turnips.yieldPerField;
+    const done = play(
+      ripe,
+      (x) => villageStock(x, turning, 'turnips') >= harvest,
+      4 * 3600,
+      turning,
+    );
+    expect(all(done, 'stubble')).toBe(true);
+    expect(villageStock(done, turning, 'turnips')).toBe(harvest);
+  });
+
+  it('are Food the villagers eat', () => {
+    const s0 = createInitialState(1, acre, content);
+    const granary = s0.components.building[GRANARY];
+    if (granary) granary.stock = { turnips: 30 };
+    expect(villageFood(s0, content)).toBe(30);
+    const s = play(s0, (x) => x.tick > dawnTick(2, content), 4000, content);
+    expect(s.components.building[GRANARY]?.stock.turnips ?? 0).toBeLessThan(30);
+    for (const v of Object.values(s.components.villager)) expect(v.missedMeals).toBe(0);
+  });
+
+  it('pauses a turnip farm by the turnips the village holds, not its grain', () => {
+    const s = createInitialState(1, acre, content);
+    const farm = s.components.building[FARM];
+    const granary = s.components.building[GRANARY];
+    if (!farm || !granary) throw new Error('no farm');
+    farm.crop = 'turnips';
+    farm.standingOrder = 10;
+    granary.stock = { grain: 50 };
+    expect(isPaused(s, content, FARM)).toBe(false);
+    granary.stock = { turnips: 10 };
+    expect(isPaused(s, content, FARM)).toBe(true);
   });
 });

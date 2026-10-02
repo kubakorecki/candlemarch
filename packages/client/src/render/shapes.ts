@@ -1,5 +1,5 @@
 // Placeholder art drawn in code: bold ink outlines, flat earthy fills. Colours come from palette.ts.
-import type { ResourceAmount, ResourceId, RoadId, TerrainId } from '@candlemarch/content';
+import type { CropId, ResourceAmount, ResourceId, RoadId, TerrainId } from '@candlemarch/content';
 import type { BuildingLayout, FieldTile, Tile } from '@candlemarch/sim';
 import type { Graphics } from 'pixi.js';
 import { gridToWorld, TILE_H, TILE_W, type Vec } from './iso';
@@ -1092,6 +1092,20 @@ function drawGrain(g: Graphics, x: number, y: number, s: number): void {
   g.rect(x - 1 * s, y - 4.5 * s, 2.5 * s, 8.5 * s).fill(palette.rope);
 }
 
+/** One turnip lying on its side, centred on (x, y): a round root, its purple shoulder, a leaf. */
+function drawTurnip(g: Graphics, x: number, y: number, s: number): void {
+  g.moveTo(x + 4 * s, y - 2 * s)
+    .lineTo(x + 9 * s, y - 5 * s)
+    .stroke({ width: 2 * s, color: palette.turnipLeaf, cap: 'round' });
+  g.circle(x, y, 5 * s)
+    .fill(palette.turnip)
+    .stroke(THIN_INK);
+  g.ellipse(x + 2 * s, y - 2 * s, 3 * s, 2.2 * s).fill(palette.turnipShoulder);
+  g.moveTo(x - 5 * s, y + 1 * s)
+    .lineTo(x - 8 * s, y + 2 * s)
+    .stroke({ width: 1 * s, color: palette.turnip, cap: 'round' });
+}
+
 /** One lump of charcoal, centred on (x, y). */
 function drawCharcoal(g: Graphics, x: number, y: number, s: number): void {
   g.poly([x - 8 * s, y + 3 * s, x - 6 * s, y - 3 * s, x + 2 * s, y - 4 * s, x + 8 * s, y + 3 * s])
@@ -1227,6 +1241,7 @@ const PIECES: Record<
   clay: { draw: drawClay, w: 17, h: 8 },
   iron_ore: { draw: drawIronOre, w: 17, h: 8 },
   grain: { draw: drawGrain, w: 19, h: 8 },
+  turnips: { draw: drawTurnip, w: 14, h: 9 },
   charcoal: { draw: drawCharcoal, w: 17, h: 8 },
   planks: { draw: drawPlank, w: 22, h: 6 },
   cut_stone: { draw: drawCutStone, w: 17, h: 8 },
@@ -2630,7 +2645,8 @@ export function drawReserve(g: Graphics, tiles: readonly Tile[], strong = false)
 
 /**
  * Fields on the ground: tilled earth with furrows, then by stage green shoots (sown), golden stalks
- * (ripe) or pale stubble (harvested), and a Fieldstone where the frost pushed one up.
+ * or leafy turnips (ripe) or pale stubble (harvested), and a Fieldstone where the frost pushed one
+ * up.
  */
 export function drawFields(g: Graphics, fields: readonly { tile: Tile; field: FieldTile }[]): void {
   const FURROWS = [0.2, 0.4, 0.6, 0.8];
@@ -2651,9 +2667,9 @@ export function drawFields(g: Graphics, fields: readonly { tile: Tile; field: Fi
   }
   g.stroke({ width: 2, color: palette.fieldFurrow, alpha: 0.8, cap: 'round' });
   // Along each furrow, a few plants: shoots, stalks or stubble by the Field's stage.
-  const plants = (stage: FieldTile['stage']) =>
+  const plants = (stage: FieldTile['stage'], crop?: CropId) =>
     fields.flatMap(({ tile, field }) => {
-      if (field.stage !== stage) return [];
+      if (field.stage !== stage || (crop !== undefined && field.crop !== crop)) return [];
       const [top, right, bottom, left] = diamond(tile.x, tile.y);
       return FURROWS.flatMap((f) =>
         [0.25, 0.5, 0.75].map((along) => lerp(lerp(top, left, f), lerp(right, bottom, f), along)),
@@ -2666,11 +2682,23 @@ export function drawFields(g: Graphics, fields: readonly { tile: Tile; field: Fi
       .lineTo(p.x + 2 * s, p.y - 4 * s);
   }
   g.stroke({ width: 1.6 * s, color: palette.sprout, cap: 'round' });
-  const ripe = plants('ripe');
+  const ripe = plants('ripe', 'grain');
   for (const p of ripe) g.moveTo(p.x, p.y).lineTo(p.x, p.y - 9 * s);
   g.stroke({ width: 1.4 * s, color: palette.grainDark, cap: 'round' });
   for (const p of ripe) g.ellipse(p.x, p.y - 10 * s, 1.8 * s, 3 * s);
   g.fill(palette.grain);
+  // Ripe turnips: purple shoulders showing under a spray of dark leaves.
+  const turnips = plants('ripe', 'turnips');
+  for (const p of turnips) g.ellipse(p.x, p.y - 1 * s, 2.6 * s, 1.8 * s);
+  g.fill(palette.turnipShoulder);
+  for (const p of turnips) {
+    g.moveTo(p.x - 4 * s, p.y - 6 * s)
+      .lineTo(p.x, p.y - 1 * s)
+      .lineTo(p.x + 4 * s, p.y - 6 * s)
+      .moveTo(p.x, p.y - 1 * s)
+      .lineTo(p.x, p.y - 7 * s);
+  }
+  g.stroke({ width: 1.6 * s, color: palette.turnipLeaf, cap: 'round' });
   for (const p of plants('stubble')) g.moveTo(p.x, p.y).lineTo(p.x, p.y - 2.5 * s);
   g.stroke({ width: 1.4 * s, color: palette.stubble, cap: 'round' });
   for (const { tile, field } of fields) {
