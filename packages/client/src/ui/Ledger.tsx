@@ -1,4 +1,4 @@
-// Top: the village's stores, its people (with who is Homeless, Hungry or Cold), how busy the
+// Top: the Treasury, the village's stores, its people (with who is Homeless, Hungry or Cold), how busy the
 // Carriers are, and the Hero (its HP and load; a button to select it).
 import { content } from '@candlemarch/content';
 import { Fragment } from 'react';
@@ -77,6 +77,8 @@ export function Ledger({ hud, game }: { hud: HudState; game: Game }) {
   const statuses = STATUSES.filter((s) => hud[s.kind] > 0);
   return (
     <section className="ledger panel" aria-label="Village ledger">
+      <Store icon="coin" value={hud.treasury} label="Coin" />
+      <span className="ledger-divider" />
       <Store icon="food" value={hud.food} label="Food" />
       {ledgerGoods(content, hud.goods).map((resource) => (
         <Fragment key={resource}>

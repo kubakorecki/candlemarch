@@ -90,6 +90,7 @@ export {
   MAX_STANDING_ORDER,
   type StandingOrder,
   standingOrderOf,
+  villageStock,
 } from './standingOrders';
 export * from './state';
 export { cloneState, step, stepInPlace } from './step';
@@ -97,7 +98,16 @@ export { canPlaceStockpile, isStockpileGood, STOCKPILE_PRIORITIES } from './stoc
 export { type Storage, storageOf } from './storage';
 export { immigrationFoodNeeded, newcomerHome } from './systems/immigration';
 export { openPositions } from './systems/staffing';
+export {
+  isMerchantDay,
+  MAX_SELL_KEEP,
+  merchantPays,
+  nextMerchantDay,
+  priceOf,
+  tradePostOf,
+} from './tradePost';
 export { carrierUtilization, roadTraffic } from './traffic';
+export { COIN, canAfford, treasuryCoin } from './treasury';
 export { generateValley, type Valley } from './valley/generate';
 export { isHelpingCarry } from './villagers';
 export { canLayWall, fullHp, isBrokenWall, isWall, isWallType } from './walls';

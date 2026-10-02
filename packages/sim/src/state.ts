@@ -558,4 +558,29 @@ export interface GameState {
    * Master is lost, so its workshops crawl rather than wait (`masters.ts`). Old saves: none.
    */
   trades: TradeId[];
+  /**
+   * The Treasury: the village's Coin, in hundredths of a coin (`COIN` in `tradePost.ts`), so
+   * prices that fall by fractions stay whole. Never stored on a Stockpile or hauled. Old saves: 0.
+   */
+  treasury: number;
+  /** Sell rules, prices and Merchants at the trade post (`tradePost.ts`). */
+  tradePost: TradePostState;
+}
+
+/**
+ * What the village has set and Merchants have done at the trade post. Kept even while no trade
+ * post stands, so prices and rules survive one being rebuilt. Old saves: no rules, base prices.
+ */
+export interface TradePostState {
+  /** Sell rules: keep this many of the good in the village and sell the rest. No rule: not sold. */
+  keep: Partial<Record<ResourceId, number>>;
+  /** Each good's price now, in hundredths of a coin; absent: its base price. */
+  prices: Partial<Record<ResourceId, number>>;
+  /**
+   * The Wanted list of the next Merchant, or of the one here now: goods paid at the bonus. Null
+   * until announced, at the first Dawn a trade post stands.
+   */
+  wanted: ResourceId[] | null;
+  /** A Merchant is at the trade post: arrived at this day's Dawn, leaves at the next. */
+  merchantHere: boolean;
 }

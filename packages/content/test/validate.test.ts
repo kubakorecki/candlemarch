@@ -672,6 +672,33 @@ describe('content validation', () => {
     expectPositiveInt(gloamling.sightTiles, 'combat.gloamling.sightTiles');
   });
 
+  it('every good has a price in whole hundredths that falls to a floor and climbs back', () => {
+    for (const r of Object.values(resources)) {
+      expectPositiveInt(r.price.base, `${r.id}.price.base`);
+      expectPositiveInt(r.price.dropPerUnit, `${r.id}.price.dropPerUnit`);
+      expect(r.price.dropPerUnit, `${r.id} drops less than its base`).toBeLessThan(r.price.base);
+    }
+    const m = content.merchants;
+    expectPositiveInt(m.everyDays, 'merchants.everyDays');
+    expectPositiveInt(m.wanted.min, 'merchants.wanted.min');
+    expect(m.wanted.max).toBeGreaterThanOrEqual(m.wanted.min);
+    expect(m.wanted.max).toBeLessThanOrEqual(Object.keys(resources).length);
+    expectPositiveInt(m.wantedBonusPercent, 'merchants.wantedBonusPercent');
+    expect(m.floorPercent > 0 && m.floorPercent < 100).toBe(true);
+    expectPositiveInt(m.recoverPercent, 'merchants.recoverPercent');
+    expect(m.closedSeasons.length).toBeLessThan(content.calendar.seasons.length);
+  });
+
+  it('coin construction costs are whole coins, only on buildings placed one at a time', () => {
+    for (const b of Object.values(buildings)) {
+      const coin = b.construction?.coin;
+      if (coin === undefined) continue;
+      expectPositiveInt(coin, `${b.id}.construction.coin`);
+      // Walls and groundwork are laid many sites at a time and never pay coin.
+      expect(b.wall ?? b.groundwork, `${b.id} laid in a drag`).toBeUndefined();
+    }
+  });
+
   it('every resource has a known store', () => {
     for (const r of Object.values(resources)) {
       expect(['stockpile', 'granary'], `${r.id}.storage`).toContain(r.storage);

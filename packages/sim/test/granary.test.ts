@@ -156,8 +156,7 @@ describe('a Meal at Dusk', () => {
       resources: {
         ...content.resources,
         logs: {
-          id: 'logs',
-          name: 'Logs',
+          ...content.resources.logs,
           storage: 'granary',
           spoilPercent: fishSpoil,
         },

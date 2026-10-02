@@ -70,7 +70,8 @@ export type BuildingId =
   | 'brick_kiln'
   | 'smokehouse'
   | 'bloomery'
-  | 'brewery';
+  | 'brewery'
+  | 'trade_post';
 export type JobId =
   | 'woodcutter'
   | 'carrier'
@@ -124,6 +125,19 @@ interface ResourceBase {
    * village holds at least this many. Every resource a Workplace makes has one.
    */
   standingOrder?: number;
+  /** What Merchants pay for it at the trade post (`PriceDef`). Every good can be sold. */
+  price: PriceDef;
+}
+
+/**
+ * A good's price at the trade post (spec, Economy: The trade post in M5), in hundredths of a coin
+ * so it can fall a little per unit and stay whole: `base` is what a unit fetches with the market
+ * unflooded; each unit sold lowers it by `dropPerUnit`, down to `MerchantsDef.floorPercent` of
+ * `base`.
+ */
+export interface PriceDef {
+  base: number;
+  dropPerUnit: number;
 }
 
 /** Bulk goods, kept on Stockpiles. */
@@ -817,10 +831,18 @@ export interface BuildingDef {
   onePerVillage?: boolean;
   /** Makes it the notice board (M5), where Charters and Delivery orders are posted. */
   noticeBoard?: boolean;
+  /**
+   * Makes it the trade post (M5): its Storage holds up to `capacity` units of goods for sale, all
+   * goods together, which Merchants buy (`MerchantsDef`).
+   */
+  tradePost?: { capacity: number };
   /** Makes it where a Knocked-out Hero gets up (M5: the village hall), at its door, once built. */
   heroRecovers?: boolean;
-  /** Cost and time to build it from a construction site. Absent for buildings that can't be built. */
-  construction?: { cost: ResourceAmount[]; buildTicks: number };
+  /**
+   * Cost and time to build it from a construction site. Absent for buildings that can't be built.
+   * `coin` (whole coins, absent: none) leaves the Treasury when the site is placed.
+   */
+  construction?: { cost: ResourceAmount[]; coin?: number; buildTicks: number };
 }
 
 /**
@@ -879,6 +901,24 @@ export interface MastersDef {
   lostSpeedPercent: number;
 }
 
+/**
+ * Merchants at the trade post (spec, Economy: The trade post in M5). One arrives at the Dawn of
+ * every `everyDays`th day outside `closedSeasons`, buys everything in the trade post's Storage and
+ * leaves at the next Dawn. Prices are in hundredths of a coin.
+ */
+export interface MerchantsDef {
+  everyDays: number;
+  closedSeasons: SeasonId[];
+  /** How many goods a Wanted list names, drawn with the PRNG from every good. */
+  wanted: { min: number; max: number };
+  /** What a Wanted good pays over its price, as a percent (+50%: 50). */
+  wantedBonusPercent: number;
+  /** A price never falls below this percent of its base. */
+  floorPercent: number;
+  /** At each Dawn every price climbs back this percent of its base, up to the base. */
+  recoverPercent: number;
+}
+
 export interface Content {
   resources: Record<ResourceId, ResourceDef>;
   terrain: Record<TerrainId, TerrainDef>;
@@ -890,6 +930,7 @@ export interface Content {
   buildings: Record<BuildingId, BuildingDef>;
   trades: Record<TradeId, TradeDef>;
   masters: MastersDef;
+  merchants: MerchantsDef;
   heroes: Record<HeroId, HeroDef>;
   roads: Record<RoadId, RoadDef>;
   logistics: LogisticsDef;

@@ -43,7 +43,7 @@ const logsAreFood: Content = {
   ...content,
   resources: {
     ...content.resources,
-    logs: { id: 'logs', name: 'Logs', storage: 'granary', spoilPercent: 50 },
+    logs: { ...content.resources.logs, storage: 'granary', spoilPercent: 50 },
   },
 };
 

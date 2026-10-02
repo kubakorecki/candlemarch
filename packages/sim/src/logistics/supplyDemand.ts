@@ -9,7 +9,9 @@ import { waitingForMaster } from '../masters';
 import { isPaused } from '../standingOrders';
 import type { EntityId, GameState } from '../state';
 import { amountOnTile, roomOnTile, STOCKPILE_PRIORITIES, stockpileTakes } from '../stockpiles';
+import { isTradePost, sellSurplus, tradePostRoom } from '../tradePost';
 import { houseFuelRoom } from '../warmth';
+import { haulsIncoming } from './jobDispatch';
 
 /** Goods waiting in a building's output buffer, on a stockpile, or in a cleared Den's cache. */
 export interface Supply {
@@ -23,10 +25,12 @@ export interface Supply {
  * Goods a construction site still lacks, or room a workshop's input buffer, a Granary, a House's
  * fuel buffer, a light's fuel or a stockpile still has (not counting anything already on its
  * way). A Granary's room is shared by every Food: it has one demand per Food, each for all of it.
+ * The trade post wants each good's surplus over its sell rule (`sellSurplus`), as far as its room
+ * goes once everything on its way there has come.
  */
 export interface Demand {
   target: EntityId;
-  kind: 'site' | 'workshop' | 'granary' | 'house' | 'light' | 'stockpile';
+  kind: 'site' | 'workshop' | 'granary' | 'house' | 'light' | 'tradePost' | 'stockpile';
   resource: ResourceId;
   amount: number;
 }
@@ -47,6 +51,17 @@ export function inputRoom(
   if (!b || !slot || isPaused(state, content, building)) return 0;
   if (waitingForMaster(state, content, building)) return 0;
   return Math.max(0, slot.capacity - (b.input[resource] ?? 0));
+}
+
+/** Units of `resource` carriers have picked up and are carrying to `target`. */
+function inHand(state: GameState, target: EntityId, resource: ResourceId): number {
+  let total = 0;
+  for (const haul of Object.values(state.logistics.hauls)) {
+    if (haul.to === target && haul.resource === resource && haul.phase === 'dropoff') {
+      total += haul.amount;
+    }
+  }
+  return total;
 }
 
 /** Resource IDs in content order. */
@@ -94,8 +109,9 @@ export function listSupplies(state: GameState, content: Content): Supply[] {
  * room in the input buffer of every workshop that isn't paused (oldest first, buffer slots in
  * content order), then room in every Granary for each Food (oldest first, Foods in content
  * order), then room in every House's fuel buffer while Houses stock up (oldest first), then room
- * for fuel in every torch and brazier (oldest first), then room on every stockpile for each
- * resource it takes (oldest first, resources in content order).
+ * for fuel in every torch and brazier (oldest first), then the trade post's surplus to sell
+ * (resources in content order), then room on every stockpile for each resource it takes (oldest
+ * first, resources in content order).
  */
 export function listDemands(state: GameState, content: Content): Demand[] {
   const result: Demand[] = [];
@@ -135,6 +151,20 @@ export function listDemands(state: GameState, content: Content): Demand[] {
     if (light && room > 0)
       result.push({ target: id, kind: 'light', resource: light.fuel, amount: room });
   }
+  for (const id of idsOf(state.components.building)) {
+    if (!isTradePost(state, content, id)) continue;
+    const resources = resourceIds(content);
+    let free = tradePostRoom(state, content, id);
+    for (const resource of resources) free -= haulsIncoming(state.logistics.hauls, id, resource);
+    for (const resource of resources) {
+      // Dispatch takes what's on its way off the amount: count it in both the surplus (goods in
+      // hand have left the village's stock) and the room (it was taken off `free` above).
+      const incoming = haulsIncoming(state.logistics.hauls, id, resource);
+      const surplus = sellSurplus(state, content, resource) + inHand(state, id, resource);
+      const amount = Math.min(surplus, free + incoming);
+      if (amount > 0) result.push({ target: id, kind: 'tradePost', resource, amount });
+    }
+  }
   const capacity = content.logistics.stockpileTileCapacity;
   for (const id of idsOf(state.components.stockpile)) {
     const pile = state.components.stockpile[id];
@@ -154,7 +184,8 @@ export function listDemands(state: GameState, content: Content): Demand[] {
  * Demands in the order they're served: each site on its own, oldest first, then each workshop
  * input buffer on its own, oldest first, then Granaries, those wanting one Food as one group
  * (Foods in content order), then every House's fuel buffer as one group, then every light's
- * fuel, those wanting one fuel as one group, then stockpiles, highest priority first, those of one
+ * fuel, those wanting one fuel as one group, then each good the trade post wants on its own,
+ * then stockpiles, highest priority first, those of one
  * priority wanting one resource as one group (resources in content order, starting after the one
  * the last stockpile Haul moved, `lastToStockpile`). Within a group, goods
  * go to whichever demand is nearest, ties to the older one.
@@ -174,6 +205,7 @@ export function demandGroups(state: GameState, demands: readonly Demand[]): Dema
   for (const resource of new Set(lights.map((d) => d.resource))) {
     groups.push(lights.filter((d) => d.resource === resource));
   }
+  for (const d of demands) if (d.kind === 'tradePost') groups.push([d]);
   const piles = demands.filter((d) => d.kind === 'stockpile');
   // Resources in content order, turned to start after the one the last stockpile Haul moved.
   const wanted = [...new Set(piles.map((d) => d.resource))];

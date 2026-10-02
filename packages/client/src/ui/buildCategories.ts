@@ -54,7 +54,12 @@ export const BUILD_CATEGORIES: readonly BuildCategory[] = [
       'brewery',
     ],
   },
-  { id: 'village', label: 'Village', icon: 'hall', tools: ['village_hall', 'notice_board'] },
+  {
+    id: 'village',
+    label: 'Village',
+    icon: 'hall',
+    tools: ['village_hall', 'notice_board', 'trade_post'],
+  },
   {
     id: 'night',
     label: 'Light & Watch',
@@ -94,6 +99,7 @@ export const TOOL_ICONS: Record<ToolId, IconName> = {
   brewery: 'barrel',
   village_hall: 'hall',
   notice_board: 'board',
+  trade_post: 'stall',
   torch: 'torch',
   brazier: 'brazier',
   watchtower: 'tower',

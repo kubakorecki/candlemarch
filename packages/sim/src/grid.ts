@@ -16,6 +16,7 @@ import {
   TILE_UNITS,
   type Tile,
 } from './state';
+import { canAfford } from './treasury';
 
 export function inBounds(map: MapState, x: number, y: number): boolean {
   return (
@@ -414,7 +415,10 @@ function hasOne(state: GameState, type: BuildingId): boolean {
   );
 }
 
-/** Whether the player may place a building of this type, turned `rotation`, at (x, y) now. */
+/**
+ * Whether the player may place a building of this type, turned `rotation`, at (x, y) now; one with
+ * a coin cost only while the Treasury covers it.
+ */
 export function canPlaceBuilding(
   state: GameState,
   content: Content,
@@ -428,6 +432,8 @@ export function canPlaceBuilding(
   if (def.onePerVillage && hasOne(state, type)) return false;
   // Unlocked at the village's rank; a rank building only once the village has its residents.
   if (!rankAllows(state, content, type)) return false;
+  // Its coin, paid when the site is placed.
+  if (!canAfford(state, def.construction.coin ?? 0)) return false;
   if (!isRotation(rotation)) return false;
   // Only on tiles the player has seen (Fog).
   if (!allRevealed(state, footprint(def, { x, y }, rotation))) return false;

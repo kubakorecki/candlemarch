@@ -182,6 +182,13 @@ export const TOOLS: readonly {
     hint: 'Click to place. Charters and Delivery orders are posted on it; click it to read them.',
   },
   {
+    id: 'trade_post',
+    label: 'Trade post',
+    key: null,
+    drag: false,
+    hint: 'Click to place. Carriers bring it the goods its sell rules name, and Merchants buy them every few days; click it to set the rules.',
+  },
+  {
     id: 'torch',
     label: 'Torch',
     key: 'l',

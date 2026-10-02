@@ -39,7 +39,7 @@ const noSpoiling: Content = {
   ...content,
   resources: {
     ...content.resources,
-    fish: { id: 'fish', name: 'Fish', storage: 'granary', spoilPercent: 0 },
+    fish: { ...content.resources.fish, storage: 'granary', spoilPercent: 0 },
   },
 };
 

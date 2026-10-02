@@ -189,6 +189,9 @@ body,
   color: var(--ui-warn);
 }
 
+.tone-lit {
+  color: var(--ui-gilt-lit);
+}
 .tone-gilt {
   color: var(--ui-gilt);
 }
@@ -1001,6 +1004,38 @@ body,
 }
 .fact.good .ic {
   color: var(--ui-gilt);
+}
+/* A good in the trade post's sell rules: its icon, name and what the village holds, a gilt star
+   when Wanted; then Sell, or its rule (− Keep N + ×); then what a unit fetches. */
+.sell-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  min-height: 30px;
+}
+.sell-good {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.sell-rule {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.sell-rule .keep {
+  min-width: 56px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.sell-row .price {
+  min-width: 40px;
+  text-align: right;
+  color: var(--ui-muted);
+  font-variant-numeric: tabular-nums;
 }
 .fact.priority .seg {
   flex-grow: 1;

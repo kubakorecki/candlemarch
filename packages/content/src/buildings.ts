@@ -506,4 +506,24 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 300, // 15 s
     },
   },
+  // The trade post (spec, Economy: The trade post in M5): Carriers bring the surplus its sell rules
+  // name into its Storage, and Merchants buy it. One a village, unlocked at Hamlet, nobody works
+  // there. Numbers Proposed.
+  trade_post: {
+    id: 'trade_post',
+    name: 'Trade post',
+    size: { w: 2, h: 2 },
+    door: { x: 1, y: 2 },
+    placeable: true,
+    employs: [],
+    onePerVillage: true,
+    tradePost: { capacity: 100 },
+    construction: {
+      cost: [
+        { resource: 'logs', amount: 16 },
+        { resource: 'stone', amount: 6 },
+      ],
+      buildTicks: 400, // 20 s
+    },
+  },
 };

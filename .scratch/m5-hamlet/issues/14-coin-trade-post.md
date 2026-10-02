@@ -1,6 +1,6 @@
 # Coin, trade post and merchants
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 02, 04, 28
 
@@ -21,3 +21,7 @@ Spec: Economy (Coin; The trade post in M5). Glossary: Coin, Treasury, Trade post
 
 - Headless tests: a sell rule moves surplus into the trade post; a visit sells it for coin; wanted goods pay +50%; selling many units lowers the price and it recovers over days; no merchant in winter; determinism.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-10-02: Done. The Treasury (`state.treasury`, kept in hundredths of a coin, shown in whole coins first on the Ledger), a `construction.coin` cost refused when the Treasury can't cover it and paid when the site is placed (no M5 building has one yet), a base price and per-unit drop on every good, the trade post (Hamlet, one a village; Storage of 100 goods for sale in its panel via `StorageFacts`), sell rules set in its panel ("Sell", then − Keep N +, ×), Merchants every 3rd day outside winter who buy everything in the Storage at once on arrival and leave at the next Dawn, a 2–3 good Wanted list at +50% drawn when the previous Merchant leaves, prices falling per unit to 30% of base and recovering 10% of base each Dawn. The panel shows each good's price, the Wanted list and the next visit. Differences: the Merchant buys only on arrival, so goods hauled in while it's there wait for the next one; goods for sale don't count as what the village holds (so standing orders keep producing). Checked by tests and typecheck; not looked at in the browser.

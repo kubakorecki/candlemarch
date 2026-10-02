@@ -59,10 +59,13 @@ import {
   isRevealed,
   isWithered,
   lShapeTiles,
+  MAX_SELL_KEEP,
   MAX_STANDING_ORDER,
   masterOf,
   maxWorkers,
+  merchantPays,
   type NewGameSetup,
+  nextMerchantDay,
   oreAt,
   oreCap,
   poiAt,
@@ -81,7 +84,9 @@ import {
   standingOrderOf,
   storageOf,
   type Tile,
+  treasuryCoin,
   villageFood,
+  villageStock,
   winterIn,
   workersAt,
   workplaceStatus,
@@ -110,6 +115,7 @@ import { type PostingView, postingView } from './postingText';
 import { lockText, rankText } from './rankText';
 import { SimBridge } from './SimBridge';
 import { type ToolId, toolDef } from './tools';
+import { merchantText, priceText } from './tradeText';
 
 /** The game the page opens on: a generated Valley under Fog. */
 const FIRST_GAME: NewGameSetup = {
@@ -259,6 +265,30 @@ export interface BuildingInfo {
   farm: FarmInfo | null;
   /** What's posted on it, for the notice board; null for any other building. */
   postings: PostingView[] | null;
+  /** Sell rules, prices and Merchants, for the trade post; null for any other building. */
+  tradePost: TradePostInfo | null;
+}
+
+/** What the trade post's panel shows. */
+export interface TradePostInfo {
+  /** When Merchants come, e.g. "Next Merchant in 2 days". */
+  merchant: string;
+  /** The next (or present) Merchant's Wanted list, or null until it's announced. */
+  wanted: ResourceId[] | null;
+  /** A row per good with a sell rule, held by the village, or Wanted, in content order. */
+  goods: SellRow[];
+}
+
+/** One good in the trade post's panel. */
+export interface SellRow {
+  resource: ResourceId;
+  /** Its sell rule: keep this many, sell the rest; null: not sold. */
+  keep: number | null;
+  /** What the village holds of it, goods for sale left out. */
+  held: number;
+  /** What a Merchant pays for the next unit, e.g. "2.00" (Wanted bonus included). */
+  price: string;
+  wanted: boolean;
 }
 
 /** What a farm's panel shows. */
@@ -317,6 +347,8 @@ export interface HudState {
   cold: number;
   /** Food in every Granary. */
   food: number;
+  /** Whole coins in the Treasury. */
+  treasury: number;
   /** Carrier utilization over the last day, e.g. "64%", and as a number (null: no Carrier worked). */
   carriersBusy: string;
   carriersBusyPercent: number | null;
@@ -416,6 +448,7 @@ export class Game {
     hungry: 0,
     cold: 0,
     food: 0,
+    treasury: 0,
     carriersBusy: utilizationText(null),
     carriersBusyPercent: null,
     heatMap: false,
@@ -617,6 +650,24 @@ export class Game {
     if (id === null || !order) return;
     const amount = Math.min(MAX_STANDING_ORDER, Math.max(0, order.amount + delta));
     this.bridge.command({ type: 'setStandingOrder', building: id, amount });
+  }
+
+  /**
+   * Sells `resource` at the trade post, keeping its standing-order default in the village to
+   * start with, or with null stops selling it.
+   */
+  toggleSellRule(resource: ResourceId): void {
+    const row = this.hud.building?.tradePost?.goods.find((g) => g.resource === resource);
+    const keep = row?.keep === null ? (content.resources[resource].standingOrder ?? 20) : null;
+    this.bridge.command({ type: 'setSellRule', resource, keep });
+  }
+
+  /** Raises or lowers what the trade post's rule for `resource` keeps, within 0 and the most. */
+  changeSellRule(resource: ResourceId, delta: number): void {
+    const keep = this.hud.building?.tradePost?.goods.find((g) => g.resource === resource)?.keep;
+    if (keep === null || keep === undefined) return;
+    const amount = Math.min(MAX_SELL_KEEP, Math.max(0, keep + delta));
+    this.bridge.command({ type: 'setSellRule', resource, keep: amount });
   }
 
   /** Starts a new game from `setup` (by default the last game's again), replacing this one. */
@@ -827,6 +878,7 @@ export class Game {
       hungry: villagers.filter((v) => v.missedMeals > 0).length,
       cold: villagers.filter((v) => v.coldNights > 0).length,
       food: villageFood(state, content),
+      treasury: treasuryCoin(state),
       carriersBusy: utilizationText(busy),
       carriersBusyPercent: busy,
       gameOver: state.gameOver && gameOverText(state.gameOver),
@@ -1392,7 +1444,7 @@ function stockpileAt(state: GameState, tile: Tile): EntityId | null {
 
 /**
  * The building with a panel covering `tile`, if any: a Workplace (it employs anyone), one that
- * keeps Storage (a Granary), or the notice board.
+ * keeps Storage (a Granary, the trade post), or the notice board.
  */
 function inspectableAt(state: GameState, tile: Tile): EntityId | null {
   const { building } = state.components;
@@ -1595,6 +1647,32 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
     postings: content.buildings[b.type].noticeBoard
       ? postings(state, content).map((p) => postingView(p, state.tick))
       : null,
+    tradePost: content.buildings[b.type].tradePost ? tradePostInfo(state) : null,
+  };
+}
+
+/** The trade post's sell rules, prices, Wanted list and next Merchant, for its panel. */
+function tradePostInfo(state: GameState): TradePostInfo {
+  const trade = state.tradePost;
+  const goods: SellRow[] = [];
+  for (const resource of Object.keys(content.resources) as ResourceId[]) {
+    const keep = trade.keep[resource] ?? null;
+    const held = villageStock(state, content, resource);
+    const wanted = trade.wanted?.includes(resource) ?? false;
+    if (keep === null && held === 0 && !wanted) continue;
+    goods.push({
+      resource,
+      keep,
+      held,
+      wanted,
+      price: priceText(merchantPays(state, content, resource)),
+    });
+  }
+  const today = calendarAt(state.tick, content).day;
+  return {
+    merchant: merchantText(today, nextMerchantDay(state, content), trade.merchantHere),
+    wanted: trade.wanted,
+    goods,
   };
 }
 

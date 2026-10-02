@@ -28,6 +28,8 @@ import {
   removeStockpile,
   STOCKPILE_PRIORITIES,
 } from './stockpiles';
+import { setSellRule } from './tradePost';
+import { spendCoin } from './treasury';
 import { layWall } from './walls';
 import { reassignWorker, releaseWorkers, setWorkerLimit, unassignWorker } from './workers';
 
@@ -81,6 +83,11 @@ export type Command =
   | { type: 'setWorkerLimit'; building: EntityId; limit: number }
   /** Sets a Workplace's standing order: it pauses while the village holds at least `amount`. */
   | { type: 'setStandingOrder'; building: EntityId; amount: number }
+  /**
+   * Sets the trade post's sell rule for `resource`: keep `keep` in the village and sell the rest,
+   * or with null sell none.
+   */
+  | { type: 'setSellRule'; resource: ResourceId; keep: number | null }
   /** Sets a hunter's lodge to hunt only `ground` (in its reach), or with null the nearest again. */
   | { type: 'setHuntingGround'; building: EntityId; ground: EntityId | null }
   /** Rings the Militia bell: calls the village to arms, or stands it down if it's ringing. */
@@ -98,6 +105,7 @@ export function applyCommand(state: GameState, command: Command, content: Conten
       if (!isRotation(rotation) || !canPlaceBuilding(state, content, building, x, y, rotation)) {
         return;
       }
+      spendCoin(state, content.buildings[building].construction?.coin ?? 0);
       const layout = buildingLayout(content.buildings[building], { x, y }, rotation);
       clearGrowth(state, content, [...layout.tiles, layout.door]);
       const id = createEntity(state);
@@ -211,6 +219,10 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'setStandingOrder': {
       setStandingOrder(state, content, command.building, command.amount);
+      return;
+    }
+    case 'setSellRule': {
+      setSellRule(state, content, command.resource, command.keep);
       return;
     }
     case 'setHuntingGround': {

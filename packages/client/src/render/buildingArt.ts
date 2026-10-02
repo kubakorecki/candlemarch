@@ -497,6 +497,7 @@ export function drawBuilding(g: Graphics, layout: BuildingLayout, type: Building
   else if (type === 'smokehouse') drawSmokehouse(g, layout);
   else if (type === 'bloomery') drawBloomery(g, layout);
   else if (type === 'brewery') drawBrewery(g, layout);
+  else if (type === 'trade_post') drawTradePost(g, layout);
   else drawCabin(g, layout);
 }
 
@@ -1784,6 +1785,88 @@ function drawBrewery(g: Graphics, layout: BuildingLayout): void {
     g.ellipse(p.x, p.y - 15 * S, 6 * S, 2 * S)
       .fill(palette.barrelDark)
       .stroke(THIN_INK);
+  }
+}
+
+// ---------------------------------------------------------------- Trade post
+
+/**
+ * The trade post: a board house under shingles, its ridge along the door wall, with a striped
+ * awning on the props' wall over a plank counter where Merchants trade, crates stacked beside it.
+ */
+function drawTradePost(g: Graphics, layout: BuildingLayout): void {
+  const face = doorFace(layout);
+  const wall = propWall(face);
+  const box = bodyBox(layout, HUT_PAD, 0.42);
+  const axis = hutAxis(face);
+  const eave = WALL_H;
+  const rise = ROOF_H;
+  const roof = gable(box, axis, eave, rise, 0.1);
+  drawGableBack(g, roof, SHINGLES);
+  drawWall(g, box, 'south', roof.south, PLANKS);
+  drawWall(g, box, 'east', roof.east, PLANKS);
+  drawDoor(g, layout, box, 0, WALL_H * 0.75);
+  drawGableFront(g, roof, SHINGLES);
+  // The counter: a plank box along the props' wall.
+  const counterTop = 16 * S;
+  const c = (u: number, out: number, z: number) => wallPoint(box, wall, u, out, z);
+  const front = [
+    c(0.15, 0.24, 0),
+    c(0.85, 0.24, 0),
+    c(0.85, 0.24, counterTop),
+    c(0.15, 0.24, counterTop),
+  ];
+  const top = [
+    c(0.15, 0, counterTop),
+    c(0.85, 0, counterTop),
+    c(0.85, 0.24, counterTop),
+    c(0.15, 0.24, counterTop),
+  ];
+  g.poly(flat(front)).fill(palette.plankDark).stroke(INK);
+  g.poly(flat(top)).fill(palette.plank).stroke(INK);
+  // Goods on the counter: a sack and a small cask.
+  const sack = c(0.35, 0.12, counterTop);
+  g.ellipse(sack.x, sack.y - 5 * S, 6 * S, 6 * S)
+    .fill(palette.paperShade)
+    .stroke(THIN_INK);
+  const cask = c(0.62, 0.12, counterTop);
+  g.rect(cask.x - 5 * S, cask.y - 10 * S, 10 * S, 10 * S)
+    .fill(palette.barrel)
+    .stroke(THIN_INK);
+  // The awning: from the wall under the eave, sloping out over the counter, in stripes.
+  const stripes = 6;
+  const hi = eave * 0.92;
+  const lo = eave * 0.62;
+  for (let i = 0; i < stripes; i++) {
+    const u0 = 0.08 + (0.84 * i) / stripes;
+    const u1 = 0.08 + (0.84 * (i + 1)) / stripes;
+    const strip = [c(u0, 0, hi), c(u1, 0, hi), c(u1, 0.34, lo), c(u0, 0.34, lo)];
+    g.poly(flat(strip)).fill(i % 2 === 0 ? palette.banner : palette.paper);
+  }
+  g.poly(flat([c(0.08, 0, hi), c(0.92, 0, hi), c(0.92, 0.34, lo), c(0.08, 0.34, lo)])).stroke(INK);
+  // Two poles hold the awning's edge.
+  for (const u of [0.1, 0.9]) {
+    const q = c(u, 0.34, 0);
+    const r = c(u, 0.34, lo);
+    g.moveTo(q.x, q.y)
+      .lineTo(r.x, r.y)
+      .stroke({ width: 5 * S, color: palette.ink, cap: 'round' });
+    g.moveTo(q.x, q.y)
+      .lineTo(r.x, r.y)
+      .stroke({ width: 2.5 * S, color: palette.log, cap: 'round' });
+  }
+  // Crates stacked by the counter's end.
+  for (const [u, z] of [
+    [0.04, 0],
+    [0.04, 12 * S],
+  ] as const) {
+    const p = c(u, 0.45, z);
+    g.rect(p.x - 7 * S, p.y - 12 * S, 14 * S, 12 * S)
+      .fill(palette.plank)
+      .stroke(THIN_INK);
+    g.moveTo(p.x - 7 * S, p.y - 6 * S)
+      .lineTo(p.x + 7 * S, p.y - 6 * S)
+      .stroke(GRAIN);
   }
 }
 

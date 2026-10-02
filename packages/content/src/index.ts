@@ -12,6 +12,7 @@ import { immigration } from './immigration';
 import { jobs } from './jobs';
 import { logistics } from './logistics';
 import { mapObjects } from './mapObjects';
+import { merchants } from './merchants';
 import { needs } from './needs';
 import { pois } from './pois';
 import { ranks } from './ranks';
@@ -37,6 +38,7 @@ export const content: Content = {
   buildings,
   trades,
   masters,
+  merchants,
   heroes,
   roads,
   logistics,

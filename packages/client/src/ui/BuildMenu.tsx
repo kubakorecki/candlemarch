@@ -24,8 +24,9 @@ function buildingOf(id: ToolId): BuildingDef | null {
   return id in content.buildings ? content.buildings[id as BuildingId] : null;
 }
 
-function Cost({ cost }: { cost: readonly ResourceAmount[] }) {
-  if (cost.length === 0) return <span className="cost">Free</span>;
+/** A card's cost line: each good, then any coin. */
+function Cost({ cost, coin }: { cost: readonly ResourceAmount[]; coin: number }) {
+  if (cost.length === 0 && coin === 0) return <span className="cost">Free</span>;
   return (
     <span className="cost">
       {cost.map((c) => (
@@ -34,6 +35,12 @@ function Cost({ cost }: { cost: readonly ResourceAmount[] }) {
           {c.amount}
         </span>
       ))}
+      {coin > 0 && (
+        <span className="cost">
+          <Icon name="coin" size={15} />
+          {coin}
+        </span>
+      )}
     </span>
   );
 }
@@ -74,7 +81,7 @@ function Card({
           {lockCardText(lock)}
         </span>
       ) : (
-        <Cost cost={building?.construction?.cost ?? []} />
+        <Cost cost={building?.construction?.cost ?? []} coin={building?.construction?.coin ?? 0} />
       )}
     </button>
   );
@@ -104,9 +111,12 @@ function Details({ tool, hud }: { tool: Tool; hud: HudState }) {
         <div className="stats">
           <div>
             <span className="muted">Cost</span>
-            {building.construction.cost
-              .map((c) => `${c.amount} ${content.resources[c.resource].name.toLowerCase()}`)
-              .join(', ') || 'Free'}
+            {[
+              ...building.construction.cost.map(
+                (c) => `${c.amount} ${content.resources[c.resource].name.toLowerCase()}`,
+              ),
+              ...(building.construction.coin ? [`${building.construction.coin} coin`] : []),
+            ].join(', ') || 'Free'}
             {perTile}
           </div>
           <div>

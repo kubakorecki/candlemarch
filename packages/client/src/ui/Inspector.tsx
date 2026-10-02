@@ -2,6 +2,7 @@
 // patch, point of interest or Hunting ground), one inspector panel each.
 import { content, type PoiId, type ResourceId } from '@candlemarch/content';
 import {
+  MAX_SELL_KEEP,
   MAX_STANDING_ORDER,
   STOCKPILE_PRIORITIES,
   type StandingOrder,
@@ -18,6 +19,7 @@ import type {
   PatchInfo,
   PoiInfo,
   SwampInfo,
+  TradePostInfo,
   VillagerInfo,
   WorkersView,
 } from '../game/Game';
@@ -324,6 +326,82 @@ function NoticeBoardFacts({
   );
 }
 
+/** Steps a sell rule's − and + buttons move what it keeps by. */
+const SELL_KEEP_STEP = 5;
+
+/**
+ * The trade post's Merchants and sell rules: when the next Merchant comes and what it wants, then
+ * a row per good with what a unit fetches now (a gilt star when Wanted) and its rule: Sell starts
+ * one, − / + move what the village keeps, × stops it.
+ */
+function TradePostFacts({ post, game }: { post: TradePostInfo; game: Game }) {
+  const wanted = post.wanted?.map((r) => content.resources[r].name).join(', ');
+  return (
+    <div className="stack">
+      <SectionHead title="Merchants" />
+      <div className="fact">
+        <span>Next visit</span>
+        <span>{post.merchant}</span>
+      </div>
+      <div className="fact">
+        <span>Wanted, +{content.merchants.wantedBonusPercent}%</span>
+        <span>{wanted ?? 'Announced at dawn'}</span>
+      </div>
+      <SectionHead title="Sell rules" aside="Price" />
+      {post.goods.length === 0 && <div className="muted small">Nothing to sell yet</div>}
+      {post.goods.map((g) => {
+        const name = content.resources[g.resource].name;
+        return (
+          <div key={g.resource} className="sell-row">
+            <span className="sell-good">
+              <Icon name={RESOURCE_ICONS[g.resource]} size={18} className="tone-gilt" />
+              <span>
+                {name}
+                <span className="muted small"> · {g.held}</span>
+              </span>
+              {g.wanted && <Icon name="master" size={13} className="tone-lit" />}
+            </span>
+            {g.keep === null ? (
+              <button
+                type="button"
+                className="btn-small"
+                onClick={() => game.toggleSellRule(g.resource)}
+              >
+                Sell
+              </button>
+            ) : (
+              <span className="sell-rule">
+                <IconButton
+                  icon="minus"
+                  label={`Keep fewer ${name.toLowerCase()} (−${SELL_KEEP_STEP})`}
+                  size="small"
+                  disabled={g.keep <= 0}
+                  onClick={() => game.changeSellRule(g.resource, -SELL_KEEP_STEP)}
+                />
+                <span className="keep">Keep {g.keep}</span>
+                <IconButton
+                  icon="plus"
+                  label={`Keep more ${name.toLowerCase()} (+${SELL_KEEP_STEP})`}
+                  size="small"
+                  disabled={g.keep >= MAX_SELL_KEEP}
+                  onClick={() => game.changeSellRule(g.resource, SELL_KEEP_STEP)}
+                />
+                <IconButton
+                  icon="close"
+                  label={`Stop selling ${name.toLowerCase()}`}
+                  size="small"
+                  onClick={() => game.toggleSellRule(g.resource)}
+                />
+              </span>
+            )}
+            <span className="price">{g.price}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function BuildingPanel({
   building,
   hud,
@@ -357,6 +435,7 @@ function BuildingPanel({
       {building.farm && <FarmFacts farm={building.farm} game={game} />}
       {building.farm && <PanelTools title="Fields" tools={FIELD_TOOLS} hud={hud} game={game} />}
       {building.postings && <NoticeBoardFacts postings={building.postings} />}
+      {building.tradePost && <TradePostFacts post={building.tradePost} game={game} />}
       {building.grounds.length > 0 && <SectionHead title="Hunting grounds" />}
       {building.grounds.length > 0 && (
         <div className="fact">

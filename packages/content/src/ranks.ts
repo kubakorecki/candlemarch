@@ -51,6 +51,7 @@ export const ranks: readonly RankDef[] = [
         'smokehouse',
         'bloomery',
         'brewery',
+        'trade_post',
       ],
     },
   },
