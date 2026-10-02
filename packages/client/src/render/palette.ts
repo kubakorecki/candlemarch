@@ -158,6 +158,12 @@ export const palette = {
   smoked: 0x5a3622,
   // A sawpit's sawdust, and its saw.
   sawdust: 0xc9b07e,
+  // The Smith's iron bars; the Brewer's ale and the brewery's barrels.
+  ironBar: 0x5f5c5a,
+  ironBarLight: 0x8a8580,
+  ale: 0xa8712a,
+  barrel: 0x7a5634,
+  barrelDark: 0x55391f,
 
   // Fields (render/shapes.ts `drawFields`): tilled earth with darker furrows, green shoots while it
   // grows, pale stubble once harvested.
@@ -192,6 +198,8 @@ export const palette = {
   stonecutter: 0x7d7a72,
   brickmaker: 0x8c4a36,
   smoker: 0x5e4a3a,
+  smelter: 0x5a4842,
+  brewer: 0x7f6a3c,
   carrier: 0x8a7d63,
   skin: 0xd6b48e,
   axeHead: 0x9aa0a3,

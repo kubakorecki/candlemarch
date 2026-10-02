@@ -110,6 +110,8 @@ export const jobs: Record<JobId, JobDef> = {
     idleRetryTicks: 20,
   },
   smoker: { id: 'smoker', name: 'Smoker', walkSpeed: 75, carryCapacity: 1, idleRetryTicks: 20 },
+  smelter: { id: 'smelter', name: 'Smelter', walkSpeed: 75, carryCapacity: 1, idleRetryTicks: 20 },
+  brewer: { id: 'brewer', name: 'Brewer', walkSpeed: 75, carryCapacity: 1, idleRetryTicks: 20 },
   carrier: {
     id: 'carrier',
     name: 'Carrier',

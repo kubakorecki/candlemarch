@@ -459,4 +459,51 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       buildTicks: 300, // 15 s
     },
   },
+  // The tier-2 workshops the Tavern needs (M5): built from Hamlet, idle until their trade's Master
+  // settles. The brewery's grain comes from farms' yards (a Granary isn't a supply). Numbers
+  // Proposed.
+  bloomery: {
+    id: 'bloomery',
+    name: 'Bloomery',
+    size: { w: 1, h: 1 },
+    door: { x: 0, y: 1 },
+    placeable: true,
+    employs: [{ job: 'smelter', count: 1 }],
+    trade: 'smith',
+    recipes: ['smelt_iron'],
+    inputBuffer: [
+      { resource: 'iron_ore', capacity: 6 },
+      { resource: 'charcoal', capacity: 3 },
+    ],
+    outputBuffer: { resources: ['iron_bars'], yard: { x: 1, y: 0 } },
+    construction: {
+      cost: [
+        { resource: 'logs', amount: 4 },
+        { resource: 'stone', amount: 10 },
+      ],
+      buildTicks: 300, // 15 s
+    },
+  },
+  brewery: {
+    id: 'brewery',
+    name: 'Brewery',
+    size: { w: 2, h: 1 },
+    door: { x: 1, y: 1 },
+    placeable: true,
+    employs: [{ job: 'brewer', count: 1 }],
+    trade: 'brewer',
+    recipes: ['brew_ale'],
+    inputBuffer: [
+      { resource: 'grain', capacity: 6 },
+      { resource: 'firewood', capacity: 3 },
+    ],
+    outputBuffer: { resources: ['ale'], yard: { x: 2, y: 0 } },
+    construction: {
+      cost: [
+        { resource: 'logs', amount: 10 },
+        { resource: 'stone', amount: 4 },
+      ],
+      buildTicks: 300, // 15 s
+    },
+  },
 };

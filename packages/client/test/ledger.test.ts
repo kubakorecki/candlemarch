@@ -49,6 +49,8 @@ describe('Ledger goods', () => {
       'planks',
       'cut_stone',
       'bricks',
+      'iron_bars',
+      'ale',
     ]);
   });
 

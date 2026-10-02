@@ -495,6 +495,8 @@ export function drawBuilding(g: Graphics, layout: BuildingLayout, type: Building
   else if (type === 'stonecutter') drawStonecutter(g, layout);
   else if (type === 'brick_kiln') drawBrickKiln(g, layout);
   else if (type === 'smokehouse') drawSmokehouse(g, layout);
+  else if (type === 'bloomery') drawBloomery(g, layout);
+  else if (type === 'brewery') drawBrewery(g, layout);
   else drawCabin(g, layout);
 }
 
@@ -1677,6 +1679,111 @@ function drawSmokehouse(g: Graphics, layout: BuildingLayout): void {
     g.poly([p.x - 3 * S, p.y + 20 * S, p.x, p.y + 16 * S, p.x + 3 * S, p.y + 20 * S]).fill(
       palette.smoked,
     );
+  }
+}
+
+// ---------------------------------------------------------------- Tier-2 workshops
+
+/**
+ * The bloomery: a squat stone shaft furnace narrowing to its top, a glowing mouth toward the door,
+ * embers in its throat and smoke rising from it.
+ */
+function drawBloomery(g: Graphics, layout: BuildingLayout): void {
+  const { origin, size } = layout;
+  const c = at(origin.x + size.w / 2, origin.y + size.h / 2, 0);
+  const rx = TILE_H * 0.5;
+  const ry = rx / 2;
+  const h = WALL_H * 1.4;
+  const tx = rx * 0.5;
+  const top = { x: c.x, y: c.y - h };
+  // The shaft: a cone cut off at the top, its front curve along the ground.
+  g.moveTo(c.x - rx, c.y)
+    .lineTo(top.x - tx, top.y)
+    .lineTo(top.x + tx, top.y)
+    .lineTo(c.x + rx, c.y)
+    .arc(c.x, c.y, rx, 0, Math.PI)
+    .closePath()
+    .fill(palette.stone)
+    .stroke(INK);
+  // Shade on the camera's right, and a few courses of stone.
+  g.poly([
+    top.x + tx * 0.3,
+    top.y,
+    top.x + tx,
+    top.y,
+    c.x + rx,
+    c.y,
+    c.x + rx * 0.35,
+    c.y + ry,
+  ]).fill({ color: palette.stoneDark, alpha: 0.6 });
+  for (const f of [0.3, 0.6]) {
+    const w = rx + (tx - rx) * f;
+    g.moveTo(c.x - w, c.y - h * f)
+      .quadraticCurveTo(c.x, c.y - h * f + ry * 1.2, c.x + w, c.y - h * f)
+      .stroke({ ...THIN_INK, alpha: 0.6 });
+  }
+  // The throat with its embers.
+  g.ellipse(top.x, top.y, tx, tx / 2)
+    .fill(palette.charcoal)
+    .stroke(THIN_INK);
+  g.ellipse(top.x, top.y, tx * 0.5, tx * 0.22).fill({ color: palette.windowLit, alpha: 0.75 });
+  drawSmoke(g, top);
+  // The mouth, on the door's side of the shaft, glowing.
+  const { sill } = doorway(layout);
+  const m = lerp(c, at(sill.x, sill.y, 0), 0.7);
+  g.moveTo(m.x - 6 * S, m.y)
+    .lineTo(m.x - 6 * S, m.y - 8 * S)
+    .arc(m.x, m.y - 8 * S, 6 * S, Math.PI, 0)
+    .lineTo(m.x + 6 * S, m.y)
+    .closePath()
+    .fill(palette.door)
+    .stroke(INK);
+  g.ellipse(m.x, m.y - 3 * S, 3.5 * S, 2 * S).fill({ color: palette.windowLit, alpha: 0.8 });
+}
+
+/**
+ * The brewery: a board brewhouse under shingles along its length, a chimney over the copper and
+ * barrels stacked before the front wall away from the door.
+ */
+function drawBrewery(g: Graphics, layout: BuildingLayout): void {
+  const face = doorFace(layout);
+  const wall = propWall(face);
+  const box = bodyBox(layout, HUT_PAD, 0.36);
+  const axis = layout.size.w >= layout.size.h ? 'x' : 'y';
+  const eave = HUT_EAVE;
+  const rise = ROOF_H * 0.9;
+  const roof = gable(box, axis, eave, rise, 0.1);
+  drawGableBack(g, roof, SHINGLES);
+  drawWall(g, box, 'south', roof.south, PLANKS);
+  drawWall(g, box, 'east', roof.east, PLANKS);
+  drawDoor(g, layout, box, 0, WALL_H * 0.75);
+  drawGableFront(g, roof, SHINGLES);
+  const cx = axis === 'x' ? box.x0 + (box.x1 - box.x0) * 0.3 : (box.x0 + box.x1) / 2;
+  const cy = axis === 'y' ? box.y0 + (box.y1 - box.y0) * 0.3 : (box.y0 + box.y1) / 2;
+  drawChimney(g, cx, cy, eave + rise * 0.6, eave + rise * 1.3);
+  drawSmoke(g, at(cx, cy, eave + rise * 1.3));
+  // Barrels: two standing, one on top between them.
+  for (const [u, z] of [
+    [0.3, 0],
+    [0.7, 0],
+    [0.5, 15 * S],
+  ] as const) {
+    const p = wallPoint(box, wall, u, 0.2, z);
+    g.moveTo(p.x - 6 * S, p.y)
+      .bezierCurveTo(p.x - 8 * S, p.y - 5 * S, p.x - 8 * S, p.y - 10 * S, p.x - 6 * S, p.y - 15 * S)
+      .lineTo(p.x + 6 * S, p.y - 15 * S)
+      .bezierCurveTo(p.x + 8 * S, p.y - 10 * S, p.x + 8 * S, p.y - 5 * S, p.x + 6 * S, p.y)
+      .closePath()
+      .fill(palette.barrel)
+      .stroke(THIN_INK);
+    for (const dy of [3.5, 11.5]) {
+      g.moveTo(p.x - 7.2 * S, p.y - dy * S)
+        .lineTo(p.x + 7.2 * S, p.y - dy * S)
+        .stroke({ width: 1.5 * S, color: palette.iron });
+    }
+    g.ellipse(p.x, p.y - 15 * S, 6 * S, 2 * S)
+      .fill(palette.barrelDark)
+      .stroke(THIN_INK);
   }
 }
 

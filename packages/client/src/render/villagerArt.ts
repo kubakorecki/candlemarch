@@ -33,6 +33,8 @@ export const JOB_COLORS: Record<JobId, number> = {
   stonecutter: palette.stonecutter,
   brickmaker: palette.brickmaker,
   smoker: palette.smoker,
+  smelter: palette.smelter,
+  brewer: palette.brewer,
 };
 
 /** A stick from (x1, y1) to (x2, y2): an ink edge round a line of `color`. */
@@ -292,7 +294,7 @@ function drawHead(g: Graphics, job: JobId): void {
  * the woodsplitter's maul, the fisher's rod, the forager's basket, the hunter's bow, the spade of
  * the forester, clay digger, bog digger, charcoal burner and brickmaker, the pick of the
  * quarryman, miner and stonecutter, the sawyer's saw, the farmer's scythe, the watchman's spear.
- * Carriers and smokers carry nothing but their pack. Hidden while the villager swings its axe at work.
+ * Carriers, smokers, smelters and brewers carry nothing but their pack. Hidden while the villager swings its axe at work.
  */
 export function drawVillagerTool(g: Graphics, job: JobId): void {
   g.clear();

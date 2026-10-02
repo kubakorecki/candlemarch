@@ -1151,6 +1151,38 @@ function drawIronOre(g: Graphics, x: number, y: number, s: number): void {
   g.circle(x + 1 * s, y - 1 * s, 1.8 * s).fill(palette.rust);
 }
 
+/** One iron bar, centred on (x, y): a dark ingot with a lighter top. */
+function drawIronBar(g: Graphics, x: number, y: number, s: number): void {
+  g.poly([
+    x - 8 * s,
+    y + 2.5 * s,
+    x - 6 * s,
+    y - 2.5 * s,
+    x + 6 * s,
+    y - 2.5 * s,
+    x + 8 * s,
+    y + 2.5 * s,
+  ])
+    .fill(palette.ironBar)
+    .stroke(THIN_INK);
+  g.moveTo(x - 5 * s, y - 1.5 * s)
+    .lineTo(x + 5 * s, y - 1.5 * s)
+    .stroke({ width: 1 * s, color: palette.ironBarLight });
+}
+
+/** One small cask of ale lying on its side, centred on (x, y), its hoops showing. */
+function drawAleCask(g: Graphics, x: number, y: number, s: number): void {
+  g.ellipse(x, y, 8 * s, 4.5 * s)
+    .fill(palette.barrel)
+    .stroke(THIN_INK);
+  for (const dx of [-4, 4]) {
+    g.moveTo(x + dx * s, y - 4 * s)
+      .lineTo(x + dx * s, y + 4 * s)
+      .stroke({ width: 1.2 * s, color: palette.iron });
+  }
+  g.circle(x, y, 1.2 * s).fill(palette.ale);
+}
+
 /** How each resource is drawn as one piece, and the spacing of its pieces in a pile. */
 const PIECES: Record<
   ResourceId,
@@ -1173,6 +1205,8 @@ const PIECES: Record<
   bricks: { draw: drawBrick, w: 15, h: 6 },
   smoked_fish: { draw: smoked(drawFish), w: 20, h: 8 },
   smoked_meat: { draw: smoked(drawMeat), w: 20, h: 9 },
+  iron_bars: { draw: drawIronBar, w: 17, h: 6 },
+  ale: { draw: drawAleCask, w: 17, h: 9 },
 };
 
 /** A pyramid of `count` pieces of `resource` whose bottom row is centred on (x, y). */

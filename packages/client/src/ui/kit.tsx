@@ -38,6 +38,8 @@ export const RESOURCE_ICONS: Record<ResourceId, IconName> = {
   bricks: 'bricks',
   smoked_fish: 'smokedFish',
   smoked_meat: 'smokedMeat',
+  iron_bars: 'ironBars',
+  ale: 'ale',
 };
 
 /** Tracked capitals with a hairline to the right, and an optional note after it. */

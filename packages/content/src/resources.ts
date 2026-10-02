@@ -51,4 +51,8 @@ export const resources: Record<ResourceId, ResourceDef> = {
     spoilPercent: 3,
     standingOrder: 40,
   },
+  // The tier-2 goods the Tavern needs (M5): the Smith's iron bars, the Brewer's ale. Stockpile
+  // goods: ale is drunk at the Tavern (M6), not eaten as a Meal.
+  iron_bars: { id: 'iron_bars', name: 'Iron bars', storage: 'stockpile', standingOrder: 20 },
+  ale: { id: 'ale', name: 'Ale', storage: 'stockpile', standingOrder: 30 },
 };

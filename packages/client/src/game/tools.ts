@@ -91,6 +91,20 @@ export const TOOLS: readonly {
     hint: 'Click to place. Smokes fish and meat with firewood into Food that keeps, once a Butcher has settled. Shift-click places more.',
   },
   {
+    id: 'bloomery',
+    label: 'Bloomery',
+    key: null,
+    drag: false,
+    hint: 'Click to place. Smelts iron ore with charcoal into iron bars once a Smith has settled. Shift-click places more.',
+  },
+  {
+    id: 'brewery',
+    label: 'Brewery',
+    key: null,
+    drag: false,
+    hint: "Click to place. Brews grain from the farms' yards with firewood into ale once a Brewer has settled. Shift-click places more.",
+  },
+  {
     id: 'foragers_hut',
     label: "Forager's hut",
     key: 'o',

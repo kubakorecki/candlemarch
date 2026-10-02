@@ -49,6 +49,8 @@ export const ranks: readonly RankDef[] = [
         'stonecutter',
         'brick_kiln',
         'smokehouse',
+        'bloomery',
+        'brewery',
       ],
     },
   },

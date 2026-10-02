@@ -61,4 +61,25 @@ export const recipes: Record<RecipeId, RecipeDef> = {
     outputs: [{ resource: 'smoked_meat', amount: 3 }],
     workTicks: 200, // 10 s
   },
+  // The tier-2 workshops the Tavern needs (M5). Numbers Proposed.
+  smelt_iron: {
+    id: 'smelt_iron',
+    name: 'Smelt iron',
+    inputs: [
+      { resource: 'iron_ore', amount: 2 },
+      { resource: 'charcoal', amount: 1 },
+    ],
+    outputs: [{ resource: 'iron_bars', amount: 1 }],
+    workTicks: 300, // 15 s
+  },
+  brew_ale: {
+    id: 'brew_ale',
+    name: 'Brew ale',
+    inputs: [
+      { resource: 'grain', amount: 2 },
+      { resource: 'firewood', amount: 1 },
+    ],
+    outputs: [{ resource: 'ale', amount: 2 }],
+    workTicks: 300, // 15 s
+  },
 };
