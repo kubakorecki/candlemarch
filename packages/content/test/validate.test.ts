@@ -702,6 +702,20 @@ describe('content validation', () => {
     expect(m.importPricePercent).toBeGreaterThan(100);
   });
 
+  it('Delivery orders ask for a good some building makes, and pay whole coins', () => {
+    const { deliveries } = content;
+    expectPositiveInt(deliveries.gapDays, 'deliveries.gapDays');
+    expect(deliveries.orders.length).toBeGreaterThan(0);
+    const made = new Set(Object.values(buildings).flatMap((b) => b.outputBuffer?.resources ?? []));
+    for (const order of deliveries.orders) {
+      const name = `delivery of ${order.resource}`;
+      expect(made.has(order.resource), `${name}: a good some building makes`).toBe(true);
+      expectPositiveInt(order.amount, `${name}.amount`);
+      expectPositiveInt(order.days, `${name}.days`);
+      expectPositiveInt(order.reward, `${name}.reward`);
+    }
+  });
+
   it('coin construction costs are whole coins, only on buildings placed one at a time', () => {
     for (const b of Object.values(buildings)) {
       const coin = b.construction?.coin;

@@ -708,6 +708,11 @@ export class Game {
     this.bridge.command({ type: 'setSellRule', resource, keep });
   }
 
+  /** Accepts posting `posting` on the notice board (a Delivery order or a Charter). */
+  acceptPosting(posting: number): void {
+    this.bridge.command({ type: 'acceptPosting', posting });
+  }
+
   /** Orders `crop`'s Seeds from the next Merchant, paid now. */
   orderSeeds(crop: CropId): void {
     this.bridge.command({ type: 'orderSeeds', crop });

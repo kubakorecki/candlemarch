@@ -3,6 +3,7 @@ import { alerts } from './alerts';
 import { buildings } from './buildings';
 import { calendar } from './calendar';
 import { combat } from './combat';
+import { deliveries } from './deliveries';
 import { dens } from './dens';
 import { crops, farming } from './farming';
 import { fog } from './fog';
@@ -40,6 +41,7 @@ export const content: Content = {
   trades,
   masters,
   merchants,
+  deliveries,
   tools,
   heroes,
   roads,

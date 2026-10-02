@@ -2,6 +2,7 @@
 // Chosen over flag relay in docs/adr/0001-logistics-model.md.
 import type { Content, ResourceId } from '@candlemarch/content';
 import { isNight } from '../calendar';
+import { receiveAtTradePost } from '../deliveries';
 import { takeFromCache } from '../dens';
 import { idsOf } from '../entities';
 import { foodIds, isGranary } from '../granary';
@@ -13,6 +14,7 @@ import type { EntityId, GameState, Store, Tile } from '../state';
 import { addToTile, amountOnTile, roomOnTile, takeFromTile } from '../stockpiles';
 import { isAt, stopAtNextTile, villagerTile, walkCosts, walkTo } from '../systems/movement';
 import { addTools, bringsTools } from '../tools';
+import { isTradePost } from '../tradePost';
 import { isAtWork } from '../villagers';
 import { isHouse } from '../warmth';
 import { canHelpCarry } from './helping';
@@ -31,7 +33,7 @@ export interface Haul {
   amount: number;
   /** Building, stockpile or cache to pick up from. */
   from: EntityId;
-  /** Construction site, workshop, Workplace (tools), Granary or stockpile to deliver to. */
+  /** Construction site, workshop, Workplace (tools), Granary, trade post or stockpile to deliver to. */
   to: EntityId;
   /** Stockpile or cache tile (map tile index) to pick up from. Absent when `from` is a building. */
   fromTile?: number;
@@ -328,6 +330,8 @@ function advanceHaul(state: GameState, content: Content, id: EntityId, haul: Hau
           lightDef(state, content, haul.to))
       ) {
         workshop.stock[haul.resource] = (workshop.stock[haul.resource] ?? 0) + haul.amount;
+      } else if (carrier.carrying && workshop && isTradePost(state, content, haul.to)) {
+        receiveAtTradePost(state, content, haul.to, haul.resource, haul.amount);
       } else if (carrier.carrying && workshop) {
         workshop.input[haul.resource] = (workshop.input[haul.resource] ?? 0) + haul.amount;
       } else if (carrier.carrying && pile && haul.toTile !== undefined) {

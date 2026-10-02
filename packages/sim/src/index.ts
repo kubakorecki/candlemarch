@@ -16,6 +16,7 @@ export {
 export { type HealthBar, healthBars, isIndoors, isKnockedOut } from './combat';
 export type { Command } from './commands';
 export { constructionCost, siteCost } from './costs';
+export { canMake } from './deliveries';
 export { darkRingTiles, denAt } from './dens';
 export { depositFits, isDeposit } from './deposits';
 export { idsOf } from './entities';

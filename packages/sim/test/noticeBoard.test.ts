@@ -75,7 +75,7 @@ describe('the notice board', () => {
     expect(idsOf(built.components.building)).toContain(id);
     // A second can't be placed beside a finished one either.
     expect(canPlaceBuilding(built, content, 'notice_board', 7, 3)).toBe(false);
-    // Charters (ticket 11) and Delivery orders (ticket 26) are posted later.
+    // Nothing here makes goods, so no Delivery order is posted; Charters come with ticket 11.
     expect(postings(built, content)).toEqual([]);
   });
 });

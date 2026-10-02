@@ -953,6 +953,27 @@ export interface MerchantsDef {
   importPricePercent: number;
 }
 
+/**
+ * One Delivery order the notice board may post (spec, Trades and masters: Side quests in M5):
+ * `amount` of `resource` brought to the trade post within `days` of posting, for `reward` whole
+ * coins.
+ */
+export interface DeliveryOrderDef {
+  resource: ResourceId;
+  amount: number;
+  days: number;
+  reward: number;
+}
+
+/**
+ * Delivery orders: one posted at a time, drawn with the PRNG from `orders` among the goods the
+ * village can make; the next comes `gapDays` after the last one closes.
+ */
+export interface DeliveriesDef {
+  gapDays: number;
+  orders: DeliveryOrderDef[];
+}
+
 export interface Content {
   resources: Record<ResourceId, ResourceDef>;
   terrain: Record<TerrainId, TerrainDef>;
@@ -965,6 +986,7 @@ export interface Content {
   trades: Record<TradeId, TradeDef>;
   masters: MastersDef;
   merchants: MerchantsDef;
+  deliveries: DeliveriesDef;
   tools: ToolsDef;
   heroes: Record<HeroId, HeroDef>;
   roads: Record<RoadId, RoadDef>;

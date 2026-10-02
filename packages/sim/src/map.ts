@@ -209,6 +209,7 @@ export function createEmptyState(seed: number): GameState {
       seedOrders: [],
     },
     seeds: [],
+    noticeBoard: { nextPostingId: 1, delivery: null, nextDeliveryDay: 1 },
   };
 }
 

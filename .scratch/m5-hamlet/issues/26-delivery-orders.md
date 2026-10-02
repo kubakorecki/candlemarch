@@ -1,6 +1,6 @@
 # Delivery orders
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 10, 14
 
@@ -16,3 +16,7 @@ Spec: Trades and masters (Side quests in M5). Glossary: Delivery order.
 
 - Headless tests: an order is posted, accepted, filled for its reward; an unfilled order fails at its deadline; determinism.
 - `pnpm check` passes.
+
+## Comments
+
+2026-10-02 — Done. `content.deliveries` holds the table; `systems/deliveries.ts` posts one at a Dawn (PRNG, goods the village can make) and fails it at its deadline; the `acceptPosting` command (also for Charters later) accepts it once a trade post stands, and Carriers bring the goods, handed over at the trade post (`receiveAtTradePost`) until it's filled and its reward is paid. The notice board panel shows the goods and Accept/Accepted. The deadline counts from posting. See `docs/decisions.md`.

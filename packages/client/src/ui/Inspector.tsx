@@ -285,8 +285,9 @@ function FarmFacts({ farm, game }: { farm: FarmInfo; game: Game }) {
 
 /**
  * What's posted on the notice board: each Charter or Delivery order with its conditions (those
- * that hold ticked), its fee or reward, how long it stays up, and Accept once every condition
- * holds and there's a way to accept it (`onAccept`).
+ * that hold ticked), a Delivery order's goods and how many are in, its fee or reward, how long it
+ * stays up, and Accept once every condition holds and there's a way to accept it (`onAccept`), or
+ * "Accepted".
  */
 function NoticeBoardFacts({
   postings,
@@ -298,13 +299,14 @@ function NoticeBoardFacts({
   return (
     <div className="stack">
       <SectionHead title="Posted" aside={postings.length} />
-      {postings.length === 0 && <div className="muted small">Nothing posted yet</div>}
+      {postings.length === 0 && <div className="muted small">Nothing posted</div>}
       {postings.map((posting) => (
         <article key={posting.id} className="posting">
           <div className="posting-head">
             <span className="caps">{posting.title}</span>
             <span className="muted">{posting.ends}</span>
           </div>
+          {posting.goods && <div className="fact">{posting.goods}</div>}
           <ul className="conditions">
             {posting.conditions.map((c) => (
               <li key={c.text} className={c.met ? 'met' : undefined}>
@@ -320,6 +322,7 @@ function NoticeBoardFacts({
                 Accept
               </button>
             )}
+            {posting.accepted && <span className="muted">Accepted</span>}
           </div>
         </article>
       ))}
@@ -505,7 +508,9 @@ function BuildingPanel({
       {building.treeTools && <PanelTools title="Trees" tools={TREE_TOOLS} hud={hud} game={game} />}
       {building.farm && <FarmFacts farm={building.farm} game={game} />}
       {building.farm && <PanelTools title="Fields" tools={FIELD_TOOLS} hud={hud} game={game} />}
-      {building.postings && <NoticeBoardFacts postings={building.postings} />}
+      {building.postings && (
+        <NoticeBoardFacts postings={building.postings} onAccept={(id) => game.acceptPosting(id)} />
+      )}
       {building.tradePost && <TradePostFacts post={building.tradePost} game={game} />}
       {building.grounds.length > 0 && <SectionHead title="Hunting grounds" />}
       {building.grounds.length > 0 && (

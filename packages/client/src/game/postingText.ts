@@ -15,6 +15,10 @@ export interface PostingView {
   ends: string;
   /** Every condition holds: the panel offers Accept. */
   canAccept: boolean;
+  /** Accepted: the panel says so in place of Accept. */
+  accepted: boolean;
+  /** A Delivery order's goods: "Smoked fish 12 / 30 to the trade post"; null for a Charter. */
+  goods: string | null;
 }
 
 /** A condition: "A free place in a House", "A mine or bog-iron digger". */
@@ -36,5 +40,9 @@ export function postingView(posting: Posting, tick: number): PostingView {
     coin: `${charter ? 'Fee' : 'Reward'} ${posting.coin} coin`,
     ends: charter ? `Withdrawn ${inDays}` : `Due ${inDays}`,
     canAccept: posting.canAccept,
+    accepted: posting.accepted,
+    goods:
+      posting.goods &&
+      `${content.resources[posting.goods.resource].name} ${posting.goods.delivered} / ${posting.goods.amount} to the trade post`,
   };
 }

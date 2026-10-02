@@ -581,6 +581,33 @@ export interface GameState {
    * (`knownCrops` adds those needing none). Seeds aren't goods: nothing is stored. Old saves: none.
    */
   seeds: CropId[];
+  /** What's posted on the notice board (`noticeBoard.ts`). Old saves: nothing posted yet. */
+  noticeBoard: NoticeBoardState;
+}
+
+/** The notice board's postings, kept even while no board stands. */
+export interface NoticeBoardState {
+  /** The ID the next posting gets: Charters and Delivery orders count together. */
+  nextPostingId: number;
+  /** The Delivery order up (`deliveries.ts`), one at a time, or null. */
+  delivery: DeliveryOrder | null;
+  /** The first day whose Dawn may post the next Delivery order. */
+  nextDeliveryDay: number;
+}
+
+/**
+ * A Delivery order on the notice board: `amount` of `resource` brought to the trade post by
+ * `endsAt` (a Dawn) for `reward` whole coins. Carriers bring it only once `accepted`; `delivered`
+ * counts what's been handed over.
+ */
+export interface DeliveryOrder {
+  id: number;
+  resource: ResourceId;
+  amount: number;
+  delivered: number;
+  reward: number;
+  endsAt: number;
+  accepted: boolean;
 }
 
 /**

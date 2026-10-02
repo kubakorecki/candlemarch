@@ -11,6 +11,7 @@ import { type HeroOrder, orderHero } from './hero';
 import { setHuntingGround } from './huntingGrounds';
 import { clearMarks, markObjects, paintKeep } from './marks';
 import { ringBell } from './militia';
+import { acceptPosting } from './noticeBoard';
 import { eraseReserve } from './reserves';
 import { layPath, removePath } from './roads';
 import { setStandingOrder } from './standingOrders';
@@ -90,6 +91,8 @@ export type Command =
   | { type: 'setSellRule'; resource: ResourceId; keep: number | null }
   /** Orders `amount` of `resource` from the next Merchant, paid at once (an Import). */
   | { type: 'orderImport'; resource: ResourceId; amount: number }
+  /** Accepts posting `posting` on the notice board, if every condition holds. */
+  | { type: 'acceptPosting'; posting: number }
   /** Orders `crop`'s Seeds from the next Merchant, paid at once; they make it known for good. */
   | { type: 'orderSeeds'; crop: CropId }
   /** Sets a hunter's lodge to hunt only `ground` (in its reach), or with null the nearest again. */
@@ -231,6 +234,10 @@ export function applyCommand(state: GameState, command: Command, content: Conten
     }
     case 'orderImport': {
       orderImport(state, content, command.resource, command.amount);
+      return;
+    }
+    case 'acceptPosting': {
+      acceptPosting(state, content, command.posting);
       return;
     }
     case 'orderSeeds': {

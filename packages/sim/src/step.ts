@@ -7,6 +7,7 @@ import { inheritMapCache } from './mapCache';
 import type { GameState } from './state';
 import { combatSystem } from './systems/combat';
 import { constructionSystem } from './systems/construction';
+import { deliveriesSystem } from './systems/deliveries';
 import { densSystem } from './systems/dens';
 import { diggingSystem } from './systems/digging';
 import { farmingSystem } from './systems/farming';
@@ -66,38 +67,40 @@ export function step(state: GameState, commands: readonly Command[], content: Co
  *    stands on them is lost; at spring's first Dawn each farm's picked Crop becomes this year's
  * 10. merchants: at Dawn, prices recover, a Merchant here leaves (the next Wanted list drawn,
  *    PRNG) and on a Merchant day one arrives and buys the trade post's Storage
- * 11. warmth: at a winter Dusk, Houses burn firewood or go cold; at Dawn, villagers count the
+ * 11. deliveries: at Dawn, a Delivery order past its deadline fails, and with none up and a
+ *    notice board standing the next is posted (PRNG), a few days after the last closed
+ * 12. warmth: at a winter Dusk, Houses burn firewood or go cold; at Dawn, villagers count the
  *    night as warm or cold
- * 12. lights: at every Dusk torches and braziers burn their night's firewood and are lit, or
+ * 13. lights: at every Dusk torches and braziers burn their night's firewood and are lit, or
  *    stay dark; at Dawn they go out
- * 13. tools: at Dusk every tool a worker held counts a day worked; worn out, it's gone
- * 14. routine: at Dusk villagers finish what they hold, eat at a Granary and go Home to sleep; at
+ * 14. tools: at Dusk every tool a worker held counts a day worked; worn out, it's gone
+ * 15. routine: at Dusk villagers finish what they hold, eat at a Granary and go Home to sleep; at
  *    Dawn back to work (or starve, a Meal too many missed). Watchmen go to their towers after
  *    the Meal and sleep at Home by day
- * 15. immigration: at Dawn, after its deaths, maybe one Newcomer arrives at the entry tile
- * 16. dens: at Dawn Gloamlings vanish and, at a season's first Dawn, Dens bud (PRNG); at Dusk Dens
+ * 16. immigration: at Dawn, after its deaths, maybe one Newcomer arrives at the entry tile
+ * 17. dens: at Dawn Gloamlings vanish and, at a season's first Dawn, Dens bud (PRNG); at Dusk Dens
  *    spawn Gloamlings; at Monster rate 0 Gloamlings vanish at once
- * 17. militia: while the bell rings, the villagers it called walk after Gloamlings near it, or
+ * 18. militia: while the bell rings, the villagers it called walk after Gloamlings near it, or
  *    to it; at Dawn they stand down
- * 18. combat: Gloamlings pick targets out of Light and walk after them, around lit tiles;
+ * 19. combat: Gloamlings pick targets out of Light and walk after them, around lit tiles;
  *    villagers they reach drop their work and fight back, the militia hits Gloamlings near the
  *    bell, a watchtower with its Watchman in it shoots the nearest in range; hits in entity-ID
  *    order; villagers back to full HP at Dawn
- * 19. hero: works the player's order (chop, pick up, deliver)
- * 20. woodcutting
- * 21. fishing
- * 22. foraging
- * 23. hunting: hunters roll for a catch with the PRNG
- * 24. forestry: foresters plant Saplings
- * 25. digging: quarrymen, clay diggers and miners dig Deposits
- * 26. farming: farmers clear Fieldstones, sow and harvest Fields
- * 27. production: workshop crafters take inputs, work, and fill output buffers
- * 28. hauling (job dispatch)
- * 29. construction, by day only
- * 30. staffing: workplaces below their worker limit draft idle carriers
- * 31. fog: while Fog is on, the tiles In sight are worked out again when a source moved to
+ * 20. hero: works the player's order (chop, pick up, deliver)
+ * 21. woodcutting
+ * 22. fishing
+ * 23. foraging
+ * 24. hunting: hunters roll for a catch with the PRNG
+ * 25. forestry: foresters plant Saplings
+ * 26. digging: quarrymen, clay diggers and miners dig Deposits
+ * 27. farming: farmers clear Fieldstones, sow and harvest Fields
+ * 28. production: workshop crafters take inputs, work, and fill output buffers
+ * 29. hauling (job dispatch)
+ * 30. construction, by day only
+ * 31. staffing: workplaces below their worker limit draft idle carriers
+ * 32. fog: while Fog is on, the tiles In sight are worked out again when a source moved to
  *    another tile or its reach changed, and are Revealed for good
- * 32. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
+ * 33. traffic: counts Carriers at work and those holding a Haul (movement counts road steps)
  * then `tick` increments.
  */
 export function stepInPlace(next: GameState, commands: readonly Command[], content: Content): void {
@@ -111,6 +114,7 @@ export function stepInPlace(next: GameState, commands: readonly Command[], conte
   renewalSystem(next, content);
   fieldsSystem(next, content);
   merchantSystem(next, content);
+  deliveriesSystem(next, content);
   warmthSystem(next, content);
   lightsSystem(next, content);
   toolsSystem(next, content);

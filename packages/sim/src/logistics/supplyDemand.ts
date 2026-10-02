@@ -1,6 +1,7 @@
 // What can be hauled and where it is needed.
 import type { Content, ResourceId } from '@candlemarch/content';
 import { siteCost } from '../costs';
+import { deliveryWants } from '../deliveries';
 import { idsOf } from '../entities';
 import { foodIds, granaryRoom } from '../granary';
 import { stockpileTileIndices } from '../grid';
@@ -10,7 +11,7 @@ import { isPaused } from '../standingOrders';
 import type { EntityId, GameState } from '../state';
 import { amountOnTile, roomOnTile, STOCKPILE_PRIORITIES, stockpileTakes } from '../stockpiles';
 import { toolsWanted } from '../tools';
-import { isTradePost, sellSurplus, tradePostRoom } from '../tradePost';
+import { isTradePost, sellSurplus, tradePostOf, tradePostRoom } from '../tradePost';
 import { houseFuelRoom } from '../warmth';
 import { haulsIncoming } from './jobDispatch';
 
@@ -23,7 +24,8 @@ export interface Supply {
 }
 
 /**
- * Goods a construction site still lacks, tools a Workplace asks for (`toolsWanted`), or room a
+ * Goods a construction site still lacks, tools a Workplace asks for (`toolsWanted`), what an
+ * accepted Delivery order lacks at the trade post (`deliveryWants`), or room a
  * workshop's input buffer, a Granary, a House's
  * fuel buffer, a light's fuel or a stockpile still has (not counting anything already on its
  * way). A Granary's room is shared by every Food: it has one demand per Food, each for all of it.
@@ -32,7 +34,16 @@ export interface Supply {
  */
 export interface Demand {
   target: EntityId;
-  kind: 'site' | 'workshop' | 'tools' | 'granary' | 'house' | 'light' | 'tradePost' | 'stockpile';
+  kind:
+    | 'site'
+    | 'workshop'
+    | 'tools'
+    | 'delivery'
+    | 'granary'
+    | 'house'
+    | 'light'
+    | 'tradePost'
+    | 'stockpile';
   resource: ResourceId;
   amount: number;
 }
@@ -114,10 +125,11 @@ export function listSupplies(state: GameState, content: Content): Supply[] {
 /**
  * Missing materials of every construction site (oldest site first, costs in content order), then
  * room in the input buffer of every workshop that isn't paused (oldest first, buffer slots in
- * content order), then tools every Workplace asks for (oldest first), then room in every Granary for each Food (oldest first, Foods in content
+ * content order), then tools every Workplace asks for (oldest first), then what an accepted
+ * Delivery order lacks at the trade post, then room in every Granary for each Food (oldest first, Foods in content
  * order), then room in every House's fuel buffer while Houses stock up (oldest first), then room
  * for fuel in every torch and brazier (oldest first), then the trade post's surplus to sell
- * (resources in content order), then room on every stockpile for each resource it takes (oldest
+ * (resources in content order; not a good a Delivery order wants), then room on every stockpile for each resource it takes (oldest
  * first, resources in content order).
  */
 export function listDemands(state: GameState, content: Content): Demand[] {
@@ -143,6 +155,13 @@ export function listDemands(state: GameState, content: Content): Demand[] {
   for (const { building, amount } of toolsWanted(state, content)) {
     result.push({ target: building, kind: 'tools', resource: content.tools.resource, amount });
   }
+  const post = tradePostOf(state, content);
+  const order = state.noticeBoard.delivery;
+  if (post !== null && order) {
+    const amount = deliveryWants(state, order.resource);
+    if (amount > 0)
+      result.push({ target: post, kind: 'delivery', resource: order.resource, amount });
+  }
   for (const id of idsOf(state.components.building)) {
     const room = granaryRoom(state, content, id);
     if (room <= 0) continue;
@@ -167,6 +186,8 @@ export function listDemands(state: GameState, content: Content): Demand[] {
     let free = tradePostRoom(state, content, id);
     for (const resource of resources) free -= haulsIncoming(state.logistics.hauls, id, resource);
     for (const resource of resources) {
+      // A good an accepted Delivery order wants goes to the order, not for sale.
+      if (deliveryWants(state, resource) > 0) continue;
       // Dispatch takes what's on its way off the amount: count it in both the surplus (goods in
       // hand have left the village's stock) and the room (it was taken off `free` above).
       const incoming = haulsIncoming(state.logistics.hauls, id, resource);
@@ -193,6 +214,7 @@ export function listDemands(state: GameState, content: Content): Demand[] {
 /**
  * Demands in the order they're served: each site on its own, oldest first, then each workshop
  * input buffer on its own, oldest first, then each Workplace's tools on its own, oldest first, then
+ * the Delivery order's goods, then
  * Granaries, those wanting one Food as one group
  * (Foods in content order), then every House's fuel buffer as one group, then every light's
  * fuel, those wanting one fuel as one group, then each good the trade post wants on its own,
@@ -206,6 +228,7 @@ export function demandGroups(state: GameState, demands: readonly Demand[]): Dema
     ...demands.filter((d) => d.kind === 'site').map((d) => [d]),
     ...demands.filter((d) => d.kind === 'workshop').map((d) => [d]),
     ...demands.filter((d) => d.kind === 'tools').map((d) => [d]),
+    ...demands.filter((d) => d.kind === 'delivery').map((d) => [d]),
   ];
   const granaries = demands.filter((d) => d.kind === 'granary');
   for (const resource of new Set(granaries.map((d) => d.resource))) {

@@ -14,6 +14,8 @@ const charter: Posting = {
   coin: 300,
   endsAt: 10 * DAY,
   canAccept: false,
+  accepted: false,
+  goods: null,
 };
 
 describe('posting text', () => {
@@ -36,17 +38,33 @@ describe('posting text', () => {
       coin: 'Fee 300 coin',
       ends: 'Withdrawn in 6 days',
       canAccept: false,
+      accepted: false,
+      goods: null,
     });
     expect(postingView(charter, 9 * DAY + 1).ends).toBe('Withdrawn in 1 day');
   });
 
-  it('words a Delivery order: its reward and when it falls due', () => {
-    const order: Posting = { ...charter, kind: 'delivery', conditions: [], canAccept: true };
+  it('words a Delivery order: its goods, its reward and when it falls due', () => {
+    const order: Posting = {
+      ...charter,
+      kind: 'delivery',
+      conditions: [],
+      canAccept: true,
+      goods: { resource: 'smoked_fish', amount: 30, delivered: 0 },
+    };
     expect(postingView(order, 0)).toMatchObject({
       title: 'Delivery order',
+      goods: 'Smoked fish 0 / 30 to the trade post',
       coin: 'Reward 300 coin',
       ends: 'Due in 10 days',
       canAccept: true,
+      accepted: false,
     });
+    const underway = { ...order, canAccept: false, accepted: true };
+    const view = postingView(
+      { ...underway, goods: { resource: 'smoked_fish', amount: 30, delivered: 12 } },
+      0,
+    );
+    expect(view).toMatchObject({ goods: 'Smoked fish 12 / 30 to the trade post', accepted: true });
   });
 });
