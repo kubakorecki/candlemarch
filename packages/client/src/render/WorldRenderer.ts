@@ -256,6 +256,8 @@ export type PlacementGhost =
       darkRing: Tile[];
       /** Reserve tiles in its work radius (a woodcutter's hut), picked out while placing. */
       reserve?: Tile[];
+      /** Happiness badges ("+10", "−10") over the Houses it would touch, or over itself (a House). */
+      badges?: AdjacencyBadge[];
     }
   | {
       kind: 'tiles';
@@ -264,6 +266,20 @@ export type PlacementGhost =
       /** Tiles in a Den's dark ring, shaded while laying walls. */
       darkRing?: Tile[];
     };
+
+/** A happiness badge over a tile while placing: what a building does to a House's residents. */
+export interface AdjacencyBadge {
+  tile: Tile;
+  text: string;
+  /** Liked (gilt), disliked (amber) or no change (muted). */
+  tone: 'liked' | 'disliked' | 'none';
+}
+
+const BADGE_COLORS: Record<AdjacencyBadge['tone'], number> = {
+  liked: palette.uiGiltLit,
+  disliked: palette.uiWarn,
+  none: palette.uiMuted,
+};
 
 export class WorldRenderer {
   readonly app = new Application();
@@ -302,6 +318,9 @@ export class WorldRenderer {
   /** The Reserve tiles in a woodcutter's hut's radius, picked out while it's being placed. */
   private readonly reservePreview = new Graphics();
   private reservePreviewKey = '';
+  /** The placement ghost's happiness badges over Houses. */
+  private readonly badges = new Container();
+  private badgesKey = '';
   /**
    * Everything depth-sorted: trees (a row run each), buildings, villagers. Its own render group, so
    * its re-sorting as walkers move doesn't rebuild the ground's.
@@ -375,6 +394,7 @@ export class WorldRenderer {
       this.puffLabels,
       this.fog.node,
       this.ghost,
+      this.badges,
     );
     this.app.stage.addChild(this.world, this.night, this.lights, this.eyes, this.healthBars);
   }
@@ -1040,6 +1060,18 @@ export class WorldRenderer {
       drawReserve(this.reservePreview, reserve, true);
       this.reservePreviewKey = reserveKey;
     }
+    const badges = ghost?.kind === 'building' ? (ghost.badges ?? []) : [];
+    const badgesKey = JSON.stringify(badges);
+    if (badgesKey !== this.badgesKey) {
+      for (const child of this.badges.removeChildren()) child.destroy();
+      for (const badge of badges) {
+        const label = this.groundText(badge.text, BADGE_COLORS[badge.tone]);
+        const top = gridToWorld(badge.tile.x + 0.5, badge.tile.y + 0.5);
+        label.position.set(top.x, top.y - TILE_H * 1.2);
+        this.badges.addChild(label);
+      }
+      this.badgesKey = badgesKey;
+    }
     if (ghost?.kind === 'building') {
       const def = this.content.buildings[ghost.type];
       const layout = buildingLayout(def, { x: ghost.x, y: ghost.y }, ghost.rotation);
@@ -1139,7 +1171,7 @@ export class WorldRenderer {
     });
   }
 
-  /** A label over a Hunting ground, anchored at its bottom centre. */
+  /** A label over a Hunting ground or a placement badge, anchored at its bottom centre. */
   private groundText(text: string, color: number): Text {
     const label = new Text({
       text,

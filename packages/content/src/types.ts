@@ -448,6 +448,13 @@ export interface HappinessDef {
   /** Unhappy at this many Dawns in a row: it leaves at that Dawn, unless in `closedSeasons`. */
   leaveAfterDawns: number;
   closedSeasons: SeasonId[];
+  /** Adjacency reaches this many tiles (Chebyshev) from a source's footprint to a House's. */
+  reachTiles: number;
+  /**
+   * Woods nearby: any of `objects` (standing trees) or a Reserve tile in reach adds `value`, once
+   * however many.
+   */
+  woods: { objects: MapObjectId[]; value: number };
 }
 
 /** Thresholds for the HUD's death-spiral alerts. */
@@ -789,6 +796,12 @@ export interface BuildingDef {
    * that trade's Master has settled, and crawls once the Master is lost. Absent: no master needed.
    */
   trade?: TradeId;
+  /**
+   * What its residents' neighbours think of it (spec, Villagers: Adjacency in M5): a like (+) or
+   * dislike (−) added to the happiness of every resident of a House within
+   * `happiness.reachTiles` of its footprint, once per building type. Absent: neither.
+   */
+  adjacency?: number;
   /** Map objects its workers gather from, if any. */
   gathers?: MapObjectId[];
   /**
@@ -898,6 +911,8 @@ export interface PoiDef {
   search?: SearchDef;
   /** No Den buds within this many tiles of it (Chebyshev). */
   wardTiles?: number;
+  /** A like (+) or dislike (−) for the residents of Houses near it, as `BuildingDef.adjacency`. */
+  adjacency?: number;
 }
 
 /** The village's ranks (spec, Progression), lowest first. */

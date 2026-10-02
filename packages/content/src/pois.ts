@@ -18,5 +18,5 @@ export const pois: Record<PoiId, PoiDef> = {
     },
   },
   abandoned_mine: { id: 'abandoned_mine', name: 'Abandoned mine' },
-  shrine: { id: 'shrine', name: 'Shrine', wardTiles: 12 },
+  shrine: { id: 'shrine', name: 'Shrine', wardTiles: 12, adjacency: 10 },
 };

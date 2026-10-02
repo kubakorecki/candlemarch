@@ -1,6 +1,6 @@
 # Adjacency likes and dislikes
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 03, 06, 08, 12, 13, 18
 
@@ -19,3 +19,7 @@ Spec: Villagers (Adjacency in M5).
 
 - Headless tests: a smokehouse lowers its neighbours' happiness; trees raise it once however many; out of reach does nothing.
 - `pnpm check` passes.
+
+## Comments
+
+2026-10-02 — Built. Content `adjacency` on buildings and points of interest, `happiness.woods` for trees and Reserves (one kind); `happiness.ts` adds them to each resident's sources (`woods`, `poi`, `building`), measured body to body, built buildings only. `adjacencyPreview` drives the placement badges (the change over each House touched, 0 when that kind already reaches it; a House's own total over itself) and a note naming a House's neighbours. The villager panel lists them as "Near the Smokehouse −10". Details in `docs/decisions.md`.

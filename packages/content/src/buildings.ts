@@ -279,6 +279,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     size: { w: 1, h: 1 },
     door: { x: 0, y: 1 },
     placeable: true,
+    adjacency: -10, // noise
     alsoBuildsOn: ['rock'], // the one building that stands on Rock, by its stone
     employs: [{ job: 'quarryman', count: 1 }],
     gathers: ['stone_deposit'],
@@ -365,6 +366,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     size: { w: 1, h: 1 },
     door: { x: 0, y: 1 },
     placeable: true,
+    adjacency: -10, // smoke
     employs: [{ job: 'charcoal_burner', count: 1 }],
     recipes: ['burn_charcoal'],
     inputBuffer: [{ resource: 'logs', capacity: 6 }],
@@ -420,6 +422,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     size: { w: 1, h: 1 },
     door: { x: 0, y: 1 },
     placeable: true,
+    adjacency: -10, // smoke
     employs: [{ job: 'brickmaker', count: 1 }],
     trade: 'mason',
     recipes: ['fire_bricks'],
@@ -443,6 +446,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     size: { w: 1, h: 1 },
     door: { x: 0, y: 1 },
     placeable: true,
+    adjacency: -10, // smoke
     employs: [{ job: 'smoker', count: 1 }],
     trade: 'butcher',
     recipes: ['smoke_fish', 'smoke_meat'],
@@ -469,6 +473,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     size: { w: 1, h: 1 },
     door: { x: 0, y: 1 },
     placeable: true,
+    adjacency: -10, // noise
     employs: [{ job: 'smelter', count: 1 }],
     trade: 'smith',
     recipes: ['smelt_iron'],
@@ -491,6 +496,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
     size: { w: 2, h: 1 },
     door: { x: 1, y: 1 },
     placeable: true,
+    adjacency: 10, // a liked neighbour
     employs: [{ job: 'brewer', count: 1 }],
     trade: 'brewer',
     recipes: ['brew_ale'],

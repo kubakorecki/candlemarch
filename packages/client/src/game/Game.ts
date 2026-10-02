@@ -11,6 +11,7 @@ import {
 import {
   type AlertData,
   type AlertSeverity,
+  adjacencyPreview,
   alerts,
   bellOf,
   bogIronLost,
@@ -109,7 +110,12 @@ import {
 import { CameraInput } from '../render/camera';
 import { type CameraView, gridToWorld, screenToTile, unitsToGrid } from '../render/iso';
 import { nightLook } from '../render/night';
-import { HEALTH_WORDS, type PlacementGhost, WorldRenderer } from '../render/WorldRenderer';
+import {
+  type AdjacencyBadge,
+  HEALTH_WORDS,
+  type PlacementGhost,
+  WorldRenderer,
+} from '../render/WorldRenderer';
 import {
   alertText,
   type ChronicleLine,
@@ -124,7 +130,7 @@ import {
 import { type DayTrack, dayTrack } from './almanac';
 import { SAVE_SLOTS, type SaveSlot, seasonName, slotDateLabel } from './autosave';
 import type { Speed } from './clock';
-import { bandText, sourceText } from './happinessText';
+import { badgeTone, bandText, neighboursText, signedText, sourceText } from './happinessText';
 import { keyAction } from './keys';
 import { stockpileGoods } from './ledger';
 import { type PostingView, postingView } from './postingText';
@@ -1434,6 +1440,7 @@ export class Game {
         valid: canPlaceBuilding(state, content, tool, x, y, rotation),
         darkRing: darkRingTiles(state, content),
         reserve: reserveNear(state, content, tool, hover, rotation),
+        badges: adjacencyBadges(state, tool, { x, y }, rotation),
       };
     }
     const from = this.dragStart ?? hover;
@@ -1659,15 +1666,43 @@ function placementWarning(
   return `Its radius reaches into ${names.join(' and ')}: felling trees there drives game away.`;
 }
 
-/** A plain note about placing a `type` building at `origin`: the bog iron a digger would reach. */
+/**
+ * A plain note about placing a `type` building at `origin`: the bog iron a digger would reach,
+ * or what a House's neighbours would add to its residents' happiness.
+ */
 function placementNote(
   state: GameState,
   type: BuildingId,
   origin: Tile,
   rotation: Rotation,
 ): string | null {
+  const preview = adjacencyPreview(state, content, type, origin, rotation);
+  if (preview?.kind === 'house') return neighboursText(preview.sources, preview.total);
   if (!content.buildings[type].digsOre) return null;
   return `Bog iron in reach: ${bogIronNear(state, content, type, origin, rotation)}.`;
+}
+
+/**
+ * The happiness badges while placing a `type` building at `origin`: over each House it would
+ * touch, the change it would make; over a House being placed, what its neighbours add up to.
+ */
+function adjacencyBadges(
+  state: GameState,
+  type: BuildingId,
+  origin: Tile,
+  rotation: Rotation,
+): AdjacencyBadge[] {
+  const preview = adjacencyPreview(state, content, type, origin, rotation);
+  if (preview === null) return [];
+  if (preview.kind === 'house') {
+    if (preview.sources.length === 0) return [];
+    const { total } = preview;
+    return [{ tile: origin, text: signedText(total), tone: badgeTone(total) }];
+  }
+  return preview.houses.flatMap(({ house, value }) => {
+    const tile = state.components.tile[house];
+    return tile ? [{ tile, text: signedText(value), tone: badgeTone(value) }] : [];
+  });
 }
 
 /**
@@ -1888,9 +1923,7 @@ function villagerInfo(state: GameState, id: EntityId): VillagerInfo | null {
 function happinessInfo(state: GameState, id: EntityId): VillagerInfo['happiness'] {
   const score = happiness(state, content, id);
   const band = happinessBand(content, score);
-  const sources = happinessSources(state, content, id).map((source) =>
-    sourceText(source, content.happiness.deathDays),
-  );
+  const sources = happinessSources(state, content, id).map(sourceText);
   return { score, band, word: bandText(band), sources };
 }
 

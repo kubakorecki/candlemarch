@@ -45,6 +45,8 @@ export {
 } from './grid';
 export { canLayGroundwork, groundworkOf } from './groundwork';
 export {
+  type AdjacencyPreview,
+  adjacencyPreview,
   type HappinessBand,
   type HappinessSource,
   happiness,

@@ -1,7 +1,7 @@
 import type { HappinessDef } from './types';
 
 // Happiness is about the good life, not survival (spec, Villagers: Happiness in M5). Every number
-// is Proposed.
+// is Proposed. The likes and dislikes of buildings are their `adjacency` (buildings.ts, pois.ts).
 export const happiness: HappinessDef = {
   start: 50,
   max: 100,
@@ -14,4 +14,6 @@ export const happiness: HappinessDef = {
   unhappySpeedPercent: 80,
   leaveAfterDawns: 5,
   closedSeasons: ['winter'],
+  reachTiles: 4,
+  woods: { objects: ['tree'], value: 10 },
 };
