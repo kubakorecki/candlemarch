@@ -1,6 +1,6 @@
 # Coin and tools in Ruins Caches
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 14, 16
 
@@ -14,3 +14,7 @@ Spec: World and map (Points of interest: Ruins).
 
 - Headless test: Searching a Ruins adds coin to the Treasury and tools to the Cache; determinism.
 - `pnpm check` passes.
+
+## Comments
+
+- 2026-10-02: Done. `SearchDef.coin` 50 goes into the Treasury when the Search ends and 2 tools join the Cache, each rolled ±30% with the PRNG (coin after the goods). With the existing rounding down, 30% of 2 tools is 0, so it's always 2 tools; logged in `docs/decisions.md`.

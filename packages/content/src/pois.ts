@@ -11,7 +11,9 @@ export const pois: Record<PoiId, PoiDef> = {
       cache: [
         { resource: 'firewood', amount: 15 },
         { resource: 'hides', amount: 6 },
+        { resource: 'tools', amount: 2 },
       ],
+      coin: 50,
       spreadPercent: 30,
     },
   },

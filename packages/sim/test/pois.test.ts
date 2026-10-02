@@ -10,6 +10,7 @@ import { createInitialState } from '../src/map';
 import { deserialize, serialize } from '../src/save';
 import type { EntityId, GameState, Tile } from '../src/state';
 import { canPlaceStockpile } from '../src/stockpiles';
+import { COIN } from '../src/treasury';
 import { content, run, runUntil } from './helpers';
 
 /** Open Meadow `width`×`height` with `chars` placed at their tiles. */
@@ -80,7 +81,7 @@ describe('Searching Ruins', () => {
     expect(heroOrderAt(night, content, RUINS_TILE)).toEqual({ order: 'move', ...RUINS_TILE });
   });
 
-  it('takes 200 ticks on the tile, then leaves a Cache of firewood and hides, ±30%', () => {
+  it('takes 200 ticks on the tile, then leaves a Cache of firewood, hides and tools, ±30%', () => {
     const { s, ticks } = ticksOnRuins(field());
     expect(ticks).toBe(200);
     expect(searched(s)).toBe(true);
@@ -89,12 +90,22 @@ describe('Searching Ruins', () => {
     expect(caches(s)).toHaveLength(1);
     expect(s.components.tile[cache as EntityId]).toEqual(RUINS_TILE);
     const stock = s.components.cache[cache as EntityId]?.stock ?? {};
-    expect(Object.keys(stock).sort()).toEqual(['firewood', 'hides']);
-    // 15 ± 4 firewood, 6 ± 1 hides (30%, rounded down).
+    expect(Object.keys(stock).sort()).toEqual(['firewood', 'hides', 'tools']);
+    // 15 ± 4 firewood, 6 ± 1 hides, 2 ± 0 tools (30%, rounded down).
     expect(stock.firewood).toBeGreaterThanOrEqual(11);
     expect(stock.firewood).toBeLessThanOrEqual(19);
     expect(stock.hides).toBeGreaterThanOrEqual(5);
     expect(stock.hides).toBeLessThanOrEqual(7);
+    expect(stock.tools).toBe(2);
+  });
+
+  it('puts 50 coin ± 15 straight into the Treasury', () => {
+    const before = field();
+    expect(before.treasury).toBe(0);
+    const { s } = ticksOnRuins(before);
+    expect(s.treasury % COIN).toBe(0);
+    expect(s.treasury).toBeGreaterThanOrEqual(35 * COIN);
+    expect(s.treasury).toBeLessThanOrEqual(65 * COIN);
   });
 
   it('rolls the Cache with the seeded PRNG: the same for the same seed, varied across seeds', () => {
@@ -102,7 +113,8 @@ describe('Searching Ruins', () => {
       const s = field();
       s.rng = seed;
       const done = runUntil(s, searched, 1000, { 100: [search] });
-      return JSON.stringify(done.components.cache[caches(done)[0] as EntityId]);
+      const cache = done.components.cache[caches(done)[0] as EntityId];
+      return JSON.stringify({ cache, treasury: done.treasury });
     };
     expect(cacheFor(5)).toBe(cacheFor(5));
     expect(new Set([1, 2, 3, 4, 5, 6, 7, 8].map(cacheFor)).size).toBeGreaterThan(1);

@@ -853,7 +853,11 @@ export interface BuildingDef {
  */
 export interface SearchDef {
   ticks: number;
+  /** Goods left loose in the Cache, picked up like any Cache's. */
   cache: ResourceAmount[];
+  /** Whole coins that go straight into the Treasury when the Hero finds them. */
+  coin: number;
+  /** Each amount, and the coin, varies by this percent either way (rounded down), from the PRNG. */
   spreadPercent: number;
 }
 

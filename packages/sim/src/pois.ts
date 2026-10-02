@@ -6,6 +6,7 @@ import { leaveCache } from './dens';
 import { idsOf } from './entities';
 import { randomInt } from './rng';
 import type { EntityId, GameState, Tile } from './state';
+import { COIN } from './treasury';
 
 /** The point of interest on `tile`, if any. */
 export function poiAt(state: GameState, tile: Tile): EntityId | null {
@@ -34,7 +35,8 @@ export function isSearchable(state: GameState, content: Content, id: EntityId): 
 
 /**
  * Finishes the Search of `id`: it's Searched for good and leaves a Cache on its tile, each amount
- * of its `search.cache` ± `spreadPercent` (rounded down), rolled with the PRNG now.
+ * of its `search.cache` ± `spreadPercent` (rounded down), and its `search.coin` ± the same goes
+ * straight into the Treasury, rolled with the PRNG now in that order.
  */
 export function finishSearch(state: GameState, content: Content, id: EntityId): void {
   const poi = state.components.poi[id];
@@ -42,11 +44,13 @@ export function finishSearch(state: GameState, content: Content, id: EntityId): 
   const search = poi ? content.pois[poi.kind].search : undefined;
   if (!poi || !at || !search) return;
   poi.searched = true;
-  const stock = search.cache.map(({ resource, amount }) => {
+  const roll = (amount: number) => {
     const spread = Math.floor((amount * search.spreadPercent) / 100);
-    return { resource, amount: amount - spread + randomInt(state, 2 * spread + 1) };
-  });
+    return amount - spread + randomInt(state, 2 * spread + 1);
+  };
+  const stock = search.cache.map(({ resource, amount }) => ({ resource, amount: roll(amount) }));
   leaveCache(state, at, stock);
+  state.treasury += roll(search.coin) * COIN;
 }
 
 /** Whether `tile` is within a Shrine's `wardTiles` (Chebyshev), where no Den buds. */

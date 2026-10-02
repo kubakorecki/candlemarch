@@ -657,6 +657,7 @@ describe('content validation', () => {
       if (poi.search) {
         expectPositiveInt(poi.search.ticks, `${poi.id}.search.ticks`);
         expectNonNegativeInt(poi.search.spreadPercent, `${poi.id}.search.spreadPercent`);
+        expectNonNegativeInt(poi.search.coin, `${poi.id}.search.coin`);
         expect(poi.search.spreadPercent < 100, `${poi.id} can find nothing`).toBe(true);
         expect(poi.search.cache.length).toBeGreaterThan(0);
         for (const { resource, amount } of poi.search.cache) {
