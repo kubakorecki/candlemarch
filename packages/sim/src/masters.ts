@@ -14,8 +14,8 @@ export function masterOf(state: GameState, id: EntityId): TradeId | null {
 
 /**
  * Makes villager `id` a Master of `trade`, and the trade known to the village for good. Staffing
- * puts the Master to work in a workshop of the trade (`systems/staffing.ts`). How Masters arrive
- * is the Charter's (ticket 11); tests call it directly.
+ * puts the Master to work in a workshop of the trade (`systems/staffing.ts`). Masters arrive by
+ * Charter (`acceptCharter`); tests call it directly.
  */
 export function settleMaster(state: GameState, id: EntityId, trade: TradeId): void {
   if (!state.components.villager[id]) return;

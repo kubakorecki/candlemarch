@@ -5,11 +5,11 @@ import type { Posting, PostingCondition } from '@candlemarch/sim';
 /** One posting as its panel shows it. */
 export interface PostingView {
   id: number;
-  /** "Charter", "Delivery order". */
+  /** A Charter's Master, "Brenna the Smith"; "Delivery order". */
   title: string;
   /** Each condition worded, and whether it holds now. */
   conditions: { text: string; met: boolean }[];
-  /** "Fee 300 coin", "Reward 200 coin". */
+  /** "Fee 300 coin" ("…: the Treasury is short" when it can't be paid), "Reward 200 coin". */
   coin: string;
   /** "Withdrawn in 6 days", "Due in 1 day". */
   ends: string;
@@ -33,11 +33,13 @@ export function postingView(posting: Posting, tick: number): PostingView {
   const days = Math.max(1, Math.ceil((posting.endsAt - tick) / content.calendar.dayTicks));
   const inDays = `in ${days} ${days === 1 ? 'day' : 'days'}`;
   const charter = posting.kind === 'charter';
+  const { master } = posting;
+  const coin = `${charter ? 'Fee' : 'Reward'} ${posting.coin} coin`;
   return {
     id: posting.id,
-    title: charter ? 'Charter' : 'Delivery order',
+    title: master ? `${master.name} the ${content.trades[master.trade].name}` : 'Delivery order',
     conditions: posting.conditions.map((c) => ({ text: conditionText(c), met: c.met })),
-    coin: `${charter ? 'Fee' : 'Reward'} ${posting.coin} coin`,
+    coin: posting.coinShort ? `${coin}: the Treasury is short` : coin,
     ends: charter ? `Withdrawn ${inDays}` : `Due ${inDays}`,
     canAccept: posting.canAccept,
     accepted: posting.accepted,

@@ -593,6 +593,21 @@ export interface NoticeBoardState {
   delivery: DeliveryOrder | null;
   /** The first day whose Dawn may post the next Delivery order. */
   nextDeliveryDay: number;
+  /** The Charters up (`charters.ts`), oldest first, at most `charters.max`. Old saves: none. */
+  charters: CharterOffer[];
+  /** The first day whose Dawn may post a Charter of a trade withdrawn before. Old saves: none. */
+  chartersAgain: Partial<Record<TradeId, number>>;
+}
+
+/**
+ * A Charter on the notice board: `name`, a Master of `trade`, offers to settle for the trade's
+ * content fee until `endsAt` (a Dawn), when it's withdrawn. Accepting it takes it down.
+ */
+export interface CharterOffer {
+  id: number;
+  trade: TradeId;
+  name: string;
+  endsAt: number;
 }
 
 /**

@@ -38,12 +38,16 @@ const yard: MapDef = {
 };
 const POST = 1;
 
-/** Content whose only Delivery order is `orders` (10 logs within 3 days for 50 coin unless given). */
+/**
+ * Content whose only Delivery order is `orders` (10 logs within 3 days for 50 coin unless given),
+ * and no Charters.
+ */
 function only(...orders: DeliveryOrderDef[]): Content {
   const logs = { resource: 'logs' as const, amount: 10, days: 3, reward: 50 };
   return {
     ...content,
     deliveries: { ...content.deliveries, orders: orders.length > 0 ? orders : [logs] },
+    charters: { ...content.charters, offers: {} },
   };
 }
 const LOGS = only();
@@ -89,8 +93,10 @@ describe('Delivery orders', () => {
         coin: 50,
         endsAt: 3 * DAY,
         canAccept: true,
+        coinShort: false,
         accepted: false,
         goods: { resource: 'logs', amount: 10, delivered: 0 },
+        master: null,
       },
     ]);
     // One at a time: the next Dawn posts no other.
@@ -147,7 +153,7 @@ describe('Delivery orders', () => {
   it('is deterministic, and a save mid-order plays on the same', () => {
     const play = () => run(village(), 2 * DAY, { 1: [accept(1)] });
     const a = play();
-    expect(postings(a, content)).toHaveLength(1);
+    expect(postings(a, content).filter((p) => p.kind === 'delivery')).toHaveLength(1);
     expect(a).toEqual(play());
     const mid = run(village(), 400, { 1: [accept(1)] });
     expect(run(deserialize(serialize(mid), content), 600)).toEqual(run(mid, 600));

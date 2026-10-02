@@ -2,6 +2,7 @@
 import { alerts } from './alerts';
 import { buildings } from './buildings';
 import { calendar } from './calendar';
+import { charters } from './charters';
 import { combat } from './combat';
 import { deliveries } from './deliveries';
 import { dens } from './dens';
@@ -42,6 +43,7 @@ export const content: Content = {
   masters,
   merchants,
   deliveries,
+  charters,
   tools,
   heroes,
   roads,

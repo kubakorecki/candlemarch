@@ -14,8 +14,10 @@ const charter: Posting = {
   coin: 300,
   endsAt: 10 * DAY,
   canAccept: false,
+  coinShort: false,
   accepted: false,
   goods: null,
+  master: { name: 'Brenna', trade: 'smith' },
 };
 
 describe('posting text', () => {
@@ -30,7 +32,7 @@ describe('posting text', () => {
   it('words a Charter: its conditions met or not, its fee, the days until it is withdrawn', () => {
     expect(postingView(charter, 4 * DAY + 100)).toEqual({
       id: 7,
-      title: 'Charter',
+      title: 'Brenna the Smith',
       conditions: [
         { text: 'A free place in a House', met: true },
         { text: 'A mine or bog-iron digger', met: false },
@@ -44,10 +46,17 @@ describe('posting text', () => {
     expect(postingView(charter, 9 * DAY + 1).ends).toBe('Withdrawn in 1 day');
   });
 
+  it("says when the Treasury can't cover a Charter's fee", () => {
+    expect(postingView({ ...charter, coinShort: true }, 0).coin).toBe(
+      'Fee 300 coin: the Treasury is short',
+    );
+  });
+
   it('words a Delivery order: its goods, its reward and when it falls due', () => {
     const order: Posting = {
       ...charter,
       kind: 'delivery',
+      master: null,
       conditions: [],
       canAccept: true,
       goods: { resource: 'smoked_fish', amount: 30, delivered: 0 },

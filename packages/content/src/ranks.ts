@@ -30,6 +30,7 @@ export const ranks: readonly RankDef[] = [
         'village_hall',
         'quarry', // the village hall needs stone
       ],
+      charters: [],
     },
   },
   {
@@ -53,8 +54,21 @@ export const ranks: readonly RankDef[] = [
         'brewery',
         'trade_post',
       ],
+      charters: ['carpenter', 'mason', 'butcher', 'brewer', 'smith'],
     },
   },
-  { id: 'village', name: 'Village', building: null, residents: 25, unlocks: { buildings: [] } },
-  { id: 'town', name: 'Town', building: null, residents: 50, unlocks: { buildings: [] } },
+  {
+    id: 'village',
+    name: 'Village',
+    building: null,
+    residents: 25,
+    unlocks: { buildings: [], charters: [] },
+  },
+  {
+    id: 'town',
+    name: 'Town',
+    building: null,
+    residents: 50,
+    unlocks: { buildings: [], charters: [] },
+  },
 ];

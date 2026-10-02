@@ -893,8 +893,11 @@ export interface RankDef {
    */
   building: BuildingId | null;
   residents: number;
-  /** Buildings placeable from this rank on. Every placeable building is in exactly one rank's list. */
-  unlocks: { buildings: BuildingId[] };
+  /**
+   * Buildings placeable from this rank on (every placeable building is in exactly one rank's list),
+   * and the trades whose Charters the notice board may post from this rank on.
+   */
+  unlocks: { buildings: BuildingId[]; charters: TradeId[] };
 }
 
 /** A master trade: its Master's title. Its workshops are the buildings naming it. */
@@ -974,6 +977,28 @@ export interface DeliveriesDef {
   orders: DeliveryOrderDef[];
 }
 
+/**
+ * A trade's Charter (spec, Trades and masters: Charters in M5): what its Master asks before
+ * settling. `fee` whole coins, paid on accepting; `buildings` must stand, each entry met by any one
+ * of its types (the workshop, then what supplies it). A free place in a House is always asked too.
+ */
+export interface CharterDef {
+  fee: number;
+  buildings: BuildingId[][];
+}
+
+/**
+ * Charters on the notice board: up to `max` at a time, each withdrawn `days` after it's posted;
+ * another of a withdrawn trade may be posted `againDays` after. Which trades a rank opens is its
+ * `unlocks.charters`.
+ */
+export interface ChartersDef {
+  max: number;
+  days: number;
+  againDays: number;
+  offers: Partial<Record<TradeId, CharterDef>>;
+}
+
 export interface Content {
   resources: Record<ResourceId, ResourceDef>;
   terrain: Record<TerrainId, TerrainDef>;
@@ -987,6 +1012,7 @@ export interface Content {
   masters: MastersDef;
   merchants: MerchantsDef;
   deliveries: DeliveriesDef;
+  charters: ChartersDef;
   tools: ToolsDef;
   heroes: Record<HeroId, HeroDef>;
   roads: Record<RoadId, RoadDef>;

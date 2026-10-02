@@ -78,6 +78,9 @@ function normalizeLoadedState(loaded: LoadedState, content: Content): GameState 
   state.tradePost.orders ??= {};
   // Saves from before Seeds.
   state.tradePost.seedOrders ??= [];
+  // Saves from before Charters.
+  state.noticeBoard.charters ??= [];
+  state.noticeBoard.chartersAgain ??= {};
   // Saves from before Terrain types called Meadow "grass" (the only rename; kept to one line
   // rather than a new STATE_VERSION, so those saves still load).
   state.map.terrain = state.map.terrain.map((t) => ((t as string) === 'grass' ? 'meadow' : t));

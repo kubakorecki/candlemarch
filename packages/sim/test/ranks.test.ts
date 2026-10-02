@@ -93,6 +93,7 @@ describe('ranks', () => {
       ranks: content.ranks.map((r) => ({
         ...r,
         unlocks: {
+          ...r.unlocks,
           buildings:
             r.id === 'hamlet'
               ? [...r.unlocks.buildings, 'woodcutters_hut']

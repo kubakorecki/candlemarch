@@ -741,6 +741,26 @@ describe('content validation', () => {
     }
   });
 
+  it('Charters: each trade a rank opens has an offer, opened once, asking for buildings that exist', () => {
+    const opened = content.ranks.flatMap((r) => r.unlocks.charters);
+    expect(new Set(opened).size, 'each trade opened once').toBe(opened.length);
+    expect(opened.sort()).toEqual(Object.keys(content.charters.offers).sort());
+    for (const [trade, offer] of Object.entries(content.charters.offers)) {
+      expect(content.trades, `charter ${trade}`).toHaveProperty(trade);
+      expect(offer.fee, `${trade} fee`).toBeGreaterThan(0);
+      expect(offer.buildings.length, `${trade} asks for a workshop`).toBeGreaterThan(0);
+      for (const b of offer.buildings.flat()) {
+        expect(buildings, `${trade} asks for ${b}`).toHaveProperty(b);
+      }
+      // The first entry is the trade's own workshop.
+      for (const b of offer.buildings[0] ?? []) {
+        expect(buildings[b].trade, `${trade}'s workshop ${b}`).toBe(trade);
+      }
+    }
+    expect(content.charters.max).toBeGreaterThan(0);
+    expect(content.charters.days).toBeGreaterThan(0);
+  });
+
   it('a rank building is unlocked by the rank before, one a village, and residents climb', () => {
     expect(content.ranks[0]?.building).toBeNull();
     content.ranks.forEach((rank, i) => {

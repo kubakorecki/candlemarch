@@ -1,6 +1,6 @@
 # Charters
 
-Status: ready-for-agent
+Status: resolved
 Type: task
 Blocked by: 06, 07, 08, 09, 10, 12, 13, 14, 24
 
@@ -27,3 +27,7 @@ Spec: Trades and masters (Charters in M5). Glossary: Charter.
 
 - Headless tests: Charters are posted and withdrawn on schedule; conditions are tracked; accepting before they hold is refused; accepting pays and brings the Master; determinism.
 - `pnpm check` passes.
+
+## Comments
+
+2026-10-02 — Done: content `charters` (fees, asked buildings, 2 up, 10 days, back after 5) and `unlocks.charters` on Hamlet; sim `charters.ts` and `systems/charters.ts` (step 12, after deliveries); postings list Charters with their Master (`master`) and `coinShort`; `acceptPosting` accepts them; the card reads "Brenna the Smith". Not in the issue: "another of that trade can be posted later" is 5 days after it's withdrawn (`againDays`, content); a Charter short of its fee says "the Treasury is short" rather than listing the fee as a condition. See docs/decisions.md.

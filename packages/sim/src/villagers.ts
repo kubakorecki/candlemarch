@@ -90,15 +90,15 @@ export function assignJob(
   }
 }
 
-/** Adds a villager with `job` at `tile`, with no Home and nothing in hand. */
+/** Adds a villager with `job` at `tile` (named `name`, else drawn), no Home, nothing in hand. */
 export function spawnVillager(
   state: GameState,
   content: Content,
   job: JobId,
   tile: Tile,
   workplace: EntityId | null,
+  name: string = drawVillagerName(state, content),
 ): EntityId {
-  const name = drawVillagerName(state, content);
   const id = createEntity(state);
   state.components.villager[id] = {
     name,
