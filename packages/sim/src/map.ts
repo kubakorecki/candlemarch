@@ -200,7 +200,7 @@ export function createEmptyState(seed: number): GameState {
     rank: 'camp',
     trades: [],
     treasury: 0,
-    tradePost: { keep: {}, prices: {}, wanted: null, merchantHere: false },
+    tradePost: { keep: {}, prices: {}, wanted: null, merchantHere: false, orders: {} },
   };
 }
 

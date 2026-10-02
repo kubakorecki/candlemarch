@@ -10,18 +10,19 @@ import {
   type Storage,
 } from '@candlemarch/sim';
 import type { ReactNode } from 'react';
-import type {
-  BuildingInfo,
-  FarmInfo,
-  Game,
-  GroundInfo,
-  HudState,
-  PatchInfo,
-  PoiInfo,
-  SwampInfo,
-  TradePostInfo,
-  VillagerInfo,
-  WorkersView,
+import {
+  type BuildingInfo,
+  type FarmInfo,
+  type Game,
+  type GroundInfo,
+  type HudState,
+  IMPORT_BATCH,
+  type PatchInfo,
+  type PoiInfo,
+  type SwampInfo,
+  type TradePostInfo,
+  type VillagerInfo,
+  type WorkersView,
 } from '../game/Game';
 import type { PostingView } from '../game/postingText';
 import { FIELD_TOOLS, type ToolId, TREE_TOOLS, toolDef } from '../game/tools';
@@ -330,9 +331,10 @@ function NoticeBoardFacts({
 const SELL_KEEP_STEP = 5;
 
 /**
- * The trade post's Merchants and sell rules: when the next Merchant comes and what it wants, then
- * a row per good with what a unit fetches now (a gilt star when Wanted) and its rule: Sell starts
- * one, − / + move what the village keeps, × stops it.
+ * The trade post's Merchants, sell rules and Imports: when the next Merchant comes and what it
+ * wants, then a row per good with what a unit fetches now (a gilt star when Wanted) and its rule:
+ * Sell starts one, − / + move what the village keeps, × stops it; then the Import catalogue (Order
+ * pays at once; the next Merchant brings them) and what the last one brought, still waiting.
  */
 function TradePostFacts({ post, game }: { post: TradePostInfo; game: Game }) {
   const wanted = post.wanted?.map((r) => content.resources[r].name).join(', ');
@@ -398,6 +400,41 @@ function TradePostFacts({ post, game }: { post: TradePostInfo; game: Game }) {
           </div>
         );
       })}
+      <SectionHead title="Imports" aside="Each" />
+      {post.imports.map((row) => {
+        const name = content.resources[row.resource].name;
+        return (
+          <div key={row.resource} className="sell-row">
+            <span className="sell-good">
+              <Icon name={RESOURCE_ICONS[row.resource]} size={18} className="tone-gilt" />
+              <span>
+                {name}
+                {row.ordered > 0 && <span className="muted small"> · {row.ordered} ordered</span>}
+              </span>
+            </span>
+            <button
+              type="button"
+              className="btn-small"
+              disabled={!row.canOrder}
+              title={`Order ${IMPORT_BATCH} ${name.toLowerCase()}, paid now; the next Merchant brings them`}
+              onClick={() => game.orderImport(row.resource)}
+            >
+              Order {IMPORT_BATCH}
+            </button>
+            <span className="price">{row.price}</span>
+          </div>
+        );
+      })}
+      {post.arrived.length > 0 && <SectionHead title="Brought in" />}
+      {post.arrived.map((g) => (
+        <div key={g.resource} className="fact good">
+          <span>
+            <Icon name={RESOURCE_ICONS[g.resource]} size={18} />
+            {content.resources[g.resource].name}
+          </span>
+          <span>{g.amount}</span>
+        </div>
+      ))}
     </div>
   );
 }

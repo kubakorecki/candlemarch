@@ -917,6 +917,10 @@ export interface MerchantsDef {
   floorPercent: number;
   /** At each Dawn every price climbs back this percent of its base, up to the base. */
   recoverPercent: number;
+  /** Goods the trade post can order (Imports), brought by the next Merchant. */
+  imports: ResourceId[];
+  /** What an Import costs a unit, as a percent of its base price (twice: 200). */
+  importPricePercent: number;
 }
 
 export interface Content {

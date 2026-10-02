@@ -99,6 +99,7 @@ export { type Storage, storageOf } from './storage';
 export { immigrationFoodNeeded, newcomerHome } from './systems/immigration';
 export { openPositions } from './systems/staffing';
 export {
+  importCost,
   isMerchantDay,
   MAX_SELL_KEEP,
   merchantPays,

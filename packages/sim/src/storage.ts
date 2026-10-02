@@ -16,7 +16,7 @@ export interface Storage {
 /**
  * Building `id`'s Storage, or null for a building that keeps none (or one that's gone): a
  * Granary's Food against its `foodCapacity`, the trade post's goods for sale against its
- * `tradePost.capacity`.
+ * `tradePost.capacity` (`building.input`; Imports waiting for Carriers aren't counted).
  */
 export function storageOf(state: GameState, content: Content, id: EntityId): Storage | null {
   const b = state.components.building[id];
@@ -26,8 +26,10 @@ export function storageOf(state: GameState, content: Content, id: EntityId): Sto
   const kept = def.tradePost ? (Object.keys(content.resources) as ResourceId[]) : foodIds(content);
   const goods: ResourceAmount[] = [];
   let amount = 0;
+  // The trade post's goods for sale are what Carriers brought in (its Imports wait in `stock`).
+  const store = def.tradePost ? b.input : b.stock;
   for (const resource of kept) {
-    const held = b.stock[resource] ?? 0;
+    const held = store[resource] ?? 0;
     if (held <= 0) continue;
     goods.push({ resource, amount: held });
     amount += held;

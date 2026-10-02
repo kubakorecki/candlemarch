@@ -1,6 +1,7 @@
 // Merchants (spec, Economy: The trade post in M5): at each Dawn but the first, prices recover, a
 // Merchant here leaves and the next one's Wanted list is drawn, and on a Merchant day one arrives
-// and buys everything in the trade post's Storage into the Treasury (`tradePost.ts`).
+// and buys everything in the trade post's Storage into the Treasury, then unloads the Imports
+// ordered (`tradePost.ts`).
 import type { Content, ResourceId } from '@candlemarch/content';
 import { calendarAt, isDawn } from '../calendar';
 import { randomInt } from '../rng';
@@ -38,7 +39,7 @@ function buyEverything(state: GameState, content: Content, post: EntityId): void
   const b = state.components.building[post];
   if (!b) return;
   for (const resource of Object.keys(content.resources) as ResourceId[]) {
-    const units = b.stock[resource] ?? 0;
+    const units = b.input[resource] ?? 0;
     const { dropPerUnit } = content.resources[resource].price;
     for (let i = 0; i < units; i++) {
       state.treasury += merchantPays(state, content, resource);
@@ -48,14 +49,27 @@ function buyEverything(state: GameState, content: Content, post: EntityId): void
       );
       state.tradePost.prices[resource] = price;
     }
-    delete b.stock[resource];
+    delete b.input[resource];
   }
+}
+
+/** The Merchant unloads every Import ordered into trade post `post`, for Carriers to take. */
+function unloadImports(state: GameState, content: Content, post: EntityId): void {
+  const b = state.components.building[post];
+  if (!b) return;
+  const { orders } = state.tradePost;
+  for (const resource of Object.keys(content.resources) as ResourceId[]) {
+    const amount = orders[resource] ?? 0;
+    if (amount > 0) b.stock[resource] = (b.stock[resource] ?? 0) + amount;
+  }
+  state.tradePost.orders = {};
 }
 
 /**
  * At each Dawn but the first: prices recover; a Merchant here leaves, and while a trade post
  * stands the next one's Wanted list is drawn (or the first list, the first Dawn one stands); on a
- * Merchant day with a trade post standing, a Merchant arrives and buys everything in its Storage.
+ * Merchant day with a trade post standing, a Merchant arrives, buys everything in its Storage, then
+ * unloads the Imports ordered (which it never buys back).
  */
 export function merchantSystem(state: GameState, content: Content): void {
   if (state.tick === 0 || !isDawn(state.tick, content)) return;
@@ -70,5 +84,6 @@ export function merchantSystem(state: GameState, content: Content): void {
   if (trade.wanted === null) trade.wanted = drawWanted(state, content);
   if (!isMerchantDay(content, calendarAt(state.tick, content).day)) return;
   buyEverything(state, content, post);
+  unloadImports(state, content, post);
   trade.merchantHere = true;
 }

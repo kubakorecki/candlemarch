@@ -51,6 +51,7 @@ import {
   heroOrderAt,
   huntChancePermille,
   idsOf,
+  importCost,
   isBellRung,
   isFarm,
   isForagePatch,
@@ -84,6 +85,7 @@ import {
   standingOrderOf,
   storageOf,
   type Tile,
+  tradePostOf,
   treasuryCoin,
   villageFood,
   villageStock,
@@ -277,7 +279,25 @@ export interface TradePostInfo {
   wanted: ResourceId[] | null;
   /** A row per good with a sell rule, held by the village, or Wanted, in content order. */
   goods: SellRow[];
+  /** A row per good in the Import catalogue. */
+  imports: ImportRow[];
+  /** Imports the last Merchant brought that Carriers haven't taken yet. */
+  arrived: { resource: ResourceId; amount: number }[];
 }
+
+/** One good the trade post can order from the next Merchant. */
+export interface ImportRow {
+  resource: ResourceId;
+  /** What one unit costs, e.g. "4.00". */
+  price: string;
+  /** Units ordered and paid for, waiting for the next Merchant. */
+  ordered: number;
+  /** The Treasury covers another `IMPORT_BATCH`. */
+  canOrder: boolean;
+}
+
+/** Units an Order button orders at once. */
+export const IMPORT_BATCH = 5;
 
 /** One good in the trade post's panel. */
 export interface SellRow {
@@ -660,6 +680,11 @@ export class Game {
     const row = this.hud.building?.tradePost?.goods.find((g) => g.resource === resource);
     const keep = row?.keep === null ? (content.resources[resource].standingOrder ?? 20) : null;
     this.bridge.command({ type: 'setSellRule', resource, keep });
+  }
+
+  /** Orders `IMPORT_BATCH` units of `resource` from the next Merchant, paid now. */
+  orderImport(resource: ResourceId): void {
+    this.bridge.command({ type: 'orderImport', resource, amount: IMPORT_BATCH });
   }
 
   /** Raises or lowers what the trade post's rule for `resource` keeps, within 0 and the most. */
@@ -1669,10 +1694,22 @@ function tradePostInfo(state: GameState): TradePostInfo {
     });
   }
   const today = calendarAt(state.tick, content).day;
+  const post = tradePostOf(state, content);
+  const stock = (post !== null && state.components.building[post]?.stock) || {};
   return {
     merchant: merchantText(today, nextMerchantDay(state, content), trade.merchantHere),
     wanted: trade.wanted,
     goods,
+    imports: content.merchants.imports.map((resource) => ({
+      resource,
+      price: priceText(importCost(content, resource, 1)),
+      ordered: trade.orders[resource] ?? 0,
+      canOrder: state.treasury >= importCost(content, resource, IMPORT_BATCH),
+    })),
+    arrived: (Object.keys(content.resources) as ResourceId[]).flatMap((resource) => {
+      const amount = stock[resource] ?? 0;
+      return amount > 0 ? [{ resource, amount }] : [];
+    }),
   };
 }
 

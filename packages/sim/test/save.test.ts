@@ -26,6 +26,13 @@ describe('serialize / deserialize', () => {
     expect(deserialize(JSON.stringify(data), content)).toEqual(s);
   });
 
+  it('gives a trade post saved before Imports no orders', () => {
+    const s = createInitialState(9, meadowMap, content);
+    const data = JSON.parse(serialize(s));
+    delete data.tradePost.orders;
+    expect(deserialize(JSON.stringify(data), content)).toEqual(s);
+  });
+
   it('loads the Grass of saves made before Terrain types as Meadow', () => {
     const s = createInitialState(9, maps.camp, content);
     const data = JSON.parse(serialize(s));

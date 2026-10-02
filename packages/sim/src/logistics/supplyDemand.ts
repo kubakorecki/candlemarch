@@ -70,7 +70,8 @@ function resourceIds(content: Content): ResourceId[] {
 }
 
 /**
- * Output buffer contents of every building in building ID order (buffer slots in content order),
+ * Output buffer contents of every building, and the trade post's Imports, in building ID order
+ * (buffer slots or resources in content order),
  * then the goods on every stockpile in stockpile ID order, then every cache in ID order
  * (resources in content order).
  */
@@ -79,7 +80,11 @@ export function listSupplies(state: GameState, content: Content): Supply[] {
   for (const id of idsOf(state.components.building)) {
     const b = state.components.building[id];
     if (!b) continue;
-    for (const resource of content.buildings[b.type].outputBuffer?.resources ?? []) {
+    // A Workplace's outputs; the trade post's Imports.
+    const given = isTradePost(state, content, id)
+      ? resourceIds(content)
+      : (content.buildings[b.type].outputBuffer?.resources ?? []);
+    for (const resource of given) {
       const amount = b.stock[resource] ?? 0;
       if (amount > 0) result.push({ source: id, kind: 'building', resource, amount });
     }
@@ -224,8 +229,11 @@ export function demandGroups(state: GameState, demands: readonly Demand[]): Dema
   return groups;
 }
 
-/** Whether goods from `supply` may be hauled to `demand`. A stockpile never supplies another. */
+/**
+ * Whether goods from `supply` may be hauled to `demand`. A stockpile never supplies another, nor
+ * a building itself (the trade post's Imports aren't carried in as goods for sale).
+ */
 export function canServe(supply: Supply, demand: Demand): boolean {
-  if (supply.resource !== demand.resource) return false;
+  if (supply.resource !== demand.resource || supply.source === demand.target) return false;
   return !(supply.kind === 'stockpile' && demand.kind === 'stockpile');
 }

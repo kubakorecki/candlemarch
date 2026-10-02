@@ -137,9 +137,15 @@ export interface BuildingComponent {
   type: BuildingId;
   /** Quarter turns from the content layout. */
   rotation: Rotation;
-  /** Output buffer contents, the Food a Granary holds, or a House's or a light's fuel. */
+  /**
+   * Output buffer contents, the Food a Granary holds, a House's or a light's fuel, or the Imports
+   * Merchants brought to the trade post: what Carriers take away.
+   */
   stock: ResourceAmounts;
-  /** Input buffer contents. Empty unless the building is a workshop. */
+  /**
+   * Input buffer contents, or the trade post's goods for sale: what Carriers bring. Empty for
+   * any other building.
+   */
   input: ResourceAmounts;
   /**
    * Most workers staffing fills it up to, from 0 to every position it has (`maxWorkers`). The
@@ -583,4 +589,6 @@ export interface TradePostState {
   wanted: ResourceId[] | null;
   /** A Merchant is at the trade post: arrived at this day's Dawn, leaves at the next. */
   merchantHere: boolean;
+  /** Imports paid for and waiting for the next Merchant to bring them, by good. */
+  orders: Partial<Record<ResourceId, number>>;
 }

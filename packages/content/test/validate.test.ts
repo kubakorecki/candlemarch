@@ -687,6 +687,9 @@ describe('content validation', () => {
     expect(m.floorPercent > 0 && m.floorPercent < 100).toBe(true);
     expectPositiveInt(m.recoverPercent, 'merchants.recoverPercent');
     expect(m.closedSeasons.length).toBeLessThan(content.calendar.seasons.length);
+    expect(new Set(m.imports).size, 'imports listed once').toBe(m.imports.length);
+    for (const r of m.imports) expect(resources, 'import').toHaveProperty(r);
+    expect(m.importPricePercent).toBeGreaterThan(100);
   });
 
   it('coin construction costs are whole coins, only on buildings placed one at a time', () => {

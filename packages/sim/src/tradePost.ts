@@ -1,10 +1,12 @@
 // The trade post and Merchants (spec, Economy: The trade post in M5). The trade post (one a
-// village) keeps goods for sale in its Storage (`building.stock`). A sell rule per good, "keep N in
-// the village, sell the rest", makes the surplus a demand Carriers fill (`logistics/supplyDemand.ts`).
-// A Merchant arrives at the Dawn of every few days outside winter, buys everything in the Storage
-// at the current prices into the Treasury, and leaves at the next Dawn, when the next Merchant's
-// Wanted list is drawn. Each unit sold lowers its good's price; prices climb back each Dawn.
-// What's stored is `state.tradePost`; goods for sale aren't part of what "the village holds".
+// village) keeps goods for sale in its Storage (`building.input`, what Carriers bring). A sell rule
+// per good, "keep N in the village, sell the rest", makes the surplus a demand Carriers fill
+// (`logistics/supplyDemand.ts`). A Merchant arrives at the Dawn of every few days outside winter,
+// buys everything in the Storage at the current prices into the Treasury, unloads the Imports
+// ordered since into `building.stock` (what Carriers take away, like a yard), and leaves at the
+// next Dawn, when the next Merchant's Wanted list is drawn (`systems/merchants.ts`). Each unit
+// sold lowers its good's price; prices climb back each Dawn. What's stored is `state.tradePost`;
+// goods for sale aren't part of what "the village holds", Imports that arrived are.
 import type { Content, ResourceId } from '@candlemarch/content';
 import { calendarAt } from './calendar';
 import { idsOf } from './entities';
@@ -34,7 +36,7 @@ export function forSaleIn(state: GameState, content: Content, id: EntityId): num
   if (!b || !isTradePost(state, content, id)) return 0;
   let total = 0;
   for (const resource of Object.keys(content.resources) as ResourceId[]) {
-    total += b.stock[resource] ?? 0;
+    total += b.input[resource] ?? 0;
   }
   return total;
 }
@@ -120,4 +122,33 @@ export function nextMerchantDay(state: GameState, content: Content): number {
   let day = today + 1;
   while (!isMerchantDay(content, day)) day += 1;
   return day;
+}
+
+/** What `amount` units of `resource` cost as an Import, in hundredths of a coin. */
+export function importCost(content: Content, resource: ResourceId, amount: number): number {
+  const unit = Math.floor(
+    (content.resources[resource].price.base * content.merchants.importPricePercent) / 100,
+  );
+  return unit * amount;
+}
+
+/**
+ * Orders `amount` units of `resource` from the next Merchant (the `orderImport` command), paid out
+ * of the Treasury at once. Ignored unless a trade post stands, the good is in the catalogue
+ * (`merchants.imports`), `amount` is a positive whole number and the Treasury covers it.
+ */
+export function orderImport(
+  state: GameState,
+  content: Content,
+  resource: ResourceId,
+  amount: number,
+): void {
+  if (!content.merchants.imports.includes(resource)) return;
+  if (!Number.isInteger(amount) || amount <= 0) return;
+  if (tradePostOf(state, content) === null) return;
+  const cost = importCost(content, resource, amount);
+  if (state.treasury < cost) return;
+  state.treasury -= cost;
+  const { orders } = state.tradePost;
+  orders[resource] = (orders[resource] ?? 0) + amount;
 }

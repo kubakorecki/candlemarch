@@ -78,7 +78,7 @@ describe('the trade post', () => {
   it('goods for sale are not what the village holds, so standing orders keep working', () => {
     const s = hamlet();
     const post = s.components.building[POST];
-    if (post) post.stock.logs = 50;
+    if (post) post.input.logs = 50;
     expect(villageStock(s, content, 'logs')).toBe(12);
   });
 });
@@ -88,7 +88,7 @@ function marketAt(day: number, stock: Partial<Record<ResourceId, number>>, wante
   const s = hamlet();
   s.tick = dawnTick(day, content);
   const post = s.components.building[POST];
-  if (post) post.stock = { ...stock };
+  if (post) post.input = { ...stock };
   s.tradePost.wanted = wanted;
   return s;
 }
@@ -158,6 +158,59 @@ describe('Merchants', () => {
     const b = play();
     expect(a.treasury).toBeGreaterThan(0);
     expect(a).toEqual(b);
+  });
+});
+
+/** Units of `resource` Merchants brought, waiting in the trade post for Carriers. */
+function imported(s: GameState, resource: ResourceId): number {
+  return s.components.building[POST]?.stock[resource] ?? 0;
+}
+
+describe('imports', () => {
+  const orderStone = { type: 'orderImport' as const, resource: 'stone' as const, amount: 5 };
+
+  it('an order spends twice the base price at once, and the next Merchant brings the goods', () => {
+    const s = hamlet();
+    s.treasury = 100 * COIN;
+    const ordered = step(s, [orderStone], content);
+    // 5 stone at twice 2.00 each.
+    expect(treasuryCoin(ordered)).toBe(80);
+    expect(ordered.tradePost.orders).toEqual({ stone: 5 });
+    ordered.tick = dawnTick(3, content);
+    const arrived = run(ordered, 1);
+    expect(arrived.tradePost.merchantHere).toBe(true);
+    expect(imported(arrived, 'stone')).toBe(5);
+    expect(arrived.tradePost.orders).toEqual({});
+    expect(treasuryCoin(arrived)).toBe(80);
+  });
+
+  it('Carriers take what arrived where it is wanted, and the Merchant never buys it back', () => {
+    const s = hamlet();
+    s.treasury = 100 * COIN;
+    s.tick = dawnTick(3, content);
+    const arrived = run(s, 1, { [s.tick]: [orderStone] });
+    expect(imported(arrived, 'stone')).toBe(5);
+    expect(forSale(arrived, 'stone')).toBe(0);
+    const carried = runUntil(arrived, (x) => piled(x, 'stone') === 5, 2000);
+    expect(piled(carried, 'stone')).toBe(5);
+    expect(imported(carried, 'stone')).toBe(0);
+  });
+
+  it("an order the Treasury can't cover is refused", () => {
+    const s = hamlet();
+    s.treasury = 19 * COIN;
+    const after = step(s, [orderStone], content);
+    expect(after.treasury).toBe(19 * COIN);
+    expect(after.tradePost.orders).toEqual({});
+  });
+
+  it('only goods in the catalogue can be ordered, and only at a trade post', () => {
+    const s = hamlet();
+    s.treasury = 1000 * COIN;
+    const planks = { type: 'orderImport' as const, resource: 'planks' as const, amount: 5 };
+    expect(step(s, [planks], content).tradePost.orders).toEqual({});
+    delete s.components.building[POST];
+    expect(step(s, [orderStone], content).tradePost.orders).toEqual({});
   });
 });
 

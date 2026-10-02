@@ -26,7 +26,7 @@ export function defaultStandingOrder(content: Content, type: BuildingId): number
 
 /**
  * Units of `resource` the village holds: on Stockpiles, in Workplace yards, in Storage (but not
- * the trade post's goods for sale), and for fuel in Houses and lights too. Goods being carried, on
+ * the trade post's goods for sale), Imports waiting at the trade post, and for fuel in Houses and lights too. Goods being carried, on
  * sites or in workshop inputs don't count.
  */
 export function villageStock(state: GameState, content: Content, resource: ResourceId): number {
@@ -37,8 +37,9 @@ export function villageStock(state: GameState, content: Content, resource: Resou
     if (content.buildings[b.type].outputBuffer?.resources.includes(resource)) {
       total += b.stock[resource] ?? 0;
     }
-    // Goods for sale at the trade post are on their way out.
-    if (!content.buildings[b.type].tradePost) {
+    // Goods for sale at the trade post are on their way out; Imports that arrived are in.
+    if (content.buildings[b.type].tradePost) total += b.stock[resource] ?? 0;
+    else {
       total +=
         storageOf(state, content, id)?.goods.find((g) => g.resource === resource)?.amount ?? 0;
     }
