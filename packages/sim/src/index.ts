@@ -98,6 +98,7 @@ export { canPlaceStockpile, isStockpileGood, STOCKPILE_PRIORITIES } from './stoc
 export { type Storage, storageOf } from './storage';
 export { immigrationFoodNeeded, newcomerHome } from './systems/immigration';
 export { openPositions } from './systems/staffing';
+export { holdsTool, toolsAt, usesTools } from './tools';
 export {
   importCost,
   isMerchantDay,

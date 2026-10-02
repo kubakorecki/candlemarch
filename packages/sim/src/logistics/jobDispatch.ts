@@ -12,6 +12,7 @@ import { tileDistance } from '../pathfinding';
 import type { EntityId, GameState, Store, Tile } from '../state';
 import { addToTile, amountOnTile, roomOnTile, takeFromTile } from '../stockpiles';
 import { isAt, stopAtNextTile, villagerTile, walkCosts, walkTo } from '../systems/movement';
+import { addTools, bringsTools } from '../tools';
 import { isAtWork } from '../villagers';
 import { isHouse } from '../warmth';
 import { canHelpCarry } from './helping';
@@ -30,7 +31,7 @@ export interface Haul {
   amount: number;
   /** Building, stockpile or cache to pick up from. */
   from: EntityId;
-  /** Construction site, workshop, Granary or stockpile to deliver to. */
+  /** Construction site, workshop, Workplace (tools), Granary or stockpile to deliver to. */
   to: EntityId;
   /** Stockpile or cache tile (map tile index) to pick up from. Absent when `from` is a building. */
   fromTile?: number;
@@ -317,6 +318,8 @@ function advanceHaul(state: GameState, content: Content, id: EntityId, haul: Hau
       const pile = stockpile[haul.to];
       if (carrier.carrying && target) {
         target.delivered[haul.resource] = (target.delivered[haul.resource] ?? 0) + haul.amount;
+      } else if (carrier.carrying && bringsTools(state, content, haul.to, haul.resource)) {
+        addTools(state, haul.to, haul.amount);
       } else if (
         carrier.carrying &&
         workshop &&

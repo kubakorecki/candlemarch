@@ -1183,6 +1183,34 @@ function drawAleCask(g: Graphics, x: number, y: number, s: number): void {
   g.circle(x, y, 1.2 * s).fill(palette.ale);
 }
 
+/** A hammer lying down, centred on (x, y): a wooden handle and an iron head at its right end. */
+function drawTool(g: Graphics, x: number, y: number, s: number): void {
+  g.poly([
+    x - 8 * s,
+    y + 1.5 * s,
+    x + 4 * s,
+    y - 0.5 * s,
+    x + 4 * s,
+    y + 1.5 * s,
+    x - 8 * s,
+    y + 3 * s,
+  ])
+    .fill(palette.plank)
+    .stroke(THIN_INK);
+  g.poly([
+    x + 3 * s,
+    y - 3.5 * s,
+    x + 8 * s,
+    y - 3.5 * s,
+    x + 8 * s,
+    y + 3 * s,
+    x + 3 * s,
+    y + 3 * s,
+  ])
+    .fill(palette.iron)
+    .stroke(THIN_INK);
+}
+
 /** How each resource is drawn as one piece, and the spacing of its pieces in a pile. */
 const PIECES: Record<
   ResourceId,
@@ -1207,6 +1235,7 @@ const PIECES: Record<
   smoked_meat: { draw: smoked(drawMeat), w: 20, h: 9 },
   iron_bars: { draw: drawIronBar, w: 17, h: 6 },
   ale: { draw: drawAleCask, w: 17, h: 9 },
+  tools: { draw: drawTool, w: 18, h: 7 },
 };
 
 /** A pyramid of `count` pieces of `resource` whose bottom row is centred on (x, y). */

@@ -59,7 +59,7 @@ The village's Coin total.
 _Avoid_: Bank, purse
 
 **Tools**:
-One good that Workplace workers use to work at full speed.
+One good a Workplace asks for, one per worker: a worker holding one works faster, and some outputs (hides) need one. Wears out after about a year of days worked.
 _Avoid_: Axe, pick, sickle (as separate goods)
 
 **Merchant**:

@@ -40,6 +40,7 @@ export const RESOURCE_ICONS: Record<ResourceId, IconName> = {
   smoked_meat: 'smokedMeat',
   iron_bars: 'ironBars',
   ale: 'ale',
+  tools: 'hammer',
 };
 
 /** Tracked capitals with a hairline to the right, and an optional note after it. */

@@ -140,13 +140,21 @@ function clone(s: GameState): GameState {
   return JSON.parse(JSON.stringify(s)) as GameState;
 }
 
+/** The camp with its lodge holding a tool, so a catch brings a hide too. */
+function campWithTool(): GameState {
+  const s = createInitialState(1, camp, content);
+  const lodge = s.components.building[LODGE];
+  if (lodge) lodge.tools = [0];
+  return s;
+}
+
 function lodgeStock(s: GameState): Partial<Record<string, number>> {
   return s.components.building[LODGE]?.stock ?? {};
 }
 
 describe('the hunter', () => {
   it('hunts in a ground in reach and brings each catch to the lodge: 4 meat and 1 hide', () => {
-    const s0 = createInitialState(1, camp, content);
+    const s0 = campWithTool();
     expect(s0.components.villager[HUNTER]?.job).toBe('hunter');
     const s = runUntil(s0, (x) => (lodgeStock(x).meat ?? 0) > 0, 2400);
     const caught = 20 - ground(s).game;
@@ -160,7 +168,7 @@ describe('the hunter', () => {
     let rng = 0;
     while (Math.trunc(randomInt({ rng }, 1000) / 100) !== 2) rng += 1;
     const lastTick = runUntil(
-      createInitialState(1, camp, content),
+      campWithTool(),
       (x) => {
         const t = x.components.hunter[HUNTER];
         return t?.kind === 'hunting' && t.ticksLeft === 1;
@@ -215,7 +223,7 @@ describe('the hunter', () => {
   });
 
   it("waits while the lodge's yard has no room for a whole catch", () => {
-    const s0 = createInitialState(1, camp, content);
+    const s0 = campWithTool();
     const lodge = s0.components.building[LODGE];
     if (lodge) lodge.stock = { meat: 6 }; // the yard holds 10: no room for 4 meat and a hide
     const s = run(s0, 600);

@@ -146,7 +146,7 @@ describe('a gatherer', () => {
   });
 
   it("waits while a hunter's whole catch doesn't fit beside the meat and hides there", () => {
-    // 6 of 10 held: room for 4, a catch is 4 meat and 1 hide.
+    // 6 of 10 held: room for 4, a catch with a tool is 4 meat and 1 hide.
     const s0 = createInitialState(
       1,
       {
@@ -168,6 +168,8 @@ describe('a gatherer', () => {
       },
       content,
     );
+    const lodge = s0.components.building[9];
+    if (lodge) lodge.tools = [0];
     const s = run(s0, 600);
     const hunter = idsOf(s.components.hunter)[0] ?? -1;
     expect(s.components.hunter[hunter]?.kind).toBe('idle');

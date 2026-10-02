@@ -181,6 +181,11 @@ export interface BuildingComponent {
   crop?: CropId;
   /** A farm's Crop picked in its panel, sown from the next spring on. Absent: same as `crop`. */
   nextCrop?: CropId;
+  /**
+   * A Workplace's tools (`tools.ts`), one entry per tool: the days it has been worked. Its workers
+   * hold them in ID order. Absent: none.
+   */
+  tools?: number[];
 }
 
 export interface SiteComponent {

@@ -1,7 +1,7 @@
 // Hunters: walk into the nearest Hunting ground their lodge hunts that has Game, hunt, roll
 // for a catch with the seeded PRNG, and walk back to the lodge, with the catch or empty-handed.
 
-import type { Content } from '@candlemarch/content';
+import type { Content, ResourceAmount } from '@candlemarch/content';
 import { isNight } from '../calendar';
 import { idsOf } from '../entities';
 import { blockedGrid, doorTile, tileIndex } from '../grid';
@@ -11,6 +11,7 @@ import { randomInt } from '../rng';
 import { workTicks } from '../speed';
 import { isPaused } from '../standingOrders';
 import type { EntityId, GameState, Tile } from '../state';
+import { holdsTool } from '../tools';
 import { isAtWork, isHelpingCarry } from '../villagers';
 import { fitsInYard } from '../yards';
 import { isAt, villagerTile, walkTo } from './movement';
@@ -51,6 +52,24 @@ function walkToGround(
   return null;
 }
 
+/**
+ * What a catch of hunter `id` at lodge `lodgeId` is: the lodge's `hunts.catch`, less what needs a
+ * tool when the hunter holds none.
+ */
+function catchOf(
+  state: GameState,
+  content: Content,
+  id: EntityId,
+  lodgeId: EntityId,
+): ResourceAmount[] {
+  const lodge = state.components.building[lodgeId];
+  const hunts = lodge ? content.buildings[lodge.type].hunts : undefined;
+  const tool = holdsTool(state, id, lodgeId);
+  return (hunts?.catch ?? [])
+    .filter((c) => tool || !c.needsTool)
+    .map(({ resource, amount }) => ({ resource, amount }));
+}
+
 export function huntingSystem(state: GameState, content: Content): void {
   const { hunter: tasks, villager, building, huntingGround, path, tile } = state.components;
   const night = isNight(state.tick, content);
@@ -74,7 +93,8 @@ export function huntingSystem(state: GameState, content: Content): void {
         // Paused by its standing order, yard too full for a whole catch, or no Game in reach: wait
         // and look again.
         const ground =
-          !isPaused(state, content, lodgeId) && fitsInYard(state, content, lodgeId, def.hunts.catch)
+          !isPaused(state, content, lodgeId) &&
+          fitsInYard(state, content, lodgeId, catchOf(state, content, id, lodgeId))
             ? walkToGround(state, content, id, lodgeId)
             : null;
         if (ground === null) {
@@ -101,7 +121,7 @@ export function huntingSystem(state: GameState, content: Content): void {
         const chance = ground ? huntChancePermille(ground, content) : 0;
         const caught = randomInt(state, 1000) < chance;
         if (ground && caught) loseGame(state, content, ground, 1);
-        const bag = caught ? def.hunts.catch.map((c) => ({ ...c })) : [];
+        const bag = caught ? catchOf(state, content, id, lodgeId) : [];
         tasks[id] = { kind: 'toLodge', bag };
         walkTo(state, content, id, [door]);
         break;

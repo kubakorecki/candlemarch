@@ -81,8 +81,10 @@ describe('production', () => {
   it('asks for what its input buffer lacks, and offers what its output buffer holds', () => {
     const s = yardWithLogs(1);
     const block = blockOf(s);
+    const tool = { target: block, kind: 'tools', resource: 'tools', amount: 1 };
     expect(listDemands(s, content)).toEqual([
       { target: block, kind: 'workshop', resource: 'logs', amount: 3 },
+      tool,
     ]);
     expect(listSupplies(s, content)).toEqual([]);
 
@@ -92,6 +94,7 @@ describe('production', () => {
     ]);
     expect(listDemands(split, content)).toEqual([
       { target: block, kind: 'workshop', resource: 'logs', amount: 4 },
+      tool,
     ]);
   });
 

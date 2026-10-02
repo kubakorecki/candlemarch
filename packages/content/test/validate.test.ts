@@ -421,6 +421,13 @@ describe('content validation', () => {
     expectPositiveInt(content.masters.lostSpeedPercent, 'masters.lostSpeedPercent');
   });
 
+  it('tools are an existing Stockpile good, faster by a whole percent, wearing over whole days', () => {
+    expect(resources[content.tools.resource]?.storage).toBe('stockpile');
+    expectPositiveInt(content.tools.speedPercent, 'tools.speedPercent');
+    if (content.tools.wearDays !== null)
+      expectPositiveInt(content.tools.wearDays, 'tools.wearDays');
+  });
+
   it('buildings have a sane footprint and a door outside it', () => {
     for (const b of Object.values(buildings)) {
       expectPositiveInt(b.size.w, `${b.id}.size.w`);

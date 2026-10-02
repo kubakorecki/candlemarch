@@ -20,6 +20,7 @@ import { recipes } from './recipes';
 import { resources } from './resources';
 import { roads } from './roads';
 import { terrain } from './terrain';
+import { tools } from './tools';
 import { masters, trades } from './trades';
 import type { Content } from './types';
 import { valley } from './valley';
@@ -39,6 +40,7 @@ export const content: Content = {
   trades,
   masters,
   merchants,
+  tools,
   heroes,
   roads,
   logistics,

@@ -154,4 +154,12 @@ export const resources: Record<ResourceId, ResourceDef> = {
     standingOrder: 30,
     price: { base: 800, dropPerUnit: 12 },
   },
+  // Tools (spec, Economy: Tools): imported or found in Ruins until the M6 smithy. Worth about 40
+  // coin, one of the best sellers.
+  tools: {
+    id: 'tools',
+    name: 'Tools',
+    storage: 'stockpile',
+    price: { base: 4000, dropPerUnit: 50 },
+  },
 };

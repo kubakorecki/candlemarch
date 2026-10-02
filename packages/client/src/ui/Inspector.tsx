@@ -458,6 +458,14 @@ function BuildingPanel({
       />
       {building.status && <Callout tone="warn" title={building.status} />}
       {building.yard && <YardFacts yard={building.yard} />}
+      {building.tools && (
+        <div className="fact">
+          <span>Tools</span>
+          <span>
+            {building.tools.held} / {building.tools.wanted}
+          </span>
+        </div>
+      )}
       {building.storage && <StorageFacts storage={building.storage} />}
       {building.standingOrder && <StandingOrderFacts order={building.standingOrder} game={game} />}
       {building.bell && hud.bell && (

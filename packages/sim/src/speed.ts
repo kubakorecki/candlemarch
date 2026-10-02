@@ -4,12 +4,13 @@ import type { Content } from '@candlemarch/content';
 import { workSpeedPercent } from './aura';
 import { tradeSpeedPercent } from './masters';
 import type { EntityId, GameState } from './state';
+import { toolSpeedPercent } from './tools';
 
 /**
  * Speed of `id` as a percentage of normal. Slowdowns don't stack: only the worst of Tired, Hungry
  * and Cold applies. Work at `workplace` is also multiplied by the
- * hero's aura there and by its trade's speed (`tradeSpeedPercent`: a Master, or a lost one),
- * truncated. 100 for anyone who isn't a villager, such as the hero.
+ * hero's aura there, by its trade's speed (`tradeSpeedPercent`: a Master, or a lost one) and by
+ * the tool `id` holds there (`toolSpeedPercent`), truncated. 100 for anyone who isn't a villager, such as the hero.
  */
 export function speedPercent(
   state: GameState,
@@ -25,7 +26,8 @@ export function speedPercent(
   if (workplace === null) return percent;
   const aura = workSpeedPercent(state, content, workplace);
   const trade = tradeSpeedPercent(state, content, id, workplace);
-  return Math.trunc((percent * aura * trade) / 10_000);
+  const tool = toolSpeedPercent(state, content, id, workplace);
+  return Math.trunc((percent * aura * trade * tool) / 1_000_000);
 }
 
 /**

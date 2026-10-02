@@ -61,7 +61,7 @@ export const buildings: Record<BuildingId, BuildingDef> = {
       huntTicks: 400, // 20 s a hunt
       catch: [
         { resource: 'meat', amount: 4 },
-        { resource: 'hides', amount: 1 },
+        { resource: 'hides', amount: 1, needsTool: true }, // skinning takes a tool
       ],
     },
     outputBuffer: { resources: ['meat', 'hides'], yard: { x: 1, y: 0 } },

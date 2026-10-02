@@ -9,8 +9,8 @@ export const merchants: MerchantsDef = {
   floorPercent: 30,
   recoverPercent: 10,
   // Imports (spec, Economy: Imports): what the Valley can run out of or not make yet. Goods the
-  // village should make (planks, ale) are left out on purpose. Tools (ticket 16) and turnip seeds
-  // (ticket 25) join the catalogue with their tickets.
-  imports: ['stone', 'clay', 'iron_ore', 'iron_bars', 'grain'],
+  // village should make (planks, ale) are left out on purpose. Turnip seeds (ticket 25) join the
+  // catalogue with their ticket.
+  imports: ['stone', 'clay', 'iron_ore', 'iron_bars', 'tools', 'grain'],
   importPricePercent: 200,
 };

@@ -19,7 +19,8 @@ export type ResourceId =
   | 'smoked_fish'
   | 'smoked_meat'
   | 'iron_bars'
-  | 'ale';
+  | 'ale'
+  | 'tools';
 export type RecipeId =
   | 'split_logs'
   | 'burn_charcoal'
@@ -796,7 +797,7 @@ export interface BuildingDef {
    * Its workers hunt in Hunting grounds within its work radius: each hunt takes `huntTicks` and,
    * if the roll succeeds, brings `catch` back to the output buffer.
    */
-  hunts?: { huntTicks: number; catch: ResourceAmount[] };
+  hunts?: { huntTicks: number; catch: CatchDef[] };
   /** Its workers plant `object` (a Sapling) on tiles within its work radius (see `PlantsDef`). */
   plants?: PlantsDef;
   /** Makes it a farm: its workers sow and harvest the Fields in its work radius (`FarmingDef`). */
@@ -893,6 +894,25 @@ export interface TradeDef {
   name: string;
 }
 
+/**
+ * One good a hunt brings back. `needsTool`: only a hunter holding a tool brings it (spec, Economy:
+ * Tools; M5: hides).
+ */
+export interface CatchDef extends ResourceAmount {
+  needsTool?: boolean;
+}
+
+/**
+ * Tools (spec, Economy: Tools: used and sold). A Workplace that makes goods asks for one per
+ * worker; a worker holding one works at `speedPercent` (each chop, catch or batch; walking
+ * unchanged). A tool is gone after `wearDays` days worked; null: tools never wear out.
+ */
+export interface ToolsDef {
+  resource: ResourceId;
+  speedPercent: number;
+  wearDays: number | null;
+}
+
 /** How a trade's Master changes its workshops' speed (spec, How a trade scales). */
 export interface MastersDef {
   /** The Master's own work, in a workshop of their trade, as a percent of normal (+50%: 150). */
@@ -935,6 +955,7 @@ export interface Content {
   trades: Record<TradeId, TradeDef>;
   masters: MastersDef;
   merchants: MerchantsDef;
+  tools: ToolsDef;
   heroes: Record<HeroId, HeroDef>;
   roads: Record<RoadId, RoadDef>;
   logistics: LogisticsDef;

@@ -85,8 +85,10 @@ import {
   standingOrderOf,
   storageOf,
   type Tile,
+  toolsAt,
   tradePostOf,
   treasuryCoin,
+  usesTools,
   villageFood,
   villageStock,
   winterIn,
@@ -248,6 +250,11 @@ export interface BuildingInfo {
   } | null;
   /** What it keeps inside (a Granary's Food), or null for a building that keeps nothing. */
   storage: Storage | null;
+  /**
+   * The tools it keeps against one for each of its workers, or null for a building that uses
+   * none.
+   */
+  tools: { held: number; wanted: number } | null;
   /** Its standing order (pause at N of its output), or null for a building without outputs. */
   standingOrder: StandingOrder | null;
   /** Hunting grounds its hunters reach; empty unless it hunts. */
@@ -1645,6 +1652,9 @@ function buildingInfo(state: GameState, id: EntityId): BuildingInfo | null {
     name: buildingNames(state)[id] ?? content.buildings[b.type].name,
     yard: yardInfo(state, id),
     storage: storageOf(state, content, id),
+    tools: usesTools(content, b.type)
+      ? { held: toolsAt(state, id).length, wanted: workersAt(state, id).length }
+      : null,
     standingOrder: standingOrderOf(state, content, id),
     grounds: content.buildings[b.type].hunts
       ? groundsInReach(state, content, id).flatMap((g) => groundInfo(state, g) ?? [])
